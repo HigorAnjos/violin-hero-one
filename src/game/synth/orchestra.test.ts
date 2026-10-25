@@ -3,16 +3,33 @@ import { scheduleNotes } from '../engine/engine';
 import { parseSong, type Song } from '../notation/song';
 import { findFixedSong } from '../notation/songs';
 import { KEEP_AUDIBLE_LEVEL, SECTION_FADE_IN_SECONDS, SECTION_FADE_OUT_SECONDS, STOP_FADE_SECONDS, createOrchestra } from './orchestra';
-import { scheduleOrchestra } from './schedule';
+import {
+  DUCK_DB,
+  DUCK_HALF_SECONDS,
+  DUCK_RAMP_SECONDS,
+  duckWindows,
+  notesSoundingAt,
+  scheduleOrchestra,
+  type TimedNote,
+} from './schedule';
 import { VOICES } from './voices';
 
 const tone = vi.hoisted(() => {
   class FakeParam {
     ramps: [number, number][] = [];
+    events: [string, number, number][] = [];
     constructor(public value: number) {}
     rampTo(value: number, seconds: number) {
       this.ramps.push([value, seconds]);
       this.value = value;
+    }
+    setValueAtTime(value: number, time: number) {
+      this.events.push(['set', value, time]);
+      return this;
+    }
+    linearRampToValueAtTime(value: number, time: number) {
+      this.events.push(['ramp', value, time]);
+      return this;
     }
   }
   const created: FakeNode[] = [];
@@ -105,13 +122,24 @@ function fakeContext(currentTime = 0, state: AudioContextState = 'running') {
   };
 }
 
-async function start(options: { song?: Song; now?: number; state?: AudioContextState; energy?: number; volume?: number; enabled?: boolean; bpm?: number } = {}) {
+async function start(
+  options: {
+    song?: Song;
+    now?: number;
+    state?: AudioContextState;
+    energy?: number;
+    volume?: number;
+    enabled?: boolean;
+    bpm?: number;
+    headphones?: boolean;
+  } = {},
+) {
   const ctx = fakeContext(options.now, options.state);
   const orchestra = await createOrchestra(ctx as unknown as AudioContext, options.song ?? song, { startAt: 10, a4: 442, ...options });
   const gains = tone.created.filter((n) => n instanceof tone.Gain) as FakeGain[];
-  const [mute, master, strings, woodwinds, brass, percussion] = gains;
+  const [mute, duck, master, strings, woodwinds, brass, percussion] = gains;
   const synths = tone.created.filter((n) => n instanceof tone.Synth) as FakeSynth[];
-  return { ctx, orchestra, mute, master, sections: { strings, woodwinds, brass, percussion }, synths };
+  return { ctx, orchestra, mute, duck, master, sections: { strings, woodwinds, brass, percussion }, synths };
 }
 
 beforeEach(() => {
@@ -137,10 +165,11 @@ describe('createOrchestra', () => {
     for (const node of tone.created) expect(node.options.context).toBe(tone.contexts[0]);
   });
 
-  it('naipes → geral → liga/desliga → saída, e o DC inaudível que liga o áudio na contagem', async () => {
-    const { ctx, mute, master, sections } = await start({ volume: 0.7 });
+  it('naipes → geral → queda nos ataques → liga/desliga → saída, e o DC inaudível que liga o áudio na contagem', async () => {
+    const { ctx, mute, duck, master, sections } = await start({ volume: 0.7 });
     expect(mute.connectedTo).toBe(ctx.destination);
-    expect(master.connectedTo).toBe(mute);
+    expect(duck.connectedTo).toBe(mute);
+    expect(master.connectedTo).toBe(duck);
     expect(master.gain.value).toBe(0.7);
     for (const gain of Object.values(sections)) expect(gain.connectedTo).toBe(master);
     expect(ctx.constant).toMatchObject({ started: true, connectedTo: ctx.destination });
@@ -257,5 +286,75 @@ describe('createOrchestra', () => {
     orchestra.dispose();
     expect(tone.created.every((n) => n.disposed)).toBe(true);
     expect(ctx.constant.stopped).toBe(true);
+  });
+
+  it('sem fone: baixa 6 dB nos ~100 ms em volta de cada ataque esperado, com rampa de 10 ms', async () => {
+    const { duck } = await start();
+    const low = 10 ** (DUCK_DB / 20);
+    const windows = duckWindows(song, 10);
+    expect(windows.length).toBeGreaterThan(10);
+    expect(duck.gain.events).toEqual(
+      windows.flatMap(({ from, to }) => [
+        ['set', 1, from - DUCK_RAMP_SECONDS],
+        ['ramp', low, from],
+        ['set', low, to],
+        ['ramp', 1, to + DUCK_RAMP_SECONDS],
+      ]),
+    );
+    expect(windows[0].from).toBeCloseTo(10 - DUCK_HALF_SECONDS, 12);
+    expect(windows[0].to).toBeCloseTo(10 + DUCK_HALF_SECONDS, 12);
+  });
+
+  it('com fone: orquestra completa (sem desviar da melodia) e sem queda nos ataques', async () => {
+    const { orchestra, duck, synths } = await start({ headphones: true });
+    expect(orchestra.headphones).toBe(true);
+    expect(duck.gain.events).toEqual([]);
+    const triggers = synths.flatMap((s) => s.triggers).length;
+    expect(triggers).toBe(scheduleOrchestra(song, { startAt: 10, headphones: true }).length);
+    expect(triggers).toBeGreaterThan(scheduleOrchestra(song, { startAt: 10 }).length);
+  });
+});
+
+describe('soundingAt (para a máscara do Ouvido)', () => {
+  const spb = 60 / song.bpm;
+  const t = 10 + 0.25 * spb;
+
+  const midis = (notes: readonly TimedNote[]) => [...new Set(notes.map((note) => note.midi))].sort((a, b) => a - b);
+
+  it('number[]: as notas MIDI que soam em t, sem repetição e em ordem, só dos naipes audíveis', async () => {
+    const { orchestra } = await start();
+    const now = orchestra.soundingAt(t);
+    expect(now.length).toBeGreaterThan(0);
+    expect(now).toEqual(midis(notesSoundingAt(orchestra.notes, t, ['strings', 'woodwinds', 'brass'])));
+    expect(now).toEqual([...now].sort((a, b) => a - b));
+    expect(new Set(now).size).toBe(now.length);
+    expect(orchestra.soundingAt(9)).toEqual([]);
+  });
+
+  it('a percussão entra na lista quando entra no som; um naipe que sai ainda conta enquanto some', async () => {
+    const { orchestra, ctx } = await start();
+    const timpani = notesSoundingAt(orchestra.notes, t, ['percussion']).map((note) => note.midi);
+    expect(timpani.length).toBe(1);
+    orchestra.update({ energy: 0.9, combo: 12 });
+    expect(orchestra.soundingAt(t)).toEqual(midis(notesSoundingAt(orchestra.notes, t)));
+    ctx.currentTime = 10;
+    orchestra.update({ energy: 0.2, combo: 0 });
+    expect(orchestra.soundingAt(t)).toEqual(midis(notesSoundingAt(orchestra.notes, t)));
+    const later = 10 + SECTION_FADE_OUT_SECONDS + 0.01;
+    expect(orchestra.soundingAt(later)).toEqual(midis(notesSoundingAt(orchestra.notes, later, ['strings'])));
+  });
+
+  it('vazia com a orquestra desligada, no volume zero, parada ou liberada', async () => {
+    const off = await start({ enabled: false });
+    expect(off.orchestra.soundingAt(t)).toEqual([]);
+    off.orchestra.setEnabled(true);
+    expect(off.orchestra.soundingAt(t).length).toBeGreaterThan(0);
+    off.orchestra.setVolume(0);
+    expect(off.orchestra.soundingAt(t)).toEqual([]);
+    const { orchestra } = await start();
+    void orchestra.stop();
+    expect(orchestra.soundingAt(t)).toEqual([]);
+    orchestra.dispose();
+    expect(orchestra.soundingAt(t)).toEqual([]);
   });
 });

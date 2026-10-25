@@ -1,8 +1,9 @@
 import type { Part } from './arrange';
 
 /**
- * Senoides puras com envelopes lineares. Senoide não tem harmônico: um Dó3 com 2º harmônico poria energia em cima do
- * Dó4 da melodia, e o microfone ouviria. Os naipes se distinguem por registro, ritmo e envelope, não por timbre.
+ * Senoides puras com envelopes lineares. Senoide não tem harmônico próprio: a orquestra já desvia da nota esperada e da
+ * oitava dela, e um 2º ou 3º harmônico de timbre recolocaria energia em cima da melodia. Os naipes se distinguem por
+ * registro, ritmo e envelope, não por timbre.
  */
 export interface Voice {
   /** Nível de cada nota em dB, antes do volume geral. */

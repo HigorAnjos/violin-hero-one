@@ -2,10 +2,10 @@ import type { OrchestraSection } from '../../assets/styles/themes/types';
 import { ENERGY_MAX, ENERGY_START } from '../engine/energy';
 import type { Song } from '../notation/song';
 import { PARTS, PART_SECTION, type Part } from './arrange';
-import { scheduleOrchestra } from './schedule';
+import { DUCK_DB, DUCK_RAMP_SECONDS, duckWindows, notesSoundingAt, scheduleOrchestra, type TimedNote } from './schedule';
 import { SECTION_ORDER, levelFor, sectionsFor, type OrchestraDrive, type OrchestraLevel } from './sections';
 import { clampVolume, DEFAULT_ORCHESTRA_VOLUME } from './settings';
-import { VOICES, type Voice } from './voices';
+import { VOICES, dbToGain, type Voice } from './voices';
 
 export const SECTION_FADE_IN_SECONDS = 0.4;
 export const SECTION_FADE_OUT_SECONDS = 0.8;
@@ -29,14 +29,33 @@ export interface OrchestraOptions {
   /** Linear 0 a 1. */
   volume?: number;
   enabled?: boolean;
+  /**
+   * "Está de fone?" da calibração. Com fone o microfone não ouve a orquestra: ela toca completa, sem desviar da melodia
+   * e sem baixar nos ataques. Fixo na partida: trocar é recriar a orquestra.
+   */
+  headphones?: boolean;
   /** Padrão: context.destination. */
   destination?: AudioNode;
 }
 
 export interface Orchestra {
   readonly startAt: number;
+  readonly headphones: boolean;
   readonly level: OrchestraLevel;
   readonly sections: readonly OrchestraSection[];
+  /** Todas as notas agendadas, em ordem de início, no relógio do AudioContext (sem compensação de latência). */
+  readonly notes: readonly TimedNote[];
+  /**
+   * Contrato da máscara (Decisões): as notas MIDI que a orquestra toca no instante `t`, no relógio compensado do jogo, o
+   * mesmo de startAt e das notas do Motor. Quem chama é o engine, com PitchReading.time menos a latência calibrada;
+   * synth e audio não se importam.
+   *
+   * Conta a nota do início ao fim do release, só dos naipes audíveis em `t` (os ativos e os que ainda estão sumindo).
+   * Sem repetição, em ordem crescente. Vazio antes da primeira nota, com a orquestra desligada, no volume zero, parada ou
+   * liberada. Com fone devolve as notas normalmente (decidir se mascara é do engine). Busca binária: barato a cada
+   * leitura do Ouvido (~100 por segundo).
+   */
+  soundingAt(t: number): number[];
   /** O state de cada julgamento do Motor (energia e combo): os naipes entram e saem com rampa. */
   update(drive: OrchestraDrive): void;
   setVolume(volume: number): void;
@@ -86,9 +105,14 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
   keepAudible.connect(destination);
   keepAudible.start();
 
-  const mute = new Gain({ context: toneContext, gain: options.enabled === false ? 0 : 1 }).connect(destination);
-  const master = new Gain({ context: toneContext, gain: clampVolume(options.volume ?? DEFAULT_ORCHESTRA_VOLUME) });
-  master.connect(mute);
+  const headphones = options.headphones ?? false;
+  let enabled = options.enabled !== false;
+  const mute = new Gain({ context: toneContext, gain: enabled ? 1 : 0 }).connect(destination);
+  const duck = new Gain({ context: toneContext, gain: 1 });
+  duck.connect(mute);
+  let volume = clampVolume(options.volume ?? DEFAULT_ORCHESTRA_VOLUME);
+  const master = new Gain({ context: toneContext, gain: volume });
+  master.connect(duck);
   const active = new Set(sectionsFor(level));
   const sectionGain = Object.fromEntries(
     SECTION_ORDER.map((section) => {
@@ -120,20 +144,32 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
   ) as Record<Part, ToneVoice[]>;
 
   const now = context.currentTime;
+  const notes = scheduleOrchestra(song, { startAt, bpm: options.bpm, a4: options.a4, headphones });
   const next: Record<Part, number> = { bass: 0, pad: 0, arpeggio: 0, brass: 0, timpani: 0 };
   // Agendar com o contexto suspenso avisa uma vez por nota; ele volta a rodar com o jogo.
   const suspended = raw.state !== 'running';
   if (suspended) setLogger(QUIET_LOGGER);
   try {
-    for (const note of scheduleOrchestra(song, { startAt, bpm: options.bpm, a4: options.a4 })) {
+    for (const note of notes) {
       const pool = voices[note.part];
       const voice = pool[next[note.part]++ % pool.length];
       if (note.time + note.duration <= now) continue;
       voice.triggerAttackRelease(note.frequency, note.duration, Math.max(note.time, now), note.velocity);
     }
+    if (!headphones) {
+      const low = dbToGain(DUCK_DB);
+      for (const { from, to } of duckWindows(song, startAt, options.bpm)) {
+        if (to + DUCK_RAMP_SECONDS <= now) continue;
+        duck.gain.setValueAtTime(1, Math.max(now, from - DUCK_RAMP_SECONDS));
+        duck.gain.linearRampToValueAtTime(low, Math.max(now, from));
+        duck.gain.setValueAtTime(low, Math.max(now, to));
+        duck.gain.linearRampToValueAtTime(1, to + DUCK_RAMP_SECONDS);
+      }
+    }
   } finally {
     if (suspended) setLogger(console);
   }
+  const fadingUntil: Partial<Record<OrchestraSection, number>> = {};
 
   let disposed = false;
   let stopping: Promise<void> | undefined;
@@ -144,17 +180,26 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
     keepAudible.disconnect();
     for (const pool of Object.values(voices)) for (const voice of pool) voice.dispose();
     for (const gain of Object.values(sectionGain)) gain.dispose();
+    duck.dispose();
     master.dispose();
     mute.dispose();
   };
 
   return {
     startAt,
+    headphones,
+    notes,
     get level() {
       return level;
     },
     get sections() {
       return sectionsFor(level);
+    },
+    soundingAt(t) {
+      if (disposed || stopping || !enabled || volume === 0) return [];
+      const audible = new Set(active);
+      for (const section of SECTION_ORDER) if ((fadingUntil[section] ?? -Infinity) > t) audible.add(section);
+      return [...new Set(notesSoundingAt(notes, t, audible).map((note) => note.midi))].sort((a, b) => a - b);
     },
     update(drive) {
       if (disposed || stopping) return;
@@ -166,16 +211,25 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
         const is = on.has(section);
         if (was === is) continue;
         sectionGain[section].gain.rampTo(is ? 1 : 0, is ? SECTION_FADE_IN_SECONDS : SECTION_FADE_OUT_SECONDS);
-        if (is) active.add(section);
-        else active.delete(section);
+        if (is) {
+          active.add(section);
+          delete fadingUntil[section];
+        } else {
+          active.delete(section);
+          fadingUntil[section] = context.currentTime + SECTION_FADE_OUT_SECONDS;
+        }
       }
       level = nextLevel;
     },
-    setVolume(volume) {
-      if (!disposed && !stopping) master.gain.rampTo(clampVolume(volume), VOLUME_RAMP_SECONDS);
+    setVolume(value) {
+      if (disposed || stopping) return;
+      volume = clampVolume(value);
+      master.gain.rampTo(volume, VOLUME_RAMP_SECONDS);
     },
-    setEnabled(enabled) {
-      if (!disposed && !stopping) mute.gain.rampTo(enabled ? 1 : 0, VOLUME_RAMP_SECONDS);
+    setEnabled(value) {
+      if (disposed || stopping) return;
+      enabled = value;
+      mute.gain.rampTo(enabled ? 1 : 0, VOLUME_RAMP_SECONDS);
     },
     stop(fadeSeconds = STOP_FADE_SECONDS) {
       if (disposed) return Promise.resolve();
