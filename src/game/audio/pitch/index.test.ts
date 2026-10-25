@@ -158,6 +158,16 @@ describe('startPitch', () => {
     expect(context.state).toBe('running');
   });
 
+  it('recusa um MediaStream com contexto dado ainda suspenso, sem fechá-lo', async () => {
+    const context = new FakeAudioContext();
+    withWorklet(context);
+    await expect(startPitch({} as MediaStream, () => {}, { context: context as unknown as AudioContext })).rejects.toMatchObject({
+      name: 'InvalidStateError',
+    });
+    expect(context.state).toBe('suspended');
+    expect(FakeWorkletNode.created).toHaveLength(0);
+  });
+
   it('fecha o próprio contexto quando o módulo falha', async () => {
     const created = stubOwnedContext((c) => withWorklet(c, vi.fn(async () => Promise.reject(new Error('blocked')))));
     await expect(startPitch({} as MediaStream, () => {})).rejects.toThrow('blocked');

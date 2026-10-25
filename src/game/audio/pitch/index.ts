@@ -72,11 +72,9 @@ export async function startPitch(
 
   let node: AudioWorkletNode;
   try {
-    if (ownedContext) {
-      await resumed;
-      if (ownedContext.state !== 'running') {
-        throw new DOMException(`audio context is ${ownedContext.state}`, 'InvalidStateError');
-      }
+    if (ownedContext) await resumed;
+    if (ownedInput && (context as AudioContext).state !== 'running') {
+      throw new DOMException(`audio context is ${(context as AudioContext).state}`, 'InvalidStateError');
     }
     await loadProcessor(context);
     const processorOptions: ProcessorOptions = { a4, minClarity };
