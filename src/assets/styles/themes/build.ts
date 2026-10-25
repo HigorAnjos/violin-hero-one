@@ -75,12 +75,12 @@ export function buildTheme(p: Palette): Theme {
         good: ensureContrast(p.judgments.good, [p.track], UI),
         miss: ensureContrast(p.judgments.miss, [p.track], UI),
       },
-      // Cada seção da orquestra herda a cor de uma corda: o fundo conversa com a pista
+      // Cada seção herda a cor de uma corda, como no Orchestra.dc: cordas magenta, percussão violeta
       orchestra: {
-        strings: strings.G.main,
+        strings: strings.D.main,
         woodwinds: strings.A.main,
         brass: strings.E.main,
-        percussion: strings.D.main,
+        percussion: strings.G.main,
       },
     },
     ...base,

@@ -3,6 +3,17 @@ import { micTrouble, type MicTrouble, type PitchListener } from '../game/audio';
 
 export type LevelListener = (dbfs: number) => void;
 
+/** O áudio aberto: o relógio da partida (context) e a fonte que a calibração escuta. */
+export interface EarAudio {
+  context: AudioContext;
+  source: AudioNode;
+  /** Microfone de verdade; o ouvido simulado não tem. */
+  stream: MediaStream | null;
+}
+
+/** Por que o Ouvido fechou: a aba saiu de vista (pausa o jogo) ou alguém pediu. */
+export type EarClosedReason = 'hidden' | 'stopped';
+
 /**
  * O que as telas precisam do Ouvido. A implementação real é o microphoneEar (src/game/audio);
  * as telas recebem a porta pelo EarProvider e os testes passam uma falsa.
@@ -15,6 +26,11 @@ export interface Ear {
   onPitch(listener: PitchListener): () => void;
   /** Nível de entrada bruto em dBFS, com ou sem nota clara (~30 vezes por segundo). */
   onLevel(listener: LevelListener): () => void;
+  /** O áudio aberto, ou null. Cada reabertura é um AudioContext novo: o relógio recomeça perto de 0. */
+  audio(): EarAudio | null;
+  /** Lá de referência da detecção, em Hz; vale na hora. */
+  setA4(a4: number): void;
+  onClosed(listener: (reason: EarClosedReason) => void): () => void;
 }
 
 /** Os três estados da tela MicTrouble (5e). */
@@ -43,6 +59,9 @@ export const unwiredEar: Ear = {
   stop: () => undefined,
   onPitch: () => () => undefined,
   onLevel: () => () => undefined,
+  audio: () => null,
+  setA4: () => undefined,
+  onClosed: () => () => undefined,
 };
 
 const EarContext = React.createContext<Ear>(unwiredEar);

@@ -1,6 +1,11 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import styled, { css } from 'styled-components';
+import { Button } from '../components/Button/Button';
 import { SessionStatus } from '../components/SessionStatus/SessionStatus';
+import { FIXED_SONGS } from '../game/notation/songs';
+import type { PlayState } from '../shell/play';
+import { ROUTES } from '../shell/routes';
 import { StringLegend } from '../components/StringLegend/StringLegend';
 import { ThemeSwitch } from '../components/ThemeSwitch/ThemeSwitch';
 
@@ -108,7 +113,14 @@ const SectionTitle = styled.h2`
   color: ${({ theme }) => theme.colors.text};
 `;
 
-/** Tela de teste do ciclo 0: tema, cordas e sessão funcionando juntos. */
+const Songs = styled.nav`
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${({ theme }) => theme.spacing.sm};
+`;
+
+/** Tela de teste do ciclo 0: tema, cordas e sessão funcionando juntos; até a Principal existir, é daqui que se toca. */
 export const Foundation: React.FC = () => (
   <Page>
     <Staff $at="top" aria-hidden="true" />
@@ -129,5 +141,12 @@ export const Foundation: React.FC = () => (
       <SectionTitle id="cordas-titulo">As quatro cordas</SectionTitle>
       <StringLegend />
     </Strings>
+    <Songs aria-label="Tocar">
+      {FIXED_SONGS.map(({ id, title, song }) => (
+        <Button key={id} as={Link} to={ROUTES.calibration} state={{ song } satisfies PlayState}>
+          Tocar {title} <span aria-hidden="true">▸</span>
+        </Button>
+      ))}
+    </Songs>
   </Page>
 );

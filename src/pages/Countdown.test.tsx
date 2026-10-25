@@ -52,16 +52,16 @@ describe('Countdown', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/jogar');
   });
 
-  it('sem música escolhida, usa a primeira das músicas fixas; pular vai direto', () => {
+  it('sem música escolhida, usa a primeira das músicas fixas; pular vai direto para o jogo', () => {
     renderCountdown();
     expect(screen.getByText(`${FIXED_SONGS[0].title} · Arcade · Fácil`)).toBeInTheDocument();
     act(() => screen.getByRole('button', { name: /Pular contagem/ }).click());
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/jogo$/);
   });
 
   it('destino de fora do jogo é ignorado', () => {
     renderCountdown({ next: 'https://mal.com' });
     act(() => screen.getByRole('button', { name: /Pular contagem/ }).click());
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/jogo$/);
   });
 });
