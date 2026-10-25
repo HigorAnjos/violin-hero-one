@@ -37,6 +37,8 @@ export interface OrchestraOptions {
   startAt: number;
   /** Andamento da partida; padrão: o da música. */
   bpm?: number;
+  /** Fator de andamento desde o primeiro tempo, de 0,5 a 1; padrão 1. */
+  tempo?: number;
   a4?: number;
   /** Energia inicial, 0 a 1; padrão: a de início do Motor. */
   energy?: number;
@@ -173,7 +175,7 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
     PARTS.map((part) => [part, Array.from({ length: VOICES[part].polyphony }, () => makeVoice(part))]),
   ) as Record<Part, ToneVoice[]>;
 
-  const timeline = createTimeline(song, { startAt, bpm: options.bpm });
+  const timeline = createTimeline(song, { startAt, bpm: options.bpm, factor: options.tempo });
   const beatNotes = orchestraBeats(song, { a4: options.a4, headphones });
   const attackBeats = attacks(song).map((note) => ({ beat: note.at }));
   const lookback =

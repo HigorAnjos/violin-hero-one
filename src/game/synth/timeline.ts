@@ -37,6 +37,8 @@ export interface TimelineOptions {
   startAt: number;
   /** Andamento da partida, o de fator 1; padrão: o da música. */
   bpm?: number;
+  /** Fator de andamento desde o primeiro tempo (a prática que já começa lenta); padrão 1. */
+  factor?: number;
 }
 
 export interface TimelineCursor {
@@ -120,15 +122,16 @@ function open(time: number, beat: number, spb: number): TempoSegment {
  * instante congelado em diante.
  */
 export function createTimeline(song: Song, options: TimelineOptions): Timeline {
-  const { startAt, bpm = song.bpm } = options;
+  const { startAt, bpm = song.bpm, factor = 1 } = options;
   if (!(bpm > 0) || !Number.isFinite(bpm)) throw new RangeError(`bpm inválido: ${bpm}`);
   if (!Number.isFinite(startAt)) throw new RangeError(`startAt inválido: ${startAt}`);
+  if (!(factor >= MIN_TEMPO_FACTOR && factor <= MAX_TEMPO_FACTOR)) throw new RangeError(`fator de andamento inválido: ${factor}`);
   const baseSpb = 60 / bpm;
   const measureStarts = [0];
   for (const measure of song.measures) measureStarts.push(measureStarts[measureStarts.length - 1] + measure.beats);
   const totalBeats = songDurationBeats(song);
 
-  let fixed: TempoSegment[] = [open(startAt, 0, baseSpb)];
+  let fixed: TempoSegment[] = [open(startAt, 0, baseSpb / factor)];
   let committed = -Infinity;
   let pending: TempoChange[] = [];
   let loop: LoopState | null = null;
