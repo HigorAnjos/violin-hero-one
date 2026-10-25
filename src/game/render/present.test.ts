@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FEEDBACK_LABEL, feedbackAlpha, feedbackScale, glowRing, judgmentDetail, type JudgmentLike } from './present';
+import { JUDGMENTS, feedbackLabel, feedbackAlpha, feedbackScale, glowRing, judgmentDetail, type JudgmentLike } from './present';
 
 const j = (over: Partial<JudgmentLike>): JudgmentLike => ({ issue: null, offsetMs: 0, cents: 0, state: { combo: 0 }, ...over });
 
@@ -10,13 +10,13 @@ describe('judgmentDetail', () => {
   });
 
   it.each([
-    [{ issue: 'late', offsetMs: 84.4 }, 'Tarde +84 ms'],
-    [{ issue: 'early', offsetMs: -91.6 }, 'Cedo −92 ms'],
-    [{ issue: 'sharp', cents: 38 }, 'Alto +38 ¢'],
-    [{ issue: 'flat', cents: -12.2 }, 'Baixo −12 ¢'],
-    [{ issue: 'wrong-note' }, 'Nota errada'],
-    [{ issue: 'not-played', offsetMs: null, cents: null }, 'Não tocou'],
-    [{ issue: 'late', offsetMs: null }, 'Tarde'],
+    [{ issue: 'late', offsetMs: 84.4 }, 'TARDE ▸ +84 MS'],
+    [{ issue: 'early', offsetMs: -91.6 }, '◂ CEDO −92 MS'],
+    [{ issue: 'sharp', cents: 38 }, 'ALTO ▴ +38 ¢'],
+    [{ issue: 'flat', cents: -12.2 }, '◂ BAIXO −12 ¢'],
+    [{ issue: 'wrong-note' }, 'NOTA ERRADA'],
+    [{ issue: 'not-played', offsetMs: null, cents: null }, 'NÃO TOCOU'],
+    [{ issue: 'late', offsetMs: null }, 'TARDE ▸'],
   ] as const)('motivo %o → %s', (over, text) => {
     expect(judgmentDetail(j(over))).toBe(text);
   });
@@ -44,7 +44,7 @@ describe('feedback', () => {
     expect(glowRing(0.1, true)).toEqual({ alpha: 0, scale: 1 });
   });
 
-  it('rótulos em português', () => {
-    expect(Object.values(FEEDBACK_LABEL)).toEqual(['Perfeito!', 'Ótimo!', 'Bom', 'Errou']);
+  it('rótulos do motor, com exclamação nos dois melhores', () => {
+    expect(JUDGMENTS.map(feedbackLabel)).toEqual(['Perfeito!', 'Ótimo!', 'Bom', 'Errou']);
   });
 });

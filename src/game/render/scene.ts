@@ -17,7 +17,7 @@ import {
   type TrackLayout,
 } from './layout';
 import { trackPalette, type TrackPalette } from './palette';
-import { FEEDBACK_LABEL, feedbackAlpha, feedbackScale, glowRing, judgmentDetail, JUDGMENTS } from './present';
+import { feedbackLabel, feedbackAlpha, feedbackScale, glowRing, judgmentDetail, JUDGMENTS } from './present';
 
 export type JudgmentEvent = Extract<EngineEvent, { type: 'judgment' }>;
 
@@ -115,7 +115,7 @@ export class TrackScene extends Container {
     this.ringTextures = p.lanes.map((lane) => this.bakeCircle(p.target, lane.main));
     this.fillTextures = p.lanes.map((lane) => this.bakeCircle(lane.main));
     this.glowTextures = p.lanes.map((lane) => this.bakeCircle(lane.glow.color, undefined, lane.glow.alpha));
-    this.labelTextures = new Map(JUDGMENTS.map((j) => [j, this.bakeText(FEEDBACK_LABEL[j], LABEL_PX, p.judgments[j], display)]));
+    this.labelTextures = new Map(JUDGMENTS.map((j) => [j, this.bakeText(feedbackLabel(j), LABEL_PX, p.judgments[j], display)]));
 
     const targets = new Container();
     for (let i = 0; i < 4; i++) {

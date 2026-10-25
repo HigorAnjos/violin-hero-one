@@ -1,26 +1,27 @@
+import { JUDGMENTS, JUDGMENT_LABEL } from '../engine/score';
 import type { Issue, Judgment } from '../engine/types';
+
+export { JUDGMENTS };
 
 export const FEEDBACK_HOLD_SECONDS = 0.25;
 export const FEEDBACK_FADE_SECONDS = 0.35;
 const POP_SECONDS = 0.12;
 const POP_SCALE = 0.25;
 
-export const JUDGMENTS: readonly Judgment[] = ['perfect', 'great', 'good', 'miss'];
-
-/** Texto grande do julgamento na pista, como no design ("Perfeito!"). */
-export const FEEDBACK_LABEL: Record<Judgment, string> = {
-  perfect: 'Perfeito!',
-  great: 'Ótimo!',
-  good: 'Bom',
-  miss: 'Errou',
-};
+/** Texto grande do julgamento na pista: o nome do motor, com exclamação nos dois melhores ("Perfeito!"). */
+export function feedbackLabel(judgment: Judgment): string {
+  const label = JUDGMENT_LABEL[judgment];
+  return judgment === 'perfect' || judgment === 'great' ? `${label}!` : label;
+}
 
 const MINUS = '−';
 
 const signed = (value: number, unit: string) => {
   const n = Math.round(value);
-  return `${n < 0 ? MINUS : '+'}${Math.abs(n)} ${unit}`;
+  return ` ${n < 0 ? MINUS : '+'}${Math.abs(n)} ${unit}`;
 };
+const ms = (v: number | null) => (v === null ? '' : signed(v, 'MS'));
+const cents = (v: number | null) => (v === null ? '' : signed(v, '¢'));
 
 export interface JudgmentLike {
   issue: Issue | null;
@@ -29,23 +30,26 @@ export interface JudgmentLike {
   state: { combo: number };
 }
 
-/** Linha de baixo do feedback: o motivo quando não foi Perfeito, senão o combo. */
+/**
+ * Linha de baixo do feedback: o motivo quando não foi Perfeito, senão o combo. Motivos como no
+ * design de erros (GameplayErrors), com a seta que diz para onde corrigir.
+ */
 export function judgmentDetail(j: JudgmentLike): string {
   switch (j.issue) {
     case null:
       return j.state.combo >= 2 ? `${j.state.combo} seguidas` : '';
     case 'early':
-      return j.offsetMs === null ? 'Cedo' : `Cedo ${signed(j.offsetMs, 'ms')}`;
+      return `◂ CEDO${ms(j.offsetMs)}`;
     case 'late':
-      return j.offsetMs === null ? 'Tarde' : `Tarde ${signed(j.offsetMs, 'ms')}`;
+      return `TARDE ▸${ms(j.offsetMs)}`;
     case 'sharp':
-      return j.cents === null ? 'Alto' : `Alto ${signed(j.cents, '¢')}`;
+      return `ALTO ▴${cents(j.cents)}`;
     case 'flat':
-      return j.cents === null ? 'Baixo' : `Baixo ${signed(j.cents, '¢')}`;
+      return `◂ BAIXO${cents(j.cents)}`;
     case 'wrong-note':
-      return 'Nota errada';
+      return 'NOTA ERRADA';
     case 'not-played':
-      return 'Não tocou';
+      return 'NÃO TOCOU';
   }
 }
 
