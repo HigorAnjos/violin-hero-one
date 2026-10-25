@@ -81,6 +81,21 @@ describe('createMicrophoneEar', () => {
     expect(f.mic.stop).toHaveBeenCalledOnce();
   });
 
+  it('stop enquanto espera a permissão fecha o microfone quando ele abre; o próximo start abre outro', async () => {
+    const f = fakeDeps();
+    let allow: (mic: Microphone) => void = () => undefined;
+    f.spies.openMicrophone.mockImplementationOnce(() => new Promise<Microphone>((resolve) => (allow = resolve)));
+    const ear = createMicrophoneEar(f.deps);
+    const pending = ear.start();
+    ear.stop();
+    allow(f.mic);
+    await pending;
+    await vi.waitFor(() => expect(f.mic.stop).toHaveBeenCalledOnce());
+    expect(f.levelStop).toHaveBeenCalledOnce();
+    await ear.start();
+    expect(f.spies.openMicrophone).toHaveBeenCalledTimes(2);
+  });
+
   it('stop desliga nível, afinação e microfone', async () => {
     const f = fakeDeps();
     const ear = createMicrophoneEar(f.deps);

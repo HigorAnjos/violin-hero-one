@@ -18,16 +18,20 @@ export function createMicrophoneEar(deps: MicrophoneEarDeps = REAL): Ear {
   const levelListeners = new Set<LevelListener>();
   let opening: Promise<void> | null = null;
   let close: (() => void) | null = null;
+  // stop() durante a permissão: o open() em andamento fecha o que abrir em vez de deixar sem dono
+  let generation = 0;
 
-  const open = async () => {
+  const open = async (mine: number) => {
     const mic = await deps.openMicrophone();
     try {
       const pitch = await deps.startPitch(mic.source, (reading) => pitchListeners.forEach((l) => l(reading)));
       const level = deps.startLevelMeter(mic.context, mic.source, (db) => levelListeners.forEach((l) => l(db)));
-      close = () => {
+      const shut = () => {
         level.stop();
         void pitch.stop().finally(() => mic.stop());
       };
+      if (mine !== generation) shut();
+      else close = shut;
     } catch (error) {
       await mic.stop().catch(() => undefined);
       throw error;
@@ -37,15 +41,17 @@ export function createMicrophoneEar(deps: MicrophoneEarDeps = REAL): Ear {
   return {
     start() {
       if (!opening) {
+        const mine = generation;
         // Falhou: o próximo start() pede de novo (o jogador pode ter liberado no cadeado)
-        opening = open().catch((error) => {
-          opening = null;
+        opening = open(mine).catch((error) => {
+          if (mine === generation) opening = null;
           throw error;
         });
       }
       return opening;
     },
     stop() {
+      generation += 1;
       close?.();
       close = null;
       opening = null;
