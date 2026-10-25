@@ -53,6 +53,14 @@ describe('partida inteira com o violinista sintético', () => {
     expect(result.strings[0]).toMatchObject({ meanCents: null, meanOffsetMs: null, sharp: 0 });
   });
 
+  it('corda Lá baixa 40 ¢ e o resto afinado: só a corda Lá conta baixas', () => {
+    const { result } = simulateGame(game, { perNote: (n) => (n.string === 2 ? { cents: -40 } : undefined) });
+    expect(result.strings[2]).toMatchObject({ flat: 2, sharp: 0, hits: 2 });
+    expect(result.strings[2].meanCents).toBeCloseTo(-40, 0);
+    expect(result.strings[3]).toMatchObject({ flat: 0, sharp: 0 });
+    expect(result.judgments.filter((j) => j.issue === 'flat').every((j) => j.judgment === 'good')).toBe(true);
+  });
+
   it('latência do aparelho é descontada pela calibração', () => {
     const { result } = simulateGame({ ...game, latencySeconds: 0.15 }, { latencySeconds: 0.15 });
     expect(result.counts.perfect).toBe(15);
