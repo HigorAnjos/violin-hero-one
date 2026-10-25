@@ -189,9 +189,9 @@ export function useGame(options: GameOptions) {
         ear.onPitch((reading) => {
           if (!session) return;
           session.push(reading);
+          // Na nota da vez, o desvio para o alvo; fora dela (troca de nota, legato), o da nota que soa
           const t = target();
-          const cents = reading && t ? centsBetween(reading.hz, t.frequency) : null;
-          liveCents = cents !== null && Math.abs(cents) < 100 ? cents : null;
+          liveCents = !reading ? null : t && reading.midi === t.midi ? centsBetween(reading.hz, t.frequency) : reading.cents;
           if (reading && liveCents !== null) trace.push({ time: session.gameTime(reading.time), cents: liveCents });
         }),
         ear.onClosed((reason) => {
