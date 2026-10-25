@@ -2,9 +2,20 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import escala from '../../content/songs/escala-re-maior.json';
 import type { SessionState } from './session';
 import { getSong, listCatalog, SongError, useCatalog, useSong, type SongsClient } from './songs';
+
+const CHART = {
+  formatVersion: 1,
+  id: 'escala-re-maior',
+  title: 'Escala de Ré maior',
+  composer: '',
+  key: 'D major',
+  bpm: 60,
+  timeSignature: { beats: 4, unit: 4 },
+  level: 'easy',
+  measures: [{ beats: 4, notes: [{ beat: 0, beats: 4, midi: 62, string: 1, finger: 0 }] }],
+};
 
 const SIGNED_IN: SessionState = { status: 'signed-in', userId: 'u1', anonymous: true };
 
@@ -81,7 +92,7 @@ describe('listCatalog', () => {
 });
 
 describe('getSong', () => {
-  const row = { ...SHEET_ROW, level: 'easy', format_version: 1, chart: escala, hash: 'a'.repeat(64) };
+  const row = { ...SHEET_ROW, level: 'easy', format_version: 1, chart: CHART, hash: 'a'.repeat(64) };
 
   it('chama get_song e devolve ficha, Song validada e hash', async () => {
     const { client, rpc } = fakeClient({ rpc: { data: [row], error: null } });
@@ -99,7 +110,7 @@ describe('getSong', () => {
   });
 
   it('chart fora do formato: inválida, sem quebrar a tela', async () => {
-    const { client } = fakeClient({ rpc: { data: [{ ...row, chart: { ...escala, bpm: -1 } }], error: null } });
+    const { client } = fakeClient({ rpc: { data: [{ ...row, chart: { ...CHART, bpm: -1 } }], error: null } });
     await expect(getSong(client, SIGNED_IN, 'escala-re-maior', 'easy')).rejects.toMatchObject({ kind: 'invalid' });
   });
 
