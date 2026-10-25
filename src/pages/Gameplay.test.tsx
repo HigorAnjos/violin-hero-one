@@ -112,6 +112,18 @@ describe('Gameplay', () => {
     expect(ear.started).toBe(2);
   });
 
+  it('aba escondida durante a contagem de volta: a contagem para e a pausa volta', async () => {
+    const { ear, context } = setup();
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
+    await userEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    expect(screen.getByRole('timer')).toBeInTheDocument();
+    act(() => ear.close('hidden'));
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'PAUSADO' })).toHaveTextContent(/O microfone fechou/), { timeout: 3000 });
+    await new Promise((r) => setTimeout(r, 1200));
+    expect(context.resume).not.toHaveBeenCalled();
+  });
+
   it('microfone bloqueado vai para a tela de problema', async () => {
     const ear = createFakeEar();
     ear.failNextStart('NotAllowedError');

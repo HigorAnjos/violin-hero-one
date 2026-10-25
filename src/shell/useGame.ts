@@ -97,7 +97,12 @@ export function useGame(options: GameOptions) {
   const [micClosed, setMicClosed] = React.useState(false);
   const [volume, setVolume] = React.useState(() => loadOrchestraSettings().volume);
   const [latencyMs, setLatencyMs] = React.useState<number | null>(null);
-  const live = React.useRef<{ session: GameSession | null; latency: number; paused: boolean }>({ session: null, latency: 0, paused: false });
+  const live = React.useRef<{ session: GameSession | null; latency: number; paused: boolean; closes: number }>({
+    session: null,
+    latency: 0,
+    paused: false,
+    closes: 0,
+  });
 
   const follow = React.useCallback(() => {
     const { session, latency } = live.current;
@@ -197,6 +202,7 @@ export function useGame(options: GameOptions) {
         ear.onClosed((reason) => {
           if (reason !== 'hidden' || !session) return;
           live.current.paused = true;
+          live.current.closes += 1;
           void session.pause();
           setMicClosed(true);
           setPhase((p) => (p === 'over' ? p : 'paused'));
@@ -274,10 +280,13 @@ export function useGame(options: GameOptions) {
     setPhase('counting');
     const beats = song.timeSignature.beats;
     const beatMs = secondsPerBeat(song) * 1000;
+    const closes = live.current.closes;
     for (let left = beats; left > 0; left--) {
       setCounting(left);
       await new Promise((r) => setTimeout(r, beatMs));
       if (live.current.session !== session) return;
+      // A aba saiu de vista no meio da contagem: o microfone fechou e a pausa voltou
+      if (live.current.closes !== closes) return setCounting(null);
     }
     setCounting(null);
     await session.resume();
