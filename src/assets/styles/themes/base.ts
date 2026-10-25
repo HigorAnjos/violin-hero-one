@@ -15,9 +15,10 @@ export const base = {
     xl: '2rem',
   },
   borderRadius: {
-    sm: '0.5rem',
-    md: '0.75rem',
-    lg: '0.875rem',
+    // 12px = --radius-sm e --radius-note do design; 14px e 18px são os cartões e botões das telas
+    sm: '0.75rem',
+    md: '0.875rem',
+    lg: '1.125rem',
     pill: '999px',
   },
 } satisfies Pick<Theme, 'fonts' | 'spacing' | 'borderRadius'>;

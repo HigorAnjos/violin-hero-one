@@ -13,7 +13,8 @@ export const CADERNO: Palette = {
   surfaceBorder: '#e3d8bf',
   text: '#1f2a44',
   textMuted: '#5b6478',
-  primary: '#1f2a44',
+  // Magenta do .ns-btn--primary; o buildTheme escurece o mínimo para o texto branco passar AA
+  primary: '#d63a8a',
   danger: '#d93636',
   warning: '#b87800',
   success: '#2f8a4c',

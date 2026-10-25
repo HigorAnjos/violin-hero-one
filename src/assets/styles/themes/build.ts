@@ -1,5 +1,5 @@
 import { base } from './base';
-import { ensureContrast, mix, readableOn, rgba } from './color';
+import { contrast, ensureContrast, mix, readableOn, rgba } from './color';
 import type { Palette, StringColors, StringName, Theme, ToneColors } from './types';
 
 /** Texto e valores precisam ser lidos (4.5:1); indicadores, bordas e notas, se destacar (3:1). */
@@ -17,9 +17,12 @@ function toneColors(raw: string, mode: Palette['mode'], surface: string, backgro
   };
 }
 
-function stringColors(raw: string, track: string): StringColors {
+/** `onNeon`: letra clara sobre a nota (no Caderno, a cor do papel, como o --ink-on-neon do design). */
+function stringColors(raw: string, track: string, onNeon: string): StringColors {
   const main = ensureContrast(raw, [track], UI);
-  return { main, text: readableOn(main), glow: rgba(main, 0.25) };
+  // Letra clara sempre que ela se destaca (3:1, texto curto e grosso); senão, a mais legível
+  const text = contrast(onNeon, main) >= UI ? onNeon : readableOn(main, '#0b0b0f', onNeon);
+  return { main, text, glow: rgba(main, 0.25) };
 }
 
 /** Transforma a paleta crua num Theme completo, com contraste AA garantido. */
@@ -32,7 +35,7 @@ export function buildTheme(p: Palette): Theme {
   const hover = mix(primary, dark ? '#ffffff' : '#000000', 0.18);
   const shadow = dark ? 'rgba(0, 0, 0, 0.45)' : rgba(text, 0.16);
   const strings = Object.fromEntries(
-    (Object.entries(p.strings) as [StringName, string][]).map(([name, hex]) => [name, stringColors(hex, p.track)])
+    (Object.entries(p.strings) as [StringName, string][]).map(([name, hex]) => [name, stringColors(hex, p.track, dark ? '#ffffff' : p.background)])
   ) as Record<StringName, StringColors>;
 
   return {
