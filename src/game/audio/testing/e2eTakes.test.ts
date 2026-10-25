@@ -20,8 +20,15 @@ function song(id: string): Song {
   return found.song;
 }
 
+/** Uma música inteira passa pelo tracker em ~1 s numa máquina livre; com a máquina carregada leva várias vezes isso. */
+const TAKE_TIMEOUT_MS = 60000;
+
 const takes = e2eTakes(song);
-const render = (name: TakeName) => takes.find((t) => t.name === name)!.render();
+const rendered = new Map<TakeName, Float32Array>();
+const render = (name: TakeName) => {
+  if (!rendered.has(name)) rendered.set(name, takes.find((t) => t.name === name)!.render());
+  return rendered.get(name)!;
+};
 
 function listen(samples: Float32Array): { time: number; reading: PitchReading | null }[] {
   const tracker = new PitchTracker({ sampleRate: DEFAULT_SAMPLE_RATE, a4: DEFAULT_A4 });
@@ -51,7 +58,7 @@ function play(id: string, take: TakeName): GameResult {
   return engine.result();
 }
 
-describe('gravações sintéticas tocadas pelo Ouvido e julgadas pelo Motor', () => {
+describe('gravações sintéticas tocadas pelo Ouvido e julgadas pelo Motor', { timeout: TAKE_TIMEOUT_MS }, () => {
   it('o lead-in é o começo da partida mais a latência padrão', () => {
     expect(TAKE_LEAD_IN_SECONDS).toBeCloseTo(START_AT + LATENCY, 9);
   });

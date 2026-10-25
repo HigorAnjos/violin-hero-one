@@ -17,7 +17,7 @@ function check(samples: Float32Array): OpenStringCheck {
   return state;
 }
 
-describe('cordas soltas pelas gravações sintéticas do e2e', () => {
+describe('cordas soltas pelas gravações sintéticas do e2e', { timeout: 30000 }, () => {
   it('o WAV de cordas soltas passa as quatro, afinadas', () => {
     const state = check(renderOpenStrings());
     expect(state.current).toBe(4);
