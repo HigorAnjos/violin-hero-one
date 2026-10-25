@@ -48,6 +48,11 @@ for (const screen of SCREENS) {
 }
 
 test('cordas soltas com o microfone negado levam ao microfone bloqueado', async ({ page }) => {
+  // Nega de propósito: sem isso, numa máquina sem placa de som (o runner da CI) o navegador
+  // responde "sem dispositivo" antes de perguntar, e o teste dependeria do hardware
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('negado no teste', 'NotAllowedError'));
+  });
   await page.goto('/primeira-vez/cordas');
   await expect(page.getByRole('alertdialog', { name: 'O microfone foi bloqueado' })).toBeVisible();
 });

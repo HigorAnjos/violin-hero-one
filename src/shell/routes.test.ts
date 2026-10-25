@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { micTroubleUrl, parseMicTrouble, ROUTES, safeInternalPath } from './routes';
+import { micTroubleUrl, needsMicrophone, parseMicTrouble, ROUTES, safeInternalPath } from './routes';
 
 describe('rotas', () => {
+  it('só as telas que ouvem o violino pedem microfone; menu e desconhecidas não', () => {
+    for (const path of [ROUTES.mic, ROUTES.strings, ROUTES.micTrouble, ROUTES.countdown, `${ROUTES.countdown}/`]) {
+      expect(needsMicrophone(path)).toBe(true);
+    }
+    for (const path of [ROUTES.home, ROUTES.foundation, ROUTES.level, '/biblioteca', '/configuracoes', '/contagem-x']) {
+      expect(needsMicrophone(path)).toBe(false);
+    }
+  });
+
   it('ida e volta da tela de problema no microfone, com a causa', () => {
     const url = micTroubleUrl('no-sound', ROUTES.strings, 'in-use');
     expect(url).toBe('/microfone/problema?motivo=sem-som&depois=%2Fprimeira-vez%2Fcordas&causa=in-use');
