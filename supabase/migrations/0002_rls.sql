@@ -29,6 +29,7 @@ alter default privileges in schema violinhero revoke all on tables from public, 
 -- O servidor (Edge Functions, webhooks) ignora RLS, mas não GRANT: escreve o que "só o servidor" escreve.
 grant all on all tables in schema violinhero to service_role;
 alter default privileges in schema violinhero grant all on tables to service_role;
+alter default privileges for role postgres in schema violinhero grant execute on functions to service_role;
 
 grant select on violinhero.profiles to authenticated;
 -- Só as preferências do jogador; id, is_anonymous e datas são do servidor

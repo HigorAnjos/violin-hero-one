@@ -116,6 +116,14 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       await denied(as(c, a, `select ${S}.tmp_probe()`));
     });
 
+    it('função nova no schema nasce executável pelo servidor (service_role)', async () => {
+      await c.query(`create function ${S}.tmp_probe() returns int language sql security definer as 'select 1'`);
+      await c.query('set local role service_role');
+      const { rows } = await c.query(`select ${S}.tmp_probe() as v`);
+      await c.query('reset role');
+      assert.equal(rows[0].v, 1);
+    });
+
     it('Lá fora de 415–466 Hz é recusado', async () => {
       const a = await newUser(c);
       await assert.rejects(as(c, a, `update ${S}.profiles set a4_hz = 500 where id = $1`, [a]), /check constraint/);
