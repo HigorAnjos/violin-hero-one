@@ -27,8 +27,11 @@ export const CHORD_FLOOR = 52;
 /** Uma nota que bate com a melodia pode descer até aqui antes de ser cortada. */
 export const LOWEST_ORCHESTRA_MIDI = 28;
 export const HIGHEST_ORCHESTRA_MIDI = CHORD_FLOOR + 11;
-/** Distâncias proibidas, em semitons, entre uma nota da orquestra e a nota esperada que soa junto. */
-export const FORBIDDEN_INTERVALS: readonly number[] = [0, 12];
+/**
+ * Distâncias proibidas, em semitons, entre uma nota da orquestra e a nota esperada que soa junto: a mesma, a oitava e,
+ * abaixo, a 12ª e a 15ª, onde o 3º e o 4º harmônico que o alto-falante pequeno cria caem em cima da nota esperada.
+ */
+export const FORBIDDEN_INTERVALS: readonly number[] = [0, 12, -19, -24];
 
 export type Part = 'bass' | 'pad' | 'arpeggio' | 'brass' | 'timpani';
 export const PARTS: readonly Part[] = ['bass', 'pad', 'arpeggio', 'brass', 'timpani'];
@@ -118,7 +121,7 @@ export function clashes(midi: number, beat: number, beats: number, melody: reado
     (note) =>
       note.at < beat + beats - EPSILON &&
       note.at + note.beats > beat + EPSILON &&
-      FORBIDDEN_INTERVALS.includes(Math.abs(midi - note.midi)),
+      FORBIDDEN_INTERVALS.some((step) => (step >= 0 ? Math.abs(midi - note.midi) === step : midi - note.midi === step)),
   );
 }
 

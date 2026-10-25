@@ -79,11 +79,14 @@ describe('trechos de acorde', () => {
 
 describe('clashes', () => {
   const melody = [{ at: 1, beats: 1, midi: 66 }];
-  it('bate na mesma nota e a uma oitava, só enquanto as duas soam juntas', () => {
+  it('bate na mesma nota, a uma oitava e, abaixo, na 12ª e na 15ª (3º e 4º harmônico), só enquanto soam juntas', () => {
     expect(clashes(66, 0.5, 1, melody)).toBe(true);
     expect(clashes(54, 1.5, 1, melody)).toBe(true);
     expect(clashes(78, 0, 4, melody)).toBe(true);
-    expect(clashes(42, 1, 1, melody)).toBe(false);
+    expect(clashes(47, 1, 1, melody)).toBe(true);
+    expect(clashes(42, 1, 1, melody)).toBe(true);
+    expect(clashes(85, 1, 1, melody)).toBe(false);
+    expect(clashes(43, 1, 1, melody)).toBe(false);
     expect(clashes(64, 1, 1, melody)).toBe(false);
     expect(clashes(66, 0, 1, melody)).toBe(false);
     expect(clashes(66, 2, 1, melody)).toBe(false);
@@ -170,9 +173,13 @@ it('Brilha, Brilha, Estrelinha ganha a harmonia clássica: I I IV I IV I V I nos
   expect(arrange(song).chords.slice(0, 8).map((chord) => chord.degree)).toEqual(['I', 'I', 'IV', 'I', 'IV', 'I', 'V', 'I']);
 });
 
-it('uma nota que bate com a melodia desce uma oitava; sem saída, sai', () => {
-  const song: Song = { ...ODE, measures: [{ beats: 2, notes: [n(0, 2, 62, 1, 0)] }] };
-  const { parts } = arrange(song);
-  expect(parts.bass.map((note) => note.midi)).toEqual([38]);
-  expect(parts.pad.map((note) => note.midi)).toEqual([54, 57]);
+it('uma nota que bate com a melodia troca de oitava; sem saída, sai', () => {
+  const tonic: Song = { ...ODE, measures: [{ beats: 2, notes: [n(0, 2, 62, 1, 0)] }] };
+  const onTonic = arrange(tonic).parts;
+  expect(onTonic.bass).toEqual([]);
+  expect(onTonic.pad.map((note) => note.midi)).toEqual([54, 57]);
+  const third: Song = { ...ODE, measures: [{ beats: 2, notes: [n(0, 2, 78, 3, 1)] }] };
+  const onThird = arrange(third).parts;
+  expect(onThird.pad.map((note) => note.midi)).toEqual([62, 42, 57]);
+  expect(onThird.bass.map((note) => note.midi)).toEqual([50]);
 });

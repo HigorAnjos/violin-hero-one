@@ -333,9 +333,12 @@ describe('soundingAt (para a máscara do Ouvido)', () => {
 
   it('a percussão entra na lista quando entra no som; um naipe que sai ainda conta enquanto some', async () => {
     const { orchestra, ctx } = await start();
-    const timpani = notesSoundingAt(orchestra.notes, t, ['percussion']).map((note) => note.midi);
-    expect(timpani.length).toBe(1);
+    const hit = orchestra.notes.find((note) => note.part === 'timpani')!;
+    const at = hit.time + 0.01;
+    expect(orchestra.soundingAt(at)).toEqual(midis(notesSoundingAt(orchestra.notes, at, ['strings', 'woodwinds', 'brass'])));
     orchestra.update({ energy: 0.9, combo: 12 });
+    expect(orchestra.soundingAt(at)).toContain(hit.midi);
+    expect(orchestra.soundingAt(at)).toEqual(midis(notesSoundingAt(orchestra.notes, at)));
     expect(orchestra.soundingAt(t)).toEqual(midis(notesSoundingAt(orchestra.notes, t)));
     ctx.currentTime = 10;
     orchestra.update({ energy: 0.2, combo: 0 });
