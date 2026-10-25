@@ -10,6 +10,7 @@ import { MicTrouble } from './pages/MicTrouble';
 import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
 import { OnboardTest } from './pages/OnboardTest';
+import { Results } from './pages/Results';
 import { isOnboarded } from './services/profile';
 import { DEV_TOOLS } from './shell/devTools';
 import { EarProvider, type Ear } from './shell/Ear';
@@ -47,6 +48,7 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
             <Route path={ROUTES.calibration} element={<Calibration />} />
             <Route path={ROUTES.game} element={<Gameplay />} />
             <Route path={ROUTES.gameOver} element={<GameOver />} />
+            <Route path={ROUTES.results} element={<Results />} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
           </Routes>
         </BrowserRouter>
