@@ -29,9 +29,10 @@ export default defineConfig({
       },
     },
   ],
-  // Testa o artefato de produção; sem SUPABASE_* o app fica Offline, como na prévia sem backend
+  // Testa o artefato de build; sem SUPABASE_* o app fica Offline, como na prévia sem backend
   webServer: {
-    command: 'npm run build && npm run preview -- --port 4173 --strictPort',
+    // --mode e2e liga as ferramentas de conferência (?simular, ?ouvido=simulado, ?musica); o build de produção não as tem
+    command: 'npm run build -- --mode e2e && npm run preview -- --port 4173 --strictPort',
     url: 'http://localhost:4173',
     env: { SUPABASE_URL: '', SUPABASE_ANON_KEY: '' },
     reuseExistingServer: !process.env.CI,

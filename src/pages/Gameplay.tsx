@@ -9,6 +9,7 @@ import { SheetStrip, type SheetStripHandle } from '../components/SheetStrip/Shee
 import { TuningCard } from '../components/TuningCard/TuningCard';
 import { parseSimulate, type GameResult } from '../game/engine';
 import { songDurationSeconds } from '../game/notation/song';
+import { findFixedSong } from '../game/notation/songs';
 import { stageBox } from '../game/render/layout';
 import { prefersReducedMotion } from '../game/render/present';
 import { addEarnedBadges } from '../services/badges';
@@ -82,7 +83,12 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const play = React.useMemo(() => readPlayState(location.state), [location.state]);
+  const play = React.useMemo(() => {
+    const state = readPlayState(location.state);
+    // ?musica=<id> abre a música direto no /jogo, para o e2e que toca um WAV no lugar do microfone
+    const chosen = DEV_TOOLS ? findFixedSong(new URLSearchParams(location.search).get('musica') ?? '') : undefined;
+    return chosen ? { ...state, song: chosen.song } : state;
+  }, [location.state, location.search]);
   const compact = useMediaQuery(COMPACT_QUERY);
   const [a4] = React.useState(loadA4);
   const [performance] = React.useState(() => (DEV_TOOLS ? parseSimulate(location.search) : null));
@@ -101,6 +107,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
   const finish = React.useCallback(
     (result: GameResult) => {
       const state: ResultState = { song: play.song, mode: play.mode, latencyMs: play.latencyMs, noFail: play.noFail, result };
+      if (DEV_TOOLS) (window as Window & { __vhResult?: GameResult }).__vhResult = result;
       if (result.status === 'failed') return navigate(ROUTES.gameOver, { replace: true, state });
       addEarnedBadges(result.badges);
       navigate(result.badges.length ? ROUTES.badge : ROUTES.results, { replace: true, state });

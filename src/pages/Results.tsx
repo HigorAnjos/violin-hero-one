@@ -313,7 +313,7 @@ export const Results: React.FC = () => {
   const judgmentColor = (j: (typeof JUDGMENTS)[number]) => theme.game.judgments[j];
 
   return (
-    <Screen $gap="1.375rem">
+    <Screen $gap="1.375rem" data-testid="resultado">
       <Header>
         <div>
           <Kicker>
