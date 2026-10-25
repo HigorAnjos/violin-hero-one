@@ -4,7 +4,7 @@ import { rgba } from '../../assets/styles/themes/color';
 import { volumeLabel } from '../../game/synth';
 import { Button } from '../Button/Button';
 import { Kicker, SongKicker } from '../Screen/Screen';
-import { clock } from '../SheetStrip/staff';
+import { clock } from '../../game/render/staff';
 
 const Veil = styled.div`
   position: absolute;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { THEMES, cadernoTheme } from '../../assets/styles/themes';
 import { palcoTheme } from '../../assets/styles/themes/palco';
-import { toTint, trackPalette } from './palette';
+import { sheetPalette, toTint, trackPalette } from './palette';
 
 const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
 
@@ -48,5 +48,31 @@ describe('trackPalette', () => {
   it.each(THEMES.map((t) => [t.id, t] as const))('%s: as 4 cordas têm cores diferentes', (_id, theme) => {
     const p = trackPalette(theme);
     expect(new Set(p.lanes.map((l) => l.main)).size).toBe(4);
+  });
+});
+
+describe('sheetPalette', () => {
+  it('Caderno: papel, pauta e tinta do caderno; cordas G D A E', () => {
+    const p = sheetPalette(cadernoTheme);
+    const t = cadernoTheme;
+    expect(hex(p.paper)).toBe(t.game.track);
+    expect(hex(p.line)).toBe(t.colors.textMuted);
+    expect(hex(p.ink)).toBe(t.colors.text);
+    expect(p.strings.map(hex)).toEqual([t.game.strings.G.main, t.game.strings.D.main, t.game.strings.A.main, t.game.strings.E.main]);
+    expect(hex(p.needle)).toBe(t.colors.info.main);
+  });
+
+  it('Palco: tinta clara sobre o palco escuro, julgamentos do tema', () => {
+    const p = sheetPalette(palcoTheme);
+    const t = palcoTheme;
+    expect(hex(p.paper)).toBe(t.game.track);
+    expect(hex(p.ink)).toBe(t.colors.text);
+    expect(hex(p.judgments.miss)).toBe(t.game.judgments.miss);
+    expect(hex(p.needleText)).toBe(t.colors.info.text);
+    expect(p.ink).not.toBe(sheetPalette(cadernoTheme).ink);
+  });
+
+  it.each(THEMES.map((t) => [t.id, t] as const))('%s: as 4 cordas da partitura são as da pista', (_id, theme) => {
+    expect(sheetPalette(theme).strings).toEqual(trackPalette(theme).lanes.map((l) => l.main));
   });
 });

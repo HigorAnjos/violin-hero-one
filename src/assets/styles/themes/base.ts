@@ -6,6 +6,7 @@ export const base = {
     // A face Fallback (fonts.css) ocupa o espaço da real enquanto o woff2 não chega ou se ele falhar
     display: "'Baloo 2', 'Baloo 2 Fallback', system-ui, sans-serif",
     ui: "'Nunito', 'Nunito Fallback', system-ui, sans-serif",
+    music: "'Noto Music', serif",
   },
   spacing: {
     xxs: '0.25rem',
