@@ -154,6 +154,10 @@ const Next = styled.nav`
     > a {
       min-height: 2.75rem;
     }
+
+    small {
+      display: none;
+    }
   }
 `;
 
