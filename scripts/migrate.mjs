@@ -14,7 +14,9 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const client = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+// O Postgres do `supabase start` (127.0.0.1:54322) não aceita SSL; o da nuvem exige
+const local = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(process.env.DATABASE_URL);
+const client = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: local ? false : { rejectUnauthorized: false } });
 await client.connect();
 try {
   await client.query('create schema if not exists violinhero');

@@ -126,7 +126,11 @@ export function songProblems(song: Song): string[] {
       }
       if (![0, 1, 2, 3, 4].includes(note.finger)) problems.push(`${at}: dedo inválido ${note.finger}`);
       if (note.tie) {
-        const continues = previous && previous.midi === note.midi && Math.abs(previous.at + previous.beats - (start + note.beat)) < EPSILON;
+        const continues =
+          previous &&
+          previous.midi === note.midi &&
+          previous.string === note.string &&
+          Math.abs(previous.at + previous.beats - (start + note.beat)) < EPSILON;
         if (!continues) problems.push(`${at}: ligadura sem nota igual colada antes`);
       }
       previous = { ...note, measure: mi, index: 0, at: start + note.beat };

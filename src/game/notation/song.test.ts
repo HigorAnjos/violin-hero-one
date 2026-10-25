@@ -78,6 +78,7 @@ describe('modelo Song', () => {
     ['dedo em corda solta', withMeasures([{ beats: 4, notes: [n(0, 1, 69, 2, 1)] }]), 'corda solta'],
     ['corda presa sem dedo', withMeasures([{ beats: 4, notes: [n(0, 1, 71, 2, 0)] }]), 'corda solta'],
     ['ligadura com nota diferente', withMeasures([{ beats: 4, notes: [n(0, 1, 69, 2, 0), n(1, 1, 71, 2, 1, true)] }]), 'ligadura'],
+    ['ligadura trocando de corda', withMeasures([{ beats: 4, notes: [n(0, 1, 69, 2, 0), n(1, 1, 69, 1, 4, true)] }]), 'ligadura'],
     ['ligadura com pausa no meio', withMeasures([{ beats: 4, notes: [n(0, 1, 69, 2, 0), n(2, 1, 69, 2, 0, true)] }]), 'ligadura'],
     ['compasso maior que a fórmula', withMeasures([{ beats: 5, notes: [n(0, 1, 69, 2, 0)] }]), 'duração inválida'],
     ['sem notas', withMeasures([{ beats: 4, notes: [] }]), 'sem notas'],
