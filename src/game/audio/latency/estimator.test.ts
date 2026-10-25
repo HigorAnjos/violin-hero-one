@@ -59,7 +59,7 @@ describe('summarize / estimate', () => {
   it('descarta duas rearcadas atrasadas do mesmo lado em vez de deixar puxarem a média', () => {
     const result = estimate(clicks, withDelays([78, 79, 80, 80, 81, 82, 200, 200]));
     expect(result.samples.map((s) => s.status)).toEqual(['hit', 'hit', 'hit', 'hit', 'hit', 'hit', 'outlier', 'outlier']);
-    expect(Math.abs(result.latencySeconds - 0.08)).toBeLessThan(0.001);
+    expect(Math.abs(result.latencySeconds! - 0.08)).toBeLessThan(0.001);
   });
 
   it('mantém a variação humana comum de ±15 ms', () => {
@@ -91,9 +91,16 @@ describe('summarize / estimate', () => {
     expect(result.confidence).toBeLessThan(0.5);
   });
 
-  it('dá NaN, confiança zero e não confiável quando nada foi acertado', () => {
+  it('marca como não confiável um jogador adiantado de forma consistente', () => {
+    const result = estimate(clicks, withDelays([-20, -22, -18, -21, -19, -20, -23, -17]));
+    expect(result.samples.every((s) => s.status === 'hit')).toBe(true);
+    expect(result.latencySeconds).toBeCloseTo(-0.02, 3);
+    expect(result.reliable).toBe(false);
+  });
+
+  it('dá latência null, confiança zero e não confiável quando nada foi acertado', () => {
     const result = summarize(assignSamples(clicks, []));
-    expect(result.latencySeconds).toBeNaN();
+    expect(result.latencySeconds).toBeNull();
     expect(result.spreadSeconds).toBe(0);
     expect(result.confidence).toBe(0);
     expect(result.reliable).toBe(false);

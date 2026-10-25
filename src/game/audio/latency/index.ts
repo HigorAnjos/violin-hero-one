@@ -155,7 +155,7 @@ export async function startCalibration(
     if (samples.length < schedule.beats.length) return;
     settled = true;
     const final = summarize(samples);
-    if (final.reliable && options.save !== false) {
+    if (final.reliable && final.latencySeconds !== null && options.save !== false) {
       saveLatency(
         {
           latencySeconds: latencyToMs(final.latencySeconds) / 1000,

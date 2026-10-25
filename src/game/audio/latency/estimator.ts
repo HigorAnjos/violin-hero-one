@@ -68,9 +68,9 @@ export function summarize(samples: readonly LatencySample[], minBeats: number = 
   const used = samples.length ? delays.length / samples.length : 0;
   const confidence = delays.length ? used * Math.max(0, 1 - spreadMs / ZERO_CONFIDENCE_SPREAD_MS) : 0;
   return {
-    latencySeconds: delayMs / 1000,
+    latencySeconds: delays.length ? delayMs / 1000 : null,
     confidence,
-    reliable: delays.length >= minBeats && spreadMs <= MAX_RELIABLE_SPREAD_MS,
+    reliable: delays.length >= minBeats && spreadMs <= MAX_RELIABLE_SPREAD_MS && delayMs >= 0,
     spreadSeconds: spreadMs / 1000,
     samples: judged,
   };

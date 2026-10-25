@@ -26,7 +26,7 @@ describe('calibração em tomadas geradas', () => {
         const result = session({ delayMs, seed });
         expect(result.reliable).toBe(true);
         expect(result.samples.every((s) => s.status === 'hit')).toBe(true);
-        expect(Math.abs(result.latencySeconds * 1000 - delayMs)).toBeLessThanOrEqual(10);
+        expect(Math.abs(result.latencySeconds! * 1000 - delayMs)).toBeLessThanOrEqual(10);
       }
     }, 30000);
   }
@@ -39,7 +39,7 @@ describe('calibração em tomadas geradas', () => {
     expect(result.samples[5].status).not.toBe('hit');
     expect(result.samples.filter((s) => s.status === 'hit')).toHaveLength(6);
     expect(result.reliable).toBe(true);
-    expect(Math.abs(result.latencySeconds * 1000 - 80)).toBeLessThanOrEqual(10);
+    expect(Math.abs(result.latencySeconds! * 1000 - 80)).toBeLessThanOrEqual(10);
   }, 30000);
 
   it('descarta duas rearcadas atrasadas do mesmo lado', () => {
@@ -52,13 +52,13 @@ describe('calibração em tomadas geradas', () => {
     });
     expect(result.samples[6].status).toBe('outlier');
     expect(result.samples[7].status).toBe('outlier');
-    expect(Math.abs(result.latencySeconds * 1000 - 80)).toBeLessThanOrEqual(10);
+    expect(Math.abs(result.latencySeconds! * 1000 - 80)).toBeLessThanOrEqual(10);
   }, 30000);
 
   it('suporta ruído forte sem perder a estimativa', () => {
     const result = session({ delayMs: 120, seed: 4, noise: 0.12 });
     expect(result.reliable).toBe(true);
-    expect(Math.abs(result.latencySeconds * 1000 - 120)).toBeLessThanOrEqual(10);
+    expect(Math.abs(result.latencySeconds! * 1000 - 120)).toBeLessThanOrEqual(10);
   }, 30000);
 
   it('com ruído que mascara tempos, não inventa número: estima o que ouviu e marca baixa confiança', () => {
@@ -66,7 +66,7 @@ describe('calibração em tomadas geradas', () => {
     expect(result.samples.some((s) => s.status === 'missed')).toBe(true);
     expect(result.reliable).toBe(false);
     expect(result.confidence).toBeLessThan(0.5);
-    expect(Math.abs(result.latencySeconds * 1000 - 120)).toBeLessThanOrEqual(10);
+    expect(Math.abs(result.latencySeconds! * 1000 - 120)).toBeLessThanOrEqual(10);
   }, 30000);
 
   it('marca como baixa confiança uma sessão com poucos tempos tocados', () => {

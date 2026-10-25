@@ -33,11 +33,11 @@ export interface LatencySample {
 }
 
 export interface CalibrationResult {
-  /** Média aparada (20%) dos tempos aproveitados, em segundos; NaN quando nenhum foi aproveitado. */
-  latencySeconds: number;
+  /** Média aparada (20%) dos tempos aproveitados, em segundos; null quando nenhum foi aproveitado. */
+  latencySeconds: number | null;
   /** De 0 a 1: fração de tempos aproveitados, descontada pela dispersão. */
   confidence: number;
-  /** Só um resultado confiável é gravado e deve ser usado no jogo. */
+  /** Só um resultado confiável é gravado e deve ser usado no jogo. Média negativa (jogador adiantado) nunca é. */
   reliable: boolean;
   /** Desvio-padrão dos tempos aparados, em segundos. */
   spreadSeconds: number;
