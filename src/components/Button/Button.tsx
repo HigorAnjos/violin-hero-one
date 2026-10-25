@@ -43,6 +43,8 @@ export const Button = styled.button<{ $variant?: ButtonVariant }>`
     const ghost = $variant === 'ghost';
     return css`
       padding: 0 1.5rem;
+      font-size: 0.8125rem;
+      text-transform: uppercase;
       border: 2px solid ${ghost ? theme.colors.surfaceBorder : theme.colors.primary.main};
       border-radius: ${theme.borderRadius.sm};
       letter-spacing: 0.06em;

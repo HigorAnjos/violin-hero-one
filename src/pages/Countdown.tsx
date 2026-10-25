@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { rgba } from '../assets/styles/themes/color';
 import { Button } from '../components/Button/Button';
 import { CountIn, useCountIn } from '../components/CountIn/CountIn';
 import { firstNote, LEVEL_NAMES } from '../components/CountIn/countIn';
@@ -31,12 +32,12 @@ const Page = styled.main`
 
 const Veil = styled.div`
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 58%;
-  background-color: ${({ theme }) => theme.colors.background};
-  opacity: 0.85;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    ${({ theme }) => rgba(theme.colors.background, 0.9)} 70%,
+    ${({ theme }) => rgba(theme.colors.background, 0.55)}
+  );
   pointer-events: none;
 `;
 

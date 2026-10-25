@@ -24,13 +24,17 @@ const Wrap = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  height: 46%;
-  opacity: 0.55;
+  height: 36%;
+  opacity: 0.4;
   pointer-events: none;
 
   svg {
     width: 100%;
     height: 100%;
+  }
+
+  @media (max-height: 500px) {
+    display: none;
   }
 `;
 

@@ -26,7 +26,7 @@ export const Screen = styled.main<{ $gap?: string }>`
 /** Marca do jogo no topo das telas da primeira vez. */
 export const Brand = styled.span`
   font-family: ${({ theme }) => theme.fonts.display};
-  font-weight: 700;
+  font-weight: 500;
   font-size: 1.25rem;
   text-transform: uppercase;
   color: ${({ theme }) => theme.colors.text};
@@ -37,11 +37,13 @@ export const Brand = styled.span`
   }
 `;
 
+/** A margem negativa devolve o que os links de 44 px de toque crescem além do texto do design. */
 export const ScreenHeader = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.md};
+  margin: -0.625rem 0;
 `;
 
 export const ScreenTitle = styled.h1<{ $size?: 'lg' | 'md' }>`

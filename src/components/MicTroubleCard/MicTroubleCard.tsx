@@ -72,7 +72,7 @@ const BARS = 30;
 export function liveLevelLabel(fraction: number): string {
   if (!(fraction > 0)) return 'sem sinal';
   if (fraction < 0.15) return 'quase nada';
-  if (fraction < 0.65) return 'bom';
+  if (fraction < 0.85) return 'bom';
   return 'alto';
 }
 
