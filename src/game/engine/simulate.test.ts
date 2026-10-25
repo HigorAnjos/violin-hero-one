@@ -26,6 +26,7 @@ describe('partida inteira com o violinista sintético', () => {
     const { result } = simulateGame(game, { offsetMs });
     expect(result.judgments.every((j) => j.judgment === judgment && j.issue === issue)).toBe(true);
     expect(result.meanOffsetMs).toBeCloseTo(offsetMs, -1);
+    expect(result.strings[3].meanOffsetMs).toBeCloseTo(offsetMs, -1);
   });
 
   it('com 3 erros: exatamente as notas erradas saem Errou por nota errada, e cada uma zera o combo', () => {
@@ -47,7 +48,9 @@ describe('partida inteira com o violinista sintético', () => {
     expect(result.counts.good).toBe(15);
     expect(result.judgments.every((j) => j.issue === 'sharp')).toBe(true);
     expect(result.strings[3].meanCents).toBeCloseTo(38, 0);
-    expect(result.strings[0].meanCents).toBeNull();
+    expect(result.strings[3]).toMatchObject({ sharp: 13, flat: 0 });
+    expect(result.strings[2]).toMatchObject({ sharp: 2, notes: 2 });
+    expect(result.strings[0]).toMatchObject({ meanCents: null, meanOffsetMs: null, sharp: 0 });
   });
 
   it('latência do aparelho é descontada pela calibração', () => {

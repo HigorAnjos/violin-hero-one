@@ -35,7 +35,10 @@ export function buildResult(input: ResultInput): GameResult {
       notes: own.length,
       hits: ownHits.length,
       misses: own.length - ownHits.length,
+      sharp: own.filter((j) => j.issue === 'sharp').length,
+      flat: own.filter((j) => j.issue === 'flat').length,
       meanCents: mean(ownHits.map(tuningOf)),
+      meanOffsetMs: mean(ownHits.map((j) => j.offsetMs ?? 0)),
     };
   });
 

@@ -77,8 +77,13 @@ export interface StringStats {
   notes: number;
   hits: number;
   misses: number;
+  /** Notas desta corda com motivo alto / baixo, acertadas ou não. */
+  sharp: number;
+  flat: number;
   /** Afinação média dos acertos nesta corda, em cents (positivo = alto); null sem acertos. */
   meanCents: number | null;
+  /** Atraso médio dos acertos nesta corda, em ms (negativo = adiantado); null sem acertos. */
+  meanOffsetMs: number | null;
 }
 
 export type BadgeId = 'primeira-musica' | 'sem-erros' | 'combo-25' | 'combo-50' | 'combo-100' | 'afinacao-de-ouro';
