@@ -34,6 +34,11 @@ export interface EngineOptions {
   noFail?: boolean;
   /** Selos já conquistados, para o resultado listar só os novos. */
   earnedBadges?: readonly BadgeId[];
+  /**
+   * Orchestra.soundingAt, para descartar leitura que é a orquestra vazando no microfone e não a nota esperada. Sem ele,
+   * nada é descartado.
+   */
+  sounding?: (time: number) => readonly number[];
   onEvent?: EngineListener;
 }
 
@@ -121,7 +126,7 @@ export function createEngine(options: EngineOptions): Engine {
 
   const judge = createJudge(
     notes,
-    { windows, toleranceCents: tolerance, latencySeconds: options.latencySeconds },
+    { windows, toleranceCents: tolerance, latencySeconds: options.latencySeconds, sounding: options.sounding },
     (verdict) => {
       if (status !== 'playing') return;
       const partial = toJudgment(verdict);
