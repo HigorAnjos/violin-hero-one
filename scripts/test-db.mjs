@@ -7,6 +7,8 @@ import dotenv from 'dotenv';
 import pg from 'pg';
 
 dotenv.config({ path: '.env.local', quiet: true });
+// Na máquina, sem banco, os testes se pulam; na CI isso seria um verde falso
+if (process.env.CI && !process.env.DATABASE_URL) throw new Error('DATABASE_URL vazio na CI: os testes de banco não rodariam.');
 const S = 'violinhero';
 const ZERO = '00000000-0000-0000-0000-000000000000';
 
