@@ -58,6 +58,8 @@ export interface Theme {
     danger: ToneColors;
     warning: ToneColors;
     success: ToneColors;
+    /** Ciano da corda Lá como tom de informação: links, "ouvindo", contadores. Texto já em AA. */
+    info: ToneColors;
   };
   /** Bloco do jogo: lido pelas telas e pelo render (PixiJS/Three.js recebem o tema como objeto). */
   game: {

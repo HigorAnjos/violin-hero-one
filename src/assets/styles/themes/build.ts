@@ -62,6 +62,7 @@ export function buildTheme(p: Palette): Theme {
       danger: toneColors(p.danger, p.mode, p.surface, p.background),
       warning: toneColors(p.warning, p.mode, p.surface, p.background),
       success: toneColors(p.success, p.mode, p.surface, p.background),
+      info: toneColors(p.strings.A, p.mode, p.surface, p.background),
     },
     game: {
       strings,
