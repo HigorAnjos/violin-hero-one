@@ -10,3 +10,5 @@ test-results
 e2e/screenshots
 supabase/.temp
 tsconfig.tsbuildinfo
+# Config local do canvas do Maestri (papéis, floors): não é do produto
+.maestri/
