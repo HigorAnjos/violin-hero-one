@@ -9,19 +9,11 @@ import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
 import { OnboardTest } from './pages/OnboardTest';
 import { isOnboarded } from './services/profile';
-import { DEV_TOOLS } from './shell/devTools';
 import { EarProvider, type Ear } from './shell/Ear';
 import { MicGuard } from './shell/MicGuard';
 import { createMicrophoneEar } from './shell/microphoneEar';
 import { ROUTES } from './shell/routes';
-import { createSimulatedEar } from './shell/simulatedEar';
 import { ThemeChoiceProvider } from './shell/ThemeChoice';
-
-/** Microfone de verdade; só no desenvolvimento e no e2e, ?ouvido=simulado toca sozinho. */
-function chooseEar(): Ear {
-  if (DEV_TOOLS && new URLSearchParams(window.location.search).get('ouvido') === 'simulado') return createSimulatedEar();
-  return createMicrophoneEar();
-}
 
 const Calibration = lazyGameScreen('Calibration');
 const Gameplay = lazyGameScreen('Gameplay');
@@ -33,7 +25,8 @@ const Results = lazyGameScreen('Results');
 const Home: React.FC = () => <Navigate to={isOnboarded() ? ROUTES.foundation : ROUTES.level} replace />;
 
 export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
-  const [chosen] = React.useState(() => ear ?? chooseEar());
+  // Sem Ouvido de conferência (main.tsx, ?ouvido=simulado), o microfone de verdade
+  const [chosen] = React.useState(() => ear ?? createMicrophoneEar());
   return (
     <ThemeChoiceProvider>
       <GlobalStyles />

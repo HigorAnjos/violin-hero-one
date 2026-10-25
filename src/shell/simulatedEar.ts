@@ -1,4 +1,5 @@
-import { renderPerformance, type EngineNote, type TimedReading } from '../game/engine';
+import type { EngineNote } from '../game/engine';
+import { renderPerformance, type TimedReading } from '../game/engine/simulate';
 import { DEFAULT_A4, OPEN_STRING_MIDI } from '../game/notation/violin';
 import type { Ear, EarAudio } from './Ear';
 import { createFakeEar, reading } from './fakeEar';

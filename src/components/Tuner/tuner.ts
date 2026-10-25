@@ -1,7 +1,6 @@
 import { tuneString } from '../../game/audio';
 import type { PitchReading } from '../../game/audio/types';
-import { DEFAULT_TOLERANCE_CENTS } from '../../game/engine';
-import { TUNING_GREAT, TUNING_PERFECT } from '../../game/engine/score';
+import { DEFAULT_TOLERANCE_CENTS, TUNING_GREAT, TUNING_PERFECT } from '../../game/engine/score';
 import { STRING_LETTERS, STRING_SOLFEGE, type StringIndex } from '../../game/notation/violin';
 import { MIN_CLARITY } from '../OpenStringCard/openStringCheck';
 
