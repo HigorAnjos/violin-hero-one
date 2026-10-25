@@ -6,7 +6,7 @@ import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countIn';
 import { LatencyPanel } from '../components/LatencyPanel/LatencyPanel';
 import { useLatencyCalibration } from '../components/LatencyPanel/useLatencyCalibration';
-import { Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
+import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
 import { SegmentMeter } from '../components/SegmentMeter/SegmentMeter';
 import { noiseView, useSoundMeters } from '../components/SoundMeters/meterLevels';
 import { advanceTuner, initialTuner } from '../components/Tuner/tuner';
@@ -25,9 +25,19 @@ const Header = styled.header`
   gap: ${({ theme }) => theme.spacing.lg};
 
   > div {
+    flex: 1 1 auto;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: ${({ theme }) => theme.spacing.xs};
+  }
+
+  > div > ${Kicker} {
+    ${clampLines(1)}
+  }
+
+  > a {
+    flex: none;
   }
 
   @media (max-height: 500px) {

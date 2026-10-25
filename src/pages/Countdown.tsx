@@ -6,7 +6,7 @@ import { Button } from '../components/Button/Button';
 import { CountIn, useCountIn } from '../components/CountIn/CountIn';
 import { firstNote, LEVEL_NAMES } from '../components/CountIn/countIn';
 import { OrchestraBackdrop } from '../components/OrchestraBackdrop/OrchestraBackdrop';
-import { Kicker } from '../components/Screen/Screen';
+import { Kicker, SongKicker } from '../components/Screen/Screen';
 import type { Song } from '../game/notation/song';
 import { STRING_LETTERS } from '../game/notation/violin';
 import { FIXED_SONGS } from '../game/notation/songs';
@@ -139,7 +139,7 @@ export const Countdown: React.FC = () => {
       <OrchestraBackdrop />
       <Veil aria-hidden="true" />
       <Center>
-        <Kicker>{label}</Kicker>
+        <SongKicker>{label}</SongKicker>
         <CountIn view={view} bpm={song.bpm} />
         <Cue>Levante o arco</Cue>
         {note && (
