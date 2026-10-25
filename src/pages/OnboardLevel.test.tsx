@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, it, expect } from 'vitest';
 import { palcoTheme } from '../assets/styles/themes/palco';
 import { loadLocalProfile, PROFILE_STORAGE_KEY } from '../services/profile';
+import { DEFAULT_TOLERANCE_CENTS } from '../game/engine';
+import { FIXED_SONGS } from '../game/notation/songs';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
 import { OnboardLevel } from './OnboardLevel';
@@ -13,13 +15,14 @@ const renderLevel = (theme = undefined as typeof palcoTheme | undefined) =>
 describe('OnboardLevel', () => {
   afterEach(() => window.localStorage.clear());
 
-  it('começa em "Estou começando" e mostra o que isso ajusta', () => {
+  it('começa em "Estou começando" e mostra só o que o jogo faz hoje', () => {
     renderLevel();
     expect(screen.getByRole('heading', { level: 1, name: 'Quanto você já toca?' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /Estou começando/ })).toHaveAttribute('aria-checked', 'true');
     const summary = screen.getByRole('region', { name: 'Como vai ficar' });
-    expect(within(summary).getByText('Dificuldade 2')).toBeInTheDocument();
-    expect(within(summary).getByText('Afinação ±30 ¢')).toBeInTheDocument();
+    expect(within(summary).getByText(FIXED_SONGS[0].title)).toBeInTheDocument();
+    expect(within(summary).getByText(`${FIXED_SONGS[0].song.bpm} BPM`)).toBeInTheDocument();
+    expect(within(summary).getByText(`Afinação ±${DEFAULT_TOLERANCE_CENTS} ¢`)).toBeInTheDocument();
   });
 
   it('primeiro acesso não tem "Voltar"; "Pular" vai para o microfone sem gravar nada', async () => {
@@ -30,11 +33,11 @@ describe('OnboardLevel', () => {
     expect(window.localStorage.getItem(PROFILE_STORAGE_KEY)).toBeNull();
   });
 
-  it('escolher outro nível atualiza o resumo', async () => {
+  it('escolher outro nível marca só ele', async () => {
     renderLevel(palcoTheme);
     await userEvent.click(screen.getByRole('radio', { name: /Nunca toquei/ }));
     expect(screen.getByRole('radio', { name: /Nunca toquei/ })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByText('Dificuldade 1')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Estou começando/ })).toHaveAttribute('aria-checked', 'false');
   });
 
   it('continuar grava nível, apelido e avatar no aparelho e segue para o microfone', async () => {

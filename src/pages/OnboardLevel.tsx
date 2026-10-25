@@ -15,37 +15,19 @@ import {
   type Animal,
   type PlayerLevel,
 } from '../services/profile';
+import { DEFAULT_TOLERANCE_CENTS } from '../game/engine';
+import { FIXED_SONGS } from '../game/notation/songs';
 import { ROUTES } from '../shell/routes';
 
-interface LevelInfo {
-  title: string;
-  description: string;
-  /** O que o jogador ganha ao escolher: dificuldade, velocidade da pista e tolerância de afinação. */
-  start: { difficulty: string; examples: string; speed: string; speedHint: string; tolerance: string; toleranceHint: string };
-}
-
-export const LEVEL_INFO: Record<PlayerLevel, LevelInfo> = {
-  never: {
-    title: 'Nunca toquei',
-    description: 'Começa segurando o arco e tocando as cordas soltas.',
-    start: { difficulty: 'Dificuldade 1', examples: 'Cordas soltas, arco longo', speed: 'Pista 0,6×', speedHint: 'bem devagar', tolerance: 'Afinação ±40 ¢', toleranceHint: 'muito tolerante' },
-  },
-  beginner: {
-    title: 'Estou começando',
-    description: 'Menos de 1 ano. Escalas e músicas curtas, pista devagar.',
-    start: { difficulty: 'Dificuldade 2', examples: 'Canon em Neon, Ode em Ré…', speed: 'Pista 0,8×', speedHint: 'mais tempo para ler', tolerance: 'Afinação ±30 ¢', toleranceHint: 'bem tolerante' },
-  },
-  some_songs: {
-    title: 'Já toco algumas músicas',
-    description: '1 a 3 anos. Músicas inteiras na 1ª posição.',
-    start: { difficulty: 'Dificuldade 3', examples: 'Músicas inteiras, 1ª posição', speed: 'Pista 1×', speedHint: 'no andamento', tolerance: 'Afinação ±20 ¢', toleranceHint: 'tolerante' },
-  },
-  years: {
-    title: 'Toco há anos',
-    description: 'Posições altas, vibrato e músicas rápidas desde o início.',
-    start: { difficulty: 'Dificuldade 4', examples: 'Posições altas, vibrato', speed: 'Pista 1,2×', speedHint: 'leitura rápida', tolerance: 'Afinação ±15 ¢', toleranceHint: 'mais exigente' },
-  },
+export const LEVEL_INFO: Record<PlayerLevel, { title: string; description: string }> = {
+  never: { title: 'Nunca toquei', description: 'Começa segurando o arco e tocando as cordas soltas.' },
+  beginner: { title: 'Estou começando', description: 'Menos de 1 ano. Escalas e músicas curtas.' },
+  some_songs: { title: 'Já toco algumas músicas', description: '1 a 3 anos. Músicas inteiras na 1ª posição.' },
+  years: { title: 'Toco há anos', description: 'Posições altas, vibrato e músicas rápidas.' },
 };
+
+// Só o que o jogo faz hoje, igual para todo nível; a tabela nível→ajustes fica para o ciclo 2 (Decisões)
+const FIRST_SONG = FIXED_SONGS[0].song;
 
 const DEFAULT_LEVEL: PlayerLevel = 'beginner';
 
@@ -233,7 +215,6 @@ export const OnboardLevel: React.FC = () => {
   const [nickname, setNickname] = React.useState(stored.nickname ?? '');
   const [animal, setAnimal] = React.useState<Animal | null>(stored.animal ?? null);
   const radio = useRadioGroup(PLAYER_LEVELS, level, setLevel);
-  const start = LEVEL_INFO[level].start;
   // Entrou direto (primeiro acesso): não há tela anterior para onde voltar
   const canGoBack = location.key !== 'default';
 
@@ -264,7 +245,7 @@ export const OnboardLevel: React.FC = () => {
 
       <Intro>
         <ScreenTitle $size="lg">Quanto você já toca?</ScreenTitle>
-        <Lead $size="lg">Isso só ajusta onde você começa. Dá para mudar depois, e o jogo também se ajusta sozinho conforme você toca.</Lead>
+        <Lead $size="lg">Isso só ajusta onde você começa. Dá para mudar depois.</Lead>
       </Intro>
 
       <Levels role="radiogroup" aria-label="Seu nível">
@@ -274,19 +255,19 @@ export const OnboardLevel: React.FC = () => {
       </Levels>
 
       <Extras>
-        <Summary aria-label="Como vai ficar" aria-live="polite">
+        <Summary aria-label="Como vai ficar">
           <Kicker>Você vai começar com</Kicker>
           <Fact>
-            <b>{start.difficulty}</b>
-            <span>{start.examples}</span>
+            <b>{FIRST_SONG.title}</b>
+            <span>primeira música</span>
           </Fact>
           <Fact>
-            <b>{start.speed}</b>
-            <span>{start.speedHint}</span>
+            <b>{FIRST_SONG.bpm} BPM</b>
+            <span>andamento</span>
           </Fact>
           <Fact>
-            <b>{start.tolerance}</b>
-            <span>{start.toleranceHint}</span>
+            <b>Afinação ±{DEFAULT_TOLERANCE_CENTS} ¢</b>
+            <span>bem tolerante</span>
           </Fact>
         </Summary>
         <NamePanel aria-label="Seu apelido">
@@ -306,7 +287,7 @@ export const OnboardLevel: React.FC = () => {
       </Extras>
 
       <Footer>
-        <span>Não sabe? Escolha "Estou começando": se estiver fácil, o jogo sobe a dificuldade depois de 3 músicas.</span>
+        <span>Não sabe? Escolha "Estou começando". Dá para trocar a qualquer hora.</span>
         <Continue type="button" onClick={onContinue}>
           Continuar <span aria-hidden="true">▸</span>
         </Continue>
