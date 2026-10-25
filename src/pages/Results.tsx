@@ -46,6 +46,15 @@ const Header = styled.header`
     > div:first-child ${Kicker} {
       display: none;
     }
+
+    h1 {
+      font-size: 1.25rem;
+    }
+
+    [role='status'] {
+      padding-top: 0.125rem;
+      padding-bottom: 0.125rem;
+    }
   }
 `;
 
@@ -129,6 +138,13 @@ const Panel = styled.section`
     gap: ${({ theme }) => theme.spacing.xxs};
     padding: ${({ theme }) => `${theme.spacing.xs} ${theme.spacing.sm}`};
   }
+`;
+
+const PanelHead = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${({ theme }) => theme.spacing.sm};
 `;
 
 const Grow = styled(Panel)`
@@ -218,7 +234,8 @@ const Row = styled.div`
 
     > span:first-child,
     > b {
-      font-size: 0.875rem;
+      font-size: 0.8125rem;
+      line-height: 1.1;
     }
   }
 `;
@@ -246,6 +263,26 @@ const StringRow = styled(Row)`
 
   > b {
     font-size: 1rem;
+  }
+
+  @media (max-height: 500px) {
+    grid-template-columns: 1.25rem 1fr 2.5rem;
+
+    > span:first-child {
+      font-size: 1rem;
+      line-height: 1.1;
+    }
+
+    > b {
+      font-size: 0.8125rem;
+    }
+  }
+`;
+
+const Stars = styled.svg`
+  @media (max-height: 500px) {
+    width: 6.25rem;
+    height: auto;
   }
 `;
 
@@ -335,11 +372,11 @@ export const Results: React.FC = () => {
       <Body>
         <div>
           <Panel aria-label="Pontuação">
-            <svg width="190" height="34" viewBox="0 0 190 34" role="img" aria-label={`${starCount} de 5 estrelas`}>
+            <Stars width="190" height="34" viewBox="0 0 190 34" role="img" aria-label={`${starCount} de 5 estrelas`}>
               {[0, 1, 2, 3, 4].map((i) => (
                 <path key={i} transform={`translate(${i * 38} 0)`} d={STAR} fill={i < starCount ? theme.colors.warning.main : theme.colors.surfaceBorder} />
               ))}
-            </svg>
+            </Stars>
             <Score>{formatPoints(result.score)}</Score>
             {state.noFail && <Muted>Modo sem falha: a música não parou.</Muted>}
           </Panel>
@@ -376,10 +413,10 @@ export const Results: React.FC = () => {
 
         <div>
           <Panel aria-label="Afinação por corda">
-            <Row as="div" style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <PanelHead>
               <Kicker>Afinação média por corda</Kicker>
               <Muted aria-hidden="true">−20 ¢ · 0 · +20 ¢</Muted>
-            </Row>
+            </PanelHead>
             {result.strings.map((s) => {
               const letter = STRING_LETTERS[s.string];
               const c = Math.max(-CENTS_RANGE, Math.min(CENTS_RANGE, s.meanCents ?? 0));
