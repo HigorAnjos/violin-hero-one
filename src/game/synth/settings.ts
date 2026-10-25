@@ -5,9 +5,15 @@ export interface OrchestraSettings {
   enabled: boolean;
   /** Linear 0 a 1. */
   volume: number;
+  /** Resposta do "Está de fone?" da calibração: com fone a orquestra toca completa. */
+  headphones: boolean;
 }
 
-export const DEFAULT_ORCHESTRA_SETTINGS: Readonly<OrchestraSettings> = { enabled: true, volume: DEFAULT_ORCHESTRA_VOLUME };
+export const DEFAULT_ORCHESTRA_SETTINGS: Readonly<OrchestraSettings> = {
+  enabled: true,
+  volume: DEFAULT_ORCHESTRA_VOLUME,
+  headphones: false,
+};
 
 function defaultStorage(): Storage | undefined {
   try {
@@ -29,6 +35,7 @@ export function loadOrchestraSettings(storage: Pick<Storage, 'getItem'> | undefi
     return {
       enabled: typeof value?.enabled === 'boolean' ? value.enabled : DEFAULT_ORCHESTRA_SETTINGS.enabled,
       volume: typeof value?.volume === 'number' ? clampVolume(value.volume) : DEFAULT_ORCHESTRA_SETTINGS.volume,
+      headphones: typeof value?.headphones === 'boolean' ? value.headphones : DEFAULT_ORCHESTRA_SETTINGS.headphones,
     };
   } catch {
     return { ...DEFAULT_ORCHESTRA_SETTINGS };
@@ -42,7 +49,8 @@ export function saveOrchestraSettings(
 ): boolean {
   try {
     if (!storage) return false;
-    storage.setItem(ORCHESTRA_STORAGE_KEY, JSON.stringify({ enabled: settings.enabled, volume: clampVolume(settings.volume) }));
+    const { enabled, headphones } = settings;
+    storage.setItem(ORCHESTRA_STORAGE_KEY, JSON.stringify({ enabled, volume: clampVolume(settings.volume), headphones }));
     return true;
   } catch {
     return false;
