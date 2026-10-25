@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import './assets/styles/fonts.css';
 import type { Ear } from './shell/Ear';
 
 /** ?ouvido=simulado (só desenvolvimento e e2e): por import(), para o ouvido simulado e o motor dele não irem no download inicial. */
