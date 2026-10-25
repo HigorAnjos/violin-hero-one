@@ -17,17 +17,19 @@ interface Options {
   ear?: Ear;
   path?: string;
   route?: string;
+  /** Estado da navegação (o que `navigate(to, { state })` levaria). */
+  state?: unknown;
   queryClient?: QueryClient;
 }
 
 /** Tela dentro de tema, Ouvido, React Query e roteador, como no app. */
-export function renderScreen(ui: React.ReactElement, { theme = cadernoTheme, ear = unwiredEar, path = '/', route = '*', queryClient }: Options = {}) {
+export function renderScreen(ui: React.ReactElement, { theme = cadernoTheme, ear = unwiredEar, path = '/', route = '*', state, queryClient }: Options = {}) {
   const client = queryClient ?? new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ThemeProvider theme={theme}>
         <EarProvider ear={ear}>
-          <MemoryRouter initialEntries={[path]}>
+          <MemoryRouter initialEntries={[{ pathname: path.split('?')[0], search: path.includes('?') ? `?${path.split('?')[1]}` : '', state }]}>
             <Routes>
               <Route path={route} element={ui} />
               <Route path="*" element={null} />
