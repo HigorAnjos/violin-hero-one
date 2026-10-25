@@ -34,6 +34,17 @@ describe('Results', () => {
     expect(screen.getByText(/^Corda \S+: \d+ notas? perdidas?/)).toBeInTheDocument();
   });
 
+  it('título longo e pontuação de 7 dígitos ficam inteiros no texto, cortados só no visual', () => {
+    const title = 'Concerto para Violino em Mi Menor, Op. 64 — Allegro molto appassionato (versão completa)';
+    renderScreen(<Results />, {
+      path: ROUTES.results,
+      route: ROUTES.results,
+      state: { song: { ...ODE, title }, mode: 'Arcade', result: { ...playedResult(), score: 9876543 } },
+    });
+    expect(screen.getByRole('heading', { name: title })).toHaveStyle({ overflow: 'hidden', minWidth: '0px' });
+    expect(screen.getByText('9.876.543')).toHaveStyle({ whiteSpace: 'nowrap', textOverflow: 'ellipsis' });
+  });
+
   it('tocar de novo volta pela contagem; sem partida, volta ao início', () => {
     const { unmount } = render();
     expect(screen.getByRole('link', { name: /Tocar de novo/ })).toHaveAttribute('href', ROUTES.countdown);

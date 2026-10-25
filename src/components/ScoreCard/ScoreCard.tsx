@@ -4,7 +4,7 @@ import type { OrchestraSection } from '../../assets/styles/themes/types';
 import { LEVEL_LABEL, PERCUSSION_COMBO, SECTION_ORDER, type OrchestraLevel } from '../../game/synth';
 import { Orchestra } from '../Orchestra/Orchestra';
 import { SECTION_LABEL } from '../Orchestra/stage';
-import { Kicker } from '../Screen/Screen';
+import { clampLines, Kicker } from '../Screen/Screen';
 
 const points = new Intl.NumberFormat('pt-BR');
 const percent = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -48,6 +48,7 @@ const Card = styled.section`
 `;
 
 const Score = styled.span`
+  ${clampLines(1)}
   font-weight: 800;
   font-size: 2.25rem;
   line-height: 1;
@@ -64,6 +65,10 @@ const Row = styled.div`
   font-weight: 700;
   font-size: 0.9375rem;
   color: ${({ theme }) => theme.colors.textMuted};
+
+  > span:last-child {
+    ${clampLines(1)}
+  }
 
   @media (max-height: 500px) {
     gap: 0.5rem;

@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { rgba } from '../../assets/styles/themes/color';
 import { volumeLabel } from '../../game/synth';
 import { Button } from '../Button/Button';
-import { Kicker } from '../Screen/Screen';
+import { Kicker, SongKicker } from '../Screen/Screen';
 import { clock } from '../SheetStrip/staff';
 
 const Veil = styled.div`
@@ -231,7 +231,7 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({ subtitle, elapsed, total, 
       <Menu role="dialog" aria-modal="true" aria-labelledby="pausa-titulo">
         <div>
           <h1 id="pausa-titulo">PAUSADO</h1>
-          <Kicker as="p">{subtitle}</Kicker>
+          <SongKicker as="p">{subtitle}</SongKicker>
         </div>
         <Progress>
           <span>{clock(elapsed)}</span>

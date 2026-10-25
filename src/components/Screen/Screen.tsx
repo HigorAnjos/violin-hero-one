@@ -1,4 +1,26 @@
-import styled from 'styled-components';
+import styled, { css } from 'styled-components';
+
+/**
+ * Corta texto longo (título de música, pontuação) em `lines` linhas com reticências, com qualquer fonte; o texto
+ * inteiro segue no DOM para o leitor de tela. O min-width: 0 deixa o item de flex/grid encolher abaixo do conteúdo.
+ */
+export const clampLines = (lines: number) => css`
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  ${lines === 1
+    ? css`
+        display: block;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      `
+    : css`
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: ${lines};
+        white-space: normal;
+      `}
+`;
 
 /**
  * Moldura das telas cheias: ocupa a janela, centra o conteúdo até 1280 px e aperta tudo no
@@ -78,4 +100,10 @@ export const Kicker = styled.span`
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: ${({ theme }) => theme.colors.textMuted};
+`;
+
+/** Rótulo com o nome da música: até duas linhas, reticências depois. */
+export const SongKicker = styled(Kicker)`
+  ${clampLines(2)}
+  max-width: 100%;
 `;

@@ -5,7 +5,7 @@ import { Button } from '../components/Button/Button';
 import { Orchestra } from '../components/Orchestra/Orchestra';
 import { stringName } from '../components/ResultSummary/summary';
 import { formatPercent, formatPoints } from '../components/ScoreCard/ScoreCard';
-import { Kicker } from '../components/Screen/Screen';
+import { clampLines, Kicker } from '../components/Screen/Screen';
 import { readResultState, type PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 
@@ -43,6 +43,7 @@ const Page = styled.main`
 const Story = styled.div`
   position: relative;
   width: 32.5rem;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1.125rem;
@@ -106,12 +107,14 @@ const Stats = styled.dl`
   gap: 1.75rem;
 
   div {
+    min-width: 0;
     display: flex;
     flex-direction: column-reverse;
     gap: 0.25rem;
   }
 
   dd {
+    ${clampLines(1)}
     font-weight: 800;
     font-size: 1.75rem;
     line-height: 1;
