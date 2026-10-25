@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { CLICK_PEAK_SECONDS } from '../audio/latency/click';
-import { FakeAudioContext } from '../audio/testing/web-audio';
 import { scheduleNotes } from '../engine/engine';
 import { findFixedSong } from '../notation/songs';
-import { countIn, playCountIn } from './metronome';
+import { countIn } from './metronome';
 
 const ode = findFixedSong('ode-a-alegria')!.song;
 
@@ -29,13 +27,4 @@ describe('contagem de entrada', () => {
     expect(() => countIn(ode, { startAt: 0, bars: 1.5 })).toThrow(RangeError);
   });
 
-  it('toca o clique da calibração com o pico no tempo e silencia os pendentes', () => {
-    const context = new FakeAudioContext();
-    const beats = countIn(ode, { startAt: 10 });
-    const stop = playCountIn(context as unknown as AudioContext, beats);
-    expect(context.sources.map((s) => s.startTime)).toEqual(beats.map((b) => b.time - CLICK_PEAK_SECONDS));
-    expect(context.sources.every((s) => s.connections.has(context.destination))).toBe(true);
-    stop();
-    expect(context.sources.every((s) => s.connections.size === 0)).toBe(true);
-  });
 });

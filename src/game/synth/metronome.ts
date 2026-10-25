@@ -1,4 +1,3 @@
-import { scheduleClicks } from '../audio/latency/click';
 import type { Song } from '../notation/song';
 import { beatTime } from './schedule';
 
@@ -19,7 +18,10 @@ export interface CountInOptions {
   bars?: number;
 }
 
-/** Os tempos do compasso de entrada antes de startAt, no mesmo relógio e na mesma conta do Motor. */
+/**
+ * Os tempos do compasso de entrada antes de startAt, no mesmo relógio e na mesma conta do Motor. O som é o clique da
+ * calibração (scheduleClicks do Ouvido), tocado por quem liga synth e audio: o engine.
+ */
 export function countIn(song: Pick<Song, 'bpm' | 'timeSignature'>, options: CountInOptions): CountInBeat[] {
   const { startAt, bpm = song.bpm, bars = 1 } = options;
   if (!(bpm > 0) || !Number.isFinite(bpm)) throw new RangeError(`bpm inválido: ${bpm}`);
@@ -32,20 +34,4 @@ export function countIn(song: Pick<Song, 'bpm' | 'timeSignature'>, options: Coun
     count: total - i,
     downbeat: i % perBar === 0,
   }));
-}
-
-/**
- * Toca a contagem com o clique da calibração (Lá7 de 3520 Hz com envelope gaussiano, que não põe energia na banda do
- * violino). Devolve quem silencia os cliques pendentes, ex.: em "Pular contagem".
- */
-export function playCountIn(
-  context: BaseAudioContext,
-  beats: readonly CountInBeat[],
-  destination: AudioNode = context.destination,
-): () => void {
-  return scheduleClicks(
-    context,
-    beats.map((beat) => beat.time),
-    destination,
-  );
 }
