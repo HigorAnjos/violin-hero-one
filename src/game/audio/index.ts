@@ -1,6 +1,17 @@
 export type { PitchListener, PitchReading } from './types';
 export { RAW_AUDIO, micTrouble, openMicrophone, type MicTrouble, type Microphone } from './microphone';
 export { startPitch, type PitchHandle, type PitchOptions } from './pitch';
+export {
+  SILENCE_DB,
+  fallOff,
+  meterFraction,
+  peak,
+  rms,
+  startLevelMeter,
+  toDbfs,
+  type LevelMeterHandle,
+  type LevelMeterOptions,
+} from './level';
 export { startCalibration } from './latency';
 export {
   audioDeviceKey,
