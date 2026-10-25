@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { EngineEvent } from '../game/engine';
 import { ODE, reading } from '../game/engine/testing';
 import type { EarAudio } from './Ear';
-import { countInTimes, createGameSession, LEAD_SECONDS, type GameSessionOptions } from './gameSession';
+import { countInTimes, createGameSession, LEAD_SECONDS, type GameSessionOptions, type SessionEvent } from './gameSession';
 import type { GameOrchestra } from './orchestra';
 
 function fakeAudio(start = 10) {
@@ -57,7 +56,7 @@ describe('createGameSession', () => {
 
   it('?simular: o violinista sintético toca a música inteira no relógio do jogo', () => {
     const { audio, context } = fakeAudio(0);
-    const events: EngineEvent[] = [];
+    const events: SessionEvent[] = [];
     const track = { update: vi.fn(), onJudgment: vi.fn() };
     const session = createGameSession(base(audio, { performance: { offsetMs: 0 }, onEvent: (e) => events.push(e) }));
     session.setTrack(track);
