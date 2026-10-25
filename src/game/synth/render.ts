@@ -22,6 +22,8 @@ export interface RenderOrchestraOptions {
   /** Volume geral linear. */
   volume?: number;
   headphones?: boolean;
+  /** Queda nos ataques; padrão: sem fone. Desligada serve de referência do volume do alto-falante nos testes. */
+  ducking?: boolean;
 }
 
 /**
@@ -29,11 +31,11 @@ export interface RenderOrchestraOptions {
  * e queda em volta dos ataques (sem fone).
  */
 export function renderOrchestra(song: Song, options: RenderOrchestraOptions): Float32Array {
-  const { sampleRate, length, startSeconds, volume = 1, headphones = false } = options;
+  const { sampleRate, length, startSeconds, volume = 1, headphones = false, ducking = !headphones } = options;
   const out = new Float32Array(length);
   const notes = scheduleOrchestra(song, { ...options, startAt: startSeconds });
   for (const note of notes) addNote(out, sampleRate, note, VOICES[note.part], volume);
-  if (!headphones) applyDuck(out, sampleRate, duckWindows(song, startSeconds, options.bpm));
+  if (ducking) applyDuck(out, sampleRate, duckWindows(song, startSeconds, options.bpm));
   return out;
 }
 

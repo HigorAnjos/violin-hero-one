@@ -17,11 +17,11 @@ const TAIL = 1;
 const GAP = 0.06;
 const SONGS = ['escala-re-maior', 'brilha-brilha-estrelinha', 'ode-a-alegria'] as const;
 /**
- * Vazamento (RMS no microfone, relativo ao violino) em que a meta de no máximo −2 pontos vale nas três músicas. Medido
- * em out/2026: −12 dB dá 100/100/97, −9 dB ~90 e −6 dB 53–65 (falta de clareza, não nota errada; o descarte não
- * ajuda). Conferir no celular qual vazamento é real fica com o Higor.
+ * Meta do Higor (Decisões): com a orquestra vazando a −12 dB do violino, no máximo 2 pontos de precisão abaixo da sem
+ * orquestra. O vazamento é o volume do alto-falante, medido sem a queda nos ataques; a queda é o que a orquestra faz
+ * por cima dele.
  */
-const GATE_DB = -18;
+const GATE_DB = -12;
 /** Harmônicos 1 a 4 de uma nota da orquestra, em semitons acima dela: o que o alto-falante distorcendo põe no ar. */
 const HARMONIC_STEPS = [0, 12, 19, 24];
 
@@ -75,8 +75,21 @@ function violin(song: Song, wrong: readonly number[] = []): Float32Array {
   return out;
 }
 
-function orchestra(song: Song): Float32Array {
-  return renderOrchestra(song, { sampleRate: SAMPLE_RATE, length: length(song), startSeconds: LEAD, a4: A4 });
+function orchestra(song: Song, ducking = true): Float32Array {
+  return renderOrchestra(song, { sampleRate: SAMPLE_RATE, length: length(song), startSeconds: LEAD, a4: A4, ducking });
+}
+
+interface Leak {
+  /** O que o alto-falante toca, com a queda nos ataques. */
+  played: Float32Array;
+  /** A mesma orquestra sem a queda: o volume do alto-falante que o vazamento em dB mede. */
+  reference: Float32Array;
+}
+
+function leak(song: Song, through: (signal: Float32Array, peak: number) => Float32Array = (s) => s): Leak {
+  const reference = orchestra(song, false);
+  const peak = reference.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+  return { played: through(orchestra(song), peak), reference: through(reference, peak) };
 }
 
 function maskFor(song: Song): Mask {
@@ -90,19 +103,18 @@ function rms(signal: Float32Array): number {
 }
 
 /** Alto-falante de celular: corta abaixo de ~250 Hz (Butterworth de 4ª ordem) e distorce de leve (tanh e termo quadrático). */
-function phoneSpeaker(signal: Float32Array, drive = 1.5, quadratic = 0.1): Float32Array {
+function phoneSpeaker(signal: Float32Array, peak: number, drive = 1.5, quadratic = 0.1): Float32Array {
   const filter = new HighPass(250, SAMPLE_RATE);
-  const max = signal.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
   const norm = Math.tanh(drive);
   return signal.map((v) => {
-    const x = v / max;
+    const x = v / peak;
     return filter.process(Math.tanh(drive * x) / norm + quadratic * x * x);
   });
 }
 
-function mix(lead: Float32Array, backing: Float32Array, leakDb: number): Float32Array {
-  const scale = (rms(lead) / rms(backing)) * 10 ** (leakDb / 20);
-  return lead.map((v, i) => v + backing[i] * scale);
+function mix(lead: Float32Array, backing: Leak, leakDb: number): Float32Array {
+  const scale = (rms(lead) / rms(backing.reference)) * 10 ** (leakDb / 20);
+  return lead.map((v, i) => v + backing.played[i] * scale);
 }
 
 const hits = (result: GameResult) => result.counts.perfect + result.counts.great + result.counts.good;
@@ -112,7 +124,7 @@ describe('violino e orquestra por um alto-falante de celular simulado', { timeou
   describe.each(SONGS)('%s', (id) => {
     const song = findFixedSong(id)!.song;
     const mask = maskFor(song);
-    const speaker = phoneSpeaker(orchestra(song));
+    const speaker = leak(song, (signal, peak) => phoneSpeaker(signal, peak));
 
     it(`orquestra a ${GATE_DB} dB do violino: precisão no máximo 2 pontos abaixo da precisão sem orquestra`, () => {
       const lead = violin(song);
@@ -130,7 +142,7 @@ describe('violino e orquestra por um alto-falante de celular simulado', { timeou
     });
 
     it('a orquestra sozinha, pelo alto-falante no máximo: nenhuma nota pontua', () => {
-      expect(hits(judge(speaker, song, mask))).toBe(0);
+      expect(hits(judge(speaker.played, song, mask))).toBe(0);
     });
   });
 });
@@ -140,7 +152,7 @@ describe('a orquestra vazando limpa (fone mal encaixado, caixa de som boa)', { t
 
   it.each([-6, -12])('debaixo do violino a %s dB, sem descarte nenhum: o julgamento é o mesmo de sem orquestra', (leakDb) => {
     const lead = violin(song);
-    expect(verdicts(judge(mix(lead, orchestra(song), leakDb), song))).toEqual(verdicts(judge(lead, song)));
+    expect(verdicts(judge(mix(lead, leak(song), leakDb), song))).toEqual(verdicts(judge(lead, song)));
   });
 
   it('sozinha, sem descarte nenhum: nenhuma nota pontua, porque nunca toca a nota esperada nem a oitava dela', () => {

@@ -107,7 +107,10 @@ export interface DuckWindow {
   to: number;
 }
 
-/** Uma janela por ataque esperado (as notas ligadas não atacam), juntando as que se encostam com rampa. */
+/**
+ * Uma janela por ataque esperado (as notas ligadas não atacam), juntando as que se encostam com rampa. Medido contra
+ * cair durante a nota inteira: pior, porque a orquestra volta a subir no silêncio logo antes do ataque seguinte.
+ */
 export function duckWindows(song: Song, startAt: number, bpm: number = song.bpm): DuckWindow[] {
   const spb = 60 / bpm;
   const windows: DuckWindow[] = [];
