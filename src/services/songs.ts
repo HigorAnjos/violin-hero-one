@@ -97,15 +97,18 @@ function requireSession(client: SongsClient | null, session: SessionState): Song
   return client;
 }
 
-/** O catálogo na ordem da estante, com os níveis que cada música tem. */
+/**
+ * O catálogo na ordem da estante, com os níveis que cada música tem. Música do catálogo sem posição
+ * saiu da estante: a linha fica para as partidas antigas, mas não é listada.
+ */
 export async function listCatalog(client: SongsClient | null, session: SessionState): Promise<CatalogEntry[]> {
   const db = requireSession(client, session);
   const { data, error } = await db
     .from('songs')
     .select(`${SHEET_COLUMNS}, song_charts(level)`)
     .eq('origin', 'catalog')
-    .order('catalog_position', { ascending: true })
-    .order('id', { ascending: true });
+    .not('catalog_position', 'is', null)
+    .order('catalog_position', { ascending: true });
   if (error) throw new SongError('server', error);
   return ((data ?? []) as CatalogRow[]).map((row) => {
     const levels = new Set((row.song_charts ?? []).map((c) => c.level));

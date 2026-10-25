@@ -46,11 +46,13 @@ function fakeClient({ select = { data: [] as unknown, error: null as unknown }, 
   const query = {
     select: vi.fn(),
     eq: vi.fn(),
+    not: vi.fn(),
     order: vi.fn(),
     then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => Promise.resolve(select).then(resolve, reject),
   };
   query.select.mockReturnValue(query);
   query.eq.mockReturnValue(query);
+  query.not.mockReturnValue(query);
   query.order.mockReturnValue(query);
   const from = vi.fn().mockReturnValue(query);
   const rpcFn = vi.fn().mockResolvedValue(rpc);
@@ -74,7 +76,13 @@ describe('listCatalog', () => {
     expect(await listCatalog(client, SIGNED_IN)).toEqual([{ ...SHEET, levels: ['easy', 'hard'] }]);
     expect(from).toHaveBeenCalledWith('songs');
     expect(query.eq).toHaveBeenCalledWith('origin', 'catalog');
-    expect(query.order).toHaveBeenNthCalledWith(1, 'catalog_position', { ascending: true });
+    expect(query.order).toHaveBeenCalledExactlyOnceWith('catalog_position', { ascending: true });
+  });
+
+  it('deixa de fora a música que saiu da estante (posição nula)', async () => {
+    const { client, query } = fakeClient();
+    await listCatalog(client, SIGNED_IN);
+    expect(query.not).toHaveBeenCalledExactlyOnceWith('catalog_position', 'is', null);
   });
 
   it('sem cliente ou sem sessão: erro offline em português, sem tocar no banco', async () => {
