@@ -17,13 +17,18 @@ const DOWNBEAT_BONUS = 0.5;
 const EPSILON = 1e-9;
 
 /**
- * Registros da orquestra: baixo Mi1–Ré♯2 e acordes Mi2–Ré♯3, no máximo ~157 Hz no Lá 442 (~166 Hz no Lá 466). Tudo
- * abaixo do passa-alta de 170 Hz do Ouvido e uma quarta abaixo do Sol3, então o vazamento pelo alto-falante não vira
- * leitura de altura.
+ * Registro médio, que o alto-falante de celular toca: baixo e tímpano Mi2–Ré♯3, metais a partir do Lá2, acordes e arpejo
+ * Mi3–Ré♯4. O que protege a detecção não é o registro, é `avoidMelody`: nenhuma nota da orquestra soa junto com a nota
+ * esperada do violino nem a uma oitava dela.
  */
-export const BASS_FLOOR = 28;
-export const CHORD_FLOOR = 40;
+export const BASS_FLOOR = 40;
+export const BRASS_FLOOR = 45;
+export const CHORD_FLOOR = 52;
+/** Uma nota que bate com a melodia pode descer até aqui antes de ser cortada. */
+export const LOWEST_ORCHESTRA_MIDI = 28;
 export const HIGHEST_ORCHESTRA_MIDI = CHORD_FLOOR + 11;
+/** Distâncias proibidas, em semitons, entre uma nota da orquestra e a nota esperada que soa junto. */
+export const FORBIDDEN_INTERVALS: readonly number[] = [0, 12];
 
 export type Part = 'bass' | 'pad' | 'arpeggio' | 'brass' | 'timpani';
 export const PARTS: readonly Part[] = ['bass', 'pad', 'arpeggio', 'brass', 'timpani'];
@@ -97,11 +102,32 @@ export function chordSpans(song: Song): Omit<ChordSpan, 'degree' | 'pitchClasses
   return spans;
 }
 
+export interface ArrangeOptions {
+  /**
+   * Padrão true: tira ou muda de oitava toda nota que soaria junto com a nota esperada do violino, ou a uma oitava dela,
+   * para o vazamento no microfone nunca parecer a nota certa. Com fone o microfone não ouve a orquestra: false, completa.
+   */
+  avoidMelody?: boolean;
+}
+
+type MelodyNote = { at: number; beats: number; midi: number };
+
+/** A nota da orquestra soaria junto com uma nota esperada na mesma altura ou a uma oitava? */
+export function clashes(midi: number, beat: number, beats: number, melody: readonly MelodyNote[]): boolean {
+  return melody.some(
+    (note) =>
+      note.at < beat + beats - EPSILON &&
+      note.at + note.beats > beat + EPSILON &&
+      FORBIDDEN_INTERVALS.includes(Math.abs(midi - note.midi)),
+  );
+}
+
 /**
  * Acompanhamento derivado da melodia: em cada trecho, o acorde de I, IV ou V que cobre mais duração da melodia com
  * notas do acorde (a nota do tempo forte pesa mais); o último trecho é sempre I. Daí saem as partes de cada naipe.
  */
-export function arrange(song: Song): Arrangement {
+export function arrange(song: Song, options: ArrangeOptions = {}): Arrangement {
+  const avoid = options.avoidMelody ?? true;
   const key = parseKey(song.key);
   const melody = timeline(song);
   const spans = chordSpans(song);
@@ -110,19 +136,40 @@ export function arrange(song: Song): Arrangement {
     return { ...span, degree, pitchClasses: triad(key, degree) };
   });
 
+  // A mesma nota uma oitava abaixo e depois acima; nenhuma livre, a nota sai.
+  const place = (midi: number, beat: number, beats: number): number | null => {
+    if (!avoid) return midi;
+    for (const candidate of [midi, midi - 12, midi + 12]) {
+      if (candidate < LOWEST_ORCHESTRA_MIDI || candidate > HIGHEST_ORCHESTRA_MIDI + 12) continue;
+      if (!clashes(candidate, beat, beats, melody)) return candidate;
+    }
+    return null;
+  };
   const parts: Record<Part, PartNote[]> = { bass: [], pad: [], arpeggio: [], brass: [], timpani: [] };
+  const add = (part: Part, beat: number, beats: number, midi: number | null, velocity: number) => {
+    if (midi !== null) parts[part].push({ beat, beats, midi, velocity });
+  };
+
   for (const { beat, beats, pitchClasses, downbeat } of chords) {
-    const root = placeAbove(pitchClasses[0], BASS_FLOOR);
-    parts.bass.push({ beat, beats, midi: root, velocity: 1 });
-    for (const pc of pitchClasses) parts.pad.push({ beat, beats, midi: placeAbove(pc, CHORD_FLOOR), velocity: 1 });
-    const arpeggio = [0, 1, 2, 1].map((i) => placeAbove(pitchClasses[i], CHORD_FLOOR));
+    const bassRoot = placeAbove(pitchClasses[0], BASS_FLOOR);
+    add('bass', beat, beats, place(bassRoot, beat, beats), 1);
+    for (const pc of pitchClasses) add('pad', beat, beats, place(placeAbove(pc, CHORD_FLOOR), beat, beats), 1);
+
+    const pattern = [0, 1, 2, 1];
     const eighths = Math.round(beats * 2);
     for (let i = 0; i < eighths; i++) {
-      parts.arpeggio.push({ beat: beat + i / 2, beats: 0.5, midi: arpeggio[i % 4], velocity: i % 2 ? 0.7 : 1 });
+      const at = beat + i / 2;
+      const order = [pattern[i % 4], ...[0, 1, 2].filter((k) => k !== pattern[i % 4])];
+      const midi = order.map((k) => place(placeAbove(pitchClasses[k], CHORD_FLOOR), at, 0.5)).find((m) => m !== null) ?? null;
+      add('arpeggio', at, 0.5, midi, i % 2 ? 0.7 : 1);
     }
+
     const accent = downbeat ? 1 : 0.75;
-    parts.brass.push({ beat, beats, midi: root, velocity: accent }, { beat, beats, midi: root + 7, velocity: accent });
-    parts.timpani.push({ beat, beats: Math.min(1, beats), midi: root, velocity: downbeat ? 1 : 0.6 });
+    const brassRoot = placeAbove(pitchClasses[0], BRASS_FLOOR);
+    add('brass', beat, beats, place(brassRoot, beat, beats), accent);
+    add('brass', beat, beats, place(brassRoot + 7, beat, beats), accent);
+    const hit = Math.min(1, beats);
+    add('timpani', beat, hit, place(bassRoot, beat, hit), downbeat ? 1 : 0.6);
   }
   return { key, chords, parts };
 }

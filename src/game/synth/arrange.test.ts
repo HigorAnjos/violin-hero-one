@@ -2,9 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { ODE, n } from '../engine/testing';
 import { songDurationBeats, timeline, type Song } from '../notation/song';
 import { FIXED_SONGS, findFixedSong } from '../notation/songs';
-import { LOWEST_MIDI, MAX_A4, midiToFrequency } from '../notation/violin';
-import { HIGH_PASS_HZ } from '../audio/pitch/constants';
-import { BASS_FLOOR, CHORD_FLOOR, HIGHEST_ORCHESTRA_MIDI, PARTS, arrange, chordSpans, parseKey, placeAbove, triad } from './arrange';
+import {
+  BASS_FLOOR,
+  CHORD_FLOOR,
+  HIGHEST_ORCHESTRA_MIDI,
+  LOWEST_ORCHESTRA_MIDI,
+  PARTS,
+  arrange,
+  chordSpans,
+  clashes,
+  parseKey,
+  placeAbove,
+  triad,
+} from './arrange';
 
 const D = 2;
 const G = 7;
@@ -39,7 +49,7 @@ describe('parseKey e tríades', () => {
   it('placeAbove põe a classe de altura na oitava que começa no midi dado', () => {
     expect(placeAbove(4, 40)).toBe(40);
     expect(placeAbove(3, 40)).toBe(51);
-    expect(placeAbove(2, 28)).toBe(38);
+    expect(placeAbove(2, 52)).toBe(62);
   });
 });
 
@@ -67,12 +77,27 @@ describe('trechos de acorde', () => {
   });
 });
 
+describe('clashes', () => {
+  const melody = [{ at: 1, beats: 1, midi: 66 }];
+  it('bate na mesma nota e a uma oitava, só enquanto as duas soam juntas', () => {
+    expect(clashes(66, 0.5, 1, melody)).toBe(true);
+    expect(clashes(54, 1.5, 1, melody)).toBe(true);
+    expect(clashes(78, 0, 4, melody)).toBe(true);
+    expect(clashes(42, 1, 1, melody)).toBe(false);
+    expect(clashes(64, 1, 1, melody)).toBe(false);
+    expect(clashes(66, 0, 1, melody)).toBe(false);
+    expect(clashes(66, 2, 1, melody)).toBe(false);
+  });
+});
+
 describe.each(FIXED_SONGS.map((entry) => [entry.id, entry.song] as const))('acompanhamento de %s', (_id, song) => {
+  const full = arrange(song, { avoidMelody: false });
   const arrangement = arrange(song);
   const melody = timeline(song);
 
   it('em Ré maior, com acordes contíguos cobrindo a música inteira e terminando em I', () => {
     expect(arrangement.key).toEqual({ tonic: D, mode: 'major' });
+    expect(arrangement.chords).toEqual(full.chords);
     let at = 0;
     for (const chord of arrangement.chords) {
       expect(chord.beat).toBeCloseTo(at, 9);
@@ -90,47 +115,64 @@ describe.each(FIXED_SONGS.map((entry) => [entry.id, entry.song] as const))('acom
     }
   });
 
-  it('cordas: baixo na fundamental e a tríade inteira, no ritmo dos acordes', () => {
-    const { bass, pad } = arrangement.parts;
-    expect(bass).toHaveLength(arrangement.chords.length);
-    expect(pad).toHaveLength(arrangement.chords.length * 3);
-    arrangement.chords.forEach((chord, i) => {
+  it('com fone (completa): baixo na fundamental, tríade inteira, arpejo em colcheias, metais em fundamental e quinta, um toque de tímpano por acorde', () => {
+    const { bass, pad, arpeggio, brass, timpani } = full.parts;
+    expect(bass).toHaveLength(full.chords.length);
+    expect(pad).toHaveLength(full.chords.length * 3);
+    full.chords.forEach((chord, i) => {
       expect(bass[i]).toMatchObject({ beat: chord.beat, beats: chord.beats });
       expect(bass[i].midi % 12).toBe(chord.pitchClasses[0]);
       const tones = pad.filter((note) => note.beat === chord.beat).map((note) => note.midi % 12);
       expect(tones.sort()).toEqual([...chord.pitchClasses].sort());
-    });
-  });
-
-  it('madeiras: arpejo em colcheias com notas do acorde; metais: fundamental e quinta; percussão: um toque por acorde', () => {
-    const { arpeggio, brass, timpani } = arrangement.parts;
-    for (const chord of arrangement.chords) {
       const inside = arpeggio.filter((note) => note.beat >= chord.beat - 1e-9 && note.beat < chord.beat + chord.beats - 1e-9);
       expect(inside).toHaveLength(Math.round(chord.beats * 2));
-      for (const note of inside) expect(chord.pitchClasses).toContain(note.midi % 12);
       const [root, fifth] = brass.filter((note) => note.beat === chord.beat);
       expect(fifth.midi - root.midi).toBe(7);
       expect(root.midi % 12).toBe(chord.pitchClasses[0]);
       const hit = timpani.filter((note) => note.beat === chord.beat);
       expect(hit).toHaveLength(1);
       expect(hit[0].velocity).toBe(chord.downbeat ? 1 : 0.6);
+    });
+  });
+
+  it('sem fone: nenhuma nota da orquestra soa junto com a nota esperada nem a uma oitava dela', () => {
+    for (const part of PARTS) {
+      for (const note of arrangement.parts[part]) {
+        expect(clashes(note.midi, note.beat, note.beats, melody), `${part} ${note.midi} no tempo ${note.beat}`).toBe(false);
+      }
     }
   });
 
-  it('a orquestra inteira fica abaixo do passa-alta de 170 Hz do Ouvido, mesmo no Lá mais alto, e uma quarta abaixo do Sol3', () => {
+  it('sem fone: só notas do acorde do trecho, no registro médio, e a maior parte da orquestra continua tocando', () => {
     for (const part of PARTS) {
       for (const note of arrangement.parts[part]) {
-        expect(note.midi).toBeGreaterThanOrEqual(BASS_FLOOR);
-        expect(note.midi).toBeLessThanOrEqual(HIGHEST_ORCHESTRA_MIDI);
-        expect(note.midi).toBeLessThanOrEqual(LOWEST_MIDI - 4);
-        expect(midiToFrequency(note.midi, MAX_A4)).toBeLessThan(HIGH_PASS_HZ);
+        const chord = arrangement.chords.find((c) => note.beat >= c.beat - 1e-9 && note.beat < c.beat + c.beats - 1e-9)!;
+        expect(chord.pitchClasses).toContain(note.midi % 12);
+        expect(note.midi).toBeGreaterThanOrEqual(LOWEST_ORCHESTRA_MIDI);
+        expect(note.midi).toBeLessThanOrEqual(HIGHEST_ORCHESTRA_MIDI + 12);
       }
     }
-    for (const note of arrangement.parts.pad) expect(note.midi).toBeGreaterThanOrEqual(CHORD_FLOOR);
+    const count = (a: typeof full) => PARTS.reduce((total, part) => total + a.parts[part].length, 0);
+    expect(count(arrangement) / count(full)).toBeGreaterThan(0.75);
+  });
+
+  it('registro médio: baixo a partir do Mi2 e acordes do Mi3 ao Ré♯4 quando nada bate', () => {
+    for (const note of full.parts.bass) expect(note.midi).toBeGreaterThanOrEqual(BASS_FLOOR);
+    for (const note of full.parts.pad) {
+      expect(note.midi).toBeGreaterThanOrEqual(CHORD_FLOOR);
+      expect(note.midi).toBeLessThanOrEqual(HIGHEST_ORCHESTRA_MIDI);
+    }
   });
 });
 
 it('Brilha, Brilha, Estrelinha ganha a harmonia clássica: I I IV I IV I V I nos dois primeiros compassos', () => {
   const song = findFixedSong('brilha-brilha-estrelinha')!.song;
   expect(arrange(song).chords.slice(0, 8).map((chord) => chord.degree)).toEqual(['I', 'I', 'IV', 'I', 'IV', 'I', 'V', 'I']);
+});
+
+it('uma nota que bate com a melodia desce uma oitava; sem saída, sai', () => {
+  const song: Song = { ...ODE, measures: [{ beats: 2, notes: [n(0, 2, 62, 1, 0)] }] };
+  const { parts } = arrange(song);
+  expect(parts.bass.map((note) => note.midi)).toEqual([38]);
+  expect(parts.pad.map((note) => note.midi)).toEqual([54, 57]);
 });
