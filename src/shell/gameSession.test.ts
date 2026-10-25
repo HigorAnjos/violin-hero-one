@@ -22,7 +22,7 @@ function fakeAudio(start = 10) {
 function orchestraSpy() {
   const made: { startAt: number; orchestra: GameOrchestra }[] = [];
   const factory = vi.fn(async (_c: BaseAudioContext, _s: unknown, o: { startAt: number }) => {
-    const orchestra = { update: vi.fn(), stop: vi.fn().mockResolvedValue(undefined), dispose: vi.fn() };
+    const orchestra = { update: vi.fn(), setVolume: vi.fn(), stop: vi.fn().mockResolvedValue(undefined), dispose: vi.fn() };
     made.push({ startAt: o.startAt, orchestra });
     return orchestra;
   });
@@ -128,6 +128,18 @@ describe('createGameSession', () => {
     const push = vi.spyOn(session.engine, 'push');
     session.push(reading(0.5, 78));
     expect(push).toHaveBeenCalledWith(expect.objectContaining({ time: expect.closeTo(21.3, 6) }));
+  });
+
+  it('o volume da orquestra vale agora e na orquestra recriada', async () => {
+    const first = fakeAudio(0);
+    const { factory, made } = orchestraSpy();
+    const session = createGameSession(base(first.audio, { orchestra: factory }));
+    await vi.waitFor(() => expect(made).toHaveLength(1));
+    session.setOrchestraVolume(0.2);
+    expect(made[0].orchestra.setVolume).toHaveBeenCalledWith(0.2);
+    await session.reanchor(fakeAudio(0).audio);
+    await session.resume();
+    await vi.waitFor(() => expect(factory).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), expect.objectContaining({ volume: 0.2 })));
   });
 
   it('destroy cala o compasso de entrada e libera a orquestra', async () => {

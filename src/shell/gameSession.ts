@@ -10,7 +10,8 @@ import {
   type PerformanceOptions,
   type TimedReading,
 } from '../game/engine';
-import { secondsPerBeat, type Song } from '../game/notation/song';
+import type { Song } from '../game/notation/song';
+import { countIn } from '../game/synth';
 import type { EarAudio } from './Ear';
 import type { GameOrchestra, OrchestraFactory, OrchestraPrefs } from './orchestra';
 
@@ -54,6 +55,8 @@ export interface GameSession {
   contextNotes(): EngineNote[];
   pause(): Promise<void>;
   resume(): Promise<void>;
+  /** Linear, 0 a 1 (ajuste rápido da pausa). */
+  setOrchestraVolume(volume: number): void;
   /** Microfone reaberto num AudioContext novo: fica pausado; no resume() a hora de jogo continua de onde parou. */
   reanchor(audio: EarAudio): Promise<void>;
   destroy(): void;
@@ -61,9 +64,9 @@ export interface GameSession {
 
 /** Tempos do compasso de entrada que ainda cabem antes do início (o resto já passou na tela Contagem). */
 export function countInTimes(song: Song, startAt: number, from: number): number[] {
-  const spb = secondsPerBeat(song);
-  const beats = song.timeSignature.beats;
-  return Array.from({ length: beats }, (_, i) => startAt - (beats - i) * spb).filter((t) => t >= from);
+  return countIn(song, { startAt })
+    .map((beat) => beat.time)
+    .filter((t) => t >= from);
 }
 
 export function createGameSession(options: GameSessionOptions): GameSession {
@@ -103,6 +106,7 @@ export function createGameSession(options: GameSessionOptions): GameSession {
 
   const stopClicks = (options.clicks ?? scheduleClicks)(audio.context, countInTimes(song, startAt, audio.context.currentTime + 0.05));
 
+  let volume = options.orchestraPrefs?.volume;
   const startOrchestra = () => {
     if (!options.orchestra) return;
     const context = audio.context;
@@ -111,7 +115,7 @@ export function createGameSession(options: GameSessionOptions): GameSession {
       startAt: startAt - offset,
       a4,
       energy: engine.state.energy,
-      volume: prefs?.volume,
+      volume,
       enabled: prefs?.enabled,
       headphones: prefs?.headphones,
     })
@@ -157,6 +161,10 @@ export function createGameSession(options: GameSessionOptions): GameSession {
         await orchestraLoading;
         startOrchestra();
       }
+    },
+    setOrchestraVolume(next) {
+      volume = next;
+      orchestra?.setVolume(next);
     },
     async reanchor(next) {
       pausedAt ??= now();

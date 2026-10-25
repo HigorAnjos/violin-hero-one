@@ -14,7 +14,7 @@ import { Tuner } from '../components/Tuner/Tuner';
 import { meterFraction } from '../game/audio';
 import { clampA4, loadA4, useSaveCalibration } from '../services/playerAudio';
 import { micFailure, useEar, type EarAudio } from '../shell/Ear';
-import { loadOrchestraPrefs, saveOrchestraPrefs } from '../shell/orchestra';
+import { loadOrchestraSettings, saveOrchestraSettings } from '../game/synth';
 import { readPlayState } from '../shell/play';
 import { micTroubleUrl, ROUTES } from '../shell/routes';
 
@@ -125,7 +125,7 @@ export const Calibration: React.FC = () => {
   const [a4, setA4] = React.useState(loadA4);
   const [audio, setAudio] = React.useState<EarAudio | null>(() => ear.audio());
   const [closed, setClosed] = React.useState(false);
-  const [headphones, setHeadphones] = React.useState(() => loadOrchestraPrefs().headphones);
+  const [headphones, setHeadphones] = React.useState(() => loadOrchestraSettings().headphones);
   const [tuner, setTuner] = React.useState(initialTuner);
   const saveCalibration = useSaveCalibration();
   const meters = useSoundMeters(ear);
@@ -166,7 +166,7 @@ export const Calibration: React.FC = () => {
 
   const changeHeadphones = (on: boolean) => {
     setHeadphones(on);
-    saveOrchestraPrefs({ ...loadOrchestraPrefs(), headphones: on });
+    saveOrchestraSettings({ ...loadOrchestraSettings(), headphones: on });
   };
 
   const begin = () => {

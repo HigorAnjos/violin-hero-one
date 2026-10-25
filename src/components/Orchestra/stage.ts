@@ -1,24 +1,13 @@
 import type { OrchestraSection } from '../../assets/styles/themes/types';
+import { LEVEL_LABEL, SECTION_ORDER, type OrchestraLevel } from '../../game/synth';
 
-/** 0 = nenhum naipe … 4 = orquestra completa (mesma escala do synth). */
-export type OrchestraLevel = 0 | 1 | 2 | 3 | 4;
-
-/** Ordem de entrada dos naipes: cordas, madeiras, metais e, cheia, a percussão. */
-export const SECTION_ORDER: readonly OrchestraSection[] = ['strings', 'woodwinds', 'brass', 'percussion'];
+export type { OrchestraLevel };
 
 export const SECTION_LABEL: Record<OrchestraSection, string> = {
   strings: 'Cordas',
   woodwinds: 'Madeiras',
   brass: 'Metais',
   percussion: 'Percussão',
-};
-
-export const LEVEL_LABEL: Record<OrchestraLevel, string> = {
-  0: 'nenhum naipe',
-  1: 'cordas',
-  2: 'cordas e madeiras',
-  3: 'cordas, madeiras e metais',
-  4: 'orquestra completa',
 };
 
 export interface Seat {

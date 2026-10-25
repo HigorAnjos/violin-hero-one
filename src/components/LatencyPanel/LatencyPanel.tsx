@@ -171,6 +171,7 @@ export const LatencyPanel: React.FC<LatencyPanelProps> = ({ phase, seconds, meas
           </Choice>
         </div>
       </Question>
+      {!headphones && <Text $tone="warning">Melhor com fone. Sem fone, afaste o aparelho do violino e baixe o volume: alto e encostado, ele atrapalha o jogo a te ouvir.</Text>}
       <Value>
         <div>
           <span>Este aparelho · {headphones ? 'fone' : 'alto-falante'}</span>

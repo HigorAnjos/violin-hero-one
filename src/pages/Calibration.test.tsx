@@ -4,7 +4,7 @@ import { afterEach, describe, it, expect } from 'vitest';
 import { palcoTheme } from '../assets/styles/themes/palco';
 import { loadA4 } from '../services/playerAudio';
 import { createFakeEar, reading } from '../shell/fakeEar';
-import { loadOrchestraPrefs } from '../shell/orchestra';
+import { loadOrchestraSettings } from '../game/synth';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
 import { Calibration } from './Calibration';
@@ -41,7 +41,7 @@ describe('Calibration', () => {
   it('"Está de fone?" liga a orquestra completa (headphones)', async () => {
     renderCalibration();
     await userEvent.click(screen.getByRole('radio', { name: 'Sim' }));
-    expect(loadOrchestraPrefs().headphones).toBe(true);
+    expect(loadOrchestraSettings().headphones).toBe(true);
     expect(screen.getByRole('radio', { name: 'Sim' })).toHaveAttribute('aria-checked', 'true');
   });
 
