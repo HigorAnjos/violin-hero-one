@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { badgeInfo, hardestStretch, measureAccuracy, measuresLabel, nextCombo, stars, stringName, stringReport, tuningAdvice, tuningStat } from './summary';
+import { badgeInfo, featuredBadges, hardestStretch, measureAccuracy, measuresLabel, nextCombo, stars, stringName, stringReport, tuningAdvice, tuningStat } from './summary';
 import { playedResult } from './testing';
 
 describe('resumo do resultado', () => {
@@ -34,6 +34,9 @@ describe('resumo do resultado', () => {
 
   it('selos: nome e o próximo combo', () => {
     expect(badgeInfo('combo-25').label).toBe('Combo 25');
+    const { featured, others } = featuredBadges(['primeira-musica', 'afinacao-de-ouro', 'combo-25']);
+    expect(featured?.id).toBe('afinacao-de-ouro');
+    expect(others.map((b) => b.id)).toEqual(['combo-25', 'primeira-musica']);
     expect(nextCombo(30)).toEqual({ target: 50, missing: 20, progress: 0.6 });
     expect(nextCombo(120)).toBeNull();
   });

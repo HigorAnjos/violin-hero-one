@@ -10,9 +10,9 @@ describe('BadgeEarned', () => {
   it('mostra o selo novo, os outros ganhos e leva ao resultado', () => {
     const result = { ...playedResult(), badges: ['primeira-musica', 'sem-erros'] as const };
     renderScreen(<BadgeEarned />, { path: ROUTES.badge, route: ROUTES.badge, state: { song: ODE, result: { ...result, badges: [...result.badges] } } });
-    expect(screen.getByRole('heading', { name: 'Selo novo: Primeira música' })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Selo Primeira música' })).toBeInTheDocument();
-    expect(screen.getByText('Sem erros')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Selo novo: Sem erros' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Selo Sem erros' })).toBeInTheDocument();
+    expect(screen.getByText('Primeira música')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Ver resultado/ })).toHaveAttribute('href', ROUTES.results);
   });
 

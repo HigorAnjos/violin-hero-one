@@ -23,9 +23,9 @@ describe('Results', () => {
     expect(screen.getByText('Nenhum trecho abaixo de 90%')).toBeInTheDocument();
   });
 
-  it('selo novo aparece no topo', () => {
-    render();
-    expect(screen.getByRole('status', { name: 'Selo conquistado nesta partida: Primeira música' })).toHaveTextContent('SELO NOVO!');
+  it('selo novo aparece no topo: o mais difícil dos ganhos', () => {
+    render({ ...playedResult(), badges: ['primeira-musica', 'combo-25'] });
+    expect(screen.getByRole('status', { name: 'Selo conquistado nesta partida: Combo 25' })).toHaveTextContent('SELO NOVO!');
   });
 
   it('com erros mostra o trecho mais difícil e a corda que mais errou', () => {

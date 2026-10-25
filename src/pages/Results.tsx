@@ -5,8 +5,8 @@ import { Badge, badgeColor } from '../components/Badge/Badge';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countIn';
 import {
-  badgeInfo,
   centsText,
+  featuredBadges,
   hardestStretch,
   hits,
   HARD_BELOW,
@@ -309,7 +309,7 @@ export const Results: React.FC = () => {
   const starCount = stars(result.accuracy);
   const perMeasure = measureAccuracy(result);
   const hard = hardestStretch(perMeasure);
-  const firstBadge = result.badges[0] ? badgeInfo(result.badges[0]) : null;
+  const firstBadge = featuredBadges(result.badges).featured;
   const judgmentColor = (j: (typeof JUDGMENTS)[number]) => theme.game.judgments[j];
 
   return (

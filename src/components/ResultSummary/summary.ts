@@ -11,6 +11,12 @@ export function badgeInfo(id: BadgeId): Badge {
   return BADGES.find((b) => b.id === id) ?? BADGES[0];
 }
 
+/** O selo em destaque e os demais: o último na ordem de BADGES é o mais difícil de ganhar. */
+export function featuredBadges(ids: readonly BadgeId[]): { featured: Badge | null; others: Badge[] } {
+  const sorted = BADGES.filter((b) => ids.includes(b.id)).reverse();
+  return { featured: sorted[0] ?? null, others: sorted.slice(1) };
+}
+
 export function hits(result: GameResult): number {
   return result.counts.perfect + result.counts.great + result.counts.good;
 }
