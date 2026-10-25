@@ -5,7 +5,7 @@ import { FpsMeter, type FpsReport } from './fps';
 import { prefersReducedMotion } from './present';
 import type { JudgmentEvent } from './scene';
 import type { SheetClock } from './sheetLayout';
-import { MUSIC_FONT, SheetScene } from './sheetScene';
+import { SheetScene } from './sheetScene';
 
 export interface SheetOptions {
   /** Fixo durante a música: trocar de tema é destruir esta faixa e criar outra. */
@@ -42,7 +42,7 @@ async function loadFonts(theme: Theme): Promise<void> {
     document.fonts.load(`700 24px ${theme.fonts.ui}`),
     document.fonts.load(`400 24px ${theme.fonts.ui}`),
     document.fonts.load(`800 24px ${theme.fonts.display}`),
-    document.fonts.load(`40px ${MUSIC_FONT}`, '𝄞♯♭♮'),
+    document.fonts.load(`40px ${theme.fonts.music}`, '𝄞♯♭♮'),
   ]);
 }
 

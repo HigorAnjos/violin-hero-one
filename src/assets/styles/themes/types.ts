@@ -74,7 +74,8 @@ export interface Theme {
     judgments: Record<Judgment, string>;
     orchestra: Record<OrchestraSection, string>;
   };
-  fonts: { display: string; ui: string };
+  /** `music`: clave e acidentes da partitura (Noto Music, servida pelo app). */
+  fonts: { display: string; ui: string; music: string };
   spacing: { xxs: string; xs: string; sm: string; md: string; lg: string; xl: string };
   borderRadius: { sm: string; md: string; lg: string; pill: string };
   shadows: { card: string };

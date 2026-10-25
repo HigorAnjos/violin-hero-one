@@ -207,11 +207,11 @@ export const SheetStrip = React.forwardRef<SheetStripHandle, SheetStripProps>(fu
             <line key={s} x1="0" x2={clefW} y1={stepY(s)} y2={stepY(s)} />
           ))}
         </g>
-        <text x="12" y="82" fontSize="60" fill={theme.colors.text} fontFamily="'Noto Music', serif">
+        <text x="12" y="82" fontSize="60" fill={theme.colors.text} fontFamily={theme.fonts.music}>
           𝄞
         </text>
         {keySignature(layout.fifths).map((k, i) => (
-          <text key={i} x={56 + i * 12} y={stepY(k.step) + 6} fontSize="20" fill={theme.colors.text} fontFamily="'Noto Music', serif">
+          <text key={i} x={56 + i * 12} y={stepY(k.step) + 6} fontSize="20" fill={theme.colors.text} fontFamily={theme.fonts.music}>
             {k.glyph}
           </text>
         ))}
