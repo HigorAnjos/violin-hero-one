@@ -1,8 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { scheduleNotes } from '../engine/engine';
-import { parseSong, type Song } from '../notation/song';
+import { parseSong, songDurationBeats, songDurationSeconds, type Song } from '../notation/song';
 import { findFixedSong } from '../notation/songs';
-import { KEEP_AUDIBLE_LEVEL, SECTION_FADE_IN_SECONDS, SECTION_FADE_OUT_SECONDS, STOP_FADE_SECONDS, createOrchestra } from './orchestra';
+import {
+  KEEP_AUDIBLE_LEVEL,
+  LOOKAHEAD_SECONDS,
+  SECTION_FADE_IN_SECONDS,
+  SECTION_FADE_OUT_SECONDS,
+  STOP_FADE_SECONDS,
+  TICK_SECONDS,
+  createOrchestra,
+} from './orchestra';
 import {
   DUCK_DB,
   DUCK_HALF_SECONDS,
@@ -142,7 +150,18 @@ async function start(
   return { ctx, orchestra, mute, duck, master, sections: { strings, woodwinds, brass, percussion }, synths };
 }
 
+/** Relógio simulado: anda o AudioContext e o setInterval do agendador juntos, de passada em passada. */
+function play(ctx: { currentTime: number }, until: number) {
+  while (ctx.currentTime < until) {
+    ctx.currentTime = Math.min(until, ctx.currentTime + TICK_SECONDS);
+    vi.advanceTimersByTime(TICK_SECONDS * 1000);
+  }
+}
+
+const byTime = (a: number[], b: number[]) => a[2] - b[2] || a[0] - b[0];
+
 beforeEach(() => {
+  vi.useFakeTimers();
   tone.created.length = 0;
   tone.contexts.length = 0;
   tone.setContext.mockClear();
@@ -194,20 +213,34 @@ describe('createOrchestra', () => {
     });
   });
 
-  it('relógio simulado: agenda todas as notas de uma vez, nos mesmos instantes da agenda pura, com velocidade', async () => {
-    const { synths } = await start();
-    const triggers = synths.flatMap((s) => s.triggers).sort((a, b) => a[2] - b[2] || a[0] - b[0]);
+  it('relógio simulado: nada além do lookahead de cada passada, e no fim os mesmos instantes da agenda pura, com velocidade', async () => {
+    const { ctx, synths } = await start();
+    const triggers = () => synths.flatMap((s) => s.triggers).sort(byTime);
+    expect(triggers()).toEqual([]);
+    for (let until = 9.5; until < 10 + songDurationSeconds(song) + 1; until += 0.5) {
+      play(ctx, until);
+      expect(triggers().every((t) => t[2] < until + LOOKAHEAD_SECONDS)).toBe(true);
+    }
     const expected = scheduleOrchestra(song, { startAt: 10, a4: 442 })
       .map((n) => [n.frequency, n.duration, n.time, n.velocity])
-      .sort((a, b) => a[2] - b[2] || a[0] - b[0]);
-    expect(triggers).toEqual(expected);
+      .sort(byTime);
+    expect(triggers()).toEqual(expected);
+  });
+
+  it('contexto pausado (relógio parado): não agenda nada além do lookahead', async () => {
+    const { ctx, synths } = await start();
+    play(ctx, 10.5);
+    const before = synths.flatMap((s) => s.triggers).length;
+    vi.advanceTimersByTime(60_000);
+    expect(synths.flatMap((s) => s.triggers)).toHaveLength(before);
   });
 
   it('sem deriva numa música de 3 min: o baixo de cada acorde cai no instante exato do ataque que o Motor julga', async () => {
     const ode = findFixedSong('ode-a-alegria')!.song;
     const measures = Array.from({ length: 5 }, () => ode.measures).flat();
     const long = parseSong({ ...ode, id: 'ode-longa', measures });
-    const { synths } = await start({ song: long, bpm: 92 });
+    const { ctx, synths } = await start({ song: long, bpm: 92 });
+    play(ctx, 10 + songDurationBeats(long) * (60 / 92) + 1);
     const engine = scheduleNotes(long, 10, 92);
     const bassTimes = synths[0].triggers.map((t) => t[2]);
     expect(bassTimes.at(-1)! - 10).toBeGreaterThan(180);
@@ -289,7 +322,8 @@ describe('createOrchestra', () => {
   });
 
   it('sem fone: baixa 6 dB nos ~100 ms em volta de cada ataque esperado, com rampa de 10 ms', async () => {
-    const { duck } = await start();
+    const { ctx, duck } = await start();
+    play(ctx, 10 + songDurationSeconds(song) + 1);
     const low = 10 ** (DUCK_DB / 20);
     const windows = duckWindows(song, 10);
     expect(windows.length).toBeGreaterThan(10);
@@ -306,7 +340,8 @@ describe('createOrchestra', () => {
   });
 
   it('com fone: orquestra completa (sem desviar da melodia) e sem queda nos ataques', async () => {
-    const { orchestra, duck, synths } = await start({ headphones: true });
+    const { ctx, orchestra, duck, synths } = await start({ headphones: true });
+    play(ctx, 10 + songDurationSeconds(song) + 1);
     expect(orchestra.headphones).toBe(true);
     expect(duck.gain.events).toEqual([]);
     const triggers = synths.flatMap((s) => s.triggers).length;
@@ -320,12 +355,13 @@ describe('soundingAt (para a máscara do Ouvido)', () => {
   const t = 10 + 0.25 * spb;
 
   const midis = (notes: readonly TimedNote[]) => [...new Set(notes.map((note) => note.midi))].sort((a, b) => a - b);
+  const all = scheduleOrchestra(song, { startAt: 10, a4: 442 });
 
   it('number[]: as notas MIDI que soam em t, sem repetição e em ordem, só dos naipes audíveis', async () => {
     const { orchestra } = await start();
     const now = orchestra.soundingAt(t);
     expect(now.length).toBeGreaterThan(0);
-    expect(now).toEqual(midis(notesSoundingAt(orchestra.notes, t, ['strings', 'woodwinds', 'brass'])));
+    expect(now).toEqual(midis(notesSoundingAt(all, t, ['strings', 'woodwinds', 'brass'])));
     expect(now).toEqual([...now].sort((a, b) => a - b));
     expect(new Set(now).size).toBe(now.length);
     expect(orchestra.soundingAt(9)).toEqual([]);
@@ -333,18 +369,18 @@ describe('soundingAt (para a máscara do Ouvido)', () => {
 
   it('a percussão entra na lista quando entra no som; um naipe que sai ainda conta enquanto some', async () => {
     const { orchestra, ctx } = await start();
-    const hit = orchestra.notes.find((note) => note.part === 'timpani')!;
+    const hit = all.find((note) => note.part === 'timpani')!;
     const at = hit.time + 0.01;
-    expect(orchestra.soundingAt(at)).toEqual(midis(notesSoundingAt(orchestra.notes, at, ['strings', 'woodwinds', 'brass'])));
+    expect(orchestra.soundingAt(at)).toEqual(midis(notesSoundingAt(all, at, ['strings', 'woodwinds', 'brass'])));
     orchestra.update({ energy: 0.9, combo: 12 });
     expect(orchestra.soundingAt(at)).toContain(hit.midi);
-    expect(orchestra.soundingAt(at)).toEqual(midis(notesSoundingAt(orchestra.notes, at)));
-    expect(orchestra.soundingAt(t)).toEqual(midis(notesSoundingAt(orchestra.notes, t)));
+    expect(orchestra.soundingAt(at)).toEqual(midis(notesSoundingAt(all, at)));
+    expect(orchestra.soundingAt(t)).toEqual(midis(notesSoundingAt(all, t)));
     ctx.currentTime = 10;
     orchestra.update({ energy: 0.2, combo: 0 });
-    expect(orchestra.soundingAt(t)).toEqual(midis(notesSoundingAt(orchestra.notes, t)));
+    expect(orchestra.soundingAt(t)).toEqual(midis(notesSoundingAt(all, t)));
     const later = 10 + SECTION_FADE_OUT_SECONDS + 0.01;
-    expect(orchestra.soundingAt(later)).toEqual(midis(notesSoundingAt(orchestra.notes, later, ['strings'])));
+    expect(orchestra.soundingAt(later)).toEqual(midis(notesSoundingAt(all, later, ['strings'])));
   });
 
   it('vazia com a orquestra desligada, no volume zero, parada ou liberada', async () => {
@@ -359,5 +395,90 @@ describe('soundingAt (para a máscara do Ouvido)', () => {
     expect(orchestra.soundingAt(t)).toEqual([]);
     orchestra.dispose();
     expect(orchestra.soundingAt(t)).toEqual([]);
+  });
+});
+
+describe('andamento e laço A–B sem recriar a orquestra', () => {
+  const spb = 60 / song.bpm;
+  const audible = ['strings', 'woodwinds', 'brass'] as const;
+  const midis = (notes: readonly TimedNote[]) => [...new Set(notes.map((note) => note.midi))].sort((a, b) => a - b);
+  const key = (note: TimedNote) => `${note.part}:${note.midi}:${note.velocity}`;
+
+  /** soundingAt bate com o que o agendador mandou de fato para o AudioContext, em todo instante já tocado. */
+  const coherent = (orchestra: Awaited<ReturnType<typeof start>>['orchestra'], from: number, to: number) => {
+    for (let at = from; at < to; at += 0.0371) {
+      expect(orchestra.soundingAt(at)).toEqual(midis(notesSoundingAt(orchestra.notes, at, audible)));
+    }
+  };
+
+  it('setTempo no meio: cada nota disparada uma vez, as de depois no andamento novo, e soundingAt coerente', async () => {
+    const { ctx, orchestra, synths } = await start();
+    play(ctx, 15);
+    const at = orchestra.setTempo(0.5);
+    expect(at).toBe(15 + LOOKAHEAD_SECONDS);
+    const switchBeat = (at - 10) / spb;
+    play(ctx, 10 + switchBeat * spb + (songDurationBeats(song) - switchBeat) * 2 * spb + 1);
+    const pure = scheduleOrchestra(song, { startAt: 10, a4: 442 });
+    expect(orchestra.notes.map(key)).toEqual(pure.map(key));
+    expect(synths.flatMap((s) => s.triggers)).toHaveLength(pure.length);
+    orchestra.notes.forEach((note, i) => {
+      const beat = (pure[i].time - 10) / spb;
+      if (beat < switchBeat - 1e-9) expect(note.time).toBe(pure[i].time);
+      else expect(note.time).toBeCloseTo(at + (beat - switchBeat) * 2 * spb, 9);
+    });
+    coherent(orchestra, 9, ctx.currentTime);
+  });
+
+  it('pedida para antes do horizonte: vale no horizonte, que devolve', async () => {
+    const { ctx, orchestra } = await start();
+    play(ctx, 12);
+    expect(orchestra.setTempo(0.75, 11)).toBe(12 + LOOKAHEAD_SECONDS);
+    expect(orchestra.setTempo(0.75, 20)).toBe(20);
+    expect(() => orchestra.setTempo(0.4)).toThrow(RangeError);
+  });
+
+  it('laço repetido 10×: saltos sem deriva, notas e quedas de cada volta no lugar, soundingAt coerente', async () => {
+    const { ctx, orchestra, duck } = await start();
+    expect(orchestra.setLoop({ startMeasure: 2, endMeasure: 3 })).toBeLessThan(10);
+    expect(orchestra.loop).toEqual({ startMeasure: 2, endMeasure: 3 });
+    const startBeat = 8;
+    const endBeat = 16;
+    const lap = (endBeat - startBeat) * spb;
+    const firstJump = 10 + endBeat * spb;
+    play(ctx, firstJump + 10 * lap - LOOKAHEAD_SECONDS - 0.05);
+    const jumps = orchestra.segments(ctx.currentTime).slice(1);
+    expect(jumps).toHaveLength(10);
+    jumps.forEach((segment, k) => expect(segment.time).toBeCloseTo(firstJump + k * lap, 9));
+
+    const pure = scheduleOrchestra(song, { startAt: 10, a4: 442 });
+    const lapNotes = pure.filter((note) => note.time >= 10 + startBeat * spb - 1e-9 && note.time < firstJump - 1e-9);
+    const before = pure.filter((note) => note.time < 10 + startBeat * spb - 1e-9);
+    expect(orchestra.notes.map(key)).toEqual([...before, ...Array.from({ length: 11 }, () => lapNotes).flat()].map(key));
+    const last = orchestra.notes.slice(-lapNotes.length);
+    last.forEach((note, i) => expect(note.time).toBeCloseTo(lapNotes[i].time + 10 * lap, 9));
+
+    const low = 10 ** (DUCK_DB / 20);
+    const downs = duck.gain.events.filter(([kind, value]) => kind === 'ramp' && value === low).map(([, , time]) => time);
+    const lapWindows = duckWindows(song, 10).filter((w) => w.from > 10 + startBeat * spb - 0.1 && w.to < firstJump);
+    for (let k = 1; k <= 9; k++) {
+      for (const w of lapWindows) expect(downs.some((time) => Math.abs(time - (w.from + k * lap)) < 1e-9)).toBe(true);
+    }
+    coherent(orchestra, firstJump - 1, ctx.currentTime);
+  });
+
+  it('desligar o laço: a música segue do fim de B', async () => {
+    const { ctx, orchestra } = await start();
+    orchestra.setLoop({ startMeasure: 2, endMeasure: 3 });
+    const lap = 8 * spb;
+    const firstJump = 10 + 16 * spb;
+    play(ctx, firstJump + 0.5 * lap);
+    orchestra.setLoop(null);
+    expect(orchestra.loop).toBeNull();
+    play(ctx, firstJump + lap + 2);
+    const next = orchestra.notes.find((note) => note.time >= firstJump + lap - 1e-9)!;
+    const pure = scheduleOrchestra(song, { startAt: 10, a4: 442 }).find((note) => note.time >= firstJump - 1e-9)!;
+    expect(key(next)).toBe(key(pure));
+    expect(next.time).toBeCloseTo(firstJump + lap, 9);
+    coherent(orchestra, firstJump, ctx.currentTime);
   });
 });
