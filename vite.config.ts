@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react';
 import { loadEnv, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 import { DEFAULT_THEME, THEMES, THEME_STORAGE_KEY } from './src/assets/styles/themes';
+import { noConverterInApp } from './src/build/noConverterInApp';
 
 /**
  * Anti-flash: antes do app carregar, pinta a página com o fundo e o texto do tema salvo no
@@ -20,26 +21,6 @@ function themeBootScript(): Plugin {
   return {
     name: 'theme-boot',
     transformIndexHtml: () => [{ tag: 'script', children: script, injectTo: 'head' }],
-  };
-}
-
-/**
- * O conversor de MusicXML roda no build (songs:fixed), no seed e no banco, nunca no pacote do app:
- * se algum chunk levar um módulo dele ou uma partitura, o build falha.
- */
-const CONVERTER_MODULE = /\/src\/game\/notation\/(catalog|musicxml|xml|levels|fingering)\.ts$|\.musicxml(\?|$)/;
-
-function noConverterInApp(): Plugin {
-  return {
-    name: 'no-converter-in-app',
-    apply: 'build',
-    generateBundle(_, bundle) {
-      for (const chunk of Object.values(bundle)) {
-        if (chunk.type !== 'chunk') continue;
-        const found = chunk.moduleIds.filter((id) => CONVERTER_MODULE.test(id.replaceAll('\\', '/')));
-        if (found.length) this.error(`${chunk.fileName} leva o conversor de MusicXML: ${found.join(', ')}`);
-      }
-    },
   };
 }
 
