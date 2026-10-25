@@ -23,7 +23,13 @@ try {
   await client.query(`create table if not exists violinhero.schema_migrations (
     name text primary key, applied_at timestamptz not null default now())`);
   const done = new Set((await client.query('select name from violinhero.schema_migrations')).rows.map((r) => r.name));
+  // No Supabase local o CLI aplica as migrações no start e registra a versão (prefixo do arquivo)
+  const cli = await client.query(`select to_regclass('supabase_migrations.schema_migrations') is not null as exists`);
+  const cliDone = cli.rows[0].exists
+    ? new Set((await client.query('select version from supabase_migrations.schema_migrations')).rows.map((r) => r.version))
+    : new Set();
   const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+  for (const f of files) if (cliDone.has(f.split('_')[0])) done.add(f);
   let applied = 0;
   for (const f of files) {
     if (done.has(f)) continue;

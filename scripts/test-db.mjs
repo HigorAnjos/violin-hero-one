@@ -7,6 +7,8 @@ import dotenv from 'dotenv';
 import pg from 'pg';
 
 dotenv.config({ path: '.env.local', quiet: true });
+// Na máquina, sem banco, os testes se pulam; na CI isso seria um verde falso
+if (process.env.CI && !process.env.DATABASE_URL) throw new Error('DATABASE_URL vazio na CI: os testes de banco não rodariam.');
 const S = 'violinhero';
 const ZERO = '00000000-0000-0000-0000-000000000000';
 
@@ -114,6 +116,14 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       const a = await newUser(c);
       await c.query(`create function ${S}.tmp_probe() returns int language sql security definer as 'select 1'`);
       await denied(as(c, a, `select ${S}.tmp_probe()`));
+    });
+
+    it('função nova no schema nasce executável pelo servidor (service_role)', async () => {
+      await c.query(`create function ${S}.tmp_probe() returns int language sql security definer as 'select 1'`);
+      await c.query('set local role service_role');
+      const { rows } = await c.query(`select ${S}.tmp_probe() as v`);
+      await c.query('reset role');
+      assert.equal(rows[0].v, 1);
     });
 
     it('Lá fora de 415–466 Hz é recusado', async () => {
