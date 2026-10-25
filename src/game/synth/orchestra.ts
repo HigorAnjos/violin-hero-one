@@ -3,7 +3,7 @@ import { ENERGY_MAX, ENERGY_START } from '../engine/energy';
 import type { Song } from '../notation/song';
 import { PARTS, PART_SECTION, type Part } from './arrange';
 import { scheduleOrchestra } from './schedule';
-import { SECTION_ORDER, levelFor, sectionsFor, type OrchestraLevel } from './sections';
+import { SECTION_ORDER, levelFor, sectionsFor, type OrchestraDrive, type OrchestraLevel } from './sections';
 import { clampVolume, DEFAULT_ORCHESTRA_VOLUME } from './settings';
 import { VOICES, type Voice } from './voices';
 
@@ -37,8 +37,8 @@ export interface Orchestra {
   readonly startAt: number;
   readonly level: OrchestraLevel;
   readonly sections: readonly OrchestraSection[];
-  /** Energia do Motor (state.energy, 0 a 1): os naipes entram e saem com rampa. */
-  setEnergy(energy: number): void;
+  /** O state de cada julgamento do Motor (energia e combo): os naipes entram e saem com rampa. */
+  update(drive: OrchestraDrive): void;
   setVolume(volume: number): void;
   /** Liga ou desliga a orquestra sem desagendar as notas. */
   setEnabled(enabled: boolean): void;
@@ -79,7 +79,7 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
   setContext(toneContext);
 
   const { startAt, destination = context.destination } = options;
-  let level = levelFor(options.energy ?? ENERGY_START / ENERGY_MAX);
+  let level = levelFor({ energy: options.energy ?? ENERGY_START / ENERGY_MAX, combo: 0 });
 
   const keepAudible = raw.createConstantSource();
   keepAudible.offset.value = KEEP_AUDIBLE_LEVEL;
@@ -156,9 +156,9 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
     get sections() {
       return sectionsFor(level);
     },
-    setEnergy(energy) {
+    update(drive) {
       if (disposed || stopping) return;
-      const nextLevel = levelFor(energy, level);
+      const nextLevel = levelFor(drive, level);
       if (nextLevel === level) return;
       const on = new Set(sectionsFor(nextLevel));
       for (const section of SECTION_ORDER) {

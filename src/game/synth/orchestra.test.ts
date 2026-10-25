@@ -209,17 +209,19 @@ describe('createOrchestra', () => {
     expect([sections.strings, sections.woodwinds, sections.brass, sections.percussion].map((g) => g.gain.value)).toEqual([1, 1, 1, 0]);
   });
 
-  it('setEnergy: naipes entram e saem com rampa, e repetir o nível não mexe em nada', async () => {
+  it('update: naipes entram e saem com rampa, a percussão pelo combo, e repetir o nível não mexe em nada', async () => {
     const { orchestra, sections } = await start();
-    orchestra.setEnergy(0.9);
+    orchestra.update({ energy: 0.9, combo: 11 });
+    expect(sections.percussion.gain.ramps).toEqual([]);
+    orchestra.update({ energy: 0.9, combo: 12 });
     expect(sections.percussion.gain.ramps).toEqual([[1, SECTION_FADE_IN_SECONDS]]);
-    orchestra.setEnergy(0.95);
+    orchestra.update({ energy: 0.95, combo: 13 });
     expect(sections.percussion.gain.ramps).toHaveLength(1);
-    orchestra.setEnergy(0.2);
+    orchestra.update({ energy: 0.2, combo: 0 });
     expect(orchestra.sections).toEqual(['strings']);
     for (const g of [sections.woodwinds, sections.brass, sections.percussion]) expect(g.gain.ramps.at(-1)).toEqual([0, SECTION_FADE_OUT_SECONDS]);
     expect(sections.strings.gain.ramps).toEqual([]);
-    orchestra.setEnergy(0);
+    orchestra.update({ energy: 0, combo: 0 });
     expect(orchestra.level).toBe(0);
     expect(sections.strings.gain.ramps).toEqual([[0, SECTION_FADE_OUT_SECONDS]]);
   });
@@ -239,7 +241,7 @@ describe('createOrchestra', () => {
     const stopped = orchestra.stop();
     expect(orchestra.stop()).toBe(stopped);
     expect(mute.gain.ramps).toEqual([[0, STOP_FADE_SECONDS]]);
-    orchestra.setEnergy(1);
+    orchestra.update({ energy: 1, combo: 20 });
     expect(orchestra.level).toBe(3);
     expect(tone.created.some((n) => n.disposed)).toBe(false);
     await vi.advanceTimersByTimeAsync(STOP_FADE_SECONDS * 1000);
