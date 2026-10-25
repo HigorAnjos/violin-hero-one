@@ -24,7 +24,10 @@ export const BOW_RISE_DB = 4;
 export const NEW_ATTACK_GAP_SECONDS = 0.06;
 /** Trocas de arco só são procuradas este número de leituras (~120 ms) depois de um ataque. */
 export const LEVEL_WARMUP_READINGS = 12;
-/** Uma tentativa que não acertou é atribuída à nota aberta mais próxima até este tanto além da janela Bom. */
+/**
+ * Faixa além da janela Bom em que uma tentativa que não acertou ainda é atribuída a uma nota: ~470 ms com a janela
+ * padrão. A nota sem acerto só expira depois dela, então quem toca a nota certa tarde vê "atrasada", e não "não tocada".
+ */
 export const ATTEMPT_MARGIN_SECONDS = 0.25;
 /** Desvio a partir do qual a nota ouvida é outra nota, e não a certa desafinada. */
 export const WRONG_NOTE_CENTS = 75;
@@ -139,19 +142,23 @@ export function createJudge(notes: readonly EngineNote[], options: JudgeOptions,
 
   function recordAttempt(hitTime: number, reading: PitchReading): void {
     let nearest = -1;
+    let lateMatch = -1;
     for (let i = firstOpen; i < notes.length; i++) {
       if (notes[i].time - hitTime > attemptSeconds) break;
       if (judged[i] || Math.abs(hitTime - notes[i].time) > attemptSeconds) continue;
       // Empate (até 1 ms) fica com a nota mais antiga: quem erra costuma estar atrasado.
       if (nearest < 0 || Math.abs(hitTime - notes[i].time) < Math.abs(hitTime - notes[nearest].time) - 0.001) nearest = i;
+      if (hitTime > notes[i].time && Math.abs(centsBetween(reading.hz, notes[i].frequency)) <= tolerance) lateMatch = i;
     }
     if (nearest < 0) return;
-    const cents = centsBetween(reading.hz, notes[nearest].frequency);
+    // A nota certa tocada tarde é atraso dela, mesmo com a próxima mais perto; a próxima segue aberta para o acerto.
+    const target = lateMatch >= 0 ? lateMatch : nearest;
+    const cents = centsBetween(reading.hz, notes[target].frequency);
     const distance = Math.abs(cents);
     const kind: Attempt['kind'] = distance <= tolerance ? 'timing' : distance < WRONG_NOTE_CENTS ? 'tuning' : 'wrong';
-    const previous = attempts[nearest];
+    const previous = attempts[target];
     if (previous && ATTEMPT_PRIORITY[previous.kind] >= ATTEMPT_PRIORITY[kind]) return;
-    attempts[nearest] = { kind, offsetMs: (hitTime - notes[nearest].time) * 1000, cents, playedMidi: reading.midi };
+    attempts[target] = { kind, offsetMs: (hitTime - notes[target].time) * 1000, cents, playedMidi: reading.midi };
   }
 
   function tryHit(reading: PitchReading): boolean {
@@ -177,7 +184,7 @@ export function createJudge(notes: readonly EngineNote[], options: JudgeOptions,
   function advance(now: number): void {
     const heard = now - lag - latency - EXPIRY_SLACK_SECONDS;
     let last = firstOpen;
-    while (last < notes.length && heard - notes[last].time > goodSeconds) last++;
+    while (last < notes.length && heard - notes[last].time > attemptSeconds) last++;
     missBefore(last);
   }
 

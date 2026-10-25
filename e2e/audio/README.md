@@ -18,7 +18,7 @@ O Chromium do e2e usa um WAV no lugar do microfone (`--use-file-for-fake-audio-c
 Os 3 erros da Ode, por índice de ataque (contando de 0, sem as ligaduras):
 
 - **10** (compasso 3, o Mi): nota errada — sai Sol;
-- **27** (compasso 8, o Mi pontuado): atrasada **entre 220 e 300 ms** — mais que isso o motor dá "não tocada";
+- **27** (compasso 8, o Mi pontuado): atrasada **entre 220 e ~470 ms** (janela Bom + `ATTEMPT_MARGIN_SECONDS`) — mais que isso o motor dá "não tocada";
 - **46** (compasso 12, o Lá de 2 tempos): desafinada **entre 50 e 75 ¢** (alta) — mais que isso vira nota errada.
 
 ## Sintéticas e reais
