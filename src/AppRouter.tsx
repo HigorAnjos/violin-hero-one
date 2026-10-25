@@ -1,17 +1,13 @@
 import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { GlobalStyles } from './assets/styles/global';
-import { BadgeEarned } from './pages/BadgeEarned';
-import { Calibration } from './pages/Calibration';
 import { Countdown } from './pages/Countdown';
 import { Foundation } from './pages/Foundation';
-import { GameOver } from './pages/GameOver';
-import { Gameplay } from './pages/Gameplay';
+import { lazyGameScreen } from './pages/loadGameScreens';
 import { MicTrouble } from './pages/MicTrouble';
 import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
 import { OnboardTest } from './pages/OnboardTest';
-import { Results } from './pages/Results';
 import { isOnboarded } from './services/profile';
 import { DEV_TOOLS } from './shell/devTools';
 import { EarProvider, type Ear } from './shell/Ear';
@@ -27,6 +23,12 @@ function chooseEar(): Ear {
   return createMicrophoneEar();
 }
 
+const Calibration = lazyGameScreen('Calibration');
+const Gameplay = lazyGameScreen('Gameplay');
+const GameOver = lazyGameScreen('GameOver');
+const BadgeEarned = lazyGameScreen('BadgeEarned');
+const Results = lazyGameScreen('Results');
+
 /** Primeira vez no aparelho: onboarding. Depois, a tela de teste até a Principal existir. */
 const Home: React.FC = () => <Navigate to={isOnboarded() ? ROUTES.foundation : ROUTES.level} replace />;
 
@@ -38,7 +40,8 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
       <EarProvider ear={chosen}>
         <BrowserRouter>
           <MicGuard />
-          <Routes>
+          <React.Suspense fallback={null}>
+            <Routes>
             <Route path={ROUTES.home} element={<Home />} />
             <Route path={ROUTES.foundation} element={<Foundation />} />
             <Route path={ROUTES.level} element={<OnboardLevel />} />
@@ -52,7 +55,8 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
             <Route path={ROUTES.badge} element={<BadgeEarned />} />
             <Route path={ROUTES.results} element={<Results />} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
-          </Routes>
+            </Routes>
+          </React.Suspense>
         </BrowserRouter>
       </EarProvider>
     </ThemeChoiceProvider>

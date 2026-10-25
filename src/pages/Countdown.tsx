@@ -11,6 +11,7 @@ import type { Song } from '../game/notation/song';
 import { STRING_LETTERS } from '../game/notation/violin';
 import { FIXED_SONGS } from '../game/notation/songs';
 import type { PlayState } from '../shell/play';
+import { loadGameScreens } from './loadGameScreens';
 import { ROUTES, safeInternalPath } from '../shell/routes';
 
 /** O que quem abre a contagem passa pelo estado da navegação; segue adiante para o jogo. */
@@ -128,6 +129,8 @@ export const Countdown: React.FC = () => {
     [navigate, next, song, mode, latencyMs, noFail]
   );
   const view = useCountIn(song, start);
+  // O compasso de entrada dá tempo de baixar a tela de jogo antes de precisar dela
+  React.useEffect(() => void loadGameScreens().catch(() => undefined), []);
   const note = firstNote(song);
   const label = [song.title, state.mode ?? 'Arcade', LEVEL_NAMES[song.level]].join(' · ');
 
