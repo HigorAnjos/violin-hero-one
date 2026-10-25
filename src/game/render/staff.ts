@@ -1,5 +1,5 @@
-import { timeline, type Song } from '../../game/notation/song';
-import type { StringIndex } from '../../game/notation/violin';
+import { timeline, type Song } from '../notation/song';
+import type { StringIndex } from '../notation/violin';
 
 /** Pauta da faixa (SheetStrip.dc): linha de baixo (Mi4) em y 72, 5 px por grau. */
 export const BOTTOM_LINE_Y = 72;

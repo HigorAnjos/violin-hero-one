@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ODE } from '../../game/engine/testing';
+import { ODE } from '../engine/testing';
 import { clock, diatonicStep, keyFifths, keySignature, ledgerSteps, measureAt, staffLayout, stepY } from './staff';
 
 describe('pauta', () => {
