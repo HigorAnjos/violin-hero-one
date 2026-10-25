@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main, 'task/**']
+    # Só main e as branches de ciclo; o resto roda pelo pull_request (sem isso cada job do PR roda 2×)
+    branches: [main, 'task/ciclo-*']
   pull_request:
 
 permissions:
