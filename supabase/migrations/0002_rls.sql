@@ -16,14 +16,9 @@ create policy profiles_update_own on violinhero.profiles for update to authentic
 revoke all on schema violinhero from public, anon;
 grant usage on schema violinhero to authenticated, service_role;
 
-revoke all on all tables    in schema violinhero from public, anon, authenticated;
-revoke all on all functions in schema violinhero from public, anon, authenticated;
+revoke all on all tables in schema violinhero from public, anon, authenticated;
 
--- Objetos futuros nascem fechados: função nova não fica chamável por qualquer jogador, e
--- tabela nova não fica legível antes da migração dela decidir quem lê.
--- O EXECUTE para PUBLIC vem do default global e "in schema" só soma a ele: o revoke tem de ser global.
--- No public o Supabase já concede EXECUTE por schema a anon/authenticated, então lá nada muda.
-alter default privileges for role postgres revoke execute on functions from public;
+-- Tabela nova não fica legível antes da migração dela decidir quem lê.
 alter default privileges in schema violinhero revoke all on tables from public, anon, authenticated;
 
 -- O servidor (Edge Functions, webhooks) ignora RLS, mas não GRANT: escreve o que "só o servidor" escreve.
@@ -34,3 +29,8 @@ alter default privileges for role postgres in schema violinhero grant execute on
 grant select on violinhero.profiles to authenticated;
 -- Só as preferências do jogador; id, is_anonymous e datas são do servidor
 grant update (nickname, animal, level, a4_hz, latency_ms, theme_id) on violinhero.profiles to authenticated;
+
+-- Fecho de toda migração: função nasce com EXECUTE para PUBLIC (default global do Postgres, que não
+-- mexemos para não afetar outros schemas do projeto). Revoga tudo no schema e libera só o que o app
+-- chama; a lista permitida está no scripts/test-db.mjs. Nenhuma, por enquanto.
+revoke execute on all functions in schema violinhero from public, anon, authenticated;

@@ -16,5 +16,8 @@ begin
   end if;
 end $$;
 
+-- Fecho de toda migração: só o servidor executa funções do schema; o app ganha GRANT uma a uma.
+revoke execute on all functions in schema violinhero from public, anon, authenticated;
+
 notify pgrst, 'reload config';
 notify pgrst, 'reload schema';

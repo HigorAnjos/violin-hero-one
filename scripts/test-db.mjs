@@ -12,6 +12,12 @@ if (process.env.CI && !process.env.DATABASE_URL) throw new Error('DATABASE_URL v
 const S = 'violinhero';
 const ZERO = '00000000-0000-0000-0000-000000000000';
 
+/**
+ * Funções de violinhero que o app chama, por papel ("papel assinatura", como em regprocedure).
+ * Função nova só entra aqui junto com o GRANT dela na migração; o resto fica só para o servidor.
+ */
+const ALLOWED_FUNCTIONS = [];
+
 // ---------- helpers ----------
 async function newUser(c, { anonymous = true } = {}) {
   const id = randomUUID();
@@ -112,12 +118,6 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       await assert.rejects(as(c, a, `update ${S}.profiles set nickname = ' Ana ' where id = $1`, [a]), /check constraint/);
     });
 
-    it('função nova no schema nasce sem execute para o jogador', async () => {
-      const a = await newUser(c);
-      await c.query(`create function ${S}.tmp_probe() returns int language sql security definer as 'select 1'`);
-      await denied(as(c, a, `select ${S}.tmp_probe()`));
-    });
-
     it('função nova no schema nasce executável pelo servidor (service_role)', async () => {
       await c.query(`create function ${S}.tmp_probe() returns int language sql security definer as 'select 1'`);
       await c.query('set local role service_role');
@@ -130,6 +130,22 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       const a = await newUser(c);
       await assert.rejects(as(c, a, `update ${S}.profiles set a4_hz = 500 where id = $1`, [a]), /check constraint/);
       await as(c, a, `update ${S}.profiles set a4_hz = 440 where id = $1`, [a]);
+    });
+  });
+
+  describe('funções', () => {
+    it('só as funções da lista permitida são executáveis por anon e authenticated', async () => {
+      const { rows } = await c.query(
+        `select r.rolname as role, p.oid::regprocedure::text as fn
+           from pg_proc p
+           join pg_namespace n on n.oid = p.pronamespace
+          cross join (values ('anon'), ('authenticated')) r(rolname)
+          where n.nspname = $1 and p.prokind in ('f', 'p')
+            and has_function_privilege(r.rolname, p.oid, 'EXECUTE')
+          order by 1, 2`,
+        [S]);
+      const exposed = rows.map((r) => `${r.role} ${r.fn}`);
+      assert.deepEqual(exposed, [...ALLOWED_FUNCTIONS].sort());
     });
   });
 });

@@ -49,3 +49,6 @@ create trigger violinhero_profile_on_signup after insert on auth.users
 create trigger violinhero_profile_on_link after update of is_anonymous on auth.users
   for each row when (old.is_anonymous is distinct from new.is_anonymous)
   execute function violinhero.sync_profile_from_auth();
+
+-- Fecho de toda migração: só o servidor executa funções do schema; o app ganha GRANT uma a uma.
+revoke execute on all functions in schema violinhero from public, anon, authenticated;
