@@ -67,7 +67,7 @@ describe('julgamentos', () => {
     play(0, { midiShift: 2 });
     play(1, { offsetMs: 260 });
     play(2, { cents: -62 });
-    engine.advance(engine.notes[3].time + 0.4);
+    engine.advance(engine.notes[3].time + 0.65);
     expect(judgments().map((j) => [j.judgment, j.issue])).toEqual([
       ['miss', 'wrong-note'],
       ['miss', 'late'],
