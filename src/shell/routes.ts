@@ -1,4 +1,5 @@
-import type { MicProblem } from './Ear';
+import type { MicTrouble } from '../game/audio';
+import { TROUBLE_SCREEN, type MicProblem } from './Ear';
 
 /** Endereços das telas. Os nomes seguem o português da interface. */
 export const ROUTES = {
@@ -18,13 +19,17 @@ export function safeInternalPath(raw: string | null, fallback: string): string {
   return raw && raw.startsWith('/') && !raw.startsWith('//') && !raw.includes('\\') ? raw : fallback;
 }
 
-/** Tela de problema no microfone; `after` é para onde ir quando o problema se resolve. */
-export function micTroubleUrl(problem: MicProblem, after: string): string {
-  return `${ROUTES.micTrouble}?${new URLSearchParams({ motivo: PROBLEM_SLUG[problem], depois: after })}`;
+/** Tela de problema no microfone; `after` é para onde ir resolvido; `cause` é o motivo exato do navegador. */
+export function micTroubleUrl(problem: MicProblem, after: string, cause?: MicTrouble): string {
+  const params = new URLSearchParams({ motivo: PROBLEM_SLUG[problem], depois: after });
+  if (cause) params.set('causa', cause);
+  return `${ROUTES.micTrouble}?${params}`;
 }
 
-export function parseMicTrouble(search: URLSearchParams): { problem: MicProblem; after: string } {
+export function parseMicTrouble(search: URLSearchParams): { problem: MicProblem; after: string; cause: MicTrouble | null } {
   const slug = search.get('motivo');
   const problem = (Object.keys(PROBLEM_SLUG) as MicProblem[]).find((p) => PROBLEM_SLUG[p] === slug) ?? 'no-sound';
-  return { problem, after: safeInternalPath(search.get('depois'), ROUTES.home) };
+  const rawCause = search.get('causa');
+  const cause = rawCause && Object.hasOwn(TROUBLE_SCREEN, rawCause) ? (rawCause as MicTrouble) : null;
+  return { problem, after: safeInternalPath(search.get('depois'), ROUTES.home), cause };
 }

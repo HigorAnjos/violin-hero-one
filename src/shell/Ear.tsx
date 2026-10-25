@@ -1,11 +1,11 @@
 import React from 'react';
-import type { PitchListener } from '../game/audio/types';
+import { micTrouble, type MicTrouble, type PitchListener } from '../game/audio';
 
 export type LevelListener = (dbfs: number) => void;
 
 /**
- * O que as telas precisam do Ouvido (floor ciclo1-ouvido). A implementação real entra na
- * integração; até lá as telas recebem esta porta pelo EarProvider (testes passam uma falsa).
+ * O que as telas precisam do Ouvido. A implementação real é o microphoneEar (src/game/audio);
+ * as telas recebem a porta pelo EarProvider e os testes passam uma falsa.
  */
 export interface Ear {
   /** Pede o microfone e começa a ouvir. Rejeita com o erro do navegador (NotAllowedError, NotFoundError…). */
@@ -17,15 +17,27 @@ export interface Ear {
   onLevel(listener: LevelListener): () => void;
 }
 
+/** Os três estados da tela MicTrouble (5e). */
 export type MicProblem = 'no-sound' | 'noisy' | 'blocked';
 
-/** Erro do navegador ao pedir o microfone, traduzido para o problema mostrado ao jogador. */
-export function micProblemFromError(error: unknown): MicProblem {
-  const name = error instanceof Error || error instanceof DOMException ? error.name : '';
-  return name === 'NotAllowedError' || name === 'SecurityError' || name === 'NotSupportedError' ? 'blocked' : 'no-sound';
+/** Sem acesso ao microfone vai para "bloqueado"; microfone que existe mas não chega som, para "sem som". */
+export const TROUBLE_SCREEN: Record<MicTrouble, MicProblem> = {
+  denied: 'blocked',
+  insecure: 'blocked',
+  unsupported: 'blocked',
+  'audio-blocked': 'blocked',
+  'no-device': 'no-sound',
+  'in-use': 'no-sound',
+  unknown: 'no-sound',
+};
+
+/** Erro do navegador ao pedir o microfone: a causa exata (do Ouvido) e a tela que a mostra. */
+export function micFailure(error: unknown): { problem: MicProblem; cause: MicTrouble } {
+  const cause = micTrouble(error);
+  return { problem: TROUBLE_SCREEN[cause], cause };
 }
 
-/** Enquanto o Ouvido não está ligado: o navegador "não oferece" microfone, sem quebrar a tela. */
+/** Sem EarProvider (testes de componente isolado): o navegador "não oferece" microfone, sem quebrar a tela. */
 export const unwiredEar: Ear = {
   start: () => Promise.reject(new DOMException('ouvido ainda não ligado', 'NotSupportedError')),
   stop: () => undefined,

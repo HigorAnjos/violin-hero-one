@@ -10,7 +10,7 @@ import { SoundMeters } from '../components/SoundMeters/SoundMeters';
 import { useSoundMeters } from '../components/SoundMeters/meterLevels';
 import { STRING_SOLFEGE, type StringIndex } from '../game/notation/violin';
 import { markOnboarded } from '../services/profile';
-import { micProblemFromError, useEar } from '../shell/Ear';
+import { micFailure, useEar } from '../shell/Ear';
 import { micTroubleUrl, ROUTES } from '../shell/routes';
 
 const STRINGS: StringIndex[] = [0, 1, 2, 3];
@@ -124,7 +124,9 @@ export const OnboardTest: React.FC = () => {
   React.useEffect(() => {
     let alive = true;
     ear.start().catch((error) => {
-      if (alive) navigate(micTroubleUrl(micProblemFromError(error), ROUTES.strings), { replace: true });
+      if (!alive) return;
+      const { problem, cause } = micFailure(error);
+      navigate(micTroubleUrl(problem, ROUTES.strings, cause), { replace: true });
     });
     return () => {
       alive = false;

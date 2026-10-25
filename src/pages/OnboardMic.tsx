@@ -6,7 +6,7 @@ import { MicSetupIllustration } from '../components/MicSetupIllustration/MicSetu
 import { OnboardSteps } from '../components/OnboardSteps/OnboardSteps';
 import { Brand, Lead, Screen, ScreenHeader, ScreenTitle } from '../components/Screen/Screen';
 import { markOnboarded } from '../services/profile';
-import { micProblemFromError, useEar } from '../shell/Ear';
+import { micFailure, useEar } from '../shell/Ear';
 import { micTroubleUrl, ROUTES } from '../shell/routes';
 
 const Body = styled.div`
@@ -142,7 +142,8 @@ export const OnboardMic: React.FC = () => {
       navigate(ROUTES.strings);
     } catch (error) {
       setAsking(false);
-      navigate(micTroubleUrl(micProblemFromError(error), ROUTES.strings));
+      const { problem, cause } = micFailure(error);
+      navigate(micTroubleUrl(problem, ROUTES.strings, cause));
     }
   };
 

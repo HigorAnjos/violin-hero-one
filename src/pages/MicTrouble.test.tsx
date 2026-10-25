@@ -66,6 +66,20 @@ describe('MicTrouble', () => {
     expect(await screen.findByRole('alertdialog', { name: 'O microfone foi bloqueado' })).toBeInTheDocument();
   });
 
+  it('diz a causa exata: microfone em uso por outro app', () => {
+    renderTrouble(micTroubleUrl('no-sound', ROUTES.strings, 'in-use'));
+    expect(screen.getByRole('alertdialog', { name: 'Não estou te ouvindo' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('O microfone está em uso por outro app.');
+  });
+
+  it('se o navegador recusa ao ouvir, mostra a causa que ele deu', async () => {
+    const ear = createFakeEar();
+    ear.failNextStart('SecurityError');
+    renderTrouble(micTroubleUrl('no-sound', ROUTES.strings), ear);
+    expect(await screen.findByRole('alertdialog', { name: 'O microfone foi bloqueado' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('endereço seguro');
+  });
+
   it('"Ajustar microfone" volta para as instruções do microfone', async () => {
     renderTrouble(micTroubleUrl('no-sound', ROUTES.strings));
     await userEvent.click(screen.getByRole('link', { name: 'Ajustar microfone' }));

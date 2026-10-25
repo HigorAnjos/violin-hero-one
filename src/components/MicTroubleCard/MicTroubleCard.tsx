@@ -1,5 +1,6 @@
 import React from 'react';
 import styled, { css, keyframes, useTheme, type DefaultTheme } from 'styled-components';
+import type { MicTrouble } from '../../game/audio';
 import type { MicProblem } from '../../shell/Ear';
 import { SegmentMeter, type SegmentTone } from '../SegmentMeter/SegmentMeter';
 
@@ -64,6 +65,17 @@ export const TROUBLE_COPY: Record<MicProblem, TroubleCopy> = {
       ['🙈', 'Nada é gravado sem você pedir. O som só é analisado na hora.'],
     ],
   },
+};
+
+/** Motivo exato do navegador, dito no lugar da espera padrão; vazio quando a espera já explica. */
+export const CAUSE_TEXT: Record<MicTrouble, string | undefined> = {
+  denied: undefined,
+  insecure: 'O microfone só funciona em endereço seguro. Abra o jogo pelo https://.',
+  unsupported: 'Este navegador não dá acesso ao microfone. Use o Chrome, o Edge ou o Safari atualizados.',
+  'audio-blocked': 'O navegador segurou o som até você tocar na tela. Toque em "Tentar de novo".',
+  'no-device': 'Não achei nenhum microfone neste aparelho. Conecte um e toque em Continuar.',
+  'in-use': 'O microfone está em uso por outro app. Feche a chamada ou o gravador e toque em Continuar.',
+  unknown: undefined,
 };
 
 const BARS = 30;

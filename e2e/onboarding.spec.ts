@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// Sem o Ouvido ligado (build de produção) todo problema de microfone vira "bloqueado"; os outros
-// estados usam o mesmo cartão e ficam com os testes unitários
+// O Chromium do teste nega o microfone: todo problema vira "bloqueado"; os outros estados usam o
+// mesmo cartão e ficam com os testes unitários
 const SCREENS = [
   { name: 'nível', path: '/primeira-vez/nivel', heading: 'Quanto você já toca?' },
   { name: 'microfone', path: '/primeira-vez/microfone', heading: 'Precisamos ouvir seu violino' },
@@ -47,7 +47,7 @@ for (const screen of SCREENS) {
   });
 }
 
-test('cordas soltas sem o Ouvido ligado levam ao microfone bloqueado', async ({ page }) => {
+test('cordas soltas com o microfone negado levam ao microfone bloqueado', async ({ page }) => {
   await page.goto('/primeira-vez/cordas');
   await expect(page.getByRole('alertdialog', { name: 'O microfone foi bloqueado' })).toBeVisible();
 });

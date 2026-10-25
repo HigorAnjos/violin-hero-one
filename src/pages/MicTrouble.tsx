@@ -2,11 +2,11 @@ import React from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
-import { MicTroubleCard, TROUBLE_COPY } from '../components/MicTroubleCard/MicTroubleCard';
-import { meterFraction } from '../components/SoundMeters/meterLevels';
+import { CAUSE_TEXT, MicTroubleCard, TROUBLE_COPY } from '../components/MicTroubleCard/MicTroubleCard';
 import { MIN_CLARITY } from '../components/OpenStringCard/openStringCheck';
+import { fallOff, meterFraction, SILENCE_DB, type MicTrouble as MicCause } from '../game/audio';
 import { OPEN_STRING_MIDI } from '../game/notation/violin';
-import { micProblemFromError, useEar, type MicProblem } from '../shell/Ear';
+import { micFailure, useEar, type MicProblem } from '../shell/Ear';
 import { parseMicTrouble, ROUTES } from '../shell/routes';
 
 const A_STRING_MIDI = OPEN_STRING_MIDI[2];
@@ -75,8 +75,9 @@ export const MicTrouble: React.FC = () => {
   const [search] = useSearchParams();
   const parsed = parseMicTrouble(search);
   // O navegador pode revelar outro problema (ex.: pediu "sem som", mas o microfone está bloqueado)
-  const [found, setProblem] = React.useState<MicProblem | null>(null);
-  const problem = found ?? parsed.problem;
+  const [found, setFound] = React.useState<{ problem: MicProblem; cause: MicCause } | null>(null);
+  const problem = found?.problem ?? parsed.problem;
+  const cause = found?.cause ?? parsed.cause;
   const [level, setLevel] = React.useState<number | null>(null);
   const [retrying, setRetrying] = React.useState(false);
   const [status, setStatus] = React.useState<string | undefined>();
@@ -89,9 +90,16 @@ export const MicTrouble: React.FC = () => {
     if (problem === 'blocked') return;
     let alive = true;
     ear.start().catch((error) => {
-      if (alive) setProblem(micProblemFromError(error));
+      if (alive) setFound(micFailure(error));
     });
-    const offLevel = ear.onLevel((db) => setLevel((prev) => (prev ?? 0) + (meterFraction(db) - (prev ?? 0)) * 0.3));
+    let last = Date.now();
+    let shown = SILENCE_DB;
+    const offLevel = ear.onLevel((db) => {
+      const now = Date.now();
+      shown = fallOff(shown, db, (now - last) / 1000);
+      last = now;
+      setLevel(meterFraction(shown));
+    });
     const offPitch = ear.onPitch((reading) => {
       // "Toque a corda Lá solta e eu continuo sozinho"
       if (problem === 'no-sound' && reading && reading.clarity >= MIN_CLARITY && reading.midi === A_STRING_MIDI) {
@@ -117,9 +125,9 @@ export const MicTrouble: React.FC = () => {
       navigate(after, { replace: true });
     } catch (error) {
       setRetrying(false);
-      const next = micProblemFromError(error);
-      setStatus(next === 'blocked' ? 'Ainda bloqueado. Libere o microfone no cadeado e tente de novo.' : undefined);
-      setProblem(next);
+      const next = micFailure(error);
+      setStatus(next.cause === 'denied' ? 'Ainda bloqueado. Libere o microfone no cadeado e tente de novo.' : undefined);
+      setFound(next);
     }
   };
 
@@ -133,7 +141,7 @@ export const MicTrouble: React.FC = () => {
         <MicTroubleCard
           problem={problem}
           level={problem === 'blocked' ? null : level}
-          status={status}
+          status={status ?? (cause ? CAUSE_TEXT[cause] : undefined)}
           actions={
             <>
               <Button as={Link} to={ROUTES.mic} $variant="ghost">

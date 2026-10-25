@@ -8,15 +8,16 @@ import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
 import { OnboardTest } from './pages/OnboardTest';
 import { isOnboarded } from './services/profile';
-import { EarProvider, unwiredEar, type Ear } from './shell/Ear';
+import { EarProvider, type Ear } from './shell/Ear';
+import { createMicrophoneEar } from './shell/microphoneEar';
 import { ROUTES } from './shell/routes';
 import { createSimulatedEar } from './shell/simulatedEar';
 import { ThemeChoiceProvider } from './shell/ThemeChoice';
 
-/** Ouvido real chega na integração do ciclo 1; no desenvolvimento, ?ouvido=simulado toca as cordas sozinho. */
+/** Microfone de verdade; só no desenvolvimento, ?ouvido=simulado toca as cordas sozinho. */
 function chooseEar(): Ear {
   if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('ouvido') === 'simulado') return createSimulatedEar();
-  return unwiredEar;
+  return createMicrophoneEar();
 }
 
 /** Primeira vez no aparelho: onboarding. Depois, a tela de teste até a Principal existir. */
