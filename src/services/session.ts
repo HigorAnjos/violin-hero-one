@@ -4,7 +4,7 @@ export type SessionState =
   | { status: 'offline' }
   | { status: 'signed-in'; userId: string; anonymous: boolean };
 
-type AuthClient = Pick<SupabaseClient['auth'], 'getSession' | 'signInAnonymously'>;
+export type AuthClient = Pick<SupabaseClient['auth'], 'getSession' | 'signInAnonymously'>;
 
 /**
  * Todo jogador é um usuário do Supabase desde o primeiro toque: sem sessão salva, entra como

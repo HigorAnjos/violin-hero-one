@@ -1,14 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ensureSession } from './session';
-
-type Auth = Parameters<typeof ensureSession>[0] extends infer C ? NonNullable<C>['auth'] : never;
+import { ensureSession, type AuthClient } from './session';
 
 function fakeClient({ session = null as unknown, signIn = {} as unknown } = {}) {
   const auth = {
     getSession: vi.fn().mockResolvedValue({ data: { session }, error: null }),
     signInAnonymously: vi.fn().mockResolvedValue(signIn),
   };
-  return { auth: auth as unknown as Auth, spies: auth };
+  return { auth: auth as unknown as AuthClient, spies: auth };
 }
 
 describe('ensureSession', () => {
