@@ -50,9 +50,14 @@ const SCORES = [
 ];
 
 describe('músicas fixas do ciclo 1', () => {
-  it('parseSong aceita as 3 de content/songs', () => {
-    expect(FIXED_SONG_SOURCES).toHaveLength(3);
-    for (const raw of FIXED_SONG_SOURCES) expect(() => parseSong(raw)).not.toThrow();
+  it('as 3 saem do MusicXML de content/songs e parseSong aceita', () => {
+    expect(FIXED_SONG_SOURCES.map((f) => f.name)).toEqual(['escala-re-maior.musicxml', 'ode-a-alegria.musicxml', 'brilha-brilha-estrelinha.musicxml']);
+    for (const { song } of FIXED_SONGS) expect(parseSong(JSON.parse(JSON.stringify(song)))).toEqual(song);
+  });
+
+  it('Ode: corda solta no Mi e no Lá, como no JSON do ciclo 1', () => {
+    const strings = timeline(findFixedSong('ode-a-alegria')!.song).map((n) => 'GDAE'[n.string]).join('');
+    expect(strings).toBe('EEEEEEEEAAEEEEEEEEEEEEEAAEEEAAEEEAEEEEAEEEEEAEAEEEEEEEEAAEEEAA');
   });
 
   it('ids únicos e iguais aos da Song', () => {
