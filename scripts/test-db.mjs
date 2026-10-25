@@ -297,6 +297,22 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       await c.query('rollback to savepoint x');
       await assert.rejects(insert('easy', chartOf(id), 2), /song_charts_matches_row/);
     });
+
+    it('seed do catálogo é idempotente: a segunda rodada não muda nada e as músicas abrem por get_song', async () => {
+      const { loadCatalog, seedCatalog } = await import('./seed-songs.mjs');
+      const entries = await loadCatalog();
+      assert.ok(entries.length >= 3);
+      await seedCatalog(c, entries);
+      assert.deepEqual(await seedCatalog(c, entries), { songs: 0, song_sources: 0, song_charts: 0 });
+      const u = await newUser(c);
+      for (const { sheet, charts } of entries) {
+        for (const level of Object.keys(charts)) {
+          const { rows } = await getSong(c, u, sheet.id, level);
+          assert.equal(rows.length, 1, `${sheet.id} ${level}`);
+          assert.deepEqual(rows[0].chart, JSON.parse(JSON.stringify(charts[level])));
+        }
+      }
+    });
   });
 
   describe('funções', () => {
