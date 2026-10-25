@@ -115,8 +115,12 @@ describe('createGameSession', () => {
 
     const second = fakeAudio(0.2);
     await session.reanchor(second.audio);
+    expect(second.context.suspend).toHaveBeenCalled();
+    second.context.currentTime = 0.2;
     expect(session.now()).toBeCloseTo(21, 6);
     expect(made[0].orchestra.dispose).toHaveBeenCalled();
+    expect(made).toHaveLength(1);
+    await session.resume();
     await vi.waitFor(() => expect(made).toHaveLength(2));
     expect(made[1].startAt).toBeCloseTo(session.startAt - 20.8, 6);
     expect(session.contextNotes()[0].time).toBeCloseTo(session.engine.notes[0].time - 20.8, 6);

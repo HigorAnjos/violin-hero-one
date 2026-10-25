@@ -54,7 +54,7 @@ export interface GameSession {
   contextNotes(): EngineNote[];
   pause(): Promise<void>;
   resume(): Promise<void>;
-  /** Microfone reaberto num AudioContext novo: a hora de jogo continua de onde parou. */
+  /** Microfone reaberto num AudioContext novo: fica pausado; no resume() a hora de jogo continua de onde parou. */
   reanchor(audio: EarAudio): Promise<void>;
   destroy(): void;
 }
@@ -75,6 +75,7 @@ export function createGameSession(options: GameSessionOptions): GameSession {
   let orchestraLoading: Promise<void> | null = null;
   let destroyed = false;
   let pausedAt: number | null = null;
+  let reopened = false;
 
   const now = () => (pausedAt ?? audio.context.currentTime + offset);
   const startAt = audio.context.currentTime + LEAD_SECONDS;
@@ -151,17 +152,21 @@ export function createGameSession(options: GameSessionOptions): GameSession {
       await audio.context.resume().catch(() => undefined);
       if (pausedAt !== null) offset = pausedAt - audio.context.currentTime;
       pausedAt = null;
+      if (reopened && !destroyed) {
+        reopened = false;
+        await orchestraLoading;
+        startOrchestra();
+      }
     },
     async reanchor(next) {
-      const at = now();
+      pausedAt ??= now();
       orchestra?.dispose();
       orchestra = null;
       stopClicks();
       audio = next;
-      offset = at - audio.context.currentTime;
-      pausedAt = null;
-      await orchestraLoading;
-      if (!destroyed) startOrchestra();
+      reopened = true;
+      // A hora de jogo fica parada até o resume(): só aí o contexto novo volta a andar
+      await audio.context.suspend().catch(() => undefined);
     },
     destroy() {
       if (destroyed) return;
