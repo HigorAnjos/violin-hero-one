@@ -1,5 +1,4 @@
 import type { Level } from '../notation/song';
-import { findFixedSong } from '../notation/songs';
 import { DEFAULT_TOLERANCE_CENTS, DEFAULT_WINDOWS } from './score';
 import type { TimingWindows } from './types';
 
@@ -68,12 +67,14 @@ export interface LevelSummaryLine {
   value: string;
 }
 
-/** As linhas curtas do cartão "Você vai começar com" do OnboardLevel. */
-export function levelSummary(level: PlayerLevel): LevelSummaryLine[] {
+/**
+ * As linhas curtas do cartão "Você vai começar com" do OnboardLevel. `titleOf` dá o título da música pelo id (hoje
+ * findFixedSong; o Motor não importa o catálogo, que traz JSON no bundle e não carrega no Node do e2e).
+ */
+export function levelSummary(level: PlayerLevel, titleOf: (songId: string) => string | undefined): LevelSummaryLine[] {
   const s = LEVEL_SETTINGS[level];
-  const song = findFixedSong(s.firstSongId);
   return [
-    { label: 'Primeira música', value: song?.title ?? s.firstSongId },
+    { label: 'Primeira música', value: titleOf(s.firstSongId) ?? s.firstSongId },
     { label: 'Andamento', value: s.tempoFactor === 1 ? 'o da música' : `${Math.round(s.tempoFactor * 100)}% da música` },
     { label: 'Afinação', value: `até ${s.toleranceCents} ¢ de folga` },
     { label: 'Tempo', value: `até ${s.windows.good} ms de folga` },

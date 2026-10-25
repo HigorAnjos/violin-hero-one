@@ -54,15 +54,21 @@ describe('tabela nível do jogador → ajustes', () => {
 });
 
 describe('levelSummary', () => {
+  const titleOf = (id: string) => findFixedSong(id)?.title;
+
   it('as linhas do cartão "Você vai começar com", em pt-BR', () => {
-    expect(levelSummary('never')).toEqual([
+    expect(levelSummary('never', titleOf)).toEqual([
       { label: 'Primeira música', value: 'Escala de Ré maior' },
       { label: 'Andamento', value: '70% da música' },
       { label: 'Afinação', value: 'até 60 ¢ de folga' },
       { label: 'Tempo', value: 'até 280 ms de folga' },
       { label: 'Dificuldade', value: 'Fácil' },
     ]);
-    expect(levelSummary('some_songs')[1]).toEqual({ label: 'Andamento', value: 'o da música' });
-    expect(levelSummary('years').at(-1)).toEqual({ label: 'Dificuldade', value: 'Difícil' });
+    expect(levelSummary('some_songs', titleOf)[1]).toEqual({ label: 'Andamento', value: 'o da música' });
+    expect(levelSummary('years', titleOf).at(-1)).toEqual({ label: 'Dificuldade', value: 'Difícil' });
+  });
+
+  it('sem título conhecido, mostra o id', () => {
+    expect(levelSummary('beginner', () => undefined)[0]).toEqual({ label: 'Primeira música', value: 'brilha-brilha-estrelinha' });
   });
 });
