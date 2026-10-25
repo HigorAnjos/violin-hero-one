@@ -1,9 +1,10 @@
 import { act, renderHook, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { createFakeEar, reading } from '../../shell/fakeEar';
 import { renderScreen } from '../../shell/testing';
 import { SoundMeters } from './SoundMeters';
-import { meterFraction, noiseView, SILENCE_DB, useSoundMeters, volumeView } from './meterLevels';
+import { meterFraction, SILENCE_DB } from '../../game/audio';
+import { noiseView, useSoundMeters, volumeView } from './meterLevels';
 
 describe('medidores', () => {
   it('fração de -60 a 0 dBFS', () => {
@@ -26,21 +27,32 @@ describe('medidores', () => {
 });
 
 describe('useSoundMeters', () => {
-  it('nível com nota clara é volume; sem nota, é ruído', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('volume sobe na hora e desce devagar; ruído só conta sem nota clara', () => {
     const ear = createFakeEar();
     const { result } = renderHook(() => useSoundMeters(ear));
     act(() => {
       ear.pitch(reading(69, 0));
-      for (let i = 0; i < 30; i++) ear.level(-20);
+      ear.level(-20);
     });
-    expect(result.current.volumeDb).toBeCloseTo(-20, 0);
+    expect(result.current.volumeDb).toBe(-20);
     expect(result.current.noiseDb).toBe(SILENCE_DB);
     act(() => {
       ear.pitch(null);
-      for (let i = 0; i < 80; i++) ear.level(-55);
+      vi.advanceTimersByTime(500);
+      ear.level(-55);
+    });
+    expect(result.current.volumeDb).toBeCloseTo(-40, 0);
+    act(() => {
+      for (let i = 0; i < 80; i++) {
+        vi.advanceTimersByTime(33);
+        ear.level(-55);
+      }
     });
     expect(result.current.noiseDb).toBeCloseTo(-55, 0);
-    expect(result.current.volumeDb).toBeLessThan(-90);
+    expect(result.current.volumeDb).toBe(-55);
   });
 });
 

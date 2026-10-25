@@ -1,21 +1,13 @@
 import React from 'react';
+import { fallOff, meterFraction, SILENCE_DB } from '../../game/audio';
 import type { Ear } from '../../shell/Ear';
 import { MIN_CLARITY } from '../OpenStringCard/openStringCheck';
-
-export const SILENCE_DB = -100;
-/** Faixa útil do medidor: abaixo de -60 dBFS é silêncio para o jogo. */
-const METER_FLOOR_DB = -60;
 
 export type MeterTone = 'info' | 'warning' | 'danger';
 export interface MeterView {
   fraction: number;
   word: string;
   tone: MeterTone;
-}
-
-export function meterFraction(db: number): number {
-  if (!(db > METER_FLOOR_DB)) return 0;
-  return Math.min(1, (db - METER_FLOOR_DB) / -METER_FLOOR_DB);
 }
 
 /** Volume do violino: fraco demais o jogo não ouve; alto demais o microfone satura. */
@@ -34,23 +26,28 @@ export function noiseView(db: number): MeterView {
   return { fraction, word: 'alto', tone: 'danger' };
 }
 
-const VOLUME_SMOOTHING = 0.3;
 const NOISE_SMOOTHING = 0.1;
 
-/** Volume (com nota clara) e ruído (sem nota), suavizados, a partir do Ouvido. */
+/**
+ * Volume: o nível de entrada, que sobe na hora e desce devagar (medidor de mesa de som).
+ * Ruído: média lenta do nível só enquanto nenhuma nota clara soa.
+ */
 export function useSoundMeters(ear: Ear): { volumeDb: number; noiseDb: number } {
   const [meters, setMeters] = React.useState({ volumeDb: SILENCE_DB, noiseDb: SILENCE_DB });
   React.useEffect(() => {
     let clear = false;
+    let last = Date.now();
     const offPitch = ear.onPitch((reading) => {
       clear = reading !== null && reading.clarity >= MIN_CLARITY;
     });
     const offLevel = ear.onLevel((db) => {
-      setMeters((m) =>
-        clear
-          ? { ...m, volumeDb: m.volumeDb + (db - m.volumeDb) * VOLUME_SMOOTHING }
-          : { volumeDb: m.volumeDb + (SILENCE_DB - m.volumeDb) * VOLUME_SMOOTHING, noiseDb: m.noiseDb + (db - m.noiseDb) * NOISE_SMOOTHING }
-      );
+      const now = Date.now();
+      const dt = (now - last) / 1000;
+      last = now;
+      setMeters((m) => ({
+        volumeDb: fallOff(m.volumeDb, db, dt),
+        noiseDb: clear ? m.noiseDb : m.noiseDb + (db - m.noiseDb) * NOISE_SMOOTHING,
+      }));
     });
     return () => {
       offPitch();
