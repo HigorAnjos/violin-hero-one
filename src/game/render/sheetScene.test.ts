@@ -81,13 +81,19 @@ describe('SheetScene', () => {
   });
 
   it('nota que passou apaga; a acertada continua acesa; a errada leva a marca', () => {
-    const { s } = scene();
-    s.judge(judgment(1, 'perfect'), START + SPB);
-    s.judge(judgment(2, 'miss', 'not-played'), START + 2 * SPB + 0.25);
-    s.update(START + 3.2 * SPB);
-    expect(s.noteView(1)[0]).toMatchObject({ alpha: 1, marked: false });
-    expect(s.noteView(2)[0]).toMatchObject({ alpha: PASSED_ALPHA, marked: true });
-    expect(s.noteView(3)[0].alpha).toBe(1);
+    // a nota 1 acabou de passar inteira pela agulha e ainda não chegou à clave
+    const now = START + 2.02 * SPB;
+    const hit = scene().s;
+    hit.judge(judgment(1, 'perfect'), START + SPB);
+    hit.update(now);
+    expect(hit.noteView(1)[0].alpha).toBeGreaterThan(0.9);
+    expect(hit.noteView(1)[0].marked).toBe(false);
+    const miss = scene().s;
+    miss.judge(judgment(1, 'miss', 'not-played'), START + SPB + 0.25);
+    miss.update(now);
+    expect(miss.noteView(1)[0].alpha).toBeLessThanOrEqual(PASSED_ALPHA);
+    expect(miss.noteView(1)[0].marked).toBe(true);
+    expect(miss.noteView(2)[0].alpha).toBe(1);
   });
 
   it('acerto com motivo (tarde, baixo) também marca a nota', () => {

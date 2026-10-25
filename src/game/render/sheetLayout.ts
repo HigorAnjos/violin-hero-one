@@ -218,6 +218,26 @@ export function beatX(l: SheetLayout, distance: number): number {
   return l.needleX + distance * l.pxPerBeat;
 }
 
+/** No design a barra fica meio tempo antes da primeira nota do compasso. */
+export const BAR_LEAD_BEATS = 0.5;
+
+/**
+ * Quantos tempos antes do início de cada compasso vai a barra: meio tempo, ou o meio do vão quando a última nota do
+ * compasso anterior começa mais perto (colcheia no fim), para a barra não cair em cima dela.
+ */
+export function barOffsets(bars: readonly number[], noteStarts: ArrayLike<number>): Float64Array {
+  return Float64Array.from(bars, (start) => {
+    let previous = -Infinity;
+    for (let i = 0; i < noteStarts.length && noteStarts[i] < start; i++) previous = noteStarts[i];
+    return Math.min(BAR_LEAD_BEATS, (start - previous) / 2);
+  });
+}
+
+/** As notas somem ao entrar sob a clave: a cabeça começa a apagar um espaço e meio antes da borda. */
+export function clefFade(l: SheetLayout, x: number): number {
+  return Math.max(0, Math.min(1, (x - l.head.rx - l.clefWidth) / (l.space * 1.5)));
+}
+
 /** Julgamento e nota se encontram por noteIndex; a cópia certa (a volta do laço) é a que toca perto do julgamento. */
 export const MARK_WINDOW_SECONDS = 0.6;
 

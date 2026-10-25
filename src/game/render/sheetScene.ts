@@ -12,6 +12,8 @@ import {
   beatWindows,
   beatX,
   BOTTOM_STEP,
+  barOffsets,
+  clefFade,
   markApplies,
   noteAlpha,
   sheetLayout,
@@ -94,6 +96,7 @@ export class SheetScene extends Container {
   private readonly notes: readonly StaffNote[];
   private readonly at: Float64Array;
   private readonly bars: readonly number[];
+  private readonly barOffsets: Float64Array;
   private readonly fifths: number;
   /** A nota de ataque de cada nota (a ligada aponta para a que ela continua) e a duração somada das ligadas. */
   private readonly attackOf: Int32Array;
@@ -156,6 +159,7 @@ export class SheetScene extends Container {
     const staff = staffLayout(song);
     this.notes = staff.notes;
     this.bars = staff.bars;
+    this.barOffsets = barOffsets(this.bars, this.notes.map((n) => n.at));
     this.fifths = staff.fifths;
     this.at = Float64Array.from(this.notes, (n) => n.at);
     this.attackOf = new Int32Array(this.notes.length);
@@ -331,7 +335,7 @@ export class SheetScene extends Container {
         const state = markOn ? this.markState[attack] : 0;
         slot.root.visible = true;
         slot.root.x = beatX(l, distance);
-        slot.root.alpha = noteAlpha(distance, this.notes[i].beats, state === HIT);
+        slot.root.alpha = noteAlpha(distance, this.notes[i].beats, state === HIT) * clefFade(l, slot.root.x);
         const mark = markOn && attack === i ? this.markTexture[attack] : null;
         slot.mark.visible = mark !== null;
         if (mark) {
@@ -345,7 +349,7 @@ export class SheetScene extends Container {
       }
       for (let m = lowerBound(this.bars, Math.max(win.fromBeat, 1e-9)); m < this.bars.length && this.bars[m] < win.toBeat && bars < this.barSlots.length; m++) {
         const bar = this.barSlots[bars++];
-        const x = beatX(l, this.bars[m] + win.shift - 0.5);
+        const x = beatX(l, this.bars[m] + win.shift - this.barOffsets[m]);
         bar.line.visible = bar.number.visible = true;
         bar.line.x = x;
         bar.number.x = x + l.space * 0.35;

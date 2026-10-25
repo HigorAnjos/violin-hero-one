@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { FIXED_SONGS } from '../notation/songs';
+import { keySignature, staffLayout } from './staff';
 import {
+  barOffsets,
+  clefFade,
   beatAt,
   beatWindows,
   beatX,
@@ -104,6 +108,41 @@ describe('medidas da faixa', () => {
     expect(four.clefWidth).toBeGreaterThan(two.clefWidth);
     expect(beatX(two, two.ahead)).toBeGreaterThan(1000);
     expect(beatX(two, -two.behind)).toBeLessThan(two.clefWidth);
+  });
+
+  it('barra meio tempo antes do compasso, ou no meio do vão quando a nota anterior está mais perto', () => {
+    expect(Array.from(barOffsets([0, 4, 8], [0, 1, 2, 3, 4, 5, 6, 7.5, 8]))).toEqual([0.5, 0.5, 0.25]);
+    expect(Array.from(barOffsets([0, 4], [0, 3.75, 4]))).toEqual([0.5, 0.125]);
+  });
+
+  it.each([
+    ['tela 5b', 1198, 280],
+    ['faixa compacta', 764, 112],
+  ])('%s: nenhuma cabeça nem haste encosta na barra de compasso, em nenhuma música fixa', (_name, width, height) => {
+    for (const { song } of FIXED_SONGS) {
+      const staff = staffLayout(song);
+      const l = sheetLayout(width, height, keySignature(staff.fifths).length);
+      const offsets = barOffsets(staff.bars, staff.notes.map((n) => n.at));
+      const gaps: number[] = [];
+      staff.bars.forEach((start, m) => {
+        if (m === 0) return;
+        const bar = (start - offsets[m]) * l.pxPerBeat;
+        for (const n of staff.notes) {
+          const x = n.at * l.pxPerBeat - bar;
+          const stem = x + (n.stemUp ? 1 : -1) * l.head.rx * 0.9;
+          gaps.push(Math.abs(x) - l.head.rx);
+          if (n.stem) gaps.push(Math.abs(stem));
+        }
+      });
+      expect(Math.min(...gaps), song.id).toBeGreaterThanOrEqual(l.space * 0.5);
+    }
+  });
+
+  it('a nota apaga ao entrar sob a clave, e não antes', () => {
+    const l = sheetLayout(1198, 280, 2);
+    expect(clefFade(l, l.needleX)).toBe(1);
+    expect(clefFade(l, l.clefWidth + l.head.rx)).toBe(0);
+    expect(clefFade(l, l.clefWidth + l.head.rx + l.space * 0.75)).toBeCloseTo(0.5);
   });
 
   it('nota passada apaga, a não ser que tenha sido acertada', () => {
