@@ -6,6 +6,8 @@ const baseURL = `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: './e2e',
+  // Grava os WAV do microfone falso (e2e/audio/synthetic/) antes dos testes
+  globalSetup: './e2e/global-setup.ts',
   timeout: 30000,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
