@@ -8,6 +8,8 @@ dist
 playwright-report
 test-results
 e2e/screenshots
+e2e/audio/synthetic
+e2e/audio/aligned
 supabase/.temp
 tsconfig.tsbuildinfo
 # Config local do canvas do Maestri (papéis, floors): não é do produto

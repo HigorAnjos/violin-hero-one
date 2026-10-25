@@ -1,7 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Cada worktree pode subir a própria prévia (E2E_PORT): com a porta fixa, um floor reaproveitaria o build de outro
+const port = Number(process.env.E2E_PORT) || 4173;
+const baseURL = `http://localhost:${port}`;
+
 export default defineConfig({
   testDir: './e2e',
+  // Grava os WAV do microfone falso (e2e/audio/synthetic/) antes dos testes
+  globalSetup: './e2e/global-setup.ts',
   timeout: 30000,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -9,7 +15,7 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -29,10 +35,11 @@ export default defineConfig({
       },
     },
   ],
-  // Testa o artefato de produção; sem SUPABASE_* o app fica Offline, como na prévia sem backend
+  // Testa o artefato de build; sem SUPABASE_* o app fica Offline, como na prévia sem backend
   webServer: {
-    command: 'npm run build && npm run preview -- --port 4173 --strictPort',
-    url: 'http://localhost:4173',
+    // --mode e2e liga as ferramentas de conferência (?simular, ?ouvido=simulado, ?musica); o build de produção não as tem
+    command: `npm run build -- --mode e2e && npm run preview -- --port ${port} --strictPort`,
+    url: baseURL,
     env: { SUPABASE_URL: '', SUPABASE_ANON_KEY: '' },
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

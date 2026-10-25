@@ -1,10 +1,16 @@
 import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/teste');
 });
 
-test('tela inicial mostra o título Violin Hero', async ({ page }) => {
+test('primeira vez: a raiz leva ao onboarding', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/primeira-vez\/nivel$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Quanto você já toca?');
+});
+
+test('tela de teste mostra o título Violin Hero', async ({ page }) => {
   await expect(page).toHaveTitle('Violin Hero');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Violin\s*Hero/);
 });

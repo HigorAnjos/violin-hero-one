@@ -1,0 +1,47 @@
+{
+  "formatVersion": 1,
+  "id": "escala-re-maior",
+  "title": "Escala de Ré maior",
+  "composer": "",
+  "key": "D major",
+  "bpm": 60,
+  "timeSignature": { "beats": 4, "unit": 4 },
+  "level": "easy",
+  "measures": [
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 62, "string": 1, "finger": 0 },
+        { "beat": 1, "beats": 1, "midi": 64, "string": 1, "finger": 1 },
+        { "beat": 2, "beats": 1, "midi": 66, "string": 1, "finger": 2 },
+        { "beat": 3, "beats": 1, "midi": 67, "string": 1, "finger": 3 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 69, "string": 2, "finger": 0 },
+        { "beat": 1, "beats": 1, "midi": 71, "string": 2, "finger": 1 },
+        { "beat": 2, "beats": 1, "midi": 73, "string": 2, "finger": 2 },
+        { "beat": 3, "beats": 1, "midi": 74, "string": 2, "finger": 3 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 73, "string": 2, "finger": 2 },
+        { "beat": 1, "beats": 1, "midi": 71, "string": 2, "finger": 1 },
+        { "beat": 2, "beats": 1, "midi": 69, "string": 2, "finger": 0 },
+        { "beat": 3, "beats": 1, "midi": 67, "string": 1, "finger": 3 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 66, "string": 1, "finger": 2 },
+        { "beat": 1, "beats": 1, "midi": 64, "string": 1, "finger": 1 },
+        { "beat": 2, "beats": 1, "midi": 62, "string": 1, "finger": 0 }
+      ]
+    }
+  ]
+}
