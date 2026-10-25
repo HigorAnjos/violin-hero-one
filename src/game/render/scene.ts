@@ -31,10 +31,12 @@ export interface SceneOptions {
 
 // Texturas assadas uma vez neste tamanho e escaladas no quadro: o resize não refaz textura.
 const GEM_W = 160;
-const GEM_H = 56;
+const GEM_H = 64;
 const RING_R = 64;
 const LETTER_PX = 64;
 const LABEL_PX = 96;
+// A textura do texto inclui a entrelinha: a letra visível fica com ~75% da altura da nota
+const LETTER_ON_NOTE = 1.15;
 
 const HIT = 1;
 const MISSED = 2;
@@ -135,7 +137,7 @@ export class TrackScene extends Container {
       const tail = new Sprite(Texture.WHITE);
       const gem = new Sprite();
       const letter = new Sprite();
-      tail.anchor.set(0.5, 0);
+      tail.anchor.set(0.5, 1);
       gem.anchor.set(0.5);
       letter.anchor.set(0.5);
       tail.visible = gem.visible = letter.visible = false;
@@ -254,11 +256,14 @@ export class TrackScene extends Container {
 
       chip.tail.visible = showTail;
       if (showTail) {
-        const mid = (tailFrom + endDepth) / 2;
-        const top = projectY(l, endDepth);
-        chip.tail.position.set(projectX(l, x, mid), top);
-        chip.tail.width = l.tailWidth * depthScale(l, mid);
-        chip.tail.height = projectY(l, tailFrom) - top;
+        // A trilha é inclinada na tela: a cauda vai da base ao topo seguindo a linha da corda
+        const bx = projectX(l, x, tailFrom);
+        const by = projectY(l, tailFrom);
+        const dx = projectX(l, x, endDepth) - bx;
+        const dy = projectY(l, endDepth) - by;
+        chip.tail.position.set(bx, by);
+        chip.tail.rotation = Math.atan2(dx, -dy);
+        chip.tail.scale.set(l.tailWidth * depthScale(l, (tailFrom + endDepth) / 2), Math.hypot(dx, dy));
         chip.tail.tint = this.palette.lanes[lane].main;
         chip.tail.alpha = TAIL_ALPHA * fade * entryAlpha(l, Math.min(d, l.enterDepth));
       }
@@ -275,7 +280,7 @@ export class TrackScene extends Container {
         chip.gem.alpha = alpha;
         chip.letter.texture = this.noteLetterTextures[lane];
         chip.letter.position.set(px, py);
-        chip.letter.scale.set((l.note.height * scale * 0.8) / LETTER_PX);
+        chip.letter.scale.set((l.note.height * scale * LETTER_ON_NOTE) / LETTER_PX);
         chip.letter.alpha = alpha;
       }
     }
@@ -357,7 +362,7 @@ export class TrackScene extends Container {
         .roundRect(stroke / 2, stroke / 2, GEM_W - stroke, GEM_H - stroke, r)
         .fill(fill)
         .stroke({ color: this.palette.hitLine, width: stroke })
-        .roundRect(GEM_W * 0.15, GEM_H * 0.18, GEM_W * 0.48, GEM_H * 0.17, GEM_H * 0.09)
+        .roundRect(GEM_W * 0.1, GEM_H * 0.2, GEM_W * 0.18, GEM_H * 0.15, GEM_H * 0.08)
         .fill({ color: shine, alpha: 0.7 }),
     );
   }

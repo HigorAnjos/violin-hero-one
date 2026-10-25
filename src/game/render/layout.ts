@@ -73,8 +73,8 @@ export function trackLayout(width: number, height: number): TrackLayout {
   const sin = Math.sin(TILT);
   const planeWidth = Math.min(width * 0.78, height * 1.1);
   const laneWidth = planeWidth / 4;
-  const noteWidth = laneWidth * 0.64;
-  const noteHeight = noteWidth * 0.35;
+  const noteWidth = laneWidth * 0.72;
+  const noteHeight = noteWidth * 0.4;
   const hitDepth = height * 0.345;
   const farDepth = (planeBottom * perspective) / (cos * perspective - originY * sin);
   const enterDepth = farDepth - noteHeight;
