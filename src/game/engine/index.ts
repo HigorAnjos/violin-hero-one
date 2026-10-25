@@ -1,5 +1,5 @@
 export * from './types';
-export { createEngine, scheduleNotes, type EngineOptions } from './engine';
+export { createEngine, scheduleNotes, type EngineOptions, type MeasureRange } from './engine';
 export { DETECTION_LAG_SECONDS, STABLE_READINGS, WRONG_NOTE_CENTS, centsBetween } from './judge';
 export {
   DEFAULT_TOLERANCE_CENTS,

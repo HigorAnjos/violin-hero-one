@@ -5,7 +5,7 @@ import { midiToFrequency } from '../notation/violin';
 import { ENERGY_START } from './energy';
 import { createEngine, scheduleNotes, type EngineOptions } from './engine';
 import { DETECTION_LAG_SECONDS } from './judge';
-import { A4, ODE, reading, scaleSong } from './testing';
+import { A4, ODE, n, reading, scaleSong } from './testing';
 import type { EngineEvent, NoteJudgment } from './types';
 
 const START = 10;
@@ -41,6 +41,36 @@ describe('scheduleNotes', () => {
     const slow = scheduleNotes(ODE, 0, 50, 415);
     expect(slow[1].time).toBeCloseTo(1.2, 9);
     expect(slow[0].frequency).toBeCloseTo(midiToFrequency(78, 415), 9);
+  });
+  it('trecho A–B: só as notas dos compassos pedidos, com o primeiro tempo do trecho em startAt', () => {
+    const notes = scheduleNotes(ODE, START, ODE.bpm, A4, { from: 1, to: 3 });
+    expect(notes).toHaveLength(8);
+    expect(notes[0]).toMatchObject({ index: 0, noteIndex: 4, measure: 1, midi: 81 });
+    expect(notes[0].time).toBeCloseTo(START, 9);
+    expect(notes[7]).toMatchObject({ index: 7, noteIndex: 11, measure: 2 });
+    expect(notes[7].time).toBeCloseTo(START + 7 * 0.6, 9);
+  });
+
+  it('trecho que abre numa nota ligada: ela vira ataque, com a própria duração', () => {
+    const song = { ...ODE, measures: [{ beats: 4, notes: [n(0, 4, 78, 3, 1)] }, { beats: 4, notes: [n(0, 2, 78, 3, 1, true), n(2, 2, 76, 3, 0)] }] };
+    expect(scheduleNotes(song, START, 60, A4)).toHaveLength(2);
+    const notes = scheduleNotes(song, START, 60, A4, { from: 1, to: 2 });
+    expect(notes.map((x) => [x.noteIndex, x.time - START, x.duration])).toEqual([
+      [1, 0, 2],
+      [2, 2, 2],
+    ]);
+  });
+});
+
+describe('trecho e andamento da prática', () => {
+  it('o motor julga só o trecho e termina nele, no andamento dado', () => {
+    const { engine, events, play } = setup({ section: { from: 3, to: 4 }, bpm: ODE.bpm * 0.5 });
+    expect(engine.notes).toHaveLength(3);
+    expect(engine.notes[1].time - engine.notes[0].time).toBeCloseTo(1.5 * 1.2, 9);
+    [0, 1, 2].forEach((i) => play(i));
+    const done = events.find((e) => e.type === 'done');
+    expect(done && done.type === 'done' && done.result.counts.perfect).toBe(3);
+    expect(engine.status).toBe('finished');
   });
 });
 
