@@ -40,7 +40,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const track = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
+const track = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), setNotes: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
 
 function setup(search = '', state: PlayState = { song: FAST, mode: 'Arcade' }) {
   const ear: FakeEar = createFakeEar();

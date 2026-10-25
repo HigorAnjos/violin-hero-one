@@ -92,6 +92,33 @@ describe('TrackScene', () => {
     expect(s.feedbackVisible()).toBe(false);
   });
 
+  it('setNotes: a volta seguinte entra na pista, e as notas que ficam guardam o acerto', () => {
+    const { s } = scene();
+    const now = notes[0].time + 0.02;
+    s.judge(judgment(notes[0], 'perfect'), now);
+    const lap = notes.slice(0, 4);
+    const next = lap.map((n, i) => ({ ...n, index: 4 + i, time: n.time + 4 }));
+    s.setNotes([...lap, ...next]);
+    s.update(now);
+    const fresh = scene().s;
+    fresh.setNotes([...lap, ...next]);
+    fresh.update(now);
+    expect(s.visibleNotes()).toBe(fresh.visibleNotes() - 1);
+    s.update(next[0].time - 0.5);
+    expect(s.visibleNotes()).toBeGreaterThan(0);
+    s.setNotes(lap);
+    s.update(next[0].time - 0.5);
+    expect(s.visibleNotes()).toBe(0);
+  });
+
+  it('setNotes com mais notas na janela do que o pool aumenta o pool', () => {
+    const { s } = scene();
+    const dense = Array.from({ length: 200 }, (_, i) => ({ ...notes[0], index: i, time: START + i * 0.01 }));
+    s.setNotes(dense);
+    s.update(START);
+    expect(s.visibleNotes()).toBeGreaterThan(100);
+  });
+
   it('ignora julgamento de nota que não existe', () => {
     const { s } = scene();
     expect(() => s.judge({ ...judgment(notes[0], 'perfect'), index: 9999 })).not.toThrow();
