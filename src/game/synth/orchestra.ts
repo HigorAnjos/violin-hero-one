@@ -278,10 +278,12 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
       const audible = new Set(active);
       for (const section of SECTION_ORDER) if ((fadingUntil[section] ?? -Infinity) > t) audible.add(section);
       const around: TimedNote[] = [];
-      for (const span of timeline.spans(t - lookback, t)) {
-        // toBeat é o próprio t: a nota que começa exatamente em t já soa.
-        for (const note of between(beatNotes, span.fromBeat, span.toBeat, true)) around.push(placeNote(note, span));
-      }
+      const spans = timeline.spans(t - lookback, t);
+      spans.forEach((span, i) => {
+        // No último trecho toBeat é o próprio t, e a nota que começa em t já soa; nos outros é o fim do trecho (o salto).
+        const last = i === spans.length - 1;
+        for (const note of between(beatNotes, span.fromBeat, span.toBeat, last)) around.push(placeNote(note, span));
+      });
       around.sort((a, b) => a.time - b.time);
       return [...new Set(notesSoundingAt(around, t, audible).map((note) => note.midi))].sort((a, b) => a - b);
     },
