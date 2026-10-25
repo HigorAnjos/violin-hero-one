@@ -113,6 +113,14 @@ describe('setTempo', () => {
   it.each([0.49, 1.01, 0, -1, NaN, Infinity])('fator %s fora de 0,5–1: recusado', (factor) => {
     const line = createTimeline(song, { startAt: START_AT });
     expect(() => line.setTempo(factor, START_AT)).toThrow(RangeError);
+    expect(() => createTimeline(song, { startAt: START_AT, factor })).toThrow(RangeError);
+  });
+
+  it('fator inicial: a música inteira já no andamento reduzido, e o fator de setTempo segue relativo ao da partida', () => {
+    const line = createTimeline(song, { startAt: START_AT, factor: 0.5 });
+    expect(line.segments(START_AT + 10)).toEqual([expect.objectContaining({ time: START_AT, beat: 0, spb: 2 * spb })]);
+    line.setTempo(1, START_AT + 10);
+    expect(line.segments(START_AT + 20).map((s) => s.spb)).toEqual([2 * spb, spb]);
   });
 });
 
