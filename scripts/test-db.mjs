@@ -279,6 +279,29 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       await denied(as(c, dono, `delete from ${S}.song_charts where song_id = $1`, [id]));
     });
 
+    it('duas músicas do catálogo NÃO empatam na estante (checado no fim da transação)', async () => {
+      const a = await serverSong(c);
+      const b = await serverSong(c);
+      await c.query(`update ${S}.songs set catalog_position = 900 where id = any($1)`, [[a, b]]);
+      await assert.rejects(c.query('set constraints all immediate'), /songs_catalog_position_key/);
+    });
+
+    it('seed reordena a estante e tira dela a música que saiu dos arquivos', async () => {
+      const { loadCatalog, seedCatalog } = await import('./seed-songs.mjs');
+      const entries = await loadCatalog();
+      // Checa a unicidade como no commit e volta ao modo adiado do seed
+      const commitCheck = () => c.query('set constraints all immediate; set constraints all deferred');
+      await seedCatalog(c, [...entries].reverse());
+      await commitCheck();
+      const [fora, ...ficam] = entries;
+      await seedCatalog(c, ficam);
+      await commitCheck();
+      const { rows } = await c.query(
+        `select id, catalog_position from ${S}.songs where origin = 'catalog' and id = any($1) order by catalog_position nulls first`,
+        [entries.map((e) => e.sheet.id)]);
+      assert.deepEqual(rows.map((r) => [r.id, r.catalog_position]), [[fora.sheet.id, null], ...ficam.map((e, i) => [e.sheet.id, i])]);
+    });
+
     it('sem login (anon) NÃO lê, NÃO escreve e NÃO chama get_song', async () => {
       const id = await serverSong(c);
       for (const table of ['songs', 'song_charts', 'song_sources']) await denied(as(c, null, `select * from ${S}.${table}`));

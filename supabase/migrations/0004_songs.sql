@@ -21,8 +21,9 @@ create table violinhero.songs (
   origin           violinhero.song_origin not null,
   owner_id         uuid references auth.users on delete cascade default auth.uid(),
   visibility       violinhero.song_visibility not null default 'private',
-  -- Ordem na estante do catálogo (CATALOG_ORDER do conversor); nula fora do catálogo
-  catalog_position int,
+  -- Ordem na estante do catálogo (CATALOG_ORDER do conversor); nula fora do catálogo. Única só no
+  -- commit: o seed reordena a estante linha a linha dentro de uma transação.
+  catalog_position int check (catalog_position >= 0),
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now(),
   -- Catálogo é público e sem dono; o resto tem dono e é privado (turma entra no ciclo 5)
@@ -30,11 +31,11 @@ create table violinhero.songs (
     case when origin = 'catalog'
       then owner_id is null and visibility = 'public'
       else owner_id is not null and visibility = 'private' and catalog_position is null
-    end)
+    end),
+  constraint songs_catalog_position_key unique (catalog_position) deferrable initially deferred
 );
 
 create index songs_owner_idx on violinhero.songs (owner_id) where owner_id is not null;
-create index songs_catalog_idx on violinhero.songs (catalog_position) where origin = 'catalog';
 
 create trigger songs_touch before update on violinhero.songs
   for each row execute function violinhero.touch_updated_at();

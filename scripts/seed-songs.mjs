@@ -62,6 +62,12 @@ export async function loadCatalog(dir = SONGS_DIR) {
  */
 export async function seedCatalog(client, entries) {
   const changed = { songs: 0, song_sources: 0, song_charts: 0 };
+  // Música que saiu de content/songs sai da estante, mas a linha fica (partidas e recordes apontam para ela)
+  const shelved = await client.query(
+    `update violinhero.songs set catalog_position = null
+      where origin = 'catalog' and catalog_position is not null and not (id = any($1))`,
+    [entries.map((e) => e.sheet.id)]);
+  changed.songs += shelved.rowCount;
   for (const [position, { sheet, source, charts }] of entries.entries()) {
     const song = await client.query(
       `insert into violinhero.songs
