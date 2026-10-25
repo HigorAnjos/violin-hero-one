@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { beforeAll, describe, it, expect } from 'vitest';
 import { playedResult } from '../components/ResultSummary/testing';
 import { ODE } from '../game/engine/testing';
 import { ROUTES } from '../shell/routes';
@@ -7,6 +7,9 @@ import { renderScreen } from '../shell/testing';
 import { BadgeEarned } from './BadgeEarned';
 
 describe('BadgeEarned', () => {
+  // A partida simulada sai do tempo dos testes: sob carga, simular e renderizar juntos passa de 5 s
+  beforeAll(() => void playedResult());
+
   it('mostra o selo novo, os outros ganhos e leva ao resultado', () => {
     const result = { ...playedResult(), badges: ['primeira-musica', 'sem-erros'] as const };
     renderScreen(<BadgeEarned />, { path: ROUTES.badge, route: ROUTES.badge, state: { song: ODE, result: { ...result, badges: [...result.badges] } } });

@@ -6,6 +6,9 @@ import { AppRouter } from './AppRouter';
 import { markOnboarded } from './services/profile';
 import { createFakeEar } from './shell/fakeEar';
 
+/** Fluxos que montam várias telas do app inteiro: com a suíte toda em paralelo, 5 s não bastam. */
+const APP_FLOW_TIMEOUT_MS = 15000;
+
 const renderApp = (path = '/') => {
   window.history.replaceState(null, '', path);
   const ear = createFakeEar();
@@ -39,7 +42,7 @@ describe('AppRouter', () => {
     await userEvent.click(screen.getByRole('link', { name: 'Pular por agora' }));
     expect(await screen.findByRole('heading', { name: /Violin/ })).toBeInTheDocument();
     expect(ear.open).toBe(false);
-  });
+  }, APP_FLOW_TIMEOUT_MS);
 
   it('caminho desconhecido volta para a raiz', async () => {
     renderApp('/nao-existe');
@@ -56,5 +59,5 @@ describe('AppRouter', () => {
     expect(await screen.findByRole('alertdialog', { name: 'Não estou te ouvindo' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Continuar' }));
     expect(await screen.findByRole('heading', { name: 'Toque cada corda solta com o arco' })).toBeInTheDocument();
-  });
+  }, APP_FLOW_TIMEOUT_MS);
 });
