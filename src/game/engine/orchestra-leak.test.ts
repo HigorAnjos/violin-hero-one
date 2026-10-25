@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { HighPass, PitchTracker } from '../audio/pitch/tracker';
 import { tone } from '../audio/testing/synth';
-import type { PitchReading } from '../audio/types';
 import type { Song } from '../notation/song';
 import { findFixedSong } from '../notation/songs';
 import { renderOrchestra } from '../synth/render';
-import { notesSoundingAt, scheduleOrchestra, type TimedNote } from '../synth/schedule';
+import { notesSoundingAt, scheduleOrchestra } from '../synth/schedule';
 import { createEngine, scheduleNotes } from './engine';
-import type { EngineNote, GameResult } from './types';
+import type { GameResult } from './types';
 
 const A4 = 442;
 const SAMPLE_RATE = 48_000;
@@ -22,36 +21,17 @@ const SONGS = ['escala-re-maior', 'brilha-brilha-estrelinha', 'ode-a-alegria'] a
  * por cima dele.
  */
 const GATE_DB = -12;
-/** Harmônicos 1 a 4 de uma nota da orquestra, em semitons acima dela: o que o alto-falante distorcendo põe no ar. */
-const HARMONIC_STEPS = [0, 12, 19, 24];
 
-interface Mask {
-  orchestra: readonly TimedNote[];
-  expected: readonly EngineNote[];
-}
+type Sounding = (time: number) => readonly number[];
 
-/**
- * Provisório: cópia do descarte do floor ciclo1-mascara; ele troca isto pelo descarte real do Ouvido. Some a leitura que
- * bate com uma nota que a orquestra toca agora (ou um harmônico dela) e não é a nota esperada.
- */
-function masked(reading: PitchReading, mask: Mask): boolean {
-  const expected = mask.expected.some(
-    (note) => note.midi === reading.midi && reading.time >= note.time - 0.2 && reading.time < note.time + note.duration + 0.2,
-  );
-  if (expected) return false;
-  return notesSoundingAt(mask.orchestra, reading.time).some((note) =>
-    HARMONIC_STEPS.some((step) => Math.abs(note.midi + step - reading.midi) === 0),
-  );
-}
-
-function judge(signal: Float32Array, song: Song, mask?: Mask): GameResult {
-  const engine = createEngine({ song, startAt: LEAD, a4: A4 });
+function judge(signal: Float32Array, song: Song, sounding?: Sounding): GameResult {
+  const engine = createEngine({ song, startAt: LEAD, a4: A4, sounding });
   const tracker = new PitchTracker({ sampleRate: SAMPLE_RATE, a4: A4 });
   const stream = tracker.createWindow();
   for (let start = 0; start < signal.length && engine.status === 'playing'; start += BLOCK) {
     stream.push(signal.subarray(start, start + BLOCK), (window, end) => {
       const reading = tracker.analyse(window, (start + end) / SAMPLE_RATE);
-      if (reading === undefined || (reading && mask && masked(reading, mask))) return;
+      if (reading === undefined) return;
       engine.push(reading);
     });
     engine.advance((start + BLOCK) / SAMPLE_RATE);
@@ -92,8 +72,10 @@ function leak(song: Song, through: (signal: Float32Array, peak: number) => Float
   return { played: through(orchestra(song), peak), reference: through(reference, peak) };
 }
 
-function maskFor(song: Song): Mask {
-  return { orchestra: scheduleOrchestra(song, { startAt: LEAD, a4: A4 }), expected: scheduleNotes(song, LEAD, song.bpm, A4) };
+/** O Orchestra.soundingAt da partida, com todos os naipes, sem precisar de AudioContext. */
+function soundingFor(song: Song): Sounding {
+  const notes = scheduleOrchestra(song, { startAt: LEAD, a4: A4 });
+  return (time) => notesSoundingAt(notes, time).map((note) => note.midi);
 }
 
 function rms(signal: Float32Array): number {
@@ -123,26 +105,26 @@ const verdicts = (result: GameResult) => result.judgments.map((j) => [j.judgment
 describe('violino e orquestra por um alto-falante de celular simulado', { timeout: 300_000 }, () => {
   describe.each(SONGS)('%s', (id) => {
     const song = findFixedSong(id)!.song;
-    const mask = maskFor(song);
+    const sounding = soundingFor(song);
     const speaker = leak(song, (signal, peak) => phoneSpeaker(signal, peak));
 
     it(`orquestra a ${GATE_DB} dB do violino: precisão no máximo 2 pontos abaixo da precisão sem orquestra`, () => {
       const lead = violin(song);
       const without = judge(lead, song).accuracy;
-      expect(judge(mix(lead, speaker, GATE_DB), song, mask).accuracy).toBeGreaterThanOrEqual(without - 2);
+      expect(judge(mix(lead, speaker, GATE_DB), song, sounding).accuracy).toBeGreaterThanOrEqual(without - 2);
     });
 
     it(`com 2 notas erradas a ${GATE_DB} dB: a orquestra não as transforma em acerto, e a precisão segue a de sem orquestra`, () => {
       const wrong = [1, 4];
       const lead = violin(song, wrong);
       const without = judge(lead, song);
-      const withOrchestra = judge(mix(lead, speaker, GATE_DB), song, mask);
+      const withOrchestra = judge(mix(lead, speaker, GATE_DB), song, sounding);
       for (const index of wrong) expect(withOrchestra.judgments[index].judgment).toBe('miss');
       expect(withOrchestra.accuracy).toBeGreaterThanOrEqual(without.accuracy - 2);
     });
 
     it('a orquestra sozinha, pelo alto-falante no máximo: nenhuma nota pontua', () => {
-      expect(hits(judge(speaker.played, song, mask))).toBe(0);
+      expect(hits(judge(speaker.played, song, sounding))).toBe(0);
     });
   });
 });
