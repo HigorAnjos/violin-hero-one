@@ -187,7 +187,7 @@ export function sheetLayout(width: number, height: number, keyAccidentals: numbe
     line: Math.max(1, space * 0.09),
     ledgerHalf: space * 1.2,
     fingerY,
-    fingerSize: space,
+    fingerSize: compact ? space * 1.3 : space,
     nameY: fingerY + space * 1.15,
     nameSize: space * 0.72,
     numberY: middleY - space * 3,

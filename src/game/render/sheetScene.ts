@@ -46,7 +46,7 @@ const HOLD_FILL_ALPHA = 0.55;
 const ZONE_ALPHA = 0.08;
 const STAFF_ALPHA = 0.7;
 /** Ajuste ótico dos glifos da Noto Music: centro da caixa de texto acima do ponto da pauta, em espaços. */
-const CLEF_LIFT = 0.15;
+const CLEF_LIFT = -0.25;
 const ACCIDENTAL_LIFT = 0.05;
 
 const ISSUE_GLYPH: Record<Issue, string> = {
@@ -177,7 +177,7 @@ export class SheetScene extends Container {
     this.dotTexture = this.bake(new Graphics().circle(REF * 0.16, REF * 0.16, REF * 0.16).fill(p.ink));
     this.accidentalTextures = new Map((['♯', '♭', '♮'] as const).map((a) => [a, this.bakeText(a, { fontFamily: MUSIC_FONT, fontSize: REF * 1.78, fill: p.ink })]));
     this.fingerTextures = p.strings.map((c) => [0, 1, 2, 3, 4].map((f) => this.bakeText(String(f), { fontFamily: ui, fontWeight: '700', fontSize: REF, fill: c })));
-    this.letterTextures = p.strings.map((c, i) => this.bakeText(STRING_LETTERS[i], { fontFamily: display, fontWeight: '800', fontSize: REF * 0.8, fill: c }));
+    this.letterTextures = p.strings.map((c, i) => this.bakeText(STRING_LETTERS[i], { fontFamily: display, fontWeight: '800', fontSize: REF * 1.05, fill: c }));
     const names = [...new Set(this.notes.map((n) => n.name))];
     this.nameTextures = new Map(names.map((name) => [name, this.bakeText(name, { fontFamily: ui, fontSize: REF * 0.72, fill: p.line })]));
     this.numberTextures = this.bars.map((_, m) => this.bakeText(String(m + 1), { fontFamily: ui, fontSize: REF * 0.78, fill: p.line }));
@@ -455,12 +455,13 @@ export class SheetScene extends Container {
     slot.finger.visible = slot.letter.visible = labelled;
     slot.name.visible = labelled && !l.compact;
     if (labelled) {
+      const label = l.fingerSize / REF;
       slot.finger.texture = this.fingerTextures[n.string][n.finger];
-      slot.finger.scale.set(k);
-      slot.finger.position.set(-l.space * 0.3, l.fingerY);
+      slot.finger.scale.set(label);
+      slot.finger.position.set(-l.fingerSize * 0.3, l.fingerY);
       slot.letter.texture = this.letterTextures[n.string];
-      slot.letter.scale.set(k);
-      slot.letter.position.set(l.space * 0.45, l.fingerY + l.space * 0.08);
+      slot.letter.scale.set(label);
+      slot.letter.position.set(l.fingerSize * 0.5, l.fingerY);
       slot.name.texture = this.nameTextures.get(n.name)!;
       slot.name.scale.set(k);
       slot.name.position.set(0, l.nameY);
