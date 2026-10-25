@@ -60,6 +60,12 @@ export function createSimulatedEar(): RehearsalEar {
       if (timer) return;
       const context = new AudioContext({ latencyHint: 'interactive' });
       await context.resume().catch(() => undefined);
+      // Página aberta direto pela URL (sem gesto): o navegador só libera o áudio no primeiro toque ou tecla
+      if (context.state !== 'running') {
+        const wake = () => void context.resume().catch(() => undefined);
+        addEventListener('pointerdown', wake, { once: true });
+        addEventListener('keydown', wake, { once: true });
+      }
       audio = { context, source: context.createGain(), stream: null };
       timer = setInterval(tick, TICK_MS);
     },
