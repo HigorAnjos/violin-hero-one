@@ -46,6 +46,8 @@ export interface GameSession {
   readonly startAt: number;
   /** Hora de jogo: a do AudioContext atual mais o deslocamento das reaberturas. */
   now(): number;
+  /** Hora de jogo de um instante do contexto atual (ex.: PitchReading.time). */
+  gameTime(contextTime: number): number;
   /** Uma leitura do Ouvido (no relógio do contexto atual). */
   push(reading: PitchReading | null): void;
   /** Um quadro: leituras simuladas, motor e pista na mesma hora. Devolve a hora de jogo. */
@@ -131,6 +133,7 @@ export function createGameSession(options: GameSessionOptions): GameSession {
     engine,
     startAt,
     now,
+    gameTime: (contextTime) => contextTime + offset,
     push(reading) {
       if (options.performance) return;
       engine.push(reading && { ...reading, time: reading.time + offset });
