@@ -28,6 +28,8 @@ export const LEVEL_WARMUP_READINGS = 12;
 export const ATTEMPT_MARGIN_SECONDS = 0.25;
 /** Desvio a partir do qual a nota ouvida é outra nota, e não a certa desafinada. */
 export const WRONG_NOTE_CENTS = 75;
+/** Harmônicos 1 a 4 de uma nota da orquestra, em semitons acima dela: o que um alto-falante distorcendo põe no ar. */
+export const MASK_HARMONIC_STEPS: readonly number[] = [0, 12, 19, 24];
 
 const LEVEL_ALPHA = 1 - Math.exp(-0.01 / LEVEL_SLOW_SECONDS);
 
@@ -54,6 +56,11 @@ export interface JudgeOptions {
   /** Segundos descontados de PitchReading.time: a latência calibrada. */
   latencySeconds?: number;
   detectionLagSeconds?: number;
+  /**
+   * As notas MIDI que a orquestra toca no instante dado, no relógio compensado (PitchReading.time menos a latência):
+   * Orchestra.soundingAt. Leitura que bate com uma delas ou um harmônico, e não com uma nota esperada, é descartada.
+   */
+  sounding?: (time: number) => readonly number[];
 }
 
 export interface Judge {
@@ -75,6 +82,7 @@ export function createJudge(notes: readonly EngineNote[], options: JudgeOptions,
   const tolerance = options.toleranceCents ?? DEFAULT_TOLERANCE_CENTS;
   const lag = options.detectionLagSeconds ?? DETECTION_LAG_SECONDS;
   const latency = options.latencySeconds ?? 0;
+  const sounding = options.sounding;
   const goodSeconds = windows.good / 1000;
   const attemptSeconds = goodSeconds + ATTEMPT_MARGIN_SECONDS;
   const judged: boolean[] = new Array(notes.length).fill(false);
@@ -97,6 +105,23 @@ export function createJudge(notes: readonly EngineNote[], options: JudgeOptions,
   let candidateCount = 0;
   let lastReading = -Infinity;
   let interrupted = false;
+  let expectedFrom = 0;
+
+  /** Nota esperada com essa altura entre a janela Bom antes do ataque e a janela Bom depois do fim, julgada ou não. */
+  function expected(time: number, midi: number): boolean {
+    while (expectedFrom < notes.length && time - (notes[expectedFrom].time + notes[expectedFrom].duration) > goodSeconds) expectedFrom++;
+    for (let i = expectedFrom; i < notes.length && notes[i].time - time <= goodSeconds; i++) {
+      if (notes[i].midi === midi && time - (notes[i].time + notes[i].duration) <= goodSeconds) return true;
+    }
+    return false;
+  }
+
+  function masked(reading: PitchReading): boolean {
+    if (!sounding) return false;
+    const time = reading.time - latency;
+    if (expected(time, reading.midi)) return false;
+    return sounding(time).some((midi) => MASK_HARMONIC_STEPS.some((step) => midi + step === reading.midi));
+  }
 
   function settle(verdict: Verdict): void {
     judged[verdict.index] = true;
@@ -185,6 +210,8 @@ export function createJudge(notes: readonly EngineNote[], options: JudgeOptions,
       interrupted = true;
       return;
     }
+    // Leitura descartada some sem virar null: o violino por baixo da orquestra segue no mesmo ataque.
+    if (masked(reading)) return;
     const gap = reading.time - lastReading;
     lastReading = reading.time;
     const resumed = interrupted;

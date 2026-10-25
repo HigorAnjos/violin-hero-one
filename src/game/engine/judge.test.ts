@@ -228,3 +228,74 @@ describe('latência e afinação sustentada', () => {
     expect(verdicts).toHaveLength(1);
   });
 });
+
+describe('descarte da orquestra (sounding)', () => {
+  const always = (...midis: number[]) => () => midis;
+
+  it('leitura que bate com a orquestra e não com a nota esperada é ignorada: o erro fica sem tentativa', () => {
+    const { judge, verdicts, feed } = setup([note(0, 1, 66)], { sounding: always(62) });
+    feed(attack(1, 0, 62));
+    judge.advance(3);
+    expect(verdicts[0]).toEqual({ kind: 'miss', index: 0, attempt: null });
+  });
+
+  it.each([12, 19, 24])('harmônico a +%s semitons de uma nota da orquestra também é ignorado', (step) => {
+    const { judge, verdicts, feed } = setup([note(0, 1, 66)], { sounding: always(50) });
+    feed(attack(1, 0, 50 + step));
+    judge.advance(3);
+    expect(verdicts[0]).toEqual({ kind: 'miss', index: 0, attempt: null });
+  });
+
+  it('nota que a orquestra não toca segue sendo nota errada', () => {
+    const { judge, verdicts, feed } = setup([note(0, 1, 66)], { sounding: always(62) });
+    feed(attack(1, 0, 68));
+    judge.advance(3);
+    expect(verdicts[0]).toMatchObject({ kind: 'miss', attempt: { kind: 'wrong', playedMidi: 68 } });
+  });
+
+  it('a nota esperada nunca é ignorada, mesmo se a orquestra tocar a mesma', () => {
+    const { judge, verdicts, feed } = setup([note(0, 1, 66), note(1, 2, 69)], { sounding: always(66, 69, 57) });
+    feed([...attack(1, -150, 66), null, ...attack(2, 100, 69)]);
+    judge.advance(4);
+    expect(verdicts).toMatchObject([
+      { kind: 'hit', index: 0, offsetMs: expect.closeTo(-150, 6) },
+      { kind: 'hit', index: 1, offsetMs: expect.closeTo(100, 6) },
+    ]);
+  });
+
+  it('a próxima nota esperada vale desde a janela Bom antes dela, mesmo com a atual ainda soando', () => {
+    const { judge, verdicts, feed } = setup([note(0, 1, 66, 1), note(1, 2, 69)], { sounding: always(57) });
+    feed([...attack(1, 0, 66, 0.7), ...attack(2, -200, 69)]);
+    judge.advance(4);
+    expect(verdicts).toMatchObject([
+      { kind: 'hit', index: 0 },
+      { kind: 'hit', index: 1, offsetMs: expect.closeTo(-200, 6) },
+    ]);
+  });
+
+  it('pergunta à orquestra no relógio compensado: o tempo da leitura menos a latência', () => {
+    const asked: number[] = [];
+    const { feed } = setup([note(0, 1, 66)], {
+      latencySeconds: 0.1,
+      sounding: (t) => {
+        asked.push(t);
+        return [];
+      },
+    });
+    feed([reading(5.13, 60)]);
+    expect(asked).toEqual([expect.closeTo(5.03, 9)]);
+  });
+
+  it('sem sounding, nada muda', () => {
+    const play = [...attack(1, 0, 62), null, ...attack(2, 0, 69)];
+    const notes = [note(0, 1, 66), note(1, 2, 69)];
+    const without = setup(notes);
+    without.feed(play);
+    without.judge.advance(4);
+    const silent = setup(notes, { sounding: always() });
+    silent.feed(play);
+    silent.judge.advance(4);
+    expect(without.verdicts).toMatchObject([{ kind: 'miss', attempt: { kind: 'wrong', playedMidi: 62 } }, { kind: 'hit' }]);
+    expect(silent.verdicts).toEqual(without.verdicts);
+  });
+});
