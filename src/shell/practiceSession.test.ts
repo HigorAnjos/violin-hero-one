@@ -164,6 +164,25 @@ describe('prática na partida', () => {
     expect(events.filter((e) => e.type === 'lap')).toHaveLength(2);
   });
 
+  it('microfone reaberto num contexto novo: a orquestra renasce no trecho de agora, no andamento e no laço da prática', async () => {
+    const { session, orchestra, run } = await rig({ loop: LOOP, speed: 1 });
+    let at: number | null = null;
+    run(session.startAt + 2.5, (t) => {
+      if (at === null && t >= session.startAt + 0.5) at = session.practice!.setSpeed(0.5);
+    });
+    const first = orchestra.made!;
+    await session.pause();
+    const context = { currentTime: 0.5, state: 'running', suspend: vi.fn(async () => undefined), resume: vi.fn(async () => undefined) };
+    await session.reanchor({ context, source: {}, stream: null } as unknown as EarAudio);
+    await session.resume();
+    await vi.waitFor(() => expect(orchestra.made).not.toBe(first));
+    const offset = session.now() - context.currentTime;
+    const current = session.clock.segments(session.now()).at(-1)!;
+    expect(orchestra.made!.options.tempo).toBe(0.5);
+    expect(orchestra.made!.options.startAt).toBeCloseTo(current.time - current.beat * current.spb - offset, 9);
+    expect(orchestra.made!.setLoop).toHaveBeenCalledWith(LOOP);
+  });
+
   it('desligar o laço segue a música até o fim e termina sozinha', async () => {
     const { session, events, judgments, run } = await rig({ loop: LOOP, speed: 1 });
     run(session.startAt + 40, (t) => {
