@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Escolha de modo</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+a.vh-card{text-decoration:none;color:inherit;transition:box-shadow .12s,border-color .12s}
+a.vh-card:hover{border-color:#d63a8a}
+a.vh-card:focus-visible{outline:2px solid #0b8fa8;outline-offset:3px}
+.vh-edge{fill:var(--void-800);stroke:var(--neon-magenta);stroke-width:1.5}
+.sg{stroke:var(--string-g)}.sd{stroke:var(--string-d)}.sa{stroke:var(--string-a)}.se{stroke:var(--string-e)}
+.fg{fill:var(--string-g)}.fd{fill:var(--string-d)}.fa{fill:var(--string-a)}.fe{fill:var(--string-e)}
+.ln{stroke:var(--ink-muted);stroke-width:1;opacity:.7}.nd{stroke:var(--neon-cyan);stroke-width:2}
+.vh-kbd{font:12px/1 var(--font-mono);color:var(--ink);border:1px solid var(--grid-line);background:var(--void-800);padding:4px 7px;border-radius:3px}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 40px 64px; display: flex; flex-direction: column; gap: 28px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 180px; background-image: linear-gradient(#e3d8bf 1px, transparent 1px), linear-gradient(90deg, #e3d8bf 1px, transparent 1px); background-size: 48px 48px; opacity: 0.5"></div>
+
+  <header style="position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="ns-label">Passo 1 de 3</span>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 34px; color: #1f2a44">Escolha o modo</h1>
+      <p style="margin: 0; font-size: 15px; line-height: 22px; color: #5b6478">Mesma música, mesmas cores de corda, mesmo placar. Muda só a forma de ler.</p>
+    </div>
+    <a class="ns-btn ns-btn--ghost" href="Main.dc.html"><span aria-hidden="true">◂</span>Voltar</a>
+  </header>
+
+  <div style="position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; flex-grow: 1">
+
+    <a class="vh-card" href="SongSelect.dc.html" style="display: flex; flex-direction: column; gap: 12px; background: #ffffff; border: 1px solid #d63a8a; border-radius: 3px; padding: 16px; box-shadow: none">
+      <div style="position: relative; height: 200px; background: #fbf6ea; border-radius: 3px">
+        <svg viewBox="0 0 240 120" width="100%" height="200" style="display: block" aria-hidden="true"><path class="vh-edge" d="M100 8 H140 L196 116 H44 Z"></path><rect class="fg" x="84" y="74" width="20" height="7" rx="3"></rect><rect class="fd" x="108" y="40" width="14" height="5" rx="2"></rect><rect class="fa" x="128" y="58" width="16" height="6" rx="3"></rect><rect class="fe" x="140" y="24" width="10" height="4" rx="2"></rect></svg>
+        <span style="position: absolute; top: 10px; right: 10px; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #fbf6ea; background: #d63a8a; padding: 4px 10px; border-radius: 999px">SELECIONADO</span>
+      </div>
+      <span style="font-family: 'Baloo 2', sans-serif; font-size: 24px; line-height: 28px; color: #1f2a44">Arcade</span>
+      <span style="font-size: 14px; line-height: 20px; color: #5b6478">A pista vem na sua direção, estilo Guitar Hero. Cada raia é uma corda: leia a cor e toque no tempo.</span>
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #e3d8bf; padding-top: 12px">
+        <span class="ns-label">Para quem</span>
+        <span style="font-weight: 600; font-size: 15px; color: #1f2a44">Quer jogar sem saber ler partitura</span>
+      </div>
+    </a>
+
+    <a class="vh-card" href="SongSelect.dc.html" style="display: flex; flex-direction: column; gap: 12px; background: #ffffff; border: 1px solid #e3d8bf; border-radius: 3px; padding: 16px">
+      <div style="height: 200px; background: #fbf6ea; border-radius: 3px">
+        <svg viewBox="0 0 240 120" width="100%" height="200" style="display: block" aria-hidden="true">
+          <line class="ln" x1="0" x2="240" y1="40" y2="40"></line><line class="ln" x1="0" x2="240" y1="52" y2="52"></line><line class="ln" x1="0" x2="240" y1="64" y2="64"></line><line class="ln" x1="0" x2="240" y1="76" y2="76"></line><line class="ln" x1="0" x2="240" y1="88" y2="88"></line>
+          <line class="nd" x1="64" x2="64" y1="24" y2="104"></line>
+          <ellipse class="fd" cx="64" cy="94" rx="7" ry="5"></ellipse><ellipse class="fa" cx="104" cy="70" rx="7" ry="5"></ellipse><ellipse class="fa" cx="140" cy="58" rx="7" ry="5"></ellipse><ellipse class="fe" cx="176" cy="40" rx="7" ry="5"></ellipse><ellipse class="fg" cx="212" cy="100" rx="7" ry="5"></ellipse>
+        </svg>
+      </div>
+      <span style="font-family: 'Baloo 2', sans-serif; font-size: 24px; line-height: 28px; color: #1f2a44">Partitura</span>
+      <span style="font-size: 14px; line-height: 20px; color: #5b6478">A pauta corre embaixo da tela e a nota acende na agulha. Cor indica a corda, número indica o dedo.</span>
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #e3d8bf; padding-top: 12px">
+        <span class="ns-label">Para quem</span>
+        <span style="font-weight: 600; font-size: 15px; color: #1f2a44">Quer aprender a ler música de verdade</span>
+      </div>
+    </a>
+
+    <a class="vh-card" href="SongSelect.dc.html" style="display: flex; flex-direction: column; gap: 12px; background: #ffffff; border: 1px solid #e3d8bf; border-radius: 3px; padding: 16px">
+      <div style="height: 200px; background: #fbf6ea; border-radius: 3px">
+        <svg viewBox="0 0 240 120" width="100%" height="200" style="display: block" aria-hidden="true"><path class="vh-edge" d="M100 10 H140 L206 108 H34 Z"></path>
+          <line class="sg" x1="16" x2="224" y1="44" y2="44" stroke-width="2"></line><line class="sd" x1="16" x2="224" y1="62" y2="62" stroke-width="2"></line>
+          <line class="sa" x1="16" x2="224" y1="80" y2="80" stroke-width="2"></line><line class="se" x1="16" x2="224" y1="98" y2="98" stroke-width="2"></line>
+          <line class="sd" x1="96" x2="96" y1="62" y2="108" stroke-width="1.5"></line><rect class="fd" x="84" y="54" width="24" height="16" rx="3"></rect>
+          <line class="sa" x1="128" x2="128" y1="22" y2="32" stroke-width="1"></line><rect class="fa" x="122" y="16" width="12" height="8" rx="2"></rect></svg>
+      </div>
+      <span style="font-family: 'Baloo 2', sans-serif; font-size: 24px; line-height: 28px; color: #1f2a44">Cordas 3D</span>
+      <span style="font-size: 14px; line-height: 20px; color: #5b6478">As quatro cordas na frente e as notas vindo do fundo. A coluna mostra a casa, a caixa mostra o dedo.</span>
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #e3d8bf; padding-top: 12px">
+        <span class="ns-label">Para quem</span>
+        <span style="font-weight: 600; font-size: 15px; color: #1f2a44">Quer aprender onde pôr os dedos</span>
+      </div>
+    </a>
+  </div>
+
+  <footer style="position: relative; display: flex; align-items: center; justify-content: space-between">
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #5b6478">
+      <span class="vh-kbd">◂ ▸</span><span>trocar modo</span>
+      <span class="vh-kbd" style="margin-left: 12px">ENTER</span><span>confirmar</span>
+    </div>
+    <a class="ns-btn ns-btn--primary" href="SongSelect.dc.html">Continuar com Arcade <span aria-hidden="true">▸</span></a>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Gameplay Arcade</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&amp;family=Nunito:wght@400;600;700;800&amp;family=Noto+Music&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+.ln line,line.ln{stroke:#9aa3b5;stroke-width:1.3}
+.st{stroke:#1f2a44;stroke-width:1.8}
+.nd{stroke:#0b8fa8;stroke-width:3}
+.past{opacity:.35}
+.fg{fill:#6b4bd8}.fd{fill:#d63a8a}.fa{fill:#0b8fa8}.fe{fill:#d98e00}
+.hg{fill:none;stroke:#6b4bd8;stroke-width:2.4}.hd{fill:none;stroke:#d63a8a;stroke-width:2.4}.ha{fill:none;stroke:#0b8fa8;stroke-width:2.4}.he{fill:none;stroke:#d98e00;stroke-width:2.4}
+text.tg,text.td,text.ta,text.te{font:800 12px 'Nunito',sans-serif}
+.tg{fill:#6b4bd8}.td{fill:#d63a8a}.ta{fill:#0b8fa8}.te{fill:#9a6400}
+.gem{position:absolute;width:80px;height:28px;margin-left:-40px;border-radius:12px;border:2.5px solid #1f2a44;box-sizing:border-box}
+.gem::after{content:"";position:absolute;left:12px;right:30px;top:5px;height:5px;border-radius:999px;background:#ffffff;opacity:.7}
+.tail{position:absolute;width:16px;margin-left:-8px;border-radius:8px;opacity:.5}
+.tgt{width:70px;height:70px;box-sizing:border-box;border-radius:999px;background:#ffffff;border:5px solid}
+.card{background:#ffffff;border:2px solid #e3d8bf;border-radius:16px;box-shadow:0 3px 0 #e3d8bf}
+.lbl{font:800 12px/16px 'Nunito',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#5b6478}
+</style>
+</helmet>
+<div style="width: 1280px; height: 720px; position: relative; overflow: hidden; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <div style="position: absolute; left: 0; top: 0">
+    <dc-import name="Orchestra" strip-width="1280" energy="3" hint-size="1280px,330px"></dc-import>
+  </div>
+
+  <div style="position: absolute; left: 50%; top: 0; width: 640px; margin-left: -320px; height: 550px; overflow: hidden; perspective: 880px; perspective-origin: 50% 8%">
+    <div style="position: absolute; left: 50%; bottom: -60px; width: 500px; height: 1400px; margin-left: -250px; transform-origin: 50% 100%; transform: rotateX(58deg); background: #fffdf7; border: 4px solid #1f2a44; border-bottom: 0; box-sizing: border-box">
+      <div style="position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+        <div style="border-right: 2px solid #ece2cb; position: relative"><i style="position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #6b4bd8; opacity: 0.3"></i></div>
+        <div style="border-right: 2px solid #ece2cb; position: relative"><i style="position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #d63a8a; opacity: 0.3"></i></div>
+        <div style="border-right: 2px solid #ece2cb; position: relative"><i style="position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #0b8fa8; opacity: 0.3"></i></div>
+        <div style="position: relative"><i style="position: absolute; left: 50%; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #d98e00; opacity: 0.3"></i></div>
+      </div>
+      <div class="gem" style="left: 62.5%; top: 40px; background: #0b8fa8"></div>
+      <div class="gem" style="left: 12.5%; top: 150px; background: #6b4bd8"></div>
+      <div class="gem" style="left: 87.5%; top: 290px; background: #d98e00"></div>
+      <div class="tail" style="left: 62.5%; top: 520px; height: 180px; background: #0b8fa8"></div>
+      <div class="gem" style="left: 62.5%; top: 690px; background: #0b8fa8"></div>
+      <div class="gem" style="left: 37.5%; top: 940px; background: #d63a8a"></div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 188px; height: 4px; background: #1f2a44"></div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 152px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); justify-items: center">
+        <div class="tgt" style="border-color: #6b4bd8"></div>
+        <div class="tgt" style="border-color: #d63a8a"></div>
+        <div class="tgt" style="border-color: #0b8fa8; background: #0b8fa8; box-shadow: 0 0 0 10px rgba(11, 143, 168, 0.18)"></div>
+        <div class="tgt" style="border-color: #d98e00"></div>
+      </div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 86px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); justify-items: center; font: 800 40px/1 'Baloo 2', sans-serif">
+        <span style="color: #6b4bd8">G</span><span style="color: #d63a8a">D</span><span style="color: #0b8fa8">A</span><span style="color: #9a6400">E</span>
+      </div>
+    </div>
+  </div>
+
+  <a href="Pause.dc.html" aria-label="Pausar" style="position: absolute; left: 50%; top: 24px; margin-left: -22px; width: 44px; height: 44px; box-sizing: border-box; border-radius: 12px; background: #ffffff; border: 2px solid #e3d8bf; display: flex; align-items: center; justify-content: center">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1" style="fill: #1f2a44"></rect><rect x="9.5" y="2" width="3.5" height="12" rx="1" style="fill: #1f2a44"></rect></svg>
+  </a>
+
+  <div style="position: absolute; left: 50%; top: 196px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px">
+    <span style="font: 800 46px/1 'Baloo 2', sans-serif; color: #0b8fa8">Perfeito!</span>
+    <span style="font-weight: 800; font-size: 16px; color: #5b6478">128 seguidas</span>
+  </div>
+
+  <section aria-label="Placar" class="card" style="position: absolute; left: 40px; top: 32px; width: 268px; box-sizing: border-box; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px">
+    <span class="lbl">Pontos</span>
+    <span style="font: 800 36px/1 'Nunito', sans-serif; font-variant-numeric: tabular-nums">1.284.560</span>
+    <div style="display: flex; align-items: center; gap: 10px">
+      <span style="padding: 6px 12px; border-radius: 999px; background: #d98e00; color: #ffffff; font: 800 18px/1 'Baloo 2', sans-serif">×4</span>
+      <span style="font-weight: 700; font-size: 15px; color: #5b6478">98,4% de acertos</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px; border-top: 2px solid #efe5cf; padding-top: 10px">
+      <span class="lbl">Orquestra tocando com você</span>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px" aria-label="Cordas, madeiras e metais tocando; percussão entra em 12 acertos">
+        <span style="text-align: center; padding: 5px 0; border-radius: 8px; background: #d63a8a; color: #ffffff; font-weight: 800; font-size: 11px">Cordas</span>
+        <span style="text-align: center; padding: 5px 0; border-radius: 8px; background: #0b8fa8; color: #ffffff; font-weight: 800; font-size: 11px">Madeiras</span>
+        <span style="text-align: center; padding: 5px 0; border-radius: 8px; background: #b87800; color: #ffffff; font-weight: 800; font-size: 11px">Metais</span>
+        <span style="text-align: center; padding: 4px 0; border-radius: 8px; border: 1.5px dashed #6b4bd8; color: #6b4bd8; font-weight: 800; font-size: 11px">Percussão</span>
+      </div>
+      <span style="font-size: 12px; color: #5b6478">A percussão entra em 12 acertos seguidos</span>
+    </div>
+  </section>
+
+  <section aria-label="Afinação" class="card" style="position: absolute; right: 40px; top: 32px; width: 300px; box-sizing: border-box; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end">
+      <div style="display: flex; flex-direction: column"><span class="lbl">Toque</span><span style="font: 800 42px/1 'Baloo 2', sans-serif; color: #0b8fa8">Ré</span></div>
+      <span style="font-weight: 700; font-size: 14px; color: #5b6478; text-align: right">corda Lá<br>3º dedo</span>
+    </div>
+    <svg width="264" height="80" viewBox="0 0 264 80" role="img" aria-label="Sua afinação nos últimos 2 segundos: afinado" style="display: block; background: #fbf6ea; border-radius: 10px">
+      <rect x="0" y="28" width="264" height="24" style="fill: #dff1f4"></rect>
+      <line x1="0" y1="40" x2="264" y2="40" style="stroke: #9aa3b5; stroke-dasharray: 4 4"></line>
+      <polyline points="0,58 20,52 40,47 60,43 80,38 100,37 120,39 140,42 160,40 180,37 200,36 220,38 240,37 256,36" style="fill: none; stroke: #0b8fa8; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round"></polyline>
+      <circle cx="256" cy="36" r="6" style="fill: #ffffff; stroke: #0b8fa8; stroke-width: 3"></circle>
+    </svg>
+    <span style="font-weight: 800; font-size: 15px; color: #0b8fa8">Afinado! +6 ¢</span>
+  </section>
+
+  <section aria-label="Partitura" class="card" style="position: absolute; left: 40px; right: 40px; bottom: 20px; height: 150px; box-sizing: border-box; padding: 8px 0 0; overflow: hidden">
+    <div style="display: flex; align-items: center; gap: 14px; padding: 0 18px; height: 22px">
+      <span class="lbl">Partitura · compasso 18</span>
+      <span style="flex: 1"></span>
+      <span style="font-weight: 700; font-size: 13px; color: #5b6478">1:42</span>
+      <div style="width: 300px; height: 8px; border-radius: 4px; background: #efe5cf"><i style="display: block; width: 53%; height: 100%; border-radius: 4px; background: #0b8fa8"></i></div>
+      <span style="font-weight: 700; font-size: 13px; color: #5b6478">3:12</span>
+    </div>
+    <svg width="1198" height="116" viewBox="0 0 1198 116" role="img" aria-label="Partitura: agora Ré, corda Lá, 3º dedo" style="display: block">
+<g class="ln"><line x1="0" y1="72" x2="1198" y2="72"></line><line x1="0" y1="62" x2="1198" y2="62"></line><line x1="0" y1="52" x2="1198" y2="52"></line><line x1="0" y1="42" x2="1198" y2="42"></line><line x1="0" y1="32" x2="1198" y2="32"></line>
+<line x1="324" y1="32" x2="324" y2="72"></line>
+<line x1="548" y1="32" x2="548" y2="72"></line>
+<line x1="772" y1="32" x2="772" y2="72"></line>
+<line x1="996" y1="32" x2="996" y2="72"></line>
+</g>
+<g class="past"><line class="st" x1="122" y1="47" x2="122" y2="79"></line><ellipse class="fa" cx="128" cy="47" rx="7.5" ry="5.5" transform="rotate(-20 128 47)"></ellipse><text class="ta" x="128" y="106" text-anchor="middle">2</text></g>
+<g class="past"><line class="st" x1="178" y1="52" x2="178" y2="84"></line><ellipse class="fa" cx="184" cy="52" rx="7.5" ry="5.5" transform="rotate(-20 184 52)"></ellipse><text class="ta" x="184" y="106" text-anchor="middle">1</text></g>
+<g><line class="st" x1="234" y1="42" x2="234" y2="74"></line><ellipse class="ha" cx="240" cy="42" rx="7.5" ry="5.5" transform="rotate(-20 240 42)"></ellipse><text class="ta" x="240" y="106" text-anchor="middle">3</text></g>
+<g><line class="st" x1="358" y1="67" x2="358" y2="35"></line><ellipse class="fd" cx="352" cy="67" rx="7.5" ry="5.5" transform="rotate(-20 352 67)"></ellipse><text class="td" x="352" y="106" text-anchor="middle">2</text></g>
+<g><line class="st" x1="414" y1="57" x2="414" y2="25"></line><ellipse class="ha" cx="408" cy="57" rx="7.5" ry="5.5" transform="rotate(-20 408 57)"></ellipse><text class="ta" x="408" y="106" text-anchor="middle">0</text></g>
+<g><line class="st" x1="514" y1="37" x2="514" y2="69"></line><ellipse class="fe" cx="520" cy="37" rx="7.5" ry="5.5" transform="rotate(-20 520 37)"></ellipse><text class="te" x="520" y="106" text-anchor="middle">0</text></g>
+<g><line class="ln" x1="565" y1="82" x2="587" y2="82"></line><line class="st" x1="582" y1="87" x2="582" y2="55"></line><ellipse class="fg" cx="576" cy="87" rx="7.5" ry="5.5" transform="rotate(-20 576 87)"></ellipse><text class="tg" x="576" y="106" text-anchor="middle">2</text></g>
+<g><line class="st" x1="626" y1="47" x2="626" y2="79"></line><ellipse class="fa" cx="632" cy="47" rx="7.5" ry="5.5" transform="rotate(-20 632 47)"></ellipse><text class="ta" x="632" y="106" text-anchor="middle">2</text></g>
+<g><line class="st" x1="694" y1="62" x2="694" y2="30"></line><ellipse class="hd" cx="688" cy="62" rx="7.5" ry="5.5" transform="rotate(-20 688 62)"></ellipse><text class="td" x="688" y="106" text-anchor="middle">3</text></g>
+<g><line class="st" x1="794" y1="32" x2="794" y2="64"></line><ellipse class="fe" cx="800" cy="32" rx="7.5" ry="5.5" transform="rotate(-20 800 32)"></ellipse><text class="te" x="800" y="106" text-anchor="middle">1</text></g>
+<g><line class="ln" x1="845" y1="82" x2="867" y2="82"></line><line class="ln" x1="845" y1="92" x2="867" y2="92"></line><line class="st" x1="862" y1="92" x2="862" y2="60"></line><ellipse class="fg" cx="856" cy="92" rx="7.5" ry="5.5" transform="rotate(-20 856 92)"></ellipse><text class="tg" x="856" y="106" text-anchor="middle">1</text></g>
+<g><line class="st" x1="906" y1="52" x2="906" y2="84"></line><ellipse class="fa" cx="912" cy="52" rx="7.5" ry="5.5" transform="rotate(-20 912 52)"></ellipse><text class="ta" x="912" y="106" text-anchor="middle">1</text></g>
+<g><line class="st" x1="962" y1="42" x2="962" y2="74"></line><ellipse class="fa" cx="968" cy="42" rx="7.5" ry="5.5" transform="rotate(-20 968 42)"></ellipse><text class="ta" x="968" y="106" text-anchor="middle">3</text></g>
+<g><line class="st" x1="1030" y1="57" x2="1030" y2="25"></line><ellipse class="fa" cx="1024" cy="57" rx="7.5" ry="5.5" transform="rotate(-20 1024 57)"></ellipse><text class="ta" x="1024" y="106" text-anchor="middle">0</text></g>
+<g><line class="st" x1="1086" y1="67" x2="1086" y2="35"></line><ellipse class="fd" cx="1080" cy="67" rx="7.5" ry="5.5" transform="rotate(-20 1080 67)"></ellipse><text class="td" x="1080" y="106" text-anchor="middle">2</text></g>
+<g><line class="st" x1="1142" y1="77" x2="1142" y2="45"></line><ellipse class="hd" cx="1136" cy="77" rx="7.5" ry="5.5" transform="rotate(-20 1136 77)"></ellipse><text class="td" x="1136" y="106" text-anchor="middle">0</text></g>
+<line class="nd" x1="240" y1="6" x2="240" y2="110"></line>
+      <rect x="0" y="0" width="100" height="116" style="fill: #ffffff"></rect>
+      <g class="ln"><line x1="0" y1="72" x2="100" y2="72"></line><line x1="0" y1="62" x2="100" y2="62"></line><line x1="0" y1="52" x2="100" y2="52"></line><line x1="0" y1="42" x2="100" y2="42"></line><line x1="0" y1="32" x2="100" y2="32"></line></g>
+      <text x="12" y="82" style="font: 60px 'Noto Music', serif; fill: #1f2a44">𝄞</text>
+      <text x="56" y="40" style="font: 20px 'Noto Music', serif; fill: #1f2a44">♯</text>
+      <text x="70" y="55" style="font: 20px 'Noto Music', serif; fill: #1f2a44">♯</text>
+    </svg>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

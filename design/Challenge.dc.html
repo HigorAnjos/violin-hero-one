@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Desafiar amigo</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+.vh-fr{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 12px;border:1px solid var(--grid-line);border-radius:3px;background:var(--void-800);cursor:pointer}
+.vh-fr[aria-pressed="true"]{border-color:var(--neon-magenta);background:var(--void-700)}
+.vh-av{width:34px;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;font:12px/1 var(--font-display);color:var(--ink-on-neon);flex:none}
+.vh-opt{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--grid-line);background:transparent;color:var(--ink-muted);font:600 12px/1 var(--font-ui);letter-spacing:.06em}
+.vh-opt[aria-pressed="true"]{background:var(--neon-cyan);border-color:var(--neon-cyan);color:var(--ink-on-neon)}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 30px 56px; display: flex; flex-direction: column; gap: 18px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+  <header style="display: flex; align-items: flex-end; justify-content: space-between">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="ns-label">Social</span>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 34px; color: #1f2a44">Desafiar um amigo</h1>
+    </div>
+    <a class="ns-btn ns-btn--ghost" href="Ranking.dc.html" style="padding: 0 18px"><span aria-hidden="true">◂</span>Ranking</a>
+  </header>
+
+  <div style="display: flex; gap: 22px; flex-grow: 1; min-height: 0">
+    <section aria-label="Escolher amigo" class="ns-panel" style="width: 360px; flex: none; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+      <span class="ns-label">Amigos</span>
+      <button class="vh-fr" aria-pressed="true"><span class="vh-av" style="background: #0b8fa8">LP</span><span style="display: flex; flex-direction: column; align-items: flex-start; flex: 1"><b style="font-weight: 600; font-size: 15px; color: #1f2a44">LunaPizzicato</b><span style="font-size: 12px; color: #5b6478">Nível 39 · online agora</span></span><i style="width: 8px; height: 8px; border-radius: 999px; background: #0b8fa8"></i></button>
+      <button class="vh-fr" aria-pressed="false"><span class="vh-av" style="background: #6b4bd8">MS</span><span style="display: flex; flex-direction: column; align-items: flex-start; flex: 1"><b style="font-weight: 600; font-size: 15px; color: #1f2a44">MiSemBemol</b><span style="font-size: 12px; color: #5b6478">Nível 37 · há 2 h</span></span></button>
+      <button class="vh-fr" aria-pressed="false"><span class="vh-av" style="background: #b87800">CR</span><span style="display: flex; flex-direction: column; align-items: flex-start; flex: 1"><b style="font-weight: 600; font-size: 15px; color: #1f2a44">Cravelha</b><span style="font-size: 12px; color: #5b6478">Nível 34 · ontem</span></span></button>
+      <button class="vh-fr" aria-pressed="false" style="border-style: dashed; justify-content: center; color: #0b8fa8; font: 600 14px/1 'Nunito', sans-serif">＋ Convidar por link</button>
+    </section>
+
+    <section aria-label="Montar desafio" class="ns-panel" style="flex: 1; min-width: 0; box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; align-items: center; gap: 18px">
+        <span class="vh-av" style="width: 56px; height: 56px; font-size: 18px; background: #d63a8a">VH</span>
+        <span style="font-family: 'Baloo 2', sans-serif; font-size: 28px; color: #d63a8a">VS</span>
+        <span class="vh-av" style="width: 56px; height: 56px; font-size: 18px; background: #0b8fa8">LP</span>
+        <div style="display: flex; flex-direction: column; gap: 2px; margin-left: 8px"><b style="font-weight: 600; font-size: 17px">Você × LunaPizzicato</b><span style="font-size: 13px; color: #5b6478">Quem fizer mais pontos ganha 200 XP</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="ns-label">Música</span>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: #f4ecda; border: 1px solid #e3d8bf; border-radius: 3px">
+          <span style="width: 40px; height: 40px; background: #d63a8a; border-radius: 3px"></span>
+          <span style="display: flex; flex-direction: column; flex: 1"><b style="font-weight: 600; font-size: 15px">Canon em Neon</b><span style="font-size: 12px; color: #5b6478">Seu recorde 1.284.560 · dela 1.190.300</span></span>
+          <a href="Library.dc.html" style="font-size: 13px">Trocar</a>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+        <div style="display: flex; flex-direction: column; gap: 8px"><span class="ns-label">Dificuldade</span><div style="display: flex; gap: 6px"><button class="vh-opt" aria-pressed="false">Fácil</button><button class="vh-opt" aria-pressed="true">Médio</button><button class="vh-opt" aria-pressed="false">Difícil</button></div></div>
+        <div style="display: flex; flex-direction: column; gap: 8px"><span class="ns-label">Modo</span><div style="display: flex; gap: 6px"><button class="vh-opt" aria-pressed="true">Arcade</button><button class="vh-opt" aria-pressed="false">Partitura</button></div></div>
+        <div style="display: flex; flex-direction: column; gap: 8px"><span class="ns-label">Prazo</span><div style="display: flex; gap: 6px"><button class="vh-opt" aria-pressed="false">24 h</button><button class="vh-opt" aria-pressed="true">48 h</button><button class="vh-opt" aria-pressed="false">1 sem.</button></div></div>
+      </div>
+      <div style="display: flex; gap: 12px; margin-top: auto">
+        <a class="ns-btn ns-btn--primary" href="Countdown.dc.html" style="flex: 1">Enviar desafio e tocar agora <span aria-hidden="true">▸</span></a>
+        <a class="ns-btn ns-btn--secondary" href="ShareCard.dc.html" style="padding: 0 18px">Mandar por WhatsApp</a>
+      </div>
+    </section>
+
+    <section aria-label="Desafios recebidos" class="ns-panel" style="width: 300px; flex: none; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <span class="ns-label">Você foi desafiado</span>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid #b87800; border-radius: 3px">
+        <span style="font-size: 14px; line-height: 20px"><b style="color: #6b4bd8">MiSemBemol</b> te desafiou em <b>Sonata 2077</b></span>
+        <span style="font-family: 'Nunito', monospace; font-size: 13px; color: #5b6478">placar dele 987.400 · 17 h restantes</span>
+        <a class="ns-btn ns-btn--primary" href="Countdown.dc.html" style="min-height: 40px">Aceitar</a>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #e3d8bf; border-radius: 3px">
+        <span style="font-size: 14px; line-height: 20px">Você venceu <b style="color: #b87800">Cravelha</b> em Ode em Ré</span>
+        <span style="font-family: 'Nunito', monospace; font-size: 13px; color: #0b8fa8">+200 XP · 612.880 × 598.120</span>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

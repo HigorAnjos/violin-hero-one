@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Resultado</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+.vh-jrow{display:grid;grid-template-columns:110px 1fr 56px;gap:14px;align-items:center}
+.vh-jrow .ns-judgment{font-size:18px}
+.vh-jrow b{font:400 18px/1 var(--font-mono);color:var(--ink);text-align:right}
+.vh-track{height:8px;background:var(--grid-line)}
+.vh-track i{display:block;height:100%}
+.vh-srow{display:grid;grid-template-columns:28px 1fr 64px;gap:14px;align-items:center}
+.vh-srow b{font:400 16px/1 var(--font-mono);color:var(--ink);text-align:right}
+.vh-dtrack{position:relative;height:14px;background:var(--void-800);border:1px solid var(--grid-line)}
+.vh-dtrack::after{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--ink);opacity:.6}
+.vh-dtrack i{position:absolute;top:2px;bottom:2px;background:var(--lane);box-shadow:var(--lane-glow)}
+.vh-hist{display:flex;align-items:flex-end;gap:4px;height:64px}
+.vh-hist i{flex:1;background:var(--neon-cyan);opacity:.75}
+.vh-tl{display:flex;align-items:flex-end;gap:2px;height:44px}
+.vh-tl i{flex:1;background:var(--grid-line)}
+.vh-tl i.lo{background:var(--neon-yellow);box-shadow:var(--glow-yellow)}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 36px 64px; display: flex; flex-direction: column; gap: 22px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="ns-label">Resultado · Arcade · Médio</span>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 34px; color: #1f2a44">Canon em Neon</h1>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div role="status" aria-label="Selo conquistado nesta partida: Combo 400" style="display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 8px; background: #ffffff; border: 2px solid #6b4bd8; border-radius: 999px; box-shadow: 0 3px 0 #6b4bd8">
+        <dc-import name="Badge" kind="combo" size="34" hint-size="34px,37px"></dc-import>
+        <span style="display: flex; flex-direction: column; line-height: 1.15"><span style="font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: #6b4bd8">SELO NOVO!</span><span style="font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 17px; color: #1f2a44">Combo 400</span></span>
+      </div>
+      <span style="font-weight: 700; font-size: 13px; letter-spacing: 0.16em; color: #fbf6ea; background: #d63a8a; padding: 8px 16px; border-radius: 999px">NOVO RECORDE</span>
+    </div>
+  </header>
+
+  <div style="display: flex; gap: 24px; flex-grow: 1; min-height: 0">
+
+    <div style="width: 540px; flex: none; display: flex; flex-direction: column; gap: 16px">
+      <section aria-label="Pontuação" class="ns-panel" style="padding: 20px; display: flex; flex-direction: column; gap: 10px">
+        <svg width="190" height="34" viewBox="0 0 190 34" role="img" aria-label="4 de 5 estrelas">
+          <path d="M17 2l4.5 9.4 10.3 1.2-7.6 7 2.1 10.2L17 24.7l-9.3 5.1 2.1-10.2-7.6-7 10.3-1.2z" style="fill: #b87800"></path>
+          <path transform="translate(38 0)" d="M17 2l4.5 9.4 10.3 1.2-7.6 7 2.1 10.2L17 24.7l-9.3 5.1 2.1-10.2-7.6-7 10.3-1.2z" style="fill: #b87800"></path>
+          <path transform="translate(76 0)" d="M17 2l4.5 9.4 10.3 1.2-7.6 7 2.1 10.2L17 24.7l-9.3 5.1 2.1-10.2-7.6-7 10.3-1.2z" style="fill: #b87800"></path>
+          <path transform="translate(114 0)" d="M17 2l4.5 9.4 10.3 1.2-7.6 7 2.1 10.2L17 24.7l-9.3 5.1 2.1-10.2-7.6-7 10.3-1.2z" style="fill: #b87800"></path>
+          <path transform="translate(152 0)" d="M17 2l4.5 9.4 10.3 1.2-7.6 7 2.1 10.2L17 24.7l-9.3 5.1 2.1-10.2-7.6-7 10.3-1.2z" style="fill: #e3d8bf"></path>
+        </svg>
+        <span class="ns-score" style="font-size: 60px">1.284.560</span>
+        <span style="font-size: 14px; color: #5b6478">+442.450 sobre o recorde anterior (842.110)</span>
+      </section>
+
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+        <div class="ns-panel" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 6px"><span class="ns-label">Precisão</span><span class="ns-stat">98,4%</span></div>
+        <div class="ns-panel" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 6px"><span class="ns-label">Combo máx</span><span class="ns-stat">412</span></div>
+        <div class="ns-panel" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 6px"><span class="ns-label">Afinação</span><span class="ns-stat">±7 ¢</span></div>
+        <div class="ns-panel" style="padding: 12px 14px; display: flex; flex-direction: column; gap: 6px"><span class="ns-label">Notas</span><span class="ns-stat">486/492</span></div>
+      </div>
+
+      <section aria-label="Julgamentos" class="ns-panel" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; flex-grow: 1">
+        <div class="vh-jrow"><span class="ns-judgment ns-judgment--perfect">Perfeito</span><div class="vh-track"><i style="width: 81.5%; background: #1f2a44; box-shadow: none"></i></div><b>401</b></div>
+        <div class="vh-jrow"><span class="ns-judgment ns-judgment--great">Ótimo</span><div class="vh-track"><i style="width: 14.4%; background: #0b8fa8; box-shadow: none"></i></div><b>71</b></div>
+        <div class="vh-jrow"><span class="ns-judgment ns-judgment--good">Bom</span><div class="vh-track"><i style="width: 2.8%; background: #b87800; box-shadow: none"></i></div><b>14</b></div>
+        <div class="vh-jrow"><span class="ns-judgment ns-judgment--miss">Errou</span><div class="vh-track"><i style="width: 1.3%; background: #d93636; box-shadow: none"></i></div><b>6</b></div>
+      </section>
+    </div>
+
+    <div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+      <section aria-label="Afinação por corda" class="ns-panel" style="padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span class="ns-label">Afinação média por corda</span>
+          <span style="font-family: 'Nunito', monospace; font-size: 13px; color: #5b6478">−20 ¢ · 0 · +20 ¢</span>
+        </div>
+        <div class="vh-srow ns-g"><span style="font: 22px/1 'Baloo 2', sans-serif; color: #6b4bd8">G</span><div class="vh-dtrack"><i style="left: 42.5%; width: 7.5%"></i></div><b>−3 ¢</b></div>
+        <div class="vh-srow ns-d"><span style="font: 22px/1 'Baloo 2', sans-serif; color: #d63a8a">D</span><div class="vh-dtrack"><i style="left: 50%; width: 5%"></i></div><b>+2 ¢</b></div>
+        <div class="vh-srow ns-a"><span style="font: 22px/1 'Baloo 2', sans-serif; color: #0b8fa8">A</span><div class="vh-dtrack"><i style="left: 50%; width: 20%"></i></div><b>+8 ¢</b></div>
+        <div class="vh-srow ns-e"><span style="font: 22px/1 'Baloo 2', sans-serif; color: #b87800">E</span><div class="vh-dtrack"><i style="left: 20%; width: 30%"></i></div><b>−12 ¢</b></div>
+        <span style="font-size: 14px; line-height: 20px; color: #1f2a44">Na corda Mi você tende a tocar baixo. Confira a posição do 3º e 4º dedos.</span>
+      </section>
+
+      <section aria-label="Trecho mais difícil na partitura" class="ns-panel" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; flex-grow: 1; min-height: 0">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span class="ns-label">Trecho mais difícil · compassos 32–33</span>
+          <span style="display: flex; gap: 12px; font-size: 13px; color: #5b6478"><span><b style="color: #d93636; font-weight: 400; font-family: 'Nunito', monospace">×</b> errou</span><span><b style="color: #b87800; font-weight: 400">▾</b> baixo</span></span>
+        </div>
+        <div style="border: 1px solid #e3d8bf; overflow: hidden">
+          <dc-import name="SheetStrip" variant="review" strip-width="546" measure-start="32" hint-size="546px,112px"></dc-import>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div class="vh-tl" style="height: 26px" role="img" aria-label="Precisão por compasso ao longo da música; queda nos compassos 32 a 40">
+            <i style="height: 96%"></i><i style="height: 98%"></i><i style="height: 100%"></i><i style="height: 97%"></i><i style="height: 99%"></i><i style="height: 100%"></i><i style="height: 98%"></i><i style="height: 96%"></i><i style="height: 99%"></i><i style="height: 100%"></i><i style="height: 97%"></i><i style="height: 98%"></i><i style="height: 100%"></i><i style="height: 99%"></i><i style="height: 98%"></i><i style="height: 96%"></i><i class="lo" style="height: 84%"></i><i class="lo" style="height: 78%"></i><i class="lo" style="height: 81%"></i><i class="lo" style="height: 80%"></i><i style="height: 94%"></i><i style="height: 98%"></i><i style="height: 100%"></i><i style="height: 99%"></i><i style="height: 97%"></i><i style="height: 98%"></i><i style="height: 100%"></i><i style="height: 99%"></i>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-family: 'Nunito', monospace; font-size: 13px; color: #5b6478"><span>0:00</span><span>compassos 32–40 · 81%</span><span>3:12</span></div>
+        </div>
+        <span style="font-size: 14px; color: #1f2a44">Corda Mi: 2 notas perdidas e 3 baixas · tempo médio 6 ms adiantado</span>
+      </section>
+    </div>
+  </div>
+
+  <footer style="display: flex; align-items: center; gap: 12px">
+    <a class="ns-btn ns-btn--ghost" href="Main.dc.html">Menu</a>
+    <a class="ns-btn" href="SongSelect.dc.html">Outra música</a>
+    <span style="flex: 1"></span>
+    <a class="ns-btn ns-btn--secondary" href="Practice.dc.html">Praticar compassos 32–40</a>
+    <a class="ns-btn ns-btn--primary" href="Gameplay.dc.html">Tocar de novo <span aria-hidden="true">▸</span></a>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

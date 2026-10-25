@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Entrar na turma</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:48px;padding:0 22px}
+a.ns-btn:hover{color:inherit}
+.vh-code{width:62px;height:76px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:#ffffff;border:2.5px solid #1f2a44;border-radius:14px;box-shadow:0 4px 0 #1f2a44;font:800 38px/1 'Baloo 2',sans-serif;color:#1f2a44}
+.vh-step{display:flex;gap:14px;align-items:flex-start}
+.vh-step b.n{width:30px;height:30px;flex:none;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#1f2a44;color:#fff;font:800 15px/1 'Nunito',sans-serif}
+.vh-see{display:flex;align-items:center;gap:10px;font-size:15px;line-height:20px;padding:9px 0;border-bottom:1px solid #efe5cf}
+.vh-see:last-child{border-bottom:0}
+.vh-see i{font-style:normal;width:22px;text-align:center;font-weight:800}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 40px 72px; display: flex; gap: 56px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <div style="flex: 1; display: flex; flex-direction: column; gap: 22px">
+    <a href="Profile.dc.html" style="font-size: 14px; font-weight: 700; text-decoration: none">◂ Perfil</a>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="ns-label">Aluno</span>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 44px; line-height: 1.05">Entrar na turma do seu professor</h1>
+      <p style="margin: 0; font-size: 17px; line-height: 25px; color: #5b6478; max-width: 520px">Seu professor passa um código de 6 letras (ou um link). Com ele, as tarefas aparecem direto na sua tela inicial.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <label class="ns-label" for="vh-code">Código da turma</label>
+      <div id="vh-code" role="group" aria-label="Código digitado: V I O L 4 2" style="display: flex; gap: 10px">
+        <span class="vh-code">V</span><span class="vh-code">I</span><span class="vh-code">O</span><span class="vh-code" style="margin-right: 14px">L</span><span class="vh-code">4</span><span class="vh-code">2</span>
+      </div>
+      <span style="font-size: 13px; color: #5b6478">Também dá para escanear o QR code que o professor mostra na aula.</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 16px; padding: 16px 18px; background: #ffffff; border: 2px solid #0b8fa8; border-radius: 16px; box-shadow: 0 4px 0 #0b8fa8; max-width: 560px; box-sizing: border-box">
+      <span style="width: 56px; height: 56px; border-radius: 999px; background: #0b8fa8; color: #fff; display: flex; align-items: center; justify-content: center; font: 800 22px/1 'Baloo 2', sans-serif; flex: none">HM</span>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #0b8fa8">ACHAMOS A TURMA</span>
+        <b style="font-size: 18px; font-weight: 800">Iniciantes · sábado</b>
+        <span style="font-size: 14px; color: #5b6478">Profª Helena Martins · Escola Arco Livre · 12 alunos</span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 12px; margin-top: auto">
+      <a class="ns-btn ns-btn--primary" href="StudentTasks.dc.html">Entrar na turma <span aria-hidden="true">▸</span></a>
+      <a class="ns-btn ns-btn--ghost" href="Main.dc.html">Agora não</a>
+    </div>
+  </div>
+
+  <aside aria-label="O que o professor vai ver" class="ns-panel" style="width: 420px; flex: none; box-sizing: border-box; padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; align-self: center">
+    <span class="ns-label">O que a Profª Helena vai ver</span>
+    <div>
+      <div class="vh-see"><i style="color: #0b8fa8">✓</i>Tarefas que ela passou: nota, precisão e afinação</div>
+      <div class="vh-see"><i style="color: #0b8fa8">✓</i>Gravação das tarefas que você <b>enviar</b></div>
+      <div class="vh-see"><i style="color: #0b8fa8">✓</i>Minutos de prática por semana</div>
+      <div class="vh-see"><i style="color: #0b8fa8">✓</i>Quais cordas e trechos estão difíceis</div>
+      <div class="vh-see"><i style="color: #d93636">✕</i>Músicas que você toca por diversão</div>
+      <div class="vh-see"><i style="color: #d93636">✕</i>Gravações que você não enviou</div>
+    </div>
+    <div style="display: flex; gap: 10px; padding: 12px; background: #fbf6ea; border: 1px dashed #e3d8bf; border-radius: 12px; font-size: 13px; line-height: 18px; color: #5b6478">
+      <span aria-hidden="true" style="font-size: 18px">👪</span>
+      <span>Menor de 13 anos? Um responsável confirma por e-mail antes de entrar. Você pode sair da turma quando quiser.</span>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

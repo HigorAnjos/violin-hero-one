@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Painel do professor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px;padding:0 18px}
+a.ns-btn:hover{color:inherit}
+.vh-cls{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:10px;border-left:3px solid transparent;text-decoration:none;color:var(--ink)}
+.vh-cls[aria-current="page"]{background:#ffffff;border-left-color:var(--neon-cyan)}
+.vh-cls small{font-size:12px;color:var(--ink-muted)}
+.vh-inb{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:9px 10px;border-radius:10px;text-decoration:none;color:#1f2a44;border:1.5px solid transparent}
+.vh-inb:hover{background:#fbf6ea;border-color:#e3d8bf}
+.vh-inb b{font-size:14px;font-weight:800}
+.vh-inb small{display:block;font-size:12px;color:#5b6478}
+.vh-av{width:34px;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;color:#fff;font:800 13px/1 'Baloo 2',sans-serif}
+.vh-tk{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid #efe5cf}
+.vh-tk:last-child{border-bottom:0}
+.vh-tk b{font-size:14px;font-weight:800}
+.vh-seg{display:flex;height:8px;border-radius:999px;overflow:hidden;background:#efe5cf}
+table{width:100%;border-collapse:collapse;font:400 14px/18px var(--font-ui)}
+th{text-align:left;font:700 11px/14px var(--font-ui);letter-spacing:.12em;color:var(--ink-muted);padding:7px 10px;border-bottom:1px solid var(--grid-line)}
+td{padding:7px 10px;border-bottom:1px solid #efe5cf;color:var(--ink)}
+td.n{font-family:var(--font-mono);text-align:right}
+th.n{text-align:right}
+.vh-chip{display:inline-block;font:800 10px/1 var(--font-ui);letter-spacing:.1em;padding:5px 8px;border-radius:999px}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 24px 36px; display: flex; gap: 22px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <nav aria-label="Turmas" style="width: 210px; flex: none; display: flex; flex-direction: column; gap: 6px">
+    <span style="font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 20px; color: #1f2a44">Violin <span style="color: #0b8fa8">Hero</span></span>
+    <span class="ns-label" style="margin: 14px 0 4px">Modo professor</span>
+    <a class="vh-cls" href="#" aria-current="page"><b style="font-weight: 800; font-size: 14px">Iniciantes · sábado</b><small>12 alunos · 3 para revisar</small></a>
+    <a class="vh-cls" href="#"><b style="font-weight: 800; font-size: 14px">Orquestra jovem</b><small>20 alunos · 1 para revisar</small></a>
+    <a class="vh-cls" href="#"><b style="font-weight: 800; font-size: 14px">Aulas particulares</b><small>4 alunos</small></a>
+    <a href="#" style="padding: 8px 12px; font-size: 13px; font-weight: 700; text-decoration: none">＋ Nova turma</a>
+    <span style="flex: 1"></span>
+    <div style="padding: 12px; background: #ffffff; border: 2px dashed #e3d8bf; border-radius: 12px; display: flex; flex-direction: column; gap: 6px">
+      <span style="font-size: 12px; color: #5b6478">Código para alunos entrarem</span>
+      <span style="font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; letter-spacing: 0.1em; color: #0b8fa8">VIOL 42</span>
+      <span style="display: flex; gap: 12px; font-size: 12px; font-weight: 700"><a href="JoinClass.dc.html">Mostrar QR</a><a href="#">Copiar link</a></span>
+    </div>
+  </nav>
+
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+    <header style="display: flex; align-items: flex-end; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span class="ns-label">Semana de 19 a 25 de outubro · próxima aula sábado</span>
+        <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 32px">Iniciantes · sábado</h1>
+      </div>
+      <div style="display: flex; gap: 10px">
+        <a class="ns-btn ns-btn--secondary" href="Import.dc.html">Importar repertório</a>
+        <a class="ns-btn ns-btn--primary" href="AssignTask.dc.html">＋ Nova tarefa</a>
+      </div>
+    </header>
+
+    <div style="display: grid; grid-template-columns: 1.15fr 1fr 0.8fr; gap: 14px">
+      <section aria-label="Para revisar" class="ns-panel" style="padding: 14px 14px 8px; display: flex; flex-direction: column; gap: 4px; border-color: #1f2a44">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px 4px"><span class="ns-label" style="color: #1f2a44">Para revisar · 3</span><span style="font-size: 12px; color: #5b6478">mais antigas primeiro</span></div>
+        <a class="vh-inb" href="TeacherReview.dc.html"><span class="vh-av" style="background: #d63a8a">AN</span><span><b>Ana · Canon 32–40</b><small>94,1% · ±11 ¢ · <span style="color: #e8553d; font-weight: 700">fez uma pergunta</span></small></span><span style="font-size: 12px; color: #5b6478">16:40</span></a>
+        <a class="vh-inb" href="TeacherReview.dc.html"><span class="vh-av" style="background: #6b4bd8">BR</span><span><b>Bruno · Escala de Ré</b><small>91,2% · ±11 ¢</small></span><span style="font-size: 12px; color: #5b6478">ontem</span></a>
+        <a class="vh-inb" href="TeacherReview.dc.html"><span class="vh-av" style="background: #b87800">CA</span><span><b>Carla · Escala de Ré</b><small>93,0% · ±9 ¢</small></span><span style="font-size: 12px; color: #5b6478">ontem</span></a>
+      </section>
+
+      <section aria-label="Tarefas ativas" class="ns-panel" style="padding: 14px 16px 6px; display: flex; flex-direction: column">
+        <span class="ns-label">Tarefas ativas</span>
+        <div class="vh-tk">
+          <div style="display: flex; justify-content: space-between"><b>Escala de Ré maior · 80 BPM</b><span style="font-size: 12px; color: #5b6478">até sex</span></div>
+          <div class="vh-seg" role="img" aria-label="7 aprovadas, 2 para revisar, 1 refazer, 2 sem fazer"><i style="width: 58%; background: #0b8fa8"></i><i style="width: 17%; background: #1f2a44"></i><i style="width: 8%; background: #e8553d"></i></div>
+          <span style="font-size: 12px; color: #5b6478">7 aprovadas · 2 revisar · 1 refazer · 2 sem fazer</span>
+        </div>
+        <div class="vh-tk">
+          <div style="display: flex; justify-content: space-between"><b>Minueto em Sol · comp. 9–16</b><span style="font-size: 12px; color: #5b6478">até sex</span></div>
+          <div class="vh-seg" role="img" aria-label="3 aprovadas, 4 refazer, 5 sem fazer"><i style="width: 25%; background: #0b8fa8"></i><i style="width: 33%; background: #e8553d"></i></div>
+          <span style="font-size: 12px; color: #5b6478">3 aprovadas · 4 refazer · 5 sem fazer</span>
+        </div>
+      </section>
+
+      <section aria-label="Atenção" class="ns-panel" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; border-color: #b87800">
+        <span class="ns-label" style="color: #b87800">O app percebeu</span>
+        <span style="font-size: 14px; line-height: 19px">5 alunos tocam <b>baixo na corda Mi</b> com o 4º dedo.</span>
+        <a href="AssignTask.dc.html" style="font-size: 13px; font-weight: 700">Criar exercício para eles ▸</a>
+        <span style="font-size: 14px; line-height: 19px; margin-top: 4px"><b>Gabi</b> não toca há 9 dias.</span>
+        <a href="#" style="font-size: 13px; font-weight: 700">Mandar um recado ▸</a>
+      </section>
+    </div>
+
+    <section aria-label="Alunos" class="ns-panel" style="padding: 4px 8px; flex-grow: 1; min-height: 0; overflow: hidden">
+      <table>
+        <thead><tr><th>ALUNO</th><th class="n">MIN. SEMANA</th><th class="n">PRECISÃO</th><th class="n">AFINAÇÃO</th><th>CORDA MAIS DIFÍCIL</th><th>ESCALA DE RÉ</th><th>MINUETO</th><th>ÚLTIMA VEZ</th></tr></thead>
+        <tbody>
+          <tr><td>Ana</td><td class="n">142</td><td class="n">95,8%</td><td class="n">±6 ¢</td><td><span style="color: #b87800">E</span> · baixa</td><td><span class="vh-chip" style="background: #0b8fa8; color: #fff">APROVADA</span></td><td><span class="vh-chip" style="background: #1f2a44; color: #fff">REVISAR</span></td><td>hoje</td></tr>
+          <tr><td>Bruno</td><td class="n">96</td><td class="n">91,2%</td><td class="n">±11 ¢</td><td><span style="color: #0b8fa8">A</span> · alta</td><td><span class="vh-chip" style="background: #1f2a44; color: #fff">REVISAR</span></td><td><span class="vh-chip" style="background: #e8553d; color: #fff">REFAZER</span></td><td>ontem</td></tr>
+          <tr><td>Carla</td><td class="n">120</td><td class="n">93,0%</td><td class="n">±9 ¢</td><td><span style="color: #b87800">E</span> · baixa</td><td><span class="vh-chip" style="background: #1f2a44; color: #fff">REVISAR</span></td><td><span class="vh-chip" style="background: #0b8fa8; color: #fff">APROVADA</span></td><td>hoje</td></tr>
+          <tr><td>Davi</td><td class="n">18</td><td class="n">78,4%</td><td class="n">±24 ¢</td><td><span style="color: #b87800">E</span> · baixa</td><td><span class="vh-chip" style="border: 1px solid #b87800; color: #b87800">SEM FAZER</span></td><td><span class="vh-chip" style="border: 1px solid #b87800; color: #b87800">SEM FAZER</span></td><td>há 5 dias</td></tr>
+          <tr><td>Elisa</td><td class="n">88</td><td class="n">90,1%</td><td class="n">±12 ¢</td><td><span style="color: #6b4bd8">G</span> · alta</td><td><span class="vh-chip" style="background: #0b8fa8; color: #fff">APROVADA</span></td><td><span class="vh-chip" style="background: #e8553d; color: #fff">REFAZER</span></td><td>hoje</td></tr>
+          <tr><td>Gabi</td><td class="n">0</td><td class="n">—</td><td class="n">—</td><td>—</td><td><span class="vh-chip" style="border: 1px solid #b87800; color: #b87800">SEM FAZER</span></td><td><span class="vh-chip" style="border: 1px solid #b87800; color: #b87800">SEM FAZER</span></td><td>há 9 dias</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

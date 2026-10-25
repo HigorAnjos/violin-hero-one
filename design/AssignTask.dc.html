@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Nova tarefa</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:46px;padding:0 20px}
+a.ns-btn:hover{color:inherit}
+.vh-f{display:flex;flex-direction:column;gap:7px}
+.vh-f>span:first-child{font:800 12px/1 'Nunito',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#5b6478}
+.vh-in{min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;background:#ffffff;border:2px solid #e3d8bf;border-radius:10px;font-size:15px;color:#1f2a44}
+.vh-chips{display:flex;flex-wrap:wrap;gap:6px}
+.vh-c{min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;border-radius:999px;border:2px solid #e3d8bf;background:#ffffff;font:700 13px/1 'Nunito',sans-serif;color:#1f2a44}
+.vh-c[aria-pressed="true"]{background:#1f2a44;border-color:#1f2a44;color:#fff}
+.vh-tog{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:15px}
+.vh-tog small{display:block;font-size:12px;color:#5b6478}
+.vh-sw{width:42px;height:24px;border-radius:999px;background:#0b8fa8;position:relative;flex:none}
+.vh-sw::after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:999px;background:#fff}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 24px 40px; display: flex; flex-direction: column; gap: 14px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <a href="Teacher.dc.html" style="font-size: 14px; font-weight: 700; text-decoration: none">◂ Iniciantes · sábado</a>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 32px">Nova tarefa</h1>
+    </div>
+    <div style="display: flex; gap: 10px">
+      <a class="ns-btn ns-btn--ghost" href="Teacher.dc.html">Salvar rascunho</a>
+      <a class="ns-btn ns-btn--primary" href="Teacher.dc.html">Enviar para 5 alunos <span aria-hidden="true">▸</span></a>
+    </div>
+  </header>
+
+  <div style="display: flex; gap: 20px; flex-grow: 1; min-height: 0">
+    <div class="ns-panel" style="flex: 1; min-width: 0; box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+
+      <div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px">
+        <label class="vh-f"><span>Música</span><span class="vh-in">Escala de Mi maior (1ª posição) <span style="color: #5b6478">▾</span></span></label>
+        <div class="vh-f"><span>Trecho</span><span class="vh-in" style="justify-content: flex-start">compassos <b>1</b> a <b>8</b><span style="margin-left: auto; font-size: 12px; color: #5b6478">arraste na partitura</span></span></div>
+      </div>
+
+      <div style="position: relative; border: 2px solid #e3d8bf; border-radius: 10px; overflow: hidden; background: #ffffff" aria-label="Partitura com os compassos 1 a 8 selecionados">
+        <dc-import name="SheetStrip" variant="preview" strip-width="760" measure-start="1" hint-size="760px,112px"></dc-import>
+        <span style="position: absolute; left: 0; top: 0; bottom: 0; width: 560px; background: rgba(11, 143, 168, 0.10); border-right: 3px solid #0b8fa8"></span>
+        <span style="position: absolute; left: 551px; top: 40px; width: 16px; height: 32px; border-radius: 6px; background: #0b8fa8"></span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px">
+        <div class="vh-f"><span>Modo</span>
+          <div class="vh-chips" role="group" aria-label="Modo de jogo">
+            <button class="vh-c" aria-pressed="true">Prática</button><button class="vh-c" aria-pressed="false">Partitura</button><button class="vh-c" aria-pressed="false">Arcade</button><button class="vh-c" aria-pressed="false">Cordas 3D</button>
+          </div>
+        </div>
+        <div class="vh-f"><span>Velocidade</span>
+          <span class="vh-in"><span>começa em <b>60</b> e sobe até <b>80</b> BPM</span><span style="font-size: 12px; color: #5b6478">+5 a cada acerto</span></span>
+        </div>
+        <div class="vh-f"><span>Meta para contar como feita</span>
+          <div class="vh-chips">
+            <span class="vh-c">Precisão ≥ <b>90%</b></span><span class="vh-c">Afinação ± <b>15 ¢</b></span><span class="vh-c"><b>3</b> vezes</span>
+          </div>
+        </div>
+        <div class="vh-f"><span>Prazo</span>
+          <span class="vh-in">sexta, 23 de out · 23:59 <span style="color: #5b6478">▾</span></span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding-top: 12px; border-top: 1px solid #efe5cf">
+        <div class="vh-tog"><span>Pedir gravação para eu revisar<small>O aluno escolhe a melhor tentativa e envia</small></span><span class="vh-sw" role="switch" aria-checked="true" aria-label="Pedir gravação"></span></div>
+        <div class="vh-f"><span>Recado para os alunos</span>
+          <span class="vh-in" style="font-size: 14px; color: #1f2a44">Mi com o 4º dedo bem em cima, quase encostando no 3º! <span aria-label="Gravar recado em áudio" style="font-size: 18px">🎙</span></span>
+        </div>
+      </div>
+    </div>
+
+    <aside style="width: 330px; flex: none; display: flex; flex-direction: column; gap: 14px">
+      <section aria-label="Para quem" class="ns-panel" style="box-sizing: border-box; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+        <span class="ns-label">Para quem</span>
+        <div class="vh-chips" role="group" aria-label="Destinatários">
+          <button class="vh-c" aria-pressed="false">Turma toda (12)</button><button class="vh-c" aria-pressed="true">Escolher alunos</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: #fff7ec; border: 1.5px solid #f3c99a; border-radius: 10px">
+          <span style="font-size: 12px; font-weight: 800; color: #b87800">SUGESTÃO DO APP · CORDA MI BAIXA</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <span class="vh-c" style="min-height: 30px">✓ Ana</span><span class="vh-c" style="min-height: 30px">✓ Carla</span><span class="vh-c" style="min-height: 30px">✓ Davi</span><span class="vh-c" style="min-height: 30px">✓ Felipe</span><span class="vh-c" style="min-height: 30px">✓ Hugo</span>
+          </div>
+        </div>
+      </section>
+
+      <section aria-label="Como o aluno vai ver" style="flex: 1; box-sizing: border-box; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; border: 2px dashed #e3d8bf; border-radius: 14px">
+        <span class="ns-label">Como o aluno vai ver</span>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #fff7ec; border: 2px solid #f3c99a; border-radius: 14px; box-shadow: 0 4px 0 #f3c99a">
+          <span style="position: relative; width: 40px; height: 40px; flex: none; border-radius: 999px; background: #0b8fa8; color: #fff; display: flex; align-items: center; justify-content: center; font: 800 15px/1 'Baloo 2', sans-serif">HM<b style="position: absolute; right: -4px; top: -4px; width: 18px; height: 18px; border-radius: 999px; background: #e8553d; border: 2px solid #fff7ec; font: 800 10px/14px 'Nunito', sans-serif; text-align: center">1</b></span>
+          <span style="display: flex; flex-direction: column; gap: 2px"><b style="font-size: 14px; font-weight: 800">Tarefa nova da Profª Helena</b><span style="font-size: 12px; color: #5b6478">Escala de Mi · até sexta</span></span>
+        </div>
+        <span style="font-size: 13px; line-height: 19px; color: #5b6478">Aparece na tela inicial e como notificação no celular. No fim da partida, o aluno já vê se bateu a meta.</span>
+      </section>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

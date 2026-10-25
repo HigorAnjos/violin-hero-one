@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Salvar progresso</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:50px;padding:0 22px}
+a.ns-btn:hover{color:inherit}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <div aria-hidden="true" style="position: absolute; inset: 0; padding: 30px 40px; box-sizing: border-box; opacity: 0.4">
+    <span style="font: 800 28px/1 'Baloo 2', sans-serif">Ranking</span>
+    <div style="display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 14px; margin-top: 24px; width: 820px"><div style="height: 200px; background: #fff; border: 1px solid #e3d8bf"></div><div style="height: 230px; background: #fff; border: 1px solid #b87800"></div><div style="height: 190px; background: #fff; border: 1px solid #e3d8bf"></div></div>
+    <div style="margin-top: 14px; width: 820px; height: 300px; background: #f4ecda; border: 1px solid #e3d8bf"></div>
+  </div>
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(31, 42, 68, 0.28)"></div>
+
+  <section role="dialog" aria-label="Crie sua conta para entrar no ranking" style="position: absolute; left: 50%; top: 50%; width: 560px; margin-left: -280px; transform: translateY(-50%); box-sizing: border-box; padding: 28px 30px 24px; display: flex; flex-direction: column; gap: 16px; background: #fbf6ea; border: 2.5px solid #1f2a44; border-radius: 22px; box-shadow: 0 6px 0 #1f2a44">
+    <div style="display: flex; align-items: center; gap: 16px">
+      <span style="width: 64px; height: 64px; flex: none; border-radius: 999px; background: #fde7c8; display: flex; align-items: center; justify-content: center; font-size: 32px">🦊</span>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 1.05">Quer aparecer no ranking, Lia?</h1>
+        <span style="font-size: 15px; color: #5b6478">Para isso precisamos de uma conta. Leva 10 segundos.</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; background: #ffffff; border: 2px solid #e3d8bf; border-radius: 14px">
+      <span class="ns-label">O que já é seu e vai junto</span>
+      <div style="display: flex; gap: 22px; font-size: 14px">
+        <span><b style="font: 800 20px/1 'Nunito', sans-serif; display: block">9</b>músicas tocadas</span>
+        <span><b style="font: 800 20px/1 'Nunito', sans-serif; display: block">3</b>selos</span>
+        <span><b style="font: 800 20px/1 'Nunito', sans-serif; display: block">5 dias</b>de sequência</span>
+        <span><b style="font: 800 20px/1 'Nunito', sans-serif; display: block">2</b>importadas</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <a class="ns-btn ns-btn--primary" href="Ranking.dc.html">Continuar com Google</a>
+      <a class="ns-btn ns-btn--secondary" href="Ranking.dc.html">Usar e-mail</a>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #5b6478">
+      <span>Menor de 13? Peça para um responsável criar.</span>
+      <a href="Main.dc.html" style="font-weight: 800; text-decoration: none">Agora não</a>
+    </div>
+  </section>
+
+  <aside style="position: absolute; right: 28px; bottom: 24px; width: 290px; padding: 12px 14px; background: #ffffff; border: 1.5px dashed #e3d8bf; border-radius: 12px; font-size: 12px; line-height: 17px; color: #5b6478">
+    <b style="color: #1f2a44">Quando aparece:</b> ao abrir Ranking ou Desafiar amigo, ao importar a 3ª música, ou ao trocar de aparelho. Nunca no meio de uma música.
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

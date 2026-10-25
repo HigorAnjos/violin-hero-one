@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Minhas tarefas</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:46px;padding:0 20px}
+a.ns-btn:hover{color:inherit}
+.vh-task{display:flex;flex-direction:column;gap:6px;padding:14px 16px;background:#ffffff;border:2px solid #e3d8bf;border-radius:14px;text-decoration:none;color:#1f2a44}
+.vh-task[aria-current="true"]{border-color:#1f2a44;box-shadow:0 4px 0 #1f2a44}
+.vh-task b{font-size:16px;font-weight:800}
+.vh-task small{font-size:13px;color:#5b6478}
+.vh-st{align-self:flex-start;font:800 11px/1 'Nunito',sans-serif;letter-spacing:.1em;padding:5px 9px;border-radius:999px}
+.vh-goal{display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:#fbf6ea;border:1px solid #e3d8bf;border-radius:10px}
+.vh-goal span{font-size:12px;color:#5b6478}
+.vh-goal b{font:800 17px/1 'Nunito',sans-serif}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 28px 40px; display: flex; flex-direction: column; gap: 16px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <a href="Main.dc.html" style="font-size: 14px; font-weight: 700; text-decoration: none">◂ Início</a>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 30px; line-height: 34px">Tarefas da Profª Helena</h1>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #5b6478">
+      <span style="width: 36px; height: 36px; border-radius: 999px; background: #0b8fa8; color: #fff; display: flex; align-items: center; justify-content: center; font: 800 14px/1 'Baloo 2', sans-serif">HM</span>
+      Iniciantes · sábado · próxima aula em 2 dias
+    </div>
+  </header>
+
+  <div style="display: flex; gap: 22px; flex-grow: 1; min-height: 0">
+    <nav aria-label="Tarefas" style="width: 340px; flex: none; display: flex; flex-direction: column; gap: 10px">
+      <a class="vh-task" href="#" aria-current="true">
+        <span class="vh-st" style="background: #e8553d; color: #fff">REFAZER</span>
+        <b>Minueto em Sol · comp. 9–16</b>
+        <small>Professora comentou ontem · até sexta</small>
+      </a>
+      <a class="vh-task" href="#">
+        <span class="vh-st" style="border: 1.5px solid #1f2a44">PARA FAZER</span>
+        <b>Escala de Ré maior · 80 BPM</b>
+        <small>Melhor até agora 86% · meta 90% · até sexta</small>
+      </a>
+      <a class="vh-task" href="TaskResult.dc.html">
+        <span class="vh-st" style="background: #efe5cf; color: #5b6478">ENVIADA · ESPERANDO</span>
+        <b>Canon em Neon · comp. 32–40</b>
+        <small>Enviada hoje, 16:40</small>
+      </a>
+      <a class="vh-task" href="#" style="opacity: 0.75">
+        <span class="vh-st" style="background: #0b8fa8; color: #fff">APROVADA ★</span>
+        <b>Cordas soltas com metrônomo</b>
+        <small>Semana passada</small>
+      </a>
+    </nav>
+
+    <section aria-label="Tarefa selecionada" class="ns-panel" style="flex: 1; min-width: 0; box-sizing: border-box; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 24px">Minueto em Sol · compassos 9–16</h2>
+        <span style="font-size: 13px; color: #5b6478">Modo Partitura · 72 BPM</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+        <div class="vh-goal"><span>Precisão · meta 90%</span><b style="color: #0b8fa8">93% ✓</b></div>
+        <div class="vh-goal"><span>Afinação · meta ±15 ¢</span><b style="color: #e8553d">±19 ¢</b></div>
+        <div class="vh-goal"><span>Enviar gravação</span><b>sim, 1 tentativa</b></div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; background: #fff7ec; border: 2px solid #f3c99a; border-radius: 14px">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <span style="width: 32px; height: 32px; border-radius: 999px; background: #0b8fa8; color: #fff; display: flex; align-items: center; justify-content: center; font: 800 13px/1 'Baloo 2', sans-serif">HM</span>
+          <b style="font-size: 15px">Profª Helena pediu para refazer</b>
+          <span style="font-size: 12px; color: #5b6478; margin-left: auto">ontem, 21:10</span>
+        </div>
+        <div role="group" aria-label="Recado em áudio, 42 segundos" style="display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #ffffff; border: 1px solid #f3c99a; border-radius: 999px">
+          <button aria-label="Ouvir recado" style="width: 32px; height: 32px; border-radius: 999px; border: 0; background: #1f2a44; color: #fff; font-size: 12px">▶</button>
+          <svg width="300" height="24" viewBox="0 0 300 24" aria-hidden="true"><g style="fill: #c9bda3"><rect x="0" y="9" width="3" height="6"></rect><rect x="6" y="6" width="3" height="12"></rect><rect x="12" y="3" width="3" height="18"></rect><rect x="18" y="7" width="3" height="10"></rect><rect x="24" y="2" width="3" height="20"></rect><rect x="30" y="8" width="3" height="8"></rect><rect x="36" y="5" width="3" height="14"></rect><rect x="42" y="9" width="3" height="6"></rect><rect x="48" y="4" width="3" height="16"></rect><rect x="54" y="6" width="3" height="12"></rect><rect x="60" y="2" width="3" height="20"></rect><rect x="66" y="7" width="3" height="10"></rect><rect x="72" y="9" width="3" height="6"></rect><rect x="78" y="5" width="3" height="14"></rect><rect x="84" y="3" width="3" height="18"></rect><rect x="90" y="8" width="3" height="8"></rect><rect x="96" y="6" width="3" height="12"></rect><rect x="102" y="4" width="3" height="16"></rect><rect x="108" y="9" width="3" height="6"></rect><rect x="114" y="2" width="3" height="20"></rect><rect x="120" y="6" width="3" height="12"></rect><rect x="126" y="8" width="3" height="8"></rect><rect x="132" y="4" width="3" height="16"></rect><rect x="138" y="7" width="3" height="10"></rect><rect x="144" y="3" width="3" height="18"></rect><rect x="150" y="9" width="3" height="6"></rect><rect x="156" y="5" width="3" height="14"></rect><rect x="162" y="7" width="3" height="10"></rect><rect x="168" y="2" width="3" height="20"></rect><rect x="174" y="6" width="3" height="12"></rect><rect x="180" y="9" width="3" height="6"></rect><rect x="186" y="4" width="3" height="16"></rect><rect x="192" y="8" width="3" height="8"></rect><rect x="198" y="5" width="3" height="14"></rect><rect x="204" y="3" width="3" height="18"></rect><rect x="210" y="7" width="3" height="10"></rect><rect x="216" y="9" width="3" height="6"></rect><rect x="222" y="6" width="3" height="12"></rect><rect x="228" y="4" width="3" height="16"></rect><rect x="234" y="8" width="3" height="8"></rect><rect x="240" y="5" width="3" height="14"></rect><rect x="246" y="9" width="3" height="6"></rect><rect x="252" y="7" width="3" height="10"></rect><rect x="258" y="3" width="3" height="18"></rect><rect x="264" y="6" width="3" height="12"></rect><rect x="270" y="9" width="3" height="6"></rect><rect x="276" y="5" width="3" height="14"></rect><rect x="282" y="8" width="3" height="8"></rect><rect x="288" y="7" width="3" height="10"></rect><rect x="294" y="9" width="3" height="6"></rect></g></svg>
+          <span style="font-family: 'Nunito', monospace; font-size: 13px; color: #5b6478">0:42</span>
+        </div>
+        <p style="margin: 0; font-size: 15px; line-height: 22px">"O ritmo está ótimo! Só a nota longa do <b>compasso 12</b> está caindo de afinação no fim. Segura o arco mais perto do cavalete e pensa no 3º dedo um pouquinho mais alto."</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span class="ns-label">Marcado pela professora</span>
+        <div style="position: relative; border: 1px solid #e3d8bf; border-radius: 8px; overflow: hidden; background: #ffffff">
+          <dc-import name="SheetStrip" variant="review" strip-width="780" measure-start="11" hint-size="780px,112px"></dc-import>
+          <span style="position: absolute; left: 258px; top: 6px; width: 250px; bottom: 6px; border: 2.5px solid #e8553d; border-radius: 10px; pointer-events: none"></span>
+          <span style="position: absolute; left: 266px; top: -1px; padding: 3px 8px; background: #e8553d; color: #fff; font: 800 11px/1 'Nunito', sans-serif; border-radius: 0 0 6px 6px">comp. 12 · nota longa</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: auto">
+        <a class="ns-btn ns-btn--secondary" href="Practice.dc.html">Praticar só o compasso 12</a>
+        <span style="flex: 1"></span>
+        <a class="ns-btn ns-btn--primary" href="Countdown.dc.html">Tocar a tarefa de novo <span aria-hidden="true">▸</span></a>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

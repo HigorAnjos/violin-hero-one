@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Problema no microfone</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:48px;padding:0 22px}
+a.ns-btn:hover{color:inherit}
+.vh-tip{display:flex;align-items:flex-start;gap:12px;font-size:15px;line-height:21px}
+.vh-tip i{font-style:normal;flex:none;width:30px;height:30px;border-radius:999px;background:#f4ecda;display:flex;align-items:center;justify-content:center;font-size:15px}
+@keyframes vh-wait{0%,100%{opacity:.35}50%{opacity:1}}
+.vh-wait{animation:vh-wait 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.vh-wait{animation:none}}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <div aria-hidden="true" style="position: absolute; inset: 0; opacity: 0.35">
+    <div style="position: absolute; left: 440px; top: 0; width: 400px; height: 600px; background: #f4ecda; border-left: 3px solid #d63a8a; border-right: 3px solid #d63a8a; clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%)"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 120px; background: #f4ecda; border-top: 1px solid #e3d8bf"></div>
+    <span style="position: absolute; left: 40px; top: 30px; font: 800 30px/1 'Nunito', sans-serif">1.284.560</span>
+  </div>
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(251, 246, 234, 0.55)"></div>
+
+  <section role="alertdialog" aria-label="{{title}}" style="position: absolute; left: 50%; top: 50%; width: 640px; margin-left: -320px; transform: translateY(-50%); box-sizing: border-box; padding: 28px 32px; display: flex; flex-direction: column; gap: 18px; background: #ffffff; border: 2.5px solid {{color}}; border-radius: 22px; box-shadow: 0 6px 0 {{color}}">
+    <div style="display: flex; align-items: center; gap: 18px">
+      <span style="width: 72px; height: 72px; flex: none; border-radius: 20px; background: {{bg}}; display: flex; align-items: center; justify-content: center">
+        <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" style="fill: {{color}}"></rect><path d="M6 11a6 6 0 0 0 12 0 M12 17v4 M9 21h6" style="fill: none; stroke: {{color}}; stroke-width: 2; stroke-linecap: round"></path><path d="M4 3 L20 21" style="stroke: #1f2a44; stroke-width: 2.4; stroke-linecap: round; opacity: {{slashOp}}"></path></svg>
+      </span>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 800; letter-spacing: .12em; color: {{color}}">{{kicker}}</span>
+        <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 32px; line-height: 1.05">{{title}}</h1>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; color: #5b6478"><span>NÍVEL DO MICROFONE</span><span>{{meterLabel}}</span></div>
+      <div role="img" aria-label="{{meterLabel}}" style="display: flex; gap: 3px; height: 18px">
+        <sc-for list="{{bars}}" as="b" hint-placeholder-count="30"><i style="flex: 1; border-radius: 3px; background: {{b}}"></i></sc-for>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <sc-for list="{{tips}}" as="t" hint-placeholder-count="3">
+        <div class="vh-tip"><i>{{t.i}}</i><span>{{t.text}}</span></div>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #fbf6ea; border-radius: 12px">
+      <span class="vh-wait" style="width: 10px; height: 10px; flex: none; border-radius: 999px; background: {{color}}"></span>
+      <span style="font-size: 14px; color: #1f2a44">{{waiting}}</span>
+    </div>
+    <div style="display: flex; justify-content: flex-end; gap: 10px">
+      <a class="ns-btn ns-btn--ghost" href="Calibration.dc.html">Ajustar microfone</a>
+      <a class="ns-btn ns-btn--primary" href="Gameplay.dc.html">{{cta}}</a>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"estado":{"editor":"enum","options":["semSom","barulho","semPermissao"],"default":"semSom"},"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = {
+      semSom: {
+        kicker: 'MÚSICA PAUSADA', title: 'Não estou te ouvindo', color: '#d63a8a', bg: '#fdeef5', slash: false,
+        level: 1, meterLabel: 'quase nada', cta: 'Continuar',
+        waiting: 'Toque a corda Lá solta e eu continuo sozinho.',
+        tips: [
+          { i: '📏', text: 'Deixe o aparelho a um braço de distância, de frente para o violino.' },
+          { i: '🎧', text: 'Fone Bluetooth atrapalha o microfone. Tire ou use com fio.' },
+          { i: '📱', text: 'Feche outros apps que usam o microfone (chamada, gravador).' }
+        ]
+      },
+      barulho: {
+        kicker: 'AMBIENTE BARULHENTO', title: 'Tem muito barulho por aí', color: '#b87800', bg: '#fbf0db', slash: false,
+        level: 27, meterLabel: 'alto o tempo todo', cta: 'Continuar mesmo assim',
+        waiting: 'Até melhorar, eu fico mais tolerante e não conto erro de afinação.',
+        tips: [
+          { i: '🔇', text: 'TV, ventilador ou conversa perto confundem as notas.' },
+          { i: '🔉', text: 'Abaixe a música do jogo em Configurações › Som.' },
+          { i: '🚪', text: 'Um cômodo menor e com a porta fechada ajuda muito.' }
+        ]
+      },
+      semPermissao: {
+        kicker: 'SEM ACESSO AO MICROFONE', title: 'O microfone foi bloqueado', color: '#d93636', bg: '#fdecec', slash: true,
+        level: 0, meterLabel: 'sem sinal', cta: 'Tentar de novo',
+        waiting: 'Sem o microfone não dá para saber o que você tocou.',
+        tips: [
+          { i: '🔒', text: 'No navegador: toque no cadeado ao lado do endereço › Microfone › Permitir.' },
+          { i: '⚙️', text: 'No celular: Ajustes › Violin Hero › Microfone.' },
+          { i: '🙈', text: 'Nada é gravado sem você pedir. O som só é analisado na hora.' }
+        ]
+      }
+    };
+    const s = S[this.props.estado] || S.semSom;
+    const bars = Array.from({ length: 30 }, (_, i) => i < s.level ? (i > 24 ? '#d93636' : (i > 18 ? '#b87800' : '#0b8fa8')) : '#efe5cf');
+    return { ...s, bars, slashOp: s.slash ? 1 : 0 };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Celular: afinar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+a.vh-ic{display:flex;align-items:center;justify-content:center;width:44px;height:44px;box-sizing:border-box;border-radius:3px;border:1px solid #e3d8bf;color:#1f2a44;text-decoration:none}
+.vh-ref{min-height:36px;min-width:44px;padding:0 10px;border-radius:999px;border:1px solid var(--grid-line);background:transparent;color:var(--ink-muted);font:600 12px/1 var(--font-mono)}
+.vh-ref[aria-pressed="true"]{background:var(--neon-cyan);border-color:var(--neon-cyan);color:var(--ink-on-neon)}
+.vh-s{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--void-800);border:1px solid var(--grid-line);border-radius:3px}
+.vh-s b{font:22px/1 var(--font-display)}
+.vh-s span{display:flex;flex-direction:column;font:12px/15px var(--font-ui);color:var(--ink-muted)}
+.vh-s strong{font:600 12px/15px var(--font-ui);color:var(--ink)}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 844px; height: 390px; position: relative; overflow: hidden; box-sizing: border-box; padding: 14px 20px; display: flex; gap: 16px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <section aria-label="Afinador" class="ns-panel" style="flex: 1; min-width: 0; box-sizing: border-box; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <a class="vh-ic" href="MobileLibrary.dc.html" aria-label="Voltar"><span aria-hidden="true">◂</span></a>
+      <span class="ns-label">Afinador</span>
+      <span style="flex: 1"></span>
+      <div role="group" aria-label="Lá de referência" style="display: flex; align-items: center; gap: 4px">
+        <span style="font-size: 11px; letter-spacing: 0.1em; color: #5b6478; margin-right: 4px">LÁ</span>
+        <button class="vh-ref" aria-pressed="false">440</button>
+        <button class="vh-ref" aria-pressed="true">442</button>
+        <button class="vh-ref" aria-pressed="false">443</button>
+        <button class="vh-ref" aria-pressed="false">···</button>
+      </div>
+    </div>
+    <div style="display: flex; align-items: flex-end; gap: 18px">
+      <span style="font-family: 'Baloo 2', sans-serif; font-size: 64px; line-height: 0.9; color: #0b8fa8">A4</span>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-family: 'Nunito', monospace; font-size: 22px; color: #1f2a44">443,0 Hz</span>
+        <span style="font-weight: 600; font-size: 12px; letter-spacing: 0.14em; color: #1f2a44">+4 ¢ · AFINADO</span>
+      </div>
+    </div>
+    <div role="img" aria-label="Medidor de afinação: mais 4 cents" style="position: relative; height: 34px; background: #f4ecda; border: 1px solid #e3d8bf">
+      <div style="position: absolute; top: 0; bottom: 0; left: 20%; width: 60%; background: rgba(11, 143, 168, 0.12)"></div>
+      <div style="position: absolute; top: 0; bottom: 0; left: 35%; width: 30%; background: rgba(31, 42, 68, 0.14)"></div>
+      <div style="position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: #1f2a44; opacity: 0.6"></div>
+      <div style="position: absolute; top: -6px; bottom: -6px; left: 54%; width: 4px; margin-left: -2px; background: #0b8fa8"></div>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-family: 'Nunito', monospace; font-size: 12px; color: #5b6478"><span>−50 ¢</span><span>0</span><span>+50 ¢</span></div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: auto">
+      <div class="vh-s"><b style="color: #6b4bd8">G</b><span><strong>✓</strong>196,9</span></div>
+      <div class="vh-s"><b style="color: #d63a8a">D</b><span><strong>✓</strong>295,0</span></div>
+      <div class="vh-s" style="border-color: #0b8fa8"><b style="color: #0b8fa8">A</b><span><strong style="color: #0b8fa8">●</strong>442,0</span></div>
+      <div class="vh-s" style="border-style: dashed"><b style="color: #b87800; opacity: 0.5">E</b><span><strong>○</strong>662,3</span></div>
+    </div>
+  </section>
+
+  <section aria-label="Latência" class="ns-panel" style="width: 240px; flex: none; box-sizing: border-box; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <span class="ns-label">Latência</span>
+      <span style="font-weight: 700; font-size: 10px; letter-spacing: 0.12em; color: #fbf6ea; background: #0b8fa8; padding: 3px 7px; border-radius: 999px">AUTO</span>
+    </div>
+    <span style="font-family: 'Nunito', monospace; font-size: 34px; line-height: 1; color: #1f2a44">142 ms</span>
+    <span style="font-size: 12px; line-height: 16px; color: #5b6478">Medida neste celular. Descontada de cada nota.</span>
+    <span style="font-size: 12px; line-height: 16px; color: #b87800">▲ Evite fone Bluetooth.</span>
+    <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px">
+      <span style="font-size: 12px; color: #5b6478; width: 60px">Volume</span>
+      <div class="ns-segs" style="flex: 1"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+    </div>
+    <a class="ns-btn ns-btn--primary" href="MobileGameplay.dc.html" style="margin-top: auto">Começar <span aria-hidden="true">▸</span></a>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":844,"height":390}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

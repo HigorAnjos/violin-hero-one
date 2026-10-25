@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Faixa de partitura</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;family=Noto+Music&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div role="img" aria-label="{{label}}" style="position: relative; width: {{w}}px; height: 112px; overflow: hidden; background: #f4ecda; font-family: 'Nunito', system-ui, sans-serif; color: #1f2a44">
+
+  <div style="position: absolute; left: 0; right: 0; top: 32px; height: 1.4px; background: #5b6478; opacity: 0.7"></div>
+  <div style="position: absolute; left: 0; right: 0; top: 42px; height: 1.4px; background: #5b6478; opacity: 0.7"></div>
+  <div style="position: absolute; left: 0; right: 0; top: 52px; height: 1.4px; background: #5b6478; opacity: 0.7"></div>
+  <div style="position: absolute; left: 0; right: 0; top: 62px; height: 1.4px; background: #5b6478; opacity: 0.7"></div>
+  <div style="position: absolute; left: 0; right: 0; top: 72px; height: 1.4px; background: #5b6478; opacity: 0.7"></div>
+
+  <sc-if value="{{showBand}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; left: {{bandX}}px; width: {{bandW}}px; top: 4px; bottom: 4px; background: rgba(184, 120, 0, 0.10); border: 1px dashed #b87800; box-sizing: border-box"></div>
+  </sc-if>
+
+  <sc-if value="{{showNeedle}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; left: 218px; width: 44px; top: 6px; bottom: 6px; background: {{zoneColor}}"></div>
+    <div style="position: absolute; left: 238px; width: 3px; top: 6px; bottom: 6px; background: {{needleColor}}; box-shadow: {{needleGlow}}"></div>
+    <span style="position: absolute; left: 248px; top: 2px; font-weight: 600; font-size: 10px; letter-spacing: 0.14em; color: {{needleColor}}">{{needleLabel}}</span>
+  </sc-if>
+
+  <sc-for list="{{bars}}" as="b" hint-placeholder-count="3">
+    <div style="position: absolute; left: {{b.x}}px; top: 32px; width: 1.4px; height: 41px; background: #5b6478; opacity: 0.8"></div>
+    <span style="position: absolute; left: {{b.tx}}px; top: 14px; font-family: 'Nunito', monospace; font-size: 12px; line-height: 14px; color: #5b6478">{{b.n}}</span>
+  </sc-for>
+
+  <sc-for list="{{notes}}" as="n" hint-placeholder-count="12">
+    <div style="position: absolute; inset: 0; opacity: {{n.op}}">
+      <sc-for list="{{n.ledgers}}" as="L" hint-placeholder-count="0">
+        <div style="position: absolute; left: {{L.x}}px; top: {{L.y}}px; width: 22px; height: 1.4px; background: #5b6478"></div>
+      </sc-for>
+      <div style="position: absolute; left: {{n.sx}}px; top: {{n.sy}}px; width: 2px; height: 34px; background: #1f2a44"></div>
+      <div style="position: absolute; left: {{n.hx}}px; top: {{n.hy}}px; width: 14px; height: 10px; box-sizing: border-box; border-radius: 50%; transform: rotate(-20deg); background: {{n.bg}}; border: {{n.border}}; box-shadow: {{n.glow}}"></div>
+      <span style="position: absolute; left: {{n.fx}}px; top: 92px; font-weight: 600; font-size: 13px; line-height: 16px; color: {{n.color}}">{{n.finger}}</span>
+      <sc-if value="{{n.miss}}" hint-placeholder-val="{{ false }}">
+        <span style="position: absolute; left: {{n.mx}}px; top: 90px; font-family: 'Nunito', monospace; font-size: 16px; line-height: 18px; color: #d93636">×</span>
+      </sc-if>
+      <sc-if value="{{n.flat}}" hint-placeholder-val="{{ false }}">
+        <span style="position: absolute; left: {{n.mx}}px; top: 91px; font-size: 12px; line-height: 16px; color: #b87800">▾</span>
+      </sc-if>
+    </div>
+  </sc-for>
+
+  <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 96px; background: #f4ecda">
+    <div style="position: absolute; left: 0; right: 0; top: 32px; height: 1.4px; background: #5b6478; opacity: 0.7"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 42px; height: 1.4px; background: #5b6478; opacity: 0.7"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 52px; height: 1.4px; background: #5b6478; opacity: 0.7"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 62px; height: 1.4px; background: #5b6478; opacity: 0.7"></div>
+    <div style="position: absolute; left: 0; right: 0; top: 72px; height: 1.4px; background: #5b6478; opacity: 0.7"></div>
+    <span style="position: absolute; left: 10px; top: 16px; font-family: 'Noto Music', 'Noto Sans Symbols 2', serif; font-size: 60px; line-height: 70px; color: #1f2a44">𝄞</span>
+    <span style="position: absolute; left: 54px; top: 18px; font-family: 'Noto Music', 'Noto Sans Symbols 2', serif; font-size: 20px; line-height: 26px; color: #1f2a44">♯</span>
+    <span style="position: absolute; left: 68px; top: 33px; font-family: 'Noto Music', 'Noto Sans Symbols 2', serif; font-size: 20px; line-height: 26px; color: #1f2a44">♯</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["live","paused","review","preview"],"default":"live"},"stripWidth":{"editor":"int","default":1200,"min":400,"max":1280},"measureStart":{"editor":"int","default":17,"min":1,"max":200},"$preview":{"width":1200,"height":112}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const v = this.props.variant ?? 'live';
+    const W = Number(this.props.stripWidth ?? 1200);
+    const ms = Number(this.props.measureStart ?? 17);
+    const COL = { g: '#6b4bd8', d: '#d63a8a', a: '#0b8fa8', e: '#b87800' };
+    const BASE = 72, ST = 5, GAP = 56;
+    // [nome, grau a partir de Mi4, corda, dedo, tempos, erro]
+    const liveSeq = [
+      ['Ré4', -1, 'd', 0, 1], ['Fá♯4', 1, 'd', 2, 1], ['Lá4', 3, 'a', 0, 1], ['Ré5', 6, 'a', 3, 1],
+      ['Dó♯5', 5, 'a', 2, 1], ['Si4', 4, 'a', 1, 1], ['Ré5', 6, 'a', 3, 2], ['Fá♯4', 1, 'd', 2, 1],
+      ['Lá4', 3, 'a', 0, 2], ['Mi5', 7, 'e', 0, 1], ['Si3', -3, 'g', 2, 1], ['Dó♯5', 5, 'a', 2, 1],
+      ['Sol4', 2, 'd', 3, 2], ['Fá♯5', 8, 'e', 1, 1], ['Lá3', -4, 'g', 1, 1], ['Si4', 4, 'a', 1, 1],
+      ['Ré5', 6, 'a', 3, 1], ['Lá4', 3, 'a', 0, 1], ['Fá♯4', 1, 'd', 2, 1], ['Ré4', -1, 'd', 0, 2]
+    ];
+    const reviewSeq = [
+      ['Mi5', 7, 'e', 0, 1, 'flat'], ['Dó♯5', 5, 'a', 2, 1], ['Lá4', 3, 'a', 0, 1], ['Fá♯5', 8, 'e', 1, 1, 'miss'],
+      ['Ré5', 6, 'a', 3, 1], ['Si4', 4, 'a', 1, 1], ['Sol5', 9, 'e', 2, 1, 'miss'], ['Mi5', 7, 'e', 0, 1, 'flat'],
+      ['Fá♯5', 8, 'e', 1, 1, 'flat'], ['Ré5', 6, 'a', 3, 1]
+    ];
+    const review = v === 'review';
+    const preview = v === 'preview';
+    const still = review || preview;
+    const seq = review ? reviewSeq : liveSeq;
+    const cur = still ? -1 : 6;
+    const xOf = (beat) => still ? 130 + beat * GAP : 240 + (beat - 6) * GAP;
+    const yOf = (deg) => BASE - deg * ST;
+
+    let beat = 0;
+    const notes = [];
+    seq.forEach(([nm, deg, s, f, dur, err], k) => {
+      const x = xOf(beat), y = yOf(deg);
+      beat += dur;
+      if (x < 60 || x > W + 20) return;
+      const up = deg < 4;
+      const ledgers = [];
+      for (let L = -2; L >= deg; L -= 2) ledgers.push({ x: x - 11, y: yOf(L) - 0.7 });
+      for (let L = 10; L <= deg; L += 2) ledgers.push({ x: x - 11, y: yOf(L) - 0.7 });
+      const hollow = dur >= 2;
+      notes.push({
+        hx: x - 7, hy: y - 5,
+        sx: up ? x + 5 : x - 7, sy: up ? y - 34 : y,
+        bg: hollow ? 'transparent' : COL[s],
+        border: hollow ? ('2px solid ' + COL[s]) : '0',
+        glow: k === cur ? 'none' : 'none',
+        op: (!still && k < cur) ? 0.35 : 1,
+        color: COL[s], finger: String(f),
+        fx: x - 4, mx: x + 6,
+        miss: err === 'miss', flat: err === 'flat',
+        ledgers
+      });
+    });
+
+    const bars = [];
+    for (let b = 4; b <= beat; b += 4) {
+      const x = xOf(b) - 28;
+      if (x > 100 && x < W - 4) bars.push({ x, tx: x + 4, n: String(ms + b / 4) });
+    }
+
+    const paused = v === 'paused';
+    const bandX = xOf(4) - 28;
+    return {
+      w: W,
+      notes, bars,
+      showNeedle: !still,
+      needleColor: paused ? '#d63a8a' : '#0b8fa8',
+      needleGlow: paused ? 'none' : 'none',
+      zoneColor: paused ? 'rgba(214, 58, 138, 0.08)' : 'rgba(11, 143, 168, 0.08)',
+      needleLabel: paused ? 'RETOMA AQUI' : 'AGORA',
+      showBand: review,
+      bandX, bandW: Math.max(0, W - bandX - 4),
+      label: preview
+        ? 'Prévia da partitura importada com corda e dedo de cada nota'
+        : review
+        ? 'Partitura do trecho mais difícil, com erros marcados'
+        : (paused ? 'Partitura parada no ponto onde a música vai recomeçar' : 'Partitura acompanhando a música; a nota atual é Ré5 na corda Lá, 3º dedo')
+    };
+  }
+}
+</script>
+</body>
+</html>

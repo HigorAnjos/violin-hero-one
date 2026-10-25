@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Pausa</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:flex;align-items:center;justify-content:space-between;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+.vh-rng{display:flex;flex-direction:column;gap:8px;font:400 14px/20px var(--font-ui);color:var(--ink)}
+.vh-rng span{display:flex;justify-content:space-between}
+.vh-rng b{font:400 14px/20px var(--font-mono);color:var(--ink-muted)}
+.vh-rng input{width:100%;accent-color:#d63a8a;margin:0;height:24px}
+.vh-chk{display:flex;align-items:center;gap:10px;font:400 14px/20px var(--font-ui);color:var(--ink);min-height:32px;cursor:pointer}
+.vh-chk input{width:18px;height:18px;accent-color:#0b8fa8;margin:0}
+.vh-kbd{font:12px/1 var(--font-mono);color:var(--ink);border:1px solid var(--grid-line);background:var(--void-800);padding:4px 7px;border-radius:3px}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <div aria-hidden="true" style="position: absolute; inset: 0">
+    <div style="position: absolute; left: 0; top: 0">
+      <dc-import name="Orchestra" strip-width="1280" energy="4" maestro="{{ true }}" notes="{{ false }}" hint-size="1280px,330px"></dc-import>
+    </div>
+    <div style="position: absolute; left: 50%; top: 0; width: 640px; margin-left: -320px; height: 720px; overflow: hidden; perspective: 880px; perspective-origin: 50% 8%">
+      <div style="position: absolute; left: 50%; bottom: -60px; width: 500px; height: 1400px; margin-left: -250px; transform-origin: 50% 100%; transform: rotateX(58deg); background: #f4ecda; border-left: 2px solid #d63a8a; border-right: 2px solid #d63a8a; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+        <div style="border-right: 1px solid #e3d8bf"></div><div style="border-right: 1px solid #e3d8bf"></div><div style="border-right: 1px solid #e3d8bf"></div><div></div>
+      </div>
+    </div>
+    <div style="position: absolute; inset: 0; background: rgba(251, 246, 234, 0.6)"></div>
+  </div>
+
+  <section aria-label="Partitura parada" style="position: absolute; left: 40px; right: 40px; bottom: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding-top: 10px; background: #f4ecda; border: 1px solid #d63a8a; border-radius: 3px; overflow: hidden">
+    <div style="display: flex; align-items: center; gap: 16px; padding: 0 16px; height: 20px">
+      <span class="ns-label" style="white-space: nowrap">Partitura · parada no compasso 18</span>
+      <span style="flex: 1"></span>
+      <span style="font-size: 13px; color: #5b6478">Você volta tocando a partir da nota marcada</span>
+    </div>
+    <dc-import name="SheetStrip" variant="paused" strip-width="1198" measure-start="17" hint-size="1198px,112px"></dc-import>
+  </section>
+
+  <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 170px; display: flex; align-items: center; justify-content: center; gap: 24px">
+
+    <section aria-label="Menu de pausa" class="ns-panel" style="width: 400px; box-sizing: border-box; padding: 24px 28px; display: flex; flex-direction: column; gap: 16px; border-color: #d63a8a">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 44px; line-height: 1; color: #1f2a44; text-shadow: none">PAUSADO</h1>
+        <span style="font-size: 15px; color: #5b6478">Canon em Neon · Médio</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="font-family: 'Nunito', monospace; font-size: 16px; color: #5b6478">1:42</span>
+        <div class="ns-bar" style="flex: 1"><i style="width: 53%"></i></div>
+        <span style="font-family: 'Nunito', monospace; font-size: 16px; color: #5b6478">3:12</span>
+      </div>
+      <nav aria-label="Opções de pausa" style="display: flex; flex-direction: column; gap: 10px">
+        <a class="ns-btn ns-btn--primary" href="Gameplay.dc.html"><span>Continuar</span><span aria-hidden="true">▸</span></a>
+        <a class="ns-btn" href="Gameplay.dc.html"><span>Reiniciar música</span></a>
+        <a class="ns-btn ns-btn--secondary" href="Calibration.dc.html"><span>Afinar de novo</span></a>
+        <a class="ns-btn ns-btn--ghost" href="SongSelect.dc.html"><span>Sair para músicas</span></a>
+      </nav>
+      <span style="font-size: 13px; color: #5b6478">Ao continuar, o jogo conta 1 compasso antes da próxima nota.</span>
+    </section>
+
+    <section aria-label="Ajustes rápidos" class="ns-panel" style="width: 340px; box-sizing: border-box; padding: 24px 28px; display: flex; flex-direction: column; gap: 14px; align-self: stretch; margin: 40px 0">
+      <span class="ns-label">Ajustes rápidos</span>
+      <label class="vh-rng"><span>Velocidade da pista<b>1,25×</b></span><input type="range" min="50" max="200" value="125"></label>
+      <label class="vh-rng"><span>Volume da música<b>70%</b></span><input type="range" min="0" max="100" value="70"></label>
+      <label class="vh-rng"><span>Volume do metrônomo<b>40%</b></span><input type="range" min="0" max="100" value="40"></label>
+      <div style="display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #e3d8bf; padding-top: 14px">
+        <label class="vh-chk"><input type="checkbox" checked>Mostrar linha de afinação</label>
+        <label class="vh-chk"><input type="checkbox">Mostrar nome das notas</label>
+        <label class="vh-chk"><input type="checkbox">Cores para daltonismo</label>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #5b6478; margin-top: auto">
+        <span class="vh-kbd">ESC</span><span>continuar</span>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
