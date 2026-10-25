@@ -9,7 +9,7 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
   },
   projects: [
@@ -29,10 +29,12 @@ export default defineConfig({
       },
     },
   ],
+  // Testa o artefato de produção; sem SUPABASE_* o app fica Offline, como na prévia sem backend
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
+    command: 'npm run build && npm run preview -- --port 4173 --strictPort',
+    url: 'http://localhost:4173',
+    env: { SUPABASE_URL: '', SUPABASE_ANON_KEY: '' },
     reuseExistingServer: !process.env.CI,
-    timeout: 30000,
+    timeout: 120000,
   },
 });
