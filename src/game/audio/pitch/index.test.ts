@@ -26,7 +26,7 @@ class FakeWorkletNode extends FakeNode {
   }
 }
 
-function withWorklet<T extends object>(context: T, addModule = vi.fn(async (_url: string) => undefined)) {
+function withWorklet<T extends object>(context: T, addModule = vi.fn<(url: string) => Promise<void>>(async () => undefined)) {
   Object.assign(context, { audioWorklet: { addModule } });
   return addModule;
 }
