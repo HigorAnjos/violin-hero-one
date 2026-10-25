@@ -31,8 +31,8 @@ interface Mask {
 }
 
 /**
- * O descarte que o floor ciclo1-mascara vai pôr no Ouvido, só para este teste: some a leitura que bate com uma nota que a
- * orquestra toca agora (ou um harmônico dela) e não é a nota esperada.
+ * Provisório: cópia do descarte do floor ciclo1-mascara; ele troca isto pelo descarte real do Ouvido. Some a leitura que
+ * bate com uma nota que a orquestra toca agora (ou um harmônico dela) e não é a nota esperada.
  */
 function masked(reading: PitchReading, mask: Mask): boolean {
   const expected = mask.expected.some(
