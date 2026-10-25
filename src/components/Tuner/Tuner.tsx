@@ -4,7 +4,10 @@ import { rgba } from '../../assets/styles/themes/color';
 import { midiToFrequency, OPEN_STRING_MIDI, STRING_LETTERS, STRING_SOLFEGE, type StringIndex } from '../../game/notation/violin';
 import { formatCents, formatHz } from '../OpenStringCard/openStringCheck';
 import { Kicker } from '../Screen/Screen';
-import { CLOSE_CENTS, needlePercent, TUNED_CENTS, tuneHint, tuneWord, type TunerState } from './tuner';
+import { CLOSE_CENTS, GOOD_CENTS, needlePercent, TUNED_CENTS, tuneHint, tuneWord, type TunerState } from './tuner';
+
+/** Faixa de ±cents na régua de −50 a +50 ¢, em % da largura. */
+const band = (cents: number) => ({ left: `${needlePercent(-cents)}%`, width: `${needlePercent(cents) - needlePercent(-cents)}%` });
 
 export const A4_PRESETS: readonly { hz: number; label: string }[] = [
   { hz: 440, label: '440' },
@@ -215,16 +218,23 @@ const Needle = styled.span`
   }
 `;
 
+/** Números nas posições reais da régua (as faixas do motor não são equidistantes). */
 const Scale = styled.div`
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 1.25rem;
   font-size: 0.875rem;
   color: ${({ theme }) => theme.colors.textMuted};
+
+  span {
+    position: absolute;
+    top: 0;
+    white-space: nowrap;
+  }
 
   @media (max-height: 500px) {
     font-size: 0.75rem;
 
-    span:nth-child(2n) {
+    span[data-minor] {
       display: none;
     }
   }
@@ -369,33 +379,33 @@ export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: Tu
 
       <div>
         <Meter role="img" aria-label={`Medidor de afinação: ${live ? centsLabel : 'sem som'}`}>
-          <i style={{ left: '20%', width: '60%', background: theme.colors.info.surface }} />
-          <i style={{ left: '35%', width: '30%', background: rgba(theme.colors.text, 0.14) }} />
+          <i style={{ ...band(CLOSE_CENTS), background: theme.colors.info.surface }} />
+          <i style={{ ...band(TUNED_CENTS), background: rgba(theme.colors.text, 0.14) }} />
           <i style={{ left: '50%', width: 1, background: theme.colors.text, opacity: 0.6 }} />
           {live && <Needle style={{ left: `${needlePercent(cents)}%` }} />}
         </Meter>
       </div>
       <Scale aria-hidden="true">
-        <span>−50 ¢ · baixo</span>
-        <span>−30</span>
-        <span>−15</span>
-        <span>0</span>
-        <span>+15</span>
-        <span>+30</span>
-        <span>alto · +50 ¢</span>
+        <span style={{ left: 0 }}>−{GOOD_CENTS} ¢</span>
+        {[-CLOSE_CENTS, -TUNED_CENTS, 0, TUNED_CENTS, CLOSE_CENTS].map((c) => (
+          <span key={c} data-minor={Math.abs(c) === CLOSE_CENTS || undefined} style={{ left: `${needlePercent(c)}%`, transform: 'translateX(-50%)' }}>
+            {c > 0 ? `+${c}` : c < 0 ? `−${-c}` : '0'}
+          </span>
+        ))}
+        <span style={{ right: 0 }}>+{GOOD_CENTS} ¢</span>
       </Scale>
       <Legend aria-hidden="true">
         <span>
           <i style={{ background: rgba(theme.colors.text, 0.25) }} />
-          Perfeito ±15 ¢
+          Perfeito ±{TUNED_CENTS} ¢
         </span>
         <span>
           <i style={{ background: theme.colors.info.border }} />
-          Ótimo ±30 ¢
+          Ótimo ±{CLOSE_CENTS} ¢
         </span>
         <span>
           <i style={{ border: `1px solid ${theme.colors.surfaceBorder}` }} />
-          Bom ±50 ¢
+          Bom ±{GOOD_CENTS} ¢
         </span>
       </Legend>
 

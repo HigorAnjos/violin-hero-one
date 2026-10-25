@@ -1,12 +1,16 @@
 import { tuneString } from '../../game/audio';
 import type { PitchReading } from '../../game/audio/types';
+import { DEFAULT_TOLERANCE_CENTS } from '../../game/engine';
+import { TUNING_GREAT, TUNING_PERFECT } from '../../game/engine/score';
 import { STRING_LETTERS, STRING_SOLFEGE, type StringIndex } from '../../game/notation/violin';
 import { MIN_CLARITY } from '../OpenStringCard/openStringCheck';
 
-/** Faixa do Perfeito na afinação (legenda do afinador): até aqui a corda está afinada. */
-export const TUNED_CENTS = 15;
-/** Faixa do Ótimo. */
-export const CLOSE_CENTS = 30;
+/** Até aqui o motor dá Perfeito na afinação (e a corda conta como afinada): a legenda mostra o número do motor. */
+export const TUNED_CENTS = Math.round(TUNING_PERFECT * DEFAULT_TOLERANCE_CENTS);
+/** Até aqui, Ótimo. */
+export const CLOSE_CENTS = Math.round(TUNING_GREAT * DEFAULT_TOLERANCE_CENTS);
+/** Até aqui, Bom: a tolerância do motor. */
+export const GOOD_CENTS = DEFAULT_TOLERANCE_CENTS;
 /** Afinada por este tempo seguido, a corda ganha o ✓. */
 export const TUNED_HOLD_SECONDS = 1;
 /** Mais longe que isso de uma corda solta é nota com dedo, não corda para afinar. */
@@ -69,7 +73,7 @@ export function tuneHint(state: TunerState): string {
   return next < 0 ? 'Pronto. Todas as cordas afinadas.' : `Pronto. Próxima corda: ${STRING_SOLFEGE[next]} (${STRING_LETTERS[next]})`;
 }
 
-/** Posição da agulha (0 a 100) na régua de −50 a +50 ¢. */
+/** Posição da agulha (0 a 100) na régua da tolerância do motor (±50 ¢). */
 export function needlePercent(cents: number): number {
-  return 50 + Math.max(-50, Math.min(50, cents));
+  return 50 + (Math.max(-GOOD_CENTS, Math.min(GOOD_CENTS, cents)) / GOOD_CENTS) * 50;
 }

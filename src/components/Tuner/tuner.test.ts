@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { midiToFrequency } from '../../game/notation/violin';
 import type { PitchReading } from '../../game/audio/types';
-import { advanceTuner, initialTuner, needlePercent, tuneHint, tuneWord, type TunerState } from './tuner';
+import { judgeCents } from '../../game/engine';
+import { advanceTuner, CLOSE_CENTS, GOOD_CENTS, initialTuner, needlePercent, TUNED_CENTS, tuneHint, tuneWord, type TunerState } from './tuner';
 
 const at = (midi: number, cents: number, time: number, a4 = 442, clarity = 0.95): PitchReading => ({
   time,
@@ -54,5 +55,14 @@ describe('advanceTuner', () => {
   it('agulha presa na régua de ±50 ¢', () => {
     expect(needlePercent(4)).toBe(54);
     expect(needlePercent(-90)).toBe(0);
+  });
+
+  it('as faixas da legenda são as do motor: o que ela chama de Perfeito o motor julga Perfeito', () => {
+    expect([TUNED_CENTS, CLOSE_CENTS, GOOD_CENTS]).toEqual([20, 35, 50]);
+    expect(judgeCents(TUNED_CENTS)).toBe('perfect');
+    expect(judgeCents(TUNED_CENTS + 1)).toBe('great');
+    expect(judgeCents(CLOSE_CENTS)).toBe('great');
+    expect(judgeCents(CLOSE_CENTS + 1)).toBe('good');
+    expect(tuneWord(18)).toBe('AFINADO');
   });
 });

@@ -11,8 +11,10 @@ describe('TuningCard', () => {
     expect(tracePoints([{ age: 2, cents: 0 }, { age: 0, cents: 10 }, { age: 0.5, cents: -90 }, { age: 3, cents: 0 }])).toBe('0.0,40.0 264.0,32.0 198.0,80.0');
   });
 
-  it('afinado até ±15 ¢', () => {
+  it('afinado até onde o motor dá Perfeito (±20 ¢)', () => {
     expect(tuningStatus(6)).toEqual({ text: 'Afinado! +6 ¢', tuned: true });
+    expect(tuningStatus(18).tuned).toBe(true);
+    expect(tuningStatus(21).tuned).toBe(false);
     expect(tuningStatus(-32)).toEqual({ text: 'Baixo · −32 ¢', tuned: false });
   });
 

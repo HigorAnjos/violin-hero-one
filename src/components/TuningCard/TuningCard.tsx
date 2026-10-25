@@ -12,7 +12,7 @@ import { TUNED_CENTS } from '../Tuner/tuner';
 export const TRACE_SECONDS = 2;
 const W = 264;
 const H = 80;
-/** 0,8 px por cent: a faixa afinada (±15 ¢) é a do design, de y 28 a 52. */
+/** 0,8 px por cent: ±50 ¢ ocupam a altura toda; a faixa afinada é a do Perfeito do motor. */
 const PX_PER_CENT = 0.8;
 
 export interface TracePoint {
