@@ -4,6 +4,7 @@ import { GlobalStyles } from './assets/styles/global';
 import { Calibration } from './pages/Calibration';
 import { Countdown } from './pages/Countdown';
 import { Foundation } from './pages/Foundation';
+import { GameOver } from './pages/GameOver';
 import { Gameplay } from './pages/Gameplay';
 import { MicTrouble } from './pages/MicTrouble';
 import { OnboardLevel } from './pages/OnboardLevel';
@@ -45,6 +46,7 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
             <Route path={ROUTES.countdown} element={<Countdown />} />
             <Route path={ROUTES.calibration} element={<Calibration />} />
             <Route path={ROUTES.game} element={<Gameplay />} />
+            <Route path={ROUTES.gameOver} element={<GameOver />} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
           </Routes>
         </BrowserRouter>
