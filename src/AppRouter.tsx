@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { GlobalStyles } from './assets/styles/global';
+import { BadgeEarned } from './pages/BadgeEarned';
 import { Calibration } from './pages/Calibration';
 import { Countdown } from './pages/Countdown';
 import { Foundation } from './pages/Foundation';
@@ -48,6 +49,7 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
             <Route path={ROUTES.calibration} element={<Calibration />} />
             <Route path={ROUTES.game} element={<Gameplay />} />
             <Route path={ROUTES.gameOver} element={<GameOver />} />
+            <Route path={ROUTES.badge} element={<BadgeEarned />} />
             <Route path={ROUTES.results} element={<Results />} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
           </Routes>
