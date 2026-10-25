@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { ThemeProvider } from 'styled-components';
@@ -46,6 +47,25 @@ describe('SessionStatus', () => {
   it('usuário com e-mail ou Google aparece como conta ligada', async () => {
     renderStatus(clientWithUser({ id: 'u1', is_anonymous: false }));
     expect(await screen.findByText('Conta ligada')).toBeInTheDocument();
+  });
+
+  it('em StrictMode garante a sessão uma vez só (não cria dois anônimos)', async () => {
+    const auth = {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+      signInAnonymously: vi.fn().mockResolvedValue({ data: { user: { id: 'anon', is_anonymous: true } }, error: null }),
+    };
+    render(
+      <StrictMode>
+        <QueryClientProvider client={new QueryClient()}>
+          <ThemeProvider theme={cadernoTheme}>
+            <SessionStatus client={{ auth: auth as unknown as AuthClient }} />
+            <SessionStatus client={{ auth: auth as unknown as AuthClient }} />
+          </ThemeProvider>
+        </QueryClientProvider>
+      </StrictMode>
+    );
+    expect(await screen.findAllByText('Jogando como convidado')).toHaveLength(2);
+    expect(auth.signInAnonymously).toHaveBeenCalledOnce();
   });
 
   it('se a consulta falhar (sem rede), mostra "Offline"', async () => {

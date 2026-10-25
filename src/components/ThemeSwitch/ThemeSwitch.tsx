@@ -27,7 +27,8 @@ const Option = styled.button`
   &[aria-pressed='true'] {
     background-color: ${({ theme }) => theme.colors.primary.main};
     color: ${({ theme }) => theme.colors.primary.text};
-    box-shadow: 0 0.25rem 0 ${({ theme }) => theme.game.strings.A.main};
+    border-color: ${({ theme }) => theme.colors.primary.hover};
+    box-shadow: 0 0.25rem 0 ${({ theme }) => theme.colors.primary.hover};
   }
 
   @media (hover: hover) and (prefers-reduced-motion: no-preference) {
@@ -37,7 +38,7 @@ const Option = styled.button`
     }
 
     &[aria-pressed='true']:hover {
-      box-shadow: 0 0.125rem 0 ${({ theme }) => theme.game.strings.A.main};
+      box-shadow: 0 0.125rem 0 ${({ theme }) => theme.colors.primary.hover};
     }
   }
 `;
