@@ -3,7 +3,8 @@ import { micTroubleUrl, needsMicrophone, parseMicTrouble, ROUTES, safeInternalPa
 
 describe('rotas', () => {
   it('só as telas que ouvem o violino pedem microfone; menu e desconhecidas não', () => {
-    for (const path of [ROUTES.mic, ROUTES.strings, ROUTES.micTrouble, ROUTES.countdown, `${ROUTES.countdown}/`]) {
+    const playing = [ROUTES.calibration, ROUTES.game, ROUTES.gameOver, ROUTES.badge, ROUTES.results];
+    for (const path of [ROUTES.mic, ROUTES.strings, ROUTES.micTrouble, ROUTES.countdown, `${ROUTES.countdown}/`, ...playing]) {
       expect(needsMicrophone(path)).toBe(true);
     }
     for (const path of [ROUTES.home, ROUTES.foundation, ROUTES.level, '/biblioteca', '/configuracoes', '/contagem-x']) {

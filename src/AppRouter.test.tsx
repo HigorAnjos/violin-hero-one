@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, it, expect } from 'vitest';
@@ -31,6 +31,14 @@ describe('AppRouter', () => {
     renderApp('/');
     expect(await screen.findByRole('heading', { name: /Violin/ })).toBeInTheDocument();
     expect(window.location.pathname).toBe('/teste');
+  });
+
+  it('sair das cordas para o menu fecha o microfone', async () => {
+    const ear = renderApp('/primeira-vez/cordas');
+    await waitFor(() => expect(ear.open).toBe(true));
+    await userEvent.click(screen.getByRole('link', { name: 'Pular por agora' }));
+    expect(await screen.findByRole('heading', { name: /Violin/ })).toBeInTheDocument();
+    expect(ear.open).toBe(false);
   });
 
   it('caminho desconhecido volta para a raiz', async () => {

@@ -8,15 +8,17 @@ import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
 import { OnboardTest } from './pages/OnboardTest';
 import { isOnboarded } from './services/profile';
+import { DEV_TOOLS } from './shell/devTools';
 import { EarProvider, type Ear } from './shell/Ear';
+import { MicGuard } from './shell/MicGuard';
 import { createMicrophoneEar } from './shell/microphoneEar';
 import { ROUTES } from './shell/routes';
 import { createSimulatedEar } from './shell/simulatedEar';
 import { ThemeChoiceProvider } from './shell/ThemeChoice';
 
-/** Microfone de verdade; só no desenvolvimento, ?ouvido=simulado toca as cordas sozinho. */
+/** Microfone de verdade; só no desenvolvimento e no e2e, ?ouvido=simulado toca sozinho. */
 function chooseEar(): Ear {
-  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('ouvido') === 'simulado') return createSimulatedEar();
+  if (DEV_TOOLS && new URLSearchParams(window.location.search).get('ouvido') === 'simulado') return createSimulatedEar();
   return createMicrophoneEar();
 }
 
@@ -30,6 +32,7 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
       <GlobalStyles />
       <EarProvider ear={chosen}>
         <BrowserRouter>
+          <MicGuard />
           <Routes>
             <Route path={ROUTES.home} element={<Home />} />
             <Route path={ROUTES.foundation} element={<Foundation />} />
