@@ -65,6 +65,20 @@ export interface GameOptions {
 
 /** O erro fica à vista este tempo depois do julgamento. */
 const EXPLAIN_SECONDS = 2.5;
+
+type Explained = { at: number; explanation: Explanation };
+
+/**
+ * A dica que fica na tela depois de um julgamento. Um acerto limpo não apaga a anterior, e um erro ainda na tela não
+ * cede a um tropeço menor: a nota não tocada expira junto do acerto da seguinte, no mesmo quadro, e a dica dela
+ * sumiria antes de aparecer.
+ */
+export function nextExplained(current: Explained | null, explanation: Explanation | null, now: number): Explained | null {
+  if (!explanation) return current;
+  const fresh = current && now - current.at < EXPLAIN_SECONDS ? current : null;
+  if (fresh?.explanation.judgment === 'miss' && explanation.judgment !== 'miss') return fresh;
+  return { at: now, explanation };
+}
 const HUD_EVERY_FRAMES = 4;
 /** Dá tempo de ver o último julgamento antes de trocar de tela. */
 export const FINISH_DELAY_MS = 1500;
@@ -117,7 +131,7 @@ export function useGame(options: GameOptions) {
     let track: Track | null = null;
     let frames = 0;
     let level: OrchestraLevel = 3;
-    let explained: { at: number; explanation: Explanation } | null = null;
+    let explained: Explained | null = null;
     const trace: { time: number; cents: number }[] = [];
     let liveCents: number | null = null;
     let session: GameSession | null = null;
@@ -154,7 +168,7 @@ export function useGame(options: GameOptions) {
         level = levelFor(event.state, level);
         const note = session.engine.notes[event.index];
         const explanation = explainJudgment(event, note, latencyToMs(live.current.latency));
-        explained = explanation ? { at: session.now(), explanation } : null;
+        explained = nextExplained(explained, explanation, session.now());
         return;
       }
       if (event.type === 'gameover') level = 0;
