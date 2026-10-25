@@ -98,6 +98,8 @@ interface LapState {
   counts: Record<Judgment, number>;
   score: number;
   closed: boolean;
+  /** Início do primeiro motor da volta. */
+  start: number;
 }
 
 const EPSILON = 1e-6;
@@ -145,6 +147,9 @@ export function createPractice(options: PracticeOptions): Practice {
   };
 
   const motors: Motor[] = [];
+  // Só os motores com nota em aberto ouvem e andam: a lista inteira cresce uma volta por vez numa sessão longa
+  let active: Motor[] = [];
+  let openLap = 0;
   const notes: EngineNote[] = [];
   const judgments: NoteJudgment[] = [];
   const counts = emptyCounts();
@@ -213,7 +218,9 @@ export function createPractice(options: PracticeOptions): Practice {
   }
 
   function divergence(desired: readonly Piece[], now: number): number | null {
-    const live = motors.filter((m) => m.t1 > now);
+    let first = motors.length;
+    while (first > 0 && motors[first - 1].t1 > now) first--;
+    const live = motors.slice(first);
     const want = desired.filter((p) => p.t1 > now);
     const at = (list: readonly Piece[], t: number) => list.find((p) => p.t0 <= t && t < p.t1) ?? null;
     const marks = [...new Set([now, ...live.flatMap((p) => [p.t0, p.t1]), ...want.flatMap((p) => [p.t0, p.t1])])]
@@ -235,13 +242,15 @@ export function createPractice(options: PracticeOptions): Practice {
       if (m.t1 <= at) break;
       if (m.t0 >= at - EPSILON && m.engine.state.judged === 0) {
         motors.splice(i, 1);
+        active = active.filter((a) => a !== m);
         continue;
       }
       m.engine.retire(at);
       m.b1 = m.b0 + (at - m.t0) / m.spb;
       m.t1 = at;
     }
-    while (laps.length && !motors.some((m) => m.lap === laps.length - 1)) laps.pop();
+    while (laps.length - 1 > (motors.at(-1)?.lap ?? -1)) laps.pop();
+    openLap = Math.min(openLap, laps.length);
   }
 
   function onJudgment(motor: Motor, event: Extract<EngineEvent, { type: 'judgment' }>): void {
@@ -292,26 +301,30 @@ export function createPractice(options: PracticeOptions): Practice {
         if (event.type === 'judgment') onJudgment(motor, event);
       },
     });
-    while (laps.length <= piece.lap) laps.push({ counts: emptyCounts(), score: 0, closed: false });
+    while (laps.length <= piece.lap) laps.push({ counts: emptyCounts(), score: 0, closed: false, start: t0 });
     motors.push(motor);
+    if (motor.engine.status === 'playing') active.push(motor);
   }
 
-  /** A volta fecha quando a seguinte já começou (o salto passou) e nenhuma nota dela segue em aberto. */
+  function compact(): void {
+    if (active.some((m) => m.engine.status !== 'playing')) active = active.filter((m) => m.engine.status === 'playing');
+  }
+
+  /** A volta fecha quando a seguinte já começou (o salto passou) e nenhuma nota dela segue em aberto; em ordem. */
   function closeLaps(): void {
-    laps.forEach((l, lap) => {
-      if (l.closed) return;
-      const next = motors.find((m) => m.lap === lap + 1);
-      if (!next || next.t0 > clock) return;
-      if (motors.some((m) => m.lap === lap && m.engine.status === 'playing')) return;
-      l.closed = true;
+    while (openLap + 1 < laps.length && laps[openLap + 1].start <= clock) {
+      const lap = openLap;
+      if (active.some((m) => m.lap === lap)) return;
+      laps[lap].closed = true;
+      openLap++;
       onEvent?.({ type: 'lap', summary: summary(lap) });
-    });
+    }
   }
 
   function finish(completeLast: boolean): void {
     if (status !== 'playing') return;
     status = 'finished';
-    while (laps.length > 1 && !laps.at(-1)!.closed && motors.find((m) => m.lap === laps.length - 1)!.t0 > clock) laps.pop();
+    while (laps.length > 1 && !laps.at(-1)!.closed && laps.at(-1)!.start > clock) laps.pop();
     const last = laps.length - 1;
     if (last >= 0 && completeLast && !laps[last].closed) laps[last].closed = true;
     const lapSummaries = laps.map((_, lap) => summary(lap));
@@ -341,7 +354,7 @@ export function createPractice(options: PracticeOptions): Practice {
     if (status !== 'playing' || lastLoop || !motors.length) return;
     const last = motors[motors.length - 1];
     if (last.b1 < totalBeats - EPSILON) return;
-    if (motors.some((m) => m.engine.status === 'playing')) return;
+    if (active.length) return;
     closeLaps();
     finish(true);
   }
@@ -371,17 +384,19 @@ export function createPractice(options: PracticeOptions): Practice {
       truncate(at);
       for (const piece of desired) if (piece.t1 > at + EPSILON) spawn(piece, piece.b0 + Math.max(0, at - piece.t0) / piece.spb);
       rebuildNotes();
+      compact();
       closeLaps();
       checkEnd();
     },
     push(reading: PitchReading | null) {
       if (status !== 'playing') return;
-      for (const m of motors) m.engine.push(reading);
+      for (const m of active) m.engine.push(reading);
     },
     advance(now: number) {
       if (status !== 'playing') return;
       clock = Math.max(clock, now);
-      for (const m of motors) m.engine.advance(now);
+      for (const m of active) m.engine.advance(now);
+      compact();
       closeLaps();
       checkEnd();
     },
