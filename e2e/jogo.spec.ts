@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { simulateGame, type GameResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
+import { fontsReady } from './fonts';
 
 // Build do e2e (--mode e2e): ?ouvido=simulado e ?simular valem. Sem gesto o Chromium não libera o áudio;
 // a política de autoplay deixa abrir /jogo direto pela URL.
@@ -26,6 +27,7 @@ async function tooSmallTargets(page: Page) {
 }
 
 async function checkScreen(page: Page) {
+  await fontsReady(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight)).toBeLessThanOrEqual(1);
   expect(await tooSmallTargets(page)).toEqual([]);

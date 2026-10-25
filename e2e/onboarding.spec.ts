@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { fontsReady } from './fonts';
 
 // O Chromium do teste nega o microfone: todo problema vira "bloqueado"; os outros estados usam o
 // mesmo cartão e ficam com os testes unitários
@@ -27,6 +28,7 @@ for (const screen of SCREENS) {
     });
 
     test('não rola na horizontal', async ({ page }) => {
+      await fontsReady(page);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow).toBeLessThanOrEqual(0);
     });

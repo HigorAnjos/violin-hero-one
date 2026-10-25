@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { fontsReady } from './fonts';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/teste');
@@ -31,6 +32,7 @@ test('trocar para o tema Palco', async ({ page }) => {
 });
 
 test('não rola na horizontal', async ({ page }) => {
+  await fontsReady(page);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
