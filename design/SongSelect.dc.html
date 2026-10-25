@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Seleção de música</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+.vh-tab{font:600 12px/16px var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-muted);background:transparent;border:1px solid var(--grid-line);border-radius:999px;padding:0 16px;min-height:36px;cursor:pointer}
+.vh-tab[aria-pressed="true"]{color:var(--ink-on-neon);background:var(--neon-cyan);border-color:var(--neon-cyan)}
+.vh-seg{flex:1;font:600 12px/16px var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted);background:var(--void-800);border:1px solid var(--grid-line);border-radius:3px;min-height:44px;cursor:pointer}
+.vh-seg[aria-pressed="true"]{color:var(--ink);border-color:var(--neon-magenta);box-shadow:var(--glow-magenta)}
+.vh-art{width:56px;height:56px;border-radius:3px;background:var(--void-900);border:1px solid var(--grid-line);overflow:hidden}
+.vh-art svg{display:block}
+.m{fill:var(--neon-magenta)}.c{fill:var(--neon-cyan)}.v{fill:var(--neon-violet)}.y{fill:var(--neon-yellow)}.k{fill:var(--void-900)}
+.vh-best{font:14px/16px var(--font-mono);color:var(--ink-muted)}
+.vh-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.vh-kbd{font:12px/1 var(--font-mono);color:var(--ink);border:1px solid var(--grid-line);background:var(--void-800);padding:4px 7px;border-radius:3px}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 40px 64px; display: flex; flex-direction: column; gap: 24px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="ns-label">Passo 2 de 3 · Modo Arcade</span>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 34px; color: #1f2a44">Selecione a música</h1>
+    </div>
+    <div style="display: flex; align-items: center; gap: 16px">
+      <label style="display: flex; align-items: center; gap: 10px; background: #f4ecda; border: 1px solid #e3d8bf; border-radius: 3px; padding: 0 14px; min-height: 44px; width: 260px; box-sizing: border-box">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" style="fill: none; stroke: #5b6478; stroke-width: 1.5"></circle><path d="M11 11l4 4" style="stroke: #5b6478; stroke-width: 1.5"></path></svg>
+        <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Buscar música</span>
+        <input type="search" placeholder="Buscar música ou compositor" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #1f2a44; font: 400 14px/20px 'Nunito', sans-serif; outline: none">
+      </label>
+      <a class="ns-btn ns-btn--ghost" href="ModeSelect.dc.html"><span aria-hidden="true">◂</span>Voltar</a>
+    </div>
+  </header>
+
+  <div style="display: flex; gap: 32px; flex-grow: 1; min-height: 0">
+
+    <section aria-label="Lista de músicas" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+      <div role="group" aria-label="Filtro" style="display: flex; gap: 8px">
+        <button class="vh-tab" aria-pressed="true">Todas</button>
+        <button class="vh-tab" aria-pressed="false">Clássicas</button>
+        <button class="vh-tab" aria-pressed="false">Originais</button>
+        <button class="vh-tab" aria-pressed="false">Treino</button>
+        <button class="vh-tab" aria-pressed="false">Favoritas</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div class="ns-song is-selected">
+          <div class="vh-art"><svg width="56" height="56" aria-hidden="true"><circle class="m" cx="28" cy="34" r="18"></circle><rect class="k" x="0" y="34" width="56" height="3"></rect><rect class="k" x="0" y="40" width="56" height="4"></rect><rect class="k" x="0" y="47" width="56" height="9"></rect></svg></div>
+          <div><div class="ns-song__title">Canon em Neon</div><div class="ns-song__meta">Pachelbel Remix · 112 BPM · 3:12</div></div>
+          <div class="vh-right"><div class="ns-pips" aria-label="Dificuldade 3 de 5"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div><span class="vh-best">RECORDE 842.110</span></div>
+        </div>
+        <div class="ns-song">
+          <div class="vh-art"><svg width="56" height="56" aria-hidden="true"><rect class="c" x="6" y="10" width="4" height="40"></rect><rect class="v" x="18" y="22" width="4" height="28"></rect><rect class="c" x="30" y="6" width="4" height="44"></rect><rect class="v" x="42" y="16" width="4" height="34"></rect></svg></div>
+          <div><div class="ns-song__title">Chuva de Pixels</div><div class="ns-song__meta">Original · 128 BPM · 2:48</div></div>
+          <div class="vh-right"><div class="ns-pips" aria-label="Dificuldade 4 de 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div><span class="vh-best">RECORDE —</span></div>
+        </div>
+        <div class="ns-song">
+          <div class="vh-art"><svg width="56" height="56" aria-hidden="true"><rect class="y" x="8" y="8" width="18" height="18"></rect><rect class="m" x="30" y="30" width="18" height="18"></rect></svg></div>
+          <div><div class="ns-song__title">Sonata 2077</div><div class="ns-song__meta">Vivaldi Overdrive · 156 BPM · 3:40</div></div>
+          <div class="vh-right"><div class="ns-pips" aria-label="Dificuldade 5 de 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div><span class="vh-best">RECORDE 1.010.400</span></div>
+        </div>
+        <div class="ns-song">
+          <div class="vh-art"><svg width="56" height="56" aria-hidden="true"><path class="c" d="M0 56 L28 14 L56 56 Z"></path><rect class="k" x="0" y="40" width="56" height="3"></rect><circle class="y" cx="42" cy="14" r="5"></circle></svg></div>
+          <div><div class="ns-song__title">Ode em Ré Maior</div><div class="ns-song__meta">Beethoven Synth · 96 BPM · 2:30</div></div>
+          <div class="vh-right"><div class="ns-pips" aria-label="Dificuldade 2 de 5"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div><span class="vh-best">RECORDE 612.880</span></div>
+        </div>
+        <div class="ns-song">
+          <div class="vh-art"><svg width="56" height="56" aria-hidden="true"><rect class="v" x="8" y="40" width="8" height="8"></rect><rect class="m" x="20" y="30" width="8" height="8"></rect><rect class="c" x="32" y="20" width="8" height="8"></rect><rect class="y" x="44" y="10" width="8" height="8"></rect></svg></div>
+          <div><div class="ns-song__title">Escala de Sol</div><div class="ns-song__meta">Treino · Aquecimento · 80 BPM · 1:20</div></div>
+          <div class="vh-right"><div class="ns-pips" aria-label="Dificuldade 1 de 5"><i class="on"></i><i></i><i></i><i></i><i></i></div><span class="vh-best">RECORDE 998.200</span></div>
+        </div>
+      </div>
+    </section>
+
+    <aside aria-label="Detalhes da música" class="ns-panel" style="width: 440px; flex: none; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; padding: 16px">
+      <div style="height: 104px; background: #fbf6ea; border-radius: 3px; overflow: hidden; position: relative">
+        <svg viewBox="0 0 408 104" width="408" height="104" style="display: block" aria-hidden="true">
+          <circle cx="204" cy="104" r="78" style="fill: #d63a8a"></circle>
+          <rect x="120" y="60" width="170" height="3" style="fill: #fbf6ea"></rect>
+          <rect x="120" y="72" width="170" height="5" style="fill: #fbf6ea"></rect>
+          <rect x="120" y="86" width="170" height="7" style="fill: #fbf6ea"></rect>
+          <rect x="0" y="80" width="40" height="24" style="fill: #ffffff"></rect><rect x="44" y="64" width="34" height="40" style="fill: #ffffff"></rect>
+          <rect x="330" y="58" width="36" height="46" style="fill: #ffffff"></rect><rect x="370" y="76" width="38" height="28" style="fill: #ffffff"></rect>
+        </svg>
+        <span style="position: absolute; left: 12px; top: 10px; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #fbf6ea; background: #0b8fa8; padding: 4px 10px; border-radius: 999px">PRÉVIA ▸ 0:18</span>
+      </div>
+
+      <div>
+        <div style="font-weight: 700; font-size: 22px; line-height: 28px; color: #1f2a44">Canon em Neon</div>
+        <div style="font-size: 14px; line-height: 20px; color: #5b6478">Pachelbel Remix · Ré maior · 112 BPM · 3:12 · 486 notas</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="ns-label">Cordas usadas</span>
+        <div style="display: flex; height: 8px; gap: 2px" aria-hidden="true">
+          <i style="width: 12%; background: #6b4bd8; box-shadow: none"></i>
+          <i style="width: 34%; background: #d63a8a; box-shadow: none"></i>
+          <i style="width: 38%; background: #0b8fa8; box-shadow: none"></i>
+          <i style="width: 16%; background: #b87800; box-shadow: none"></i>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-family: 'Nunito', monospace; font-size: 14px; color: #5b6478">
+          <span><b style="color: #6b4bd8; font-weight: 400">G</b> 12%</span><span><b style="color: #d63a8a; font-weight: 400">D</b> 34%</span><span><b style="color: #0b8fa8; font-weight: 400">A</b> 38%</span><span><b style="color: #b87800; font-weight: 400">E</b> 16%</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="ns-label">Dificuldade</span>
+        <div role="group" aria-label="Dificuldade" style="display: flex; gap: 6px">
+          <button class="vh-seg" aria-pressed="false">Fácil</button>
+          <button class="vh-seg" aria-pressed="true">Médio</button>
+          <button class="vh-seg" aria-pressed="false">Difícil</button>
+          <button class="vh-seg" aria-pressed="false">Expert</button>
+        </div>
+        <span style="font-family: 'Nunito', monospace; font-size: 14px; color: #5b6478">Afinação ±30 ¢ · tempo ±60 ms</span>
+      </div>
+
+      <div style="display: flex; gap: 24px; border-top: 1px solid #e3d8bf; padding-top: 12px">
+        <div style="display: flex; flex-direction: column; gap: 4px"><span class="ns-label">Recorde</span><span class="ns-stat">842.110</span></div>
+        <div style="display: flex; flex-direction: column; gap: 4px"><span class="ns-label">Precisão</span><span class="ns-stat">96,1%</span></div>
+        <div style="display: flex; flex-direction: column; gap: 4px"><span class="ns-label">Estrelas</span>
+          <svg width="96" height="18" viewBox="0 0 96 18" role="img" aria-label="4 de 5 estrelas">
+            <path d="M9 1l2.4 5 5.4.6-4 3.7 1.1 5.4L9 13l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z" style="fill: #b87800"></path>
+            <path transform="translate(19 0)" d="M9 1l2.4 5 5.4.6-4 3.7 1.1 5.4L9 13l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z" style="fill: #b87800"></path>
+            <path transform="translate(38 0)" d="M9 1l2.4 5 5.4.6-4 3.7 1.1 5.4L9 13l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z" style="fill: #b87800"></path>
+            <path transform="translate(57 0)" d="M9 1l2.4 5 5.4.6-4 3.7 1.1 5.4L9 13l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z" style="fill: #b87800"></path>
+            <path transform="translate(76 0)" d="M9 1l2.4 5 5.4.6-4 3.7 1.1 5.4L9 13l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z" style="fill: #e3d8bf"></path>
+          </svg>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: auto">
+        <a class="ns-btn ns-btn--primary" href="Calibration.dc.html" style="flex: 1">Tocar <span aria-hidden="true">▸</span></a>
+        <a class="ns-btn ns-btn--secondary" href="#">Praticar trecho</a>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

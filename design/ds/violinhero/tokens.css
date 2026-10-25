@@ -1,0 +1,52 @@
+@import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap");
+/* Violin Hero · Caderno de música (tema claro). Nomes dos tokens mantidos para compatibilidade. */
+:root {
+  --void-900: #fbf6ea;   /* papel: fundo */
+  --void-800: #f4ecda;   /* poço: trilhas, campos, pista */
+  --void-700: #ffffff;   /* cartão */
+  --grid-line: #e3d8bf;  /* linhas e bordas */
+  --ink: #1f2a44;        /* tinta azul-marinho */
+  --ink-muted: #5b6478;
+  --ink-on-neon: #fbf6ea;
+  --neon-magenta: #d63a8a;
+  --neon-cyan: #0b8fa8;
+  --neon-violet: #6b4bd8;
+  --neon-yellow: #b87800;
+  --string-g: var(--neon-violet);
+  --string-d: var(--neon-magenta);
+  --string-a: var(--neon-cyan);
+  --string-e: var(--neon-yellow);
+  --hit-perfect: #1f2a44;
+  --hit-great: var(--neon-cyan);
+  --hit-good: var(--neon-yellow);
+  --hit-miss: #d93636;
+  --font-display: "Baloo 2", "Nunito", system-ui, sans-serif;
+  --font-ui: "Nunito", system-ui, sans-serif;
+  --font-mono: "Nunito", system-ui, sans-serif;
+  --font-music: "Noto Music", "Noto Sans Symbols 2", serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --radius-none: 0px;
+  --radius-sm: 12px;
+  --radius-note: 12px;
+  --radius-pill: 999px;
+  --glow-magenta: 0 0 0 3px rgba(214, 58, 138, 0.22);
+  --glow-cyan: 0 0 0 3px rgba(11, 143, 168, 0.25);
+  --glow-violet: 0 0 0 3px rgba(107, 75, 216, 0.22);
+  --glow-yellow: 0 0 0 3px rgba(184, 120, 0, 0.22);
+  --glow-white: 0 0 0 4px rgba(31, 42, 68, 0.18);
+  --glow-miss: 0 0 0 3px rgba(217, 54, 54, 0.25);
+}
+.ns-screen { font-variant-numeric: tabular-nums; }
+.ns-btn { border-radius: 12px; border-width: 2px; font-weight: 800; letter-spacing: .06em; }
+.ns-btn--primary { color: #ffffff; box-shadow: 0 3px 0 #9c2462; }
+.ns-btn--primary:hover { box-shadow: 0 1px 0 #9c2462; transform: translateY(2px); }
+.ns-panel { border-width: 2px; box-shadow: 0 3px 0 var(--grid-line); }
+.ns-note { border: 2px solid var(--ink); box-sizing: border-box; }
+.ns-mult { color: #ffffff; }
+.ns-judgment { text-transform: none; letter-spacing: 0; font-weight: 800; }

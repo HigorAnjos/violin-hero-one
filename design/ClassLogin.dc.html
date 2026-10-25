@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Entrar pela turma</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:50px;padding:0 26px}
+a.ns-btn:hover{color:inherit}
+.vh-kid{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 6px;background:#ffffff;border:2.5px solid #e3d8bf;border-radius:16px;font:800 15px/1 'Nunito',sans-serif;color:#1f2a44;cursor:pointer}
+.vh-kid[aria-checked="true"]{border-color:#1f2a44;box-shadow:0 4px 0 #1f2a44}
+.vh-kid i{font-style:normal;width:52px;height:52px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.vh-pic{height:76px;border-radius:16px;background:#ffffff;border:2.5px solid #e3d8bf;display:flex;align-items:center;justify-content:center;font-size:38px;cursor:pointer}
+.vh-pic[aria-pressed="true"]{border-color:#0b8fa8;background:#e3f3f6}
+.vh-slot{width:76px;height:76px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:38px;box-sizing:border-box}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 34px 64px; display: flex; flex-direction: column; gap: 20px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: center; justify-content: space-between">
+    <div style="display: flex; align-items: center; gap: 16px">
+      <a href="Login.dc.html" style="font-size: 14px; font-weight: 700; text-decoration: none">◂ Voltar</a>
+      <span style="display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; background: #ffffff; border: 2px solid #e3d8bf; border-radius: 999px">
+        <span style="width: 32px; height: 32px; border-radius: 999px; background: #0b8fa8; color: #fff; display: flex; align-items: center; justify-content: center; font: 800 12px/1 'Baloo 2', sans-serif">HM</span>
+        <span style="font-size: 14px; font-weight: 800">Iniciantes · sábado</span><span style="font-size: 13px; color: #5b6478">código VIOL 42 ✓</span>
+      </span>
+    </div>
+    <span style="font-size: 13px; color: #5b6478">Sem e-mail e sem senha de letras</span>
+  </header>
+
+  <div style="display: flex; gap: 40px; flex-grow: 1; min-height: 0">
+    <section aria-label="Quem é você" style="flex: 1; display: flex; flex-direction: column; gap: 14px">
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 34px; line-height: 1">1. Quem é você?</h1>
+      <div role="radiogroup" aria-label="Alunos da turma" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+        <button class="vh-kid" role="radio" aria-checked="true"><i style="background: #fdeef5">🦊</i>Ana</button>
+        <button class="vh-kid" role="radio" aria-checked="false"><i style="background: #f1ecfb">🐻</i>Bruno</button>
+        <button class="vh-kid" role="radio" aria-checked="false"><i style="background: #fbf0db">🐱</i>Carla</button>
+        <button class="vh-kid" role="radio" aria-checked="false"><i style="background: #e3f3f6">🐧</i>Davi</button>
+        <button class="vh-kid" role="radio" aria-checked="false"><i style="background: #fbf0db">🦉</i>Elisa</button>
+        <button class="vh-kid" role="radio" aria-checked="false"><i style="background: #fdeef5">🐸</i>Felipe</button>
+        <button class="vh-kid" role="radio" aria-checked="false"><i style="background: #e3f3f6">🐰</i>Gabi</button>
+        <button class="vh-kid" role="radio" aria-checked="false"><i style="background: #f1ecfb">🐼</i>Hugo</button>
+      </div>
+      <span style="font-size: 14px; color: #5b6478">Seu nome não está aqui? Peça para a Profª Helena te adicionar na turma.</span>
+    </section>
+
+    <section aria-label="Senha de figuras" style="width: 460px; flex: none; display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 34px; line-height: 1">2. Sua senha de figuras</h2>
+      <div aria-label="2 de 3 figuras escolhidas" style="display: flex; gap: 10px">
+        <span class="vh-slot" style="background: #e3f3f6; border: 2.5px solid #0b8fa8">🎻</span>
+        <span class="vh-slot" style="background: #e3f3f6; border: 2.5px solid #0b8fa8">🌙</span>
+        <span class="vh-slot" style="border: 2.5px dashed #1f2a44"></span>
+      </div>
+      <div role="group" aria-label="Figuras" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+        <button class="vh-pic" aria-pressed="true" aria-label="Violino">🎻</button><button class="vh-pic" aria-pressed="false" aria-label="Estrela">⭐</button><button class="vh-pic" aria-pressed="false" aria-label="Maçã">🍎</button><button class="vh-pic" aria-pressed="true" aria-label="Lua">🌙</button>
+        <button class="vh-pic" aria-pressed="false" aria-label="Peixe">🐟</button><button class="vh-pic" aria-pressed="false" aria-label="Flor">🌻</button><button class="vh-pic" aria-pressed="false" aria-label="Foguete">🚀</button><button class="vh-pic" aria-pressed="false" aria-label="Bola">⚽</button>
+      </div>
+      <span style="font-size: 13px; line-height: 18px; color: #5b6478">Esqueceu? A professora vê sua senha de figuras no painel dela.</span>
+    </section>
+  </div>
+
+  <div style="display: flex; align-items: center; justify-content: flex-end; gap: 12px">
+    <span style="font-size: 14px; color: #5b6478">Neste aparelho você fica conectado: na próxima vez é só tocar no seu bichinho.</span>
+    <a class="ns-btn ns-btn--primary" href="StudentTasks.dc.html">Entrar <span aria-hidden="true">▸</span></a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Importar música</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+.vh-field{display:flex;flex-direction:column;gap:6px;font:600 11px/14px var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-muted);min-width:0}
+.vh-field input,.vh-field select{box-sizing:border-box;width:100%;min-height:40px;background:var(--void-800);border:1px solid var(--grid-line);border-radius:3px;color:var(--ink);font:400 14px/20px var(--font-ui);letter-spacing:0;text-transform:none;padding:0 12px;outline:none}
+.vh-field input:focus,.vh-field select:focus{border-color:var(--neon-cyan);box-shadow:var(--glow-cyan)}
+.vh-chk{display:flex;align-items:center;gap:10px;font:400 14px/20px var(--font-ui);color:var(--ink);min-height:30px;cursor:pointer}
+.vh-chk input{width:18px;height:18px;accent-color:#0b8fa8;margin:0}
+.vh-step{display:flex;align-items:center;gap:8px;font:600 12px/16px var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-muted)}
+.vh-step b{width:24px;height:24px;border-radius:999px;border:1.5px solid var(--grid-line);display:inline-flex;align-items:center;justify-content:center;font:400 13px/1 var(--font-mono);color:var(--ink-muted)}
+.vh-fmt{font:13px/1 var(--font-mono);color:var(--ink);border:1px solid var(--grid-line);background:var(--void-800);padding:6px 9px;border-radius:3px}
+.vh-src{flex:1;min-height:40px;background:transparent;border:0;border-bottom:2px solid var(--grid-line);color:var(--ink-muted);font:600 12px/16px var(--font-ui);letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.vh-src[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--neon-magenta)}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 32px 64px; display: flex; flex-direction: column; gap: 20px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="ns-label">Biblioteca</span>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 34px; color: #1f2a44">Importar música</h1>
+    </div>
+    <ol aria-label="Etapas" style="margin: 0; padding: 0; list-style: none; display: flex; align-items: center; gap: 14px">
+      <li class="vh-step"><b style="border-color: #0b8fa8; color: #0b8fa8">✓</b>Arquivo</li>
+      <li aria-hidden="true" style="width: 28px; height: 1px; background: #e3d8bf"></li>
+      <li class="vh-step" style="color: #1f2a44" aria-current="step"><b style="border-color: #d63a8a; color: #1f2a44; box-shadow: none">2</b>Revisar</li>
+      <li aria-hidden="true" style="width: 28px; height: 1px; background: #e3d8bf"></li>
+      <li class="vh-step"><b>3</b>Pronta para tocar</li>
+    </ol>
+  </header>
+
+  <div style="display: flex; gap: 24px; flex-grow: 1; min-height: 0">
+
+    <div style="width: 360px; flex: none; display: flex; flex-direction: column; gap: 16px">
+      <section aria-label="Origem" class="ns-panel" style="padding: 16px; display: flex; flex-direction: column; gap: 14px">
+        <div role="tablist" aria-label="Origem da música" style="display: flex">
+          <button class="vh-src" role="tab" aria-selected="true">Arquivo</button>
+          <a class="vh-src" role="tab" aria-selected="false" href="ScoreEditor.dc.html" style="display: flex; align-items: center; justify-content: center; text-decoration: none">Escrever ou ditar</a>
+        </div>
+        <label style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 22px 16px; border: 1.5px dashed #d63a8a; border-radius: 3px; background: #f4ecda; text-align: center; cursor: pointer">
+          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 28V8M12 16l8-8 8 8" style="fill: none; stroke: #d63a8a; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round"></path><path d="M6 26v8h28v-8" style="fill: none; stroke: #1f2a44; stroke-width: 2"></path></svg>
+          <span style="font-weight: 600; font-size: 15px; color: #1f2a44">Arraste a partitura aqui</span>
+          <span style="font-size: 13px; color: #5b6478">ou clique para escolher um arquivo</span>
+          <input type="file" accept=".musicxml,.mxl,.xml,.mid,.midi,.mscz" style="position: absolute; width: 1px; height: 1px; opacity: 0">
+        </label>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px">
+          <span class="vh-fmt">.musicxml</span><span class="vh-fmt">.mxl</span><span class="vh-fmt">.mid</span><span class="vh-fmt">.mscz</span>
+        </div>
+        <span style="font-size: 13px; line-height: 18px; color: #5b6478">Use partituras de domínio público ou que você tenha direito de usar.</span>
+      </section>
+
+      <section aria-label="Arquivo enviado" class="ns-panel" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <span style="width: 36px; height: 44px; border: 1.5px solid #0b8fa8; border-radius: 3px; display: flex; align-items: center; justify-content: center; font: 10px/1 'Nunito', monospace; color: #0b8fa8">XML</span>
+          <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1">
+            <span style="font-weight: 600; font-size: 14px; color: #1f2a44; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">minueto_em_sol.musicxml</span>
+            <span style="font-family: 'Nunito', monospace; font-size: 12px; color: #5b6478">48 KB · lido com sucesso</span>
+          </div>
+          <span style="font-weight: 700; font-size: 13px; color: #0b8fa8">✓</span>
+        </div>
+        <div class="ns-bar"><i style="width: 100%"></i></div>
+        <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #1f2a44">
+          <li>✓ 32 compassos · 214 notas</li>
+          <li>✓ Extensão Sol3 – Si5, cabe no violino</li>
+          <li style="color: #b87800">▲ 3 notas pedem 3ª posição (comp. 14)</li>
+        </ul>
+      </section>
+    </div>
+
+    <section aria-label="Revisar música" class="ns-panel" style="flex: 1; min-width: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+        <label class="vh-field">Título<input type="text" value="Minueto em Sol"></label>
+        <label class="vh-field">Compositor<input type="text" value="J. S. Bach"></label>
+        <label class="vh-field">Parte do violino<select><option>Violino I</option><option>Violino II</option><option>Melodia (piano, mão direita)</option></select></label>
+        <label class="vh-field">Tonalidade<input type="text" value="Sol maior"></label>
+        <label class="vh-field">Compasso<input type="text" value="3/4"></label>
+        <label class="vh-field">Andamento (BPM)<input type="number" value="120"></label>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <span class="ns-label">Prévia · compassos 1–3 com dedilhado gerado</span>
+          <a href="#" style="font-size: 13px">Ouvir prévia ▸</a>
+        </div>
+        <div style="border: 1px solid #e3d8bf; overflow: hidden">
+          <dc-import name="SheetStrip" variant="preview" strip-width="720" measure-start="1" hint-size="720px,112px"></dc-import>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 20px">
+        <label class="vh-chk"><input type="checkbox" checked>Gerar cordas e dedilhado</label>
+        <label class="vh-chk"><input type="checkbox" checked>Criar níveis Fácil, Médio e Difícil</label>
+        <label class="vh-chk"><input type="checkbox" checked>Gerar orquestra de fundo</label>
+        <label class="vh-chk"><input type="checkbox">Usar meu áudio de acompanhamento</label>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; margin-top: auto; border-top: 1px solid #e3d8bf; padding-top: 14px">
+        <span style="font-size: 13px; color: #5b6478">Disponível nos 3 modos: Arcade, Partitura e Cordas 3D</span>
+        <span style="flex: 1"></span>
+        <a class="ns-btn ns-btn--ghost" href="Library.dc.html">Cancelar</a>
+        <a class="ns-btn ns-btn--primary" href="Library.dc.html">Adicionar à biblioteca <span aria-hidden="true">▸</span></a>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

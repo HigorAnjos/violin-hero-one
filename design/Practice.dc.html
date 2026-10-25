@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Modo prática</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;family=Noto+Music&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+.vh-chip{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--grid-line);background:transparent;color:var(--ink-muted);font:600 13px/1 var(--font-mono);cursor:pointer}
+.vh-chip[aria-pressed="true"]{background:var(--neon-cyan);border-color:var(--neon-cyan);color:var(--ink-on-neon)}
+.vh-tog{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:34px;font:400 14px/20px var(--font-ui);color:var(--ink);cursor:pointer}
+.vh-tog small{display:block;font-size:12px;line-height:16px;color:var(--ink-muted)}
+.vh-tog input{appearance:none;-webkit-appearance:none;width:40px;height:22px;border-radius:999px;background:var(--grid-line);position:relative;margin:0;flex:none;cursor:pointer}
+.vh-tog input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:999px;background:var(--ink-muted);transition:left .12s}
+.vh-tog input:checked{background:var(--neon-cyan);box-shadow:var(--glow-cyan)}
+.vh-tog input:checked::after{left:21px;background:var(--void-900)}
+.vh-tog input:focus-visible{outline:2px solid #0b8fa8;outline-offset:3px}
+.vh-ring{animation:vhring 1.2s ease-out infinite;transform-origin:300px 132px}
+@keyframes vhring{0%{opacity:1;transform:scale(.8)}100%{opacity:0;transform:scale(1.6)}}
+@media (prefers-reduced-motion: reduce){.vh-ring{animation:none}}
+</style>
+</helmet>
+<div class="ns-screen ns-anim" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 28px 40px; display: flex; flex-direction: column; gap: 18px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span class="ns-label">Modo prática · Canon em Neon</span>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; line-height: 32px; color: #1f2a44">Compassos 18–19 em loop</h1>
+    </div>
+    <div style="display: flex; gap: 12px">
+      <a class="ns-btn ns-btn--ghost" href="Results.dc.html"><span aria-hidden="true">◂</span>Sair da prática</a>
+      <a class="ns-btn ns-btn--secondary" href="Gameplay.dc.html">Tocar a música inteira</a>
+    </div>
+  </header>
+
+  <section aria-label="Partitura em loop" style="position: relative; height: 300px; flex: none; box-sizing: border-box; background: #f4ecda; border: 1px solid #e3d8bf; border-radius: 3px; overflow: hidden">
+    <svg width="1198" height="298" viewBox="0 0 1198 298" role="img" aria-label="Partitura dos compassos 18 e 19 em loop. A música está parada esperando você tocar Ré5, corda Lá, 3º dedo" style="display: block">
+      <rect x="160" y="0" width="690" height="298" style="fill: rgba(214, 58, 138, 0.06)"></rect>
+      <g style="stroke: #5b6478; stroke-width: 1.6; opacity: 0.7">
+        <line x1="0" y1="114" x2="1198" y2="114"></line><line x1="0" y1="132" x2="1198" y2="132"></line><line x1="0" y1="150" x2="1198" y2="150"></line><line x1="0" y1="168" x2="1198" y2="168"></line><line x1="0" y1="186" x2="1198" y2="186"></line>
+      </g>
+      <g transform="translate(0 10)">
+        <line x1="450" y1="104" x2="450" y2="176" style="stroke: #5b6478; stroke-width: 1.6"></line><text x="456" y="94" style="font: 14px 'Nunito', monospace; fill: #5b6478">19</text>
+        <line x1="850" y1="104" x2="850" y2="176" style="stroke: #5b6478; stroke-width: 1.6"></line>
+        <g style="opacity: 0.35"><line x1="190" y1="140" x2="190" y2="198" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="200" cy="140" rx="11.5" ry="8.5" transform="rotate(-20 200 140)" style="fill: #0b8fa8"></ellipse><text x="200" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #0b8fa8">1</text><text x="200" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Si4</text></g>
+        <g><line x1="290" y1="122" x2="290" y2="180" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="300" cy="122" rx="11.5" ry="8.5" transform="rotate(-20 300 122)" style="fill: #f4ecda; stroke: #0b8fa8; stroke-width: 3"></ellipse><text x="300" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #0b8fa8">3</text><text x="300" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Ré5</text></g>
+        <g><line x1="510" y1="167" x2="510" y2="109" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="500" cy="167" rx="11.5" ry="8.5" transform="rotate(-20 500 167)" style="fill: #d63a8a"></ellipse><text x="500" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #d63a8a">2</text><text x="500" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Fá♯4</text></g>
+        <g><line x1="610" y1="149" x2="610" y2="91" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="600" cy="149" rx="11.5" ry="8.5" transform="rotate(-20 600 149)" style="fill: #f4ecda; stroke: #0b8fa8; stroke-width: 3"></ellipse><text x="600" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #0b8fa8">0</text><text x="600" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Lá4</text></g>
+        <g><line x1="790" y1="113" x2="790" y2="171" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="800" cy="113" rx="11.5" ry="8.5" transform="rotate(-20 800 113)" style="fill: #b87800"></ellipse><text x="800" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #b87800">0</text><text x="800" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Mi5</text></g>
+        <g style="opacity: 0.3"><line x1="880" y1="194" x2="920" y2="194" style="stroke: #5b6478; stroke-width: 1.6"></line><line x1="910" y1="203" x2="910" y2="145" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="900" cy="203" rx="11.5" ry="8.5" transform="rotate(-20 900 203)" style="fill: #6b4bd8"></ellipse><text x="900" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #6b4bd8">2</text></g>
+        <g style="opacity: 0.3"><line x1="990" y1="131" x2="990" y2="189" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="1000" cy="131" rx="11.5" ry="8.5" transform="rotate(-20 1000 131)" style="fill: #0b8fa8"></ellipse><text x="1000" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #0b8fa8">2</text></g>
+        <g style="opacity: 0.3"><line x1="1110" y1="158" x2="1110" y2="100" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="1100" cy="158" rx="11.5" ry="8.5" transform="rotate(-20 1100 158)" style="fill: #f4ecda; stroke: #d63a8a; stroke-width: 3"></ellipse><text x="1100" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #d63a8a">3</text></g>
+      </g>
+      <circle class="vh-ring" cx="300" cy="132" r="16" style="fill: none; stroke: #b87800; stroke-width: 2.5"></circle>
+
+      <line x1="300" y1="62" x2="300" y2="246" style="stroke: #b87800; stroke-width: 3; filter: none"></line>
+
+      <rect x="0" y="0" width="160" height="298" style="fill: #f4ecda"></rect>
+      <g style="stroke: #5b6478; stroke-width: 1.6; opacity: 0.7">
+        <line x1="0" y1="114" x2="160" y2="114"></line><line x1="0" y1="132" x2="160" y2="132"></line><line x1="0" y1="150" x2="160" y2="150"></line><line x1="0" y1="168" x2="160" y2="168"></line><line x1="0" y1="186" x2="160" y2="186"></line>
+      </g>
+      <text x="14" y="200" style="font: 104px 'Noto Music', 'Noto Sans Symbols 2', serif; fill: #1f2a44">𝄞</text>
+      <text x="88" y="124" style="font: 32px 'Noto Music', 'Noto Sans Symbols 2', serif; fill: #1f2a44">♯</text>
+      <text x="110" y="151" style="font: 32px 'Noto Music', 'Noto Sans Symbols 2', serif; fill: #1f2a44">♯</text>
+
+      <line x1="164" y1="20" x2="164" y2="278" style="stroke: #d63a8a; stroke-width: 3; filter: none"></line>
+      <rect x="164" y="20" width="58" height="22" style="fill: #d63a8a"></rect>
+      <text x="172" y="36" style="font: 700 12px 'Nunito', sans-serif; letter-spacing: 0.1em; fill: #fbf6ea">A · 18</text>
+      <line x1="850" y1="20" x2="850" y2="278" style="stroke: #d63a8a; stroke-width: 3; filter: none"></line>
+      <rect x="792" y="20" width="58" height="22" style="fill: #d63a8a"></rect>
+      <text x="800" y="36" style="font: 700 12px 'Nunito', sans-serif; letter-spacing: 0.1em; fill: #fbf6ea">B · 19</text>
+      <path d="M846 56 C 700 10, 330 10, 180 56" style="fill: none; stroke: #d63a8a; stroke-width: 1.5; stroke-dasharray: 6 6; opacity: 0.7"></path>
+      <path d="M180 56 l10 -9 M180 56 l13 3" style="stroke: #d63a8a; stroke-width: 1.5; opacity: 0.7"></path>
+    </svg>
+    <div role="status" style="position: absolute; left: 330px; top: 62px; display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: rgba(251, 246, 234, 0.92); border: 1.5px solid #b87800; border-radius: 3px; box-shadow: none">
+      <span style="font-weight: 700; font-size: 12px; letter-spacing: 0.16em; color: #b87800">ESPERANDO VOCÊ</span>
+      <span style="font-size: 14px; color: #1f2a44"><b style="color: #0b8fa8">Ré5</b> · corda Lá · 3º dedo</span>
+    </div>
+  </section>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 18px; flex-grow: 1; min-height: 0">
+
+    <section aria-label="Velocidade" class="ns-panel" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span class="ns-label">Velocidade</span>
+        <span style="font-family: 'Nunito', monospace; font-size: 14px; color: #5b6478">78 de 112 BPM</span>
+      </div>
+      <span style="font-family: 'Nunito', monospace; font-size: 44px; line-height: 1; color: #1f2a44">70%</span>
+      <div role="group" aria-label="Velocidade rápida" style="display: flex; gap: 6px">
+        <button class="vh-chip" aria-pressed="false">50%</button>
+        <button class="vh-chip" aria-pressed="true">70%</button>
+        <button class="vh-chip" aria-pressed="false">85%</button>
+        <button class="vh-chip" aria-pressed="false">100%</button>
+      </div>
+      <label class="vh-tog" style="margin-top: auto"><span>Acelerar sozinho<small>+5% a cada 2 passadas limpas</small></span><input type="checkbox" checked></label>
+    </section>
+
+    <section aria-label="Ajudas" class="ns-panel" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 6px">
+      <span class="ns-label" style="margin-bottom: 4px">Ajudas</span>
+      <label class="vh-tog"><span>Esperar a nota<small>A música só anda quando você acerta</small></span><input type="checkbox" checked></label>
+      <label class="vh-tog"><span>Metrônomo</span><input type="checkbox" checked></label>
+      <label class="vh-tog"><span>Mostrar dedos e cordas</span><input type="checkbox" checked></label>
+      <label class="vh-tog"><span>Tocar a melodia junto</span><input type="checkbox"></label>
+    </section>
+
+    <section aria-label="Passadas" class="ns-panel" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span class="ns-label">Passadas</span>
+        <span style="font-size: 13px; color: #5b6478">passada 5 tocando agora</span>
+      </div>
+      <div role="img" aria-label="Precisão por passada: 62%, 74%, 81% e 92%" style="display: flex; align-items: flex-end; gap: 12px; height: 92px; border-bottom: 1px solid #e3d8bf; position: relative">
+        <div style="position: absolute; left: 0; right: 0; bottom: 82.8px; border-top: 1px dashed #b87800; opacity: 0.7"></div>
+        <span style="position: absolute; right: 0; bottom: 86px; font-family: 'Nunito', monospace; font-size: 11px; color: #b87800">META 90%</span>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-family: 'Nunito', monospace; font-size: 12px; color: #5b6478">62</span><i style="width: 100%; height: 57px; background: #e3d8bf"></i></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-family: 'Nunito', monospace; font-size: 12px; color: #5b6478">74</span><i style="width: 100%; height: 68px; background: #e3d8bf"></i></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-family: 'Nunito', monospace; font-size: 12px; color: #5b6478">81</span><i style="width: 100%; height: 75px; background: #6b4bd8"></i></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-family: 'Nunito', monospace; font-size: 12px; color: #1f2a44">92</span><i style="width: 100%; height: 85px; background: #0b8fa8; box-shadow: none"></i></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-family: 'Nunito', monospace; font-size: 12px; color: #d63a8a">···</span><i style="width: 100%; height: 30px; border: 1.5px dashed #d63a8a; box-sizing: border-box"></i></div>
+      </div>
+      <span style="font-size: 14px; line-height: 20px; color: #1f2a44">Mais 1 passada acima de 90% e a velocidade sobe para <b style="color: #0b8fa8">75%</b>.</span>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

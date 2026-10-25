@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Gameplay Partitura</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;family=Noto+Music&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.vh-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;box-sizing:border-box;border:1.5px solid var(--grid-line);border-radius:3px;background:var(--void-800);color:var(--ink)}
+a.vh-icon:hover{border-color:var(--neon-magenta);box-shadow:var(--glow-magenta);color:var(--ink)}
+a.vh-icon:focus-visible{outline:2px solid #0b8fa8;outline-offset:3px}
+.vh-pulse{animation:vhpulse 1.3s ease-out infinite}
+@keyframes vhpulse{0%,60%{opacity:0;transform:scale(.9)}65%{opacity:1;transform:scale(1.08)}100%{opacity:0;transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){.vh-pulse{animation:none;opacity:1}}
+</style>
+</helmet>
+<div class="ns-screen ns-anim" style="width: 1280px; height: 720px; position: relative; overflow: hidden; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="position: absolute; left: 40px; right: 40px; top: 20px; height: 56px; display: flex; align-items: center; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 4px; width: 420px">
+      <span class="ns-label">Modo Partitura</span>
+      <span style="font-weight: 600; font-size: 16px; color: #1f2a44">Canon em Neon · Médio</span>
+    </div>
+    <div style="flex: 1; display: flex; justify-content: center">
+      <a class="vh-icon" href="Pause.dc.html" aria-label="Pausar">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" style="fill: currentColor"></rect><rect x="9.5" y="2" width="3.5" height="12" style="fill: currentColor"></rect></svg>
+      </a>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 16px; width: 420px">
+      <span class="ns-score" style="font-size: 36px">1.284.560</span>
+      <span class="ns-mult">×4</span>
+      <span class="ns-stat" style="font-size: 16px; color: #5b6478">98,4%</span>
+    </div>
+  </header>
+
+  <section aria-label="Partitura" style="position: absolute; left: 40px; right: 40px; top: 92px; height: 318px; box-sizing: border-box; background: #f4ecda; border: 1px solid #e3d8bf; border-radius: 3px; overflow: hidden; display: flex; flex-direction: column; box-shadow: none">
+    <div style="display: flex; align-items: center; gap: 16px; padding: 12px 16px 0; height: 24px">
+      <span class="ns-label" style="white-space: nowrap">Partitura · Ré maior · 4/4 · compasso 18 de 64</span>
+      <span style="flex: 1"></span>
+      <span style="font-family: 'Nunito', monospace; font-size: 15px; color: #5b6478">1:42</span>
+      <div class="ns-bar" style="width: 360px"><i style="width: 53%"></i></div>
+      <span style="font-family: 'Nunito', monospace; font-size: 15px; color: #5b6478">3:12</span>
+    </div>
+    <svg width="1198" height="280" viewBox="0 0 1198 280" role="img" aria-label="Pauta em clave de sol correndo da direita para a esquerda; a nota na agulha é Ré5, mínima, corda Lá, 3º dedo" style="display: block">
+      <g style="stroke: #5b6478; stroke-width: 1.6; opacity: 0.7">
+        <line x1="0" y1="114" x2="1198" y2="114"></line><line x1="0" y1="132" x2="1198" y2="132"></line><line x1="0" y1="150" x2="1198" y2="150"></line><line x1="0" y1="168" x2="1198" y2="168"></line><line x1="0" y1="186" x2="1198" y2="186"></line>
+      </g>
+      <rect x="276" y="62" width="48" height="206" style="fill: rgba(11, 143, 168, 0.08)"></rect>
+      <rect x="300" y="126" width="200" height="12" style="fill: rgba(11, 143, 168, 0.18)"></rect>
+      <rect x="300" y="126" width="88" height="12" style="fill: #0b8fa8; opacity: 0.55; filter: none"></rect>
+
+      <g transform="translate(0 10)">
+        <line x1="450" y1="104" x2="450" y2="176" style="stroke: #5b6478; stroke-width: 1.6"></line><text x="456" y="94" style="font: 14px 'Nunito', monospace; fill: #5b6478">19</text>
+        <line x1="850" y1="104" x2="850" y2="176" style="stroke: #5b6478; stroke-width: 1.6"></line><text x="856" y="94" style="font: 14px 'Nunito', monospace; fill: #5b6478">20</text>
+        <g style="opacity: 0.35"><line x1="190" y1="140" x2="190" y2="198" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="200" cy="140" rx="11.5" ry="8.5" transform="rotate(-20 200 140)" style="fill: #0b8fa8"></ellipse><text x="200" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #0b8fa8">1</text><text x="200" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Si4</text></g>
+        <g><line x1="290" y1="122" x2="290" y2="180" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="300" cy="122" rx="11.5" ry="8.5" transform="rotate(-20 300 122)" style="fill: #f4ecda; stroke: #0b8fa8; stroke-width: 3; filter: none"></ellipse><text x="300" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #0b8fa8">3</text><text x="300" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Ré5</text></g>
+        <g><line x1="510" y1="167" x2="510" y2="109" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="500" cy="167" rx="11.5" ry="8.5" transform="rotate(-20 500 167)" style="fill: #d63a8a"></ellipse><text x="500" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #d63a8a">2</text><text x="500" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Fá♯4</text></g>
+        <g><line x1="610" y1="149" x2="610" y2="91" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="600" cy="149" rx="11.5" ry="8.5" transform="rotate(-20 600 149)" style="fill: #f4ecda; stroke: #0b8fa8; stroke-width: 3"></ellipse><text x="600" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #0b8fa8">0</text><text x="600" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Lá4</text></g>
+        <g><line x1="790" y1="113" x2="790" y2="171" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="800" cy="113" rx="11.5" ry="8.5" transform="rotate(-20 800 113)" style="fill: #b87800"></ellipse><text x="800" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #b87800">0</text><text x="800" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Mi5</text></g>
+        <g><line x1="880" y1="194" x2="920" y2="194" style="stroke: #5b6478; stroke-width: 1.6"></line><line x1="910" y1="203" x2="910" y2="145" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="900" cy="203" rx="11.5" ry="8.5" transform="rotate(-20 900 203)" style="fill: #6b4bd8"></ellipse><text x="900" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #6b4bd8">2</text><text x="900" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Si3</text></g>
+        <g><line x1="990" y1="131" x2="990" y2="189" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="1000" cy="131" rx="11.5" ry="8.5" transform="rotate(-20 1000 131)" style="fill: #0b8fa8"></ellipse><text x="1000" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #0b8fa8">2</text><text x="1000" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Dó♯5</text></g>
+        <g><line x1="1110" y1="158" x2="1110" y2="100" style="stroke: #1f2a44; stroke-width: 2.2"></line><ellipse cx="1100" cy="158" rx="11.5" ry="8.5" transform="rotate(-20 1100 158)" style="fill: #f4ecda; stroke: #d63a8a; stroke-width: 3"></ellipse><text x="1100" y="244" text-anchor="middle" style="font: 600 18px 'Nunito', sans-serif; fill: #d63a8a">3</text><text x="1100" y="264" text-anchor="middle" style="font: 400 13px 'Nunito', sans-serif; fill: #5b6478">Sol4</text></g>
+      </g>
+
+      <line x1="300" y1="62" x2="300" y2="236" style="stroke: #0b8fa8; stroke-width: 3; filter: none"></line>
+      <text x="290" y="58" text-anchor="end" style="font: 600 11px 'Nunito', sans-serif; letter-spacing: 0.14em; fill: #0b8fa8">AGORA</text>
+
+      <rect x="0" y="0" width="160" height="280" style="fill: #f4ecda"></rect>
+      <g style="stroke: #5b6478; stroke-width: 1.6; opacity: 0.7">
+        <line x1="0" y1="114" x2="160" y2="114"></line><line x1="0" y1="132" x2="160" y2="132"></line><line x1="0" y1="150" x2="160" y2="150"></line><line x1="0" y1="168" x2="160" y2="168"></line><line x1="0" y1="186" x2="160" y2="186"></line>
+      </g>
+      <text x="14" y="200" style="font: 104px 'Noto Music', 'Noto Sans Symbols 2', serif; fill: #1f2a44">𝄞</text>
+      <text x="88" y="124" style="font: 32px 'Noto Music', 'Noto Sans Symbols 2', serif; fill: #1f2a44">♯</text>
+      <text x="110" y="151" style="font: 32px 'Noto Music', 'Noto Sans Symbols 2', serif; fill: #1f2a44">♯</text>
+      <line x1="160" y1="114" x2="160" y2="186" style="stroke: #5b6478; stroke-width: 1.6"></line>
+    </svg>
+    <div style="position: absolute; left: 340px; top: 40px; display: flex; align-items: baseline; gap: 14px">
+      <span class="ns-judgment ns-judgment--perfect vh-pulse" style="font-size: 30px">Perfeito!</span>
+      <span style="font-family: 'Nunito', monospace; font-size: 18px; color: #5b6478">COMBO 128</span>
+    </div>
+  </section>
+
+  <div style="position: absolute; left: 40px; right: 40px; top: 430px; bottom: 20px; display: flex; gap: 24px; align-items: stretch">
+
+    <section aria-label="Nota atual" class="ns-panel" style="width: 440px; box-sizing: border-box; padding: 18px 24px; display: flex; gap: 28px; align-items: center">
+      <div style="display: flex; gap: 14px; align-items: flex-end" aria-hidden="true">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><i style="width: 6px; height: 120px; background: #e3d8bf"></i><span style="font: 16px/1 'Baloo 2', sans-serif; color: #6b4bd8">G</span></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><i style="width: 6px; height: 120px; background: #e3d8bf"></i><span style="font: 16px/1 'Baloo 2', sans-serif; color: #d63a8a">D</span></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><i style="width: 6px; height: 120px; background: #0b8fa8; box-shadow: none"></i><span style="font: 16px/1 'Baloo 2', sans-serif; color: #0b8fa8">A</span></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><i style="width: 6px; height: 120px; background: #e3d8bf"></i><span style="font: 16px/1 'Baloo 2', sans-serif; color: #b87800">E</span></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0">
+        <span class="ns-label">Agora</span>
+        <span style="font-family: 'Baloo 2', sans-serif; font-size: 64px; line-height: 1; color: #0b8fa8; text-shadow: none">Ré5</span>
+        <span style="font-family: 'Nunito', monospace; font-size: 17px; color: #1f2a44">corda Lá · 3º dedo · segure 2 tempos</span>
+        <span style="font-size: 14px; color: #5b6478; border-top: 1px solid #e3d8bf; padding-top: 8px">Próxima: <b style="color: #d63a8a; font-weight: 600">Fá♯4</b> · corda Ré · 2º dedo</span>
+      </div>
+    </section>
+
+    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <svg width="22" height="16" viewBox="0 0 22 16" aria-hidden="true"><path d="M2 15V2h18v13" style="fill: none; stroke: #1f2a44; stroke-width: 3"></path></svg>
+        <span style="font-size: 15px; color: #1f2a44">Arco para baixo, sustentado</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; width: 240px">
+        <span class="ns-label">Orquestra tocando com você</span>
+        <div style="width: 240px; overflow: hidden; border-radius: 12px; background: #ffffff; border: 2px solid #e3d8bf">
+          <dc-import name="Orchestra" strip-width="236" energy="3" hint-size="236px,61px"></dc-import>
+        </div>
+      </div>
+    </div>
+
+    <section aria-label="Afinação ao vivo" class="ns-panel" style="width: 400px; box-sizing: border-box; padding: 18px 24px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <span class="ns-label">Afinação ao vivo</span>
+        <span style="font-family: 'Nunito', monospace; font-size: 20px; color: #1f2a44">{{hz}} Hz</span>
+      </div>
+      <svg width="352" height="120" viewBox="0 0 352 120" role="img" aria-label="Linha de afinação dos últimos 2 segundos, agora em {{centsLabel}}" style="display: block; background: #f4ecda; border: 1px solid #e3d8bf">
+        <rect x="0" y="24" width="352" height="72" style="fill: rgba(11, 143, 168, 0.10)"></rect>
+        <rect x="0" y="42" width="352" height="36" style="fill: rgba(31, 42, 68, 0.10)"></rect>
+        <line x1="0" y1="60" x2="352" y2="60" style="stroke: #1f2a44; stroke-width: 1; opacity: 0.5"></line>
+        <polyline points="{{trail}}" style="fill: none; stroke: #0b8fa8; stroke-width: 2.5; stroke-linejoin: round"></polyline>
+        <circle cx="342" cy="{{dotY}}" r="5" style="fill: #1f2a44"></circle>
+      </svg>
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-family: 'Nunito', monospace; font-size: 20px; color: #1f2a44">{{centsLabel}}</span>
+        <span style="font-weight: 600; font-size: 13px; letter-spacing: 0.14em; color: {{statusColor}}">{{status}}</span>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"cents":{"editor":"range","default":6,"min":-50,"max":50,"step":1,"unit":"¢"},"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const c = Math.max(-50, Math.min(50, Number(this.props.cents ?? 6)));
+    const abs = Math.abs(c);
+    const y = (v) => (60 - v * 1.2).toFixed(1);
+    const hist = [-22, -15, -9, -4, 2, 5, 3, -2, -4, 0, 4, 7, 5, 6, 4, 5, 7];
+    const pts = hist.map((v, i) => (i * 20) + ',' + y(v));
+    pts.push('342,' + y(c));
+    return {
+      hz: (590.0 * Math.pow(2, c / 1200)).toFixed(1).replace('.', ','),
+      centsLabel: (c > 0 ? '+' : (c < 0 ? '−' : '')) + abs + ' ¢',
+      status: abs <= 15 ? 'AFINADO' : (c > 0 ? 'ALTO ▴' : 'BAIXO ▾'),
+      statusColor: abs <= 15 ? '#1f2a44' : (abs <= 30 ? '#0b8fa8' : '#b87800'),
+      trail: pts.join(' '),
+      dotY: y(c)
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Perfil e progresso</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+.vh-stat{display:flex;flex-direction:column;gap:6px}
+.vh-big{font:32px/1 var(--font-mono);color:var(--ink)}
+.vh-sub{font:400 13px/18px var(--font-ui);color:var(--ink-muted)}
+.vh-bars{display:flex;align-items:flex-end;gap:6px;height:130px;border-bottom:1px solid var(--grid-line)}
+.vh-bars i{flex:1;background:var(--neon-violet);opacity:.85}
+.vh-bars i.t{background:var(--neon-cyan);opacity:1;box-shadow:var(--glow-cyan)}
+.vh-srow{display:grid;grid-template-columns:22px 1fr 96px;gap:12px;align-items:center}
+.vh-srow b{font:400 14px/1 var(--font-mono);color:var(--ink);text-align:right}
+.vh-ach{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px;border:1px solid var(--grid-line);border-radius:3px;background:var(--void-800);text-align:center}
+.vh-ach span{font:600 12px/16px var(--font-ui);color:var(--ink)}
+.vh-ach.off{opacity:.45;border-style:dashed}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 28px 48px; display: flex; flex-direction: column; gap: 18px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: center; gap: 20px">
+    <span style="width: 72px; height: 72px; border-radius: 999px; background: #d63a8a; color: #fbf6ea; display: flex; align-items: center; justify-content: center; font: 26px/1 'Baloo 2', sans-serif; flex: none">VH</span>
+    <div style="display: flex; flex-direction: column; gap: 8px; width: 420px">
+      <div style="display: flex; align-items: baseline; gap: 12px">
+        <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; line-height: 30px; color: #1f2a44">[SEU NOME]</h1>
+        <span style="font-weight: 700; font-size: 12px; letter-spacing: 0.14em; color: #fbf6ea; background: #b87800; padding: 4px 10px; border-radius: 999px">NÍVEL 7</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <div class="ns-bar" style="flex: 1" aria-label="2.340 de 3.000 XP"><i style="width: 78%"></i></div>
+        <span style="font-family: 'Nunito', monospace; font-size: 14px; color: #5b6478">2.340 / 3.000 XP</span>
+      </div>
+    </div>
+    <span style="flex: 1"></span>
+    <a class="ns-btn ns-btn--ghost" href="Main.dc.html"><span aria-hidden="true">◂</span>Menu</a>
+    <a class="ns-btn ns-btn--primary" href="Plans.dc.html">Seja Pro</a>
+    <a class="ns-btn ns-btn--secondary" href="Ranking.dc.html">Ranking</a>
+    <a class="ns-btn" href="Settings.dc.html">Configurações</a>
+    <a class="ns-btn ns-btn--ghost" href="JoinClass.dc.html">Entrar numa turma</a>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+    <div class="ns-panel vh-stat" style="border-color: #b87800">
+      <span class="ns-label">Sequência</span>
+      <span class="vh-big" style="color: #b87800">12 dias</span>
+      <div style="display: flex; gap: 6px" aria-label="Praticou nos últimos 7 dias">
+        <i style="flex: 1; height: 8px; background: #b87800"></i><i style="flex: 1; height: 8px; background: #b87800"></i><i style="flex: 1; height: 8px; background: #b87800"></i><i style="flex: 1; height: 8px; background: #b87800"></i><i style="flex: 1; height: 8px; background: #b87800"></i><i style="flex: 1; height: 8px; background: #b87800"></i><i style="flex: 1; height: 8px; border: 1.5px dashed #b87800; box-sizing: border-box"></i>
+      </div>
+      <span class="vh-sub">Toque hoje para manter</span>
+    </div>
+    <div class="ns-panel vh-stat"><span class="ns-label">Prática na semana</span><span class="vh-big">2h 22min</span><span class="vh-sub">Meta: 2h 30min</span></div>
+    <div class="ns-panel vh-stat"><span class="ns-label">Músicas aprendidas</span><span class="vh-big">6 <span style="font-size: 18px; color: #5b6478">de 24</span></span><span class="vh-sub">90% ou mais no Médio</span></div>
+    <div class="ns-panel vh-stat"><span class="ns-label">Afinação média</span><span class="vh-big">±9 ¢</span><span class="vh-sub">Era ±16 ¢ há um mês</span></div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 16px; flex-grow: 1; min-height: 0">
+    <section aria-label="Minutos por dia" class="ns-panel" style="padding: 16px 18px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between"><span class="ns-label">Minutos por dia</span><span class="vh-sub">últimos 14 dias</span></div>
+      <div class="vh-bars" role="img" aria-label="Minutos praticados por dia nos últimos 14 dias; hoje 0 até agora, maior dia 42 minutos">
+        <i style="height: 30%"></i><i style="height: 0%; background: #e3d8bf"></i><i style="height: 45%"></i><i style="height: 38%"></i><i style="height: 60%"></i><i style="height: 52%"></i><i style="height: 25%"></i><i style="height: 70%"></i><i style="height: 48%"></i><i style="height: 100%"></i><i style="height: 64%"></i><i style="height: 55%"></i><i style="height: 80%"></i><i class="t" style="height: 6%"></i>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-family: 'Nunito', monospace; font-size: 12px; color: #5b6478"><span>9 out</span><span>maior: 42 min</span><span>hoje</span></div>
+      <div style="margin-top: auto; padding-top: 12px; border-top: 1px solid #e3d8bf; display: flex; align-items: center; gap: 12px">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <span class="ns-label" style="color: #0b8fa8">Próxima meta</span>
+          <span style="font-size: 14px; color: #1f2a44">Minueto em Sol com 90% no Médio</span>
+        </div>
+        <a class="ns-btn ns-btn--primary" href="SongSelect.dc.html">Tocar</a>
+      </div>
+    </section>
+
+    <section aria-label="Afinação por corda" class="ns-panel" style="padding: 16px 18px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; justify-content: space-between"><span class="ns-label">Afinação por corda</span><span class="vh-sub">4 semanas</span></div>
+      <div class="vh-srow"><span style="font: 18px/1 'Baloo 2', sans-serif; color: #6b4bd8">G</span>
+        <svg width="100%" height="34" viewBox="0 0 160 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,10 40,14 80,20 120,24 160,27" style="fill: none; stroke: #6b4bd8; stroke-width: 2.5; vector-effect: non-scaling-stroke"></polyline></svg><b>11 → 3 ¢</b></div>
+      <div class="vh-srow"><span style="font: 18px/1 'Baloo 2', sans-serif; color: #d63a8a">D</span>
+        <svg width="100%" height="34" viewBox="0 0 160 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,12 40,16 80,18 120,25 160,28" style="fill: none; stroke: #d63a8a; stroke-width: 2.5; vector-effect: non-scaling-stroke"></polyline></svg><b>10 → 2 ¢</b></div>
+      <div class="vh-srow"><span style="font: 18px/1 'Baloo 2', sans-serif; color: #0b8fa8">A</span>
+        <svg width="100%" height="34" viewBox="0 0 160 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,8 40,10 80,16 120,15 160,20" style="fill: none; stroke: #0b8fa8; stroke-width: 2.5; vector-effect: non-scaling-stroke"></polyline></svg><b>14 → 8 ¢</b></div>
+      <div class="vh-srow"><span style="font: 18px/1 'Baloo 2', sans-serif; color: #b87800">E</span>
+        <svg width="100%" height="34" viewBox="0 0 160 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,4 40,6 80,5 120,10 160,12" style="fill: none; stroke: #b87800; stroke-width: 2.5; vector-effect: non-scaling-stroke"></polyline></svg><b>20 → 12 ¢</b></div>
+      <span class="vh-sub" style="margin-top: auto">Linha descendo = desvio menor. A corda Mi ainda é a que mais escapa.</span>
+    </section>
+
+    <section aria-label="Conquistas" class="ns-panel" style="padding: 16px 18px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between"><span class="ns-label">Conquistas</span><span class="vh-sub">8 de 30</span></div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+        <div class="vh-ach"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path d="M15 3l3.5 7.3 8 1-5.9 5.5 1.5 8L15 21l-7.1 3.8 1.5-8L3.5 11.3l8-1z" style="fill: #b87800"></path></svg><span>Primeira música</span></div>
+        <div class="vh-ach"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path d="M15 3c4 6 8 9 8 15a8 8 0 0 1-16 0c0-4 2-6 4-8 0 3 1 5 3 5 0-5-2-8 1-12z" style="fill: #d63a8a"></path></svg><span>7 dias seguidos</span></div>
+        <div class="vh-ach"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="11" style="fill: none; stroke: #0b8fa8; stroke-width: 3"></circle><circle cx="15" cy="15" r="4" style="fill: #0b8fa8"></circle></svg><span>Afinação de ouro</span></div>
+        <div class="vh-ach"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><text x="15" y="21" text-anchor="middle" style="font: 15px 'Nunito', monospace; fill: #6b4bd8">100</text></svg><span>Combo 100</span></div>
+        <div class="vh-ach off"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><g style="stroke: #5b6478; stroke-width: 1.5"><line x1="3" y1="10" x2="27" y2="10"></line><line x1="3" y1="15" x2="27" y2="15"></line><line x1="3" y1="20" x2="27" y2="20"></line></g><ellipse cx="15" cy="20" rx="4" ry="3" style="fill: #5b6478"></ellipse></svg><span>Leitor de partitura</span></div>
+        <div class="vh-ach off"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path d="M6 25 L15 5 L24 25" style="fill: none; stroke: #5b6478; stroke-width: 2.5"></path><line x1="9" y1="18" x2="21" y2="18" style="stroke: #5b6478; stroke-width: 2.5"></line></svg><span>Terceira posição</span></div>
+      </div>
+      <span class="vh-sub" style="margin-top: auto">Falta pouco: termine uma música no modo Partitura.</span>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

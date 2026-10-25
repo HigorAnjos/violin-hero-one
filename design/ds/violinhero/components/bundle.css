@@ -1,0 +1,86 @@
+@import url("https://fonts.googleapis.com/css2?family=Audiowide&family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&family=Noto+Music&display=swap");
+
+/* Violin Hero — estilos compartilhados. Tudo lê os tokens (tokens.css). */
+
+.ns-screen { background: var(--void-900); color: var(--ink); font-family: var(--font-ui); }
+
+/* ---------- Cores por corda: aplique .ns-g / .ns-d / .ns-a / .ns-e ---------- */
+.ns-g { --lane: var(--string-g); --lane-glow: var(--glow-violet); }
+.ns-d { --lane: var(--string-d); --lane-glow: var(--glow-magenta); }
+.ns-a { --lane: var(--string-a); --lane-glow: var(--glow-cyan); }
+.ns-e { --lane: var(--string-e); --lane-glow: var(--glow-yellow); }
+
+/* ---------- Botão ---------- */
+.ns-btn {
+  font: 600 13px/1 var(--font-ui); letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink); background: transparent; cursor: pointer;
+  border: 1.5px solid var(--neon-magenta); border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-6);
+  transition: box-shadow .12s, background .12s, color .12s;
+}
+.ns-btn:hover { box-shadow: var(--glow-magenta); }
+.ns-btn:focus-visible { outline: 2px solid var(--neon-cyan); outline-offset: 3px; box-shadow: var(--glow-cyan); }
+.ns-btn--primary { background: var(--neon-magenta); color: var(--ink-on-neon); }
+.ns-btn--primary:hover { box-shadow: var(--glow-magenta); }
+.ns-btn--secondary { border-color: var(--neon-cyan); }
+.ns-btn--secondary:hover { box-shadow: var(--glow-cyan); }
+.ns-btn--ghost { border-color: var(--grid-line); color: var(--ink-muted); }
+.ns-btn--ghost:hover { border-color: var(--ink-muted); color: var(--ink); box-shadow: none; }
+.ns-btn:disabled { border-color: var(--grid-line); color: var(--ink-muted); background: transparent; box-shadow: none; cursor: not-allowed; opacity: .6; }
+
+/* ---------- Nota (gema) ---------- */
+.ns-note {
+  width: 64px; height: 22px; border-radius: var(--radius-note);
+  background: var(--lane); box-shadow: var(--lane-glow);
+  position: relative;
+}
+.ns-note::after { /* reflexo central: o "núcleo" da luz */
+  content: ""; position: absolute; left: 12px; right: 12px; top: 8px; height: 4px;
+  border-radius: var(--radius-pill); background: var(--ink); opacity: .85;
+}
+.ns-note--hold-tail {
+  width: 14px; border-radius: var(--radius-none); margin: 0 auto;
+  background: var(--lane); opacity: .55; box-shadow: var(--lane-glow);
+}
+
+/* ---------- Alvo de toque (linha de arco) ---------- */
+.ns-target {
+  width: 58px; height: 58px; border-radius: var(--radius-pill);
+  border: 3px solid var(--lane); box-shadow: var(--lane-glow), inset 0 0 14px var(--lane);
+  background: var(--void-900);
+}
+.ns-target.is-hit { background: var(--hit-perfect); box-shadow: var(--glow-white); border-color: var(--hit-perfect); }
+
+/* ---------- Julgamentos ---------- */
+.ns-judgment { font-family: var(--font-display); font-size: 36px; line-height: 1; letter-spacing: .06em; text-transform: uppercase; }
+.ns-judgment--perfect { color: var(--hit-perfect); text-shadow: var(--glow-white); }
+.ns-judgment--great   { color: var(--hit-great);   text-shadow: var(--glow-cyan); }
+.ns-judgment--good    { color: var(--hit-good);    text-shadow: var(--glow-yellow); }
+.ns-judgment--miss    { color: var(--hit-miss);    text-shadow: var(--glow-miss); }
+
+/* ---------- Painel / HUD ---------- */
+.ns-panel { background: var(--void-700); border: 1px solid var(--grid-line); border-radius: var(--radius-sm); padding: var(--space-4); }
+.ns-label { font: 600 12px/16px var(--font-ui); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-muted); }
+.ns-score { font: 44px/1 var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.ns-stat  { font: 20px/24px var(--font-mono); color: var(--ink); }
+.ns-mult  { font: 20px/1 var(--font-display); color: var(--ink-on-neon); background: var(--neon-yellow); border-radius: var(--radius-pill); padding: 6px 14px; box-shadow: var(--glow-yellow); }
+.ns-bar   { height: 6px; background: var(--grid-line); border-radius: var(--radius-none); overflow: hidden; }
+.ns-bar > i { display: block; height: 100%; background: var(--neon-cyan); box-shadow: var(--glow-cyan); }
+.ns-segs  { display: flex; gap: var(--space-1); }
+.ns-segs > i { flex: 1; height: 10px; background: var(--grid-line); }
+.ns-segs > i.on { background: var(--neon-magenta); box-shadow: var(--glow-magenta); }
+.ns-segs.is-low > i.on { background: var(--hit-miss); box-shadow: var(--glow-miss); }
+
+/* ---------- Card de música ---------- */
+.ns-song { display: grid; grid-template-columns: 56px 1fr auto; gap: var(--space-4); align-items: center;
+  background: var(--void-700); border: 1px solid var(--grid-line); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); }
+.ns-song.is-selected { border-color: var(--neon-magenta); box-shadow: var(--glow-magenta); }
+.ns-song__title { font: 600 18px/24px var(--font-ui); color: var(--ink); }
+.ns-song__meta  { font: 400 13px/18px var(--font-ui); color: var(--ink-muted); }
+.ns-pips { display: flex; gap: var(--space-1); }
+.ns-pips > i { width: 10px; height: 10px; transform: skewX(-18deg); background: var(--grid-line); }
+.ns-pips > i.on { background: var(--neon-yellow); box-shadow: var(--glow-yellow); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ns-anim, .ns-anim * { animation: none !important; }
+}

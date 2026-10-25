@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Carregando música</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+.vh-st{display:flex;align-items:center;gap:12px;font:400 15px/20px var(--font-ui);color:var(--ink)}
+.vh-st i{width:22px;height:22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font:700 12px/1 var(--font-ui);font-style:normal;flex:none}
+.vh-spin{animation:vhspin 1s linear infinite}
+@keyframes vhspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.vh-spin{animation:none}}
+</style>
+</helmet>
+<div class="ns-screen ns-anim" style="width: 1280px; height: 720px; position: relative; overflow: hidden; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <div role="status" style="position: absolute; left: 0; right: 0; top: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 12px; background: #ffffff; border-bottom: 1.5px solid #b87800; font-size: 14px; color: #1f2a44">
+    <span style="color: #b87800; font-weight: 700">▲ Sem internet</span>
+    <span>Você pode tocar as 6 músicas baixadas. O ranking atualiza quando a conexão voltar.</span>
+  </div>
+
+  <div style="position: absolute; inset: 44px 0 0; display: flex; align-items: center; justify-content: center; gap: 64px">
+    <div style="position: relative; width: 300px; height: 300px; background: #f4ecda; border: 1px solid #e3d8bf; border-radius: 3px; overflow: hidden">
+      <svg viewBox="0 0 300 300" width="300" height="300" aria-hidden="true" style="display: block">
+        <circle cx="150" cy="300" r="120" style="fill: #d63a8a"></circle>
+        <rect x="40" y="226" width="220" height="5" style="fill: #fbf6ea"></rect>
+        <rect x="40" y="246" width="220" height="8" style="fill: #fbf6ea"></rect>
+        <rect x="40" y="270" width="220" height="12" style="fill: #fbf6ea"></rect>
+      </svg>
+      <span style="position: absolute; left: 12px; top: 12px; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #fbf6ea; background: #0b8fa8; padding: 4px 9px; border-radius: 999px">BAIXADA</span>
+    </div>
+
+    <div style="width: 480px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span class="ns-label">Preparando · Arcade · Médio</span>
+        <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 34px; line-height: 40px; color: #1f2a44">Canon em Neon</h1>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <div class="ns-bar" style="flex: 1; height: 8px" aria-label="Carregando 68%"><i style="width: 68%"></i></div>
+        <span style="font-family: 'Nunito', monospace; font-size: 18px; color: #1f2a44">68%</span>
+      </div>
+      <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px">
+        <li class="vh-st"><i style="background: #0b8fa8; color: #fbf6ea">✓</i>Partitura e notas do nível Médio</li>
+        <li class="vh-st"><i style="background: #0b8fa8; color: #fbf6ea">✓</i>Dedilhado e arcadas</li>
+        <li class="vh-st"><i class="vh-spin" style="border: 2.5px solid #e3d8bf; border-top-color: #d63a8a; box-sizing: border-box"></i>Áudio de acompanhamento</li>
+        <li class="vh-st" style="color: #5b6478"><i style="border: 1.5px dashed #e3d8bf; box-sizing: border-box"></i>Conferindo o microfone</li>
+      </ul>
+      <div style="padding: 14px 16px; border-left: 3px solid #6b4bd8; background: #f4ecda; font-size: 14px; line-height: 21px; color: #5b6478">
+        <b style="color: #1f2a44; font-weight: 600">Dica:</b> nas notas longas, mantenha a velocidade do arco igual do começo ao fim. O jogo dá pontos extras para som estável.
+      </div>
+      <a href="Library.dc.html" style="font-size: 14px">Cancelar</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

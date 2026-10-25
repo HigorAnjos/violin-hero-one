@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Celular: gameplay</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;family=Noto+Music&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+.vh-lane{position:relative;border-right:1px solid var(--grid-line)}
+.vh-lane:last-child{border-right:0}
+.vh-str{position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--lane);opacity:.35}
+.vh-n{position:absolute;width:56px;margin-left:-28px;display:flex;flex-direction:column;align-items:center}
+.vh-n .ns-note{width:56px;height:20px}
+.vh-n .ns-note::after{left:10px;right:10px;top:7px;height:3px}
+.vh-n .ns-note--hold-tail{width:12px}
+a.vh-ic{display:flex;align-items:center;justify-content:center;width:44px;height:44px;box-sizing:border-box;border-radius:3px;border:1px solid #e3d8bf;background:#f4ecda;color:#1f2a44}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 844px; height: 390px; position: relative; overflow: hidden; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <div style="position: absolute; left: 50%; top: 0; width: 440px; margin-left: -220px; height: 272px; overflow: hidden; perspective: 520px; perspective-origin: 50% 0%">
+    <div style="position: absolute; left: 50%; bottom: -30px; width: 300px; height: 760px; margin-left: -150px; transform-origin: 50% 100%; transform: rotateX(60deg); background: #f4ecda; border-left: 2px solid #d63a8a; border-right: 2px solid #d63a8a">
+      <div style="position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+        <div class="vh-lane ns-g"><i class="vh-str"></i></div>
+        <div class="vh-lane ns-d"><i class="vh-str"></i></div>
+        <div class="vh-lane ns-a"><i class="vh-str"></i></div>
+        <div class="vh-lane ns-e"><i class="vh-str"></i></div>
+      </div>
+      <div class="vh-n ns-e" style="left: 87.5%; top: 70px"><div class="ns-note"></div></div>
+      <div class="vh-n ns-g" style="left: 12.5%; top: 190px"><div class="ns-note"></div></div>
+      <div class="vh-n ns-a" style="left: 62.5%; top: 290px"><div class="ns-note--hold-tail" style="height: 110px"></div><div class="ns-note"></div></div>
+      <div class="vh-n ns-d" style="left: 37.5%; top: 520px"><div class="ns-note"></div></div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 104px; height: 3px; background: #1f2a44; opacity: 0.85"></div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 80px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); justify-items: center">
+        <div class="ns-target ns-g" style="width: 48px; height: 48px; box-sizing: border-box"></div>
+        <div class="ns-target ns-d" style="width: 48px; height: 48px; box-sizing: border-box"></div>
+        <div class="ns-target ns-a is-hit" style="width: 48px; height: 48px; box-sizing: border-box"></div>
+        <div class="ns-target ns-e" style="width: 48px; height: 48px; box-sizing: border-box"></div>
+      </div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 40px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); justify-items: center">
+        <span style="font: 28px/1 'Baloo 2', sans-serif; color: #6b4bd8">G</span><span style="font: 28px/1 'Baloo 2', sans-serif; color: #d63a8a">D</span><span style="font: 28px/1 'Baloo 2', sans-serif; color: #0b8fa8">A</span><span style="font: 28px/1 'Baloo 2', sans-serif; color: #b87800">E</span>
+      </div>
+    </div>
+  </div>
+
+  <span class="ns-judgment ns-judgment--perfect" style="position: absolute; right: 196px; top: 128px; font-size: 26px">Perfeito!</span>
+
+  <section aria-label="Placar" style="position: absolute; left: 14px; top: 12px; width: 170px; display: flex; flex-direction: column; gap: 8px">
+    <span class="ns-score" style="font-size: 26px">1.284.560</span>
+    <div style="display: flex; align-items: center; gap: 8px"><span class="ns-mult" style="font-size: 15px; padding: 4px 10px">×4</span><span style="font-family: 'Nunito', monospace; font-size: 14px; color: #5b6478">128 · 98,4%</span></div>
+    <div style="width: 170px; overflow: hidden; border-radius: 10px; background: #ffffff; border: 2px solid #e3d8bf" aria-label="Orquestra: cordas, madeiras e metais tocando">
+      <dc-import name="Orchestra" strip-width="166" energy="3" hint-size="166px,43px"></dc-import>
+    </div>
+  </section>
+
+  <a class="vh-ic" href="Pause.dc.html" aria-label="Pausar" style="position: absolute; right: 14px; top: 12px">
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" style="fill: currentColor"></rect><rect x="9.5" y="2" width="3.5" height="12" style="fill: currentColor"></rect></svg>
+  </a>
+
+  <section aria-label="Afinação" style="position: absolute; right: 14px; top: 66px; width: 170px; box-sizing: border-box; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: #ffffff; border: 1px solid #e3d8bf; border-radius: 3px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <span style="font-family: 'Baloo 2', sans-serif; font-size: 24px; color: #0b8fa8">D5</span>
+      <span style="font-family: 'Nunito', monospace; font-size: 14px; color: #1f2a44">592,0 Hz</span>
+    </div>
+    <span style="font-size: 11px; color: #5b6478">corda Lá · 3º dedo</span>
+    <div role="img" aria-label="Afinação mais 6 cents" style="position: relative; height: 14px; background: #f4ecda; border: 1px solid #e3d8bf">
+      <div style="position: absolute; top: 0; bottom: 0; left: 35%; width: 30%; background: rgba(31, 42, 68, 0.14)"></div>
+      <div style="position: absolute; top: -4px; bottom: -4px; left: 56%; width: 3px; background: #0b8fa8"></div>
+    </div>
+    <span style="font-weight: 600; font-size: 11px; letter-spacing: 0.12em; color: #1f2a44">+6 ¢ · AFINADO</span>
+  </section>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 116px; background: #f4ecda; border-top: 1px solid #e3d8bf; overflow: hidden">
+    <div style="position: absolute; left: 0; right: 0; top: 0; height: 3px; background: #e3d8bf"><i style="display: block; width: 53%; height: 100%; background: #0b8fa8"></i></div>
+    <div style="position: absolute; left: 0; top: 4px">
+      <dc-import name="SheetStrip" variant="live" strip-width="844" measure-start="17" hint-size="844px,112px"></dc-import>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":844,"height":390}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

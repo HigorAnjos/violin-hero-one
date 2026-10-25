@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Configurações</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+.vh-nav{display:flex;align-items:center;min-height:44px;padding:0 14px;border-radius:3px;font:600 14px/18px var(--font-ui);color:var(--ink-muted);text-decoration:none;border-left:2px solid transparent}
+.vh-nav:hover{color:var(--ink)}
+.vh-nav[aria-current="page"]{color:var(--ink);background:var(--void-700);border-left-color:var(--neon-magenta)}
+.vh-row{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:52px;border-bottom:1px solid var(--grid-line);font:400 15px/20px var(--font-ui);color:var(--ink)}
+.vh-row small{display:block;font-size:12px;line-height:16px;color:var(--ink-muted)}
+.vh-row:last-child{border-bottom:0}
+.vh-tog input{appearance:none;-webkit-appearance:none;width:40px;height:22px;border-radius:999px;background:var(--grid-line);position:relative;margin:0;flex:none;cursor:pointer}
+.vh-tog input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:999px;background:var(--ink-muted)}
+.vh-tog input:checked{background:var(--neon-cyan);box-shadow:var(--glow-cyan)}
+.vh-tog input:checked::after{left:21px;background:var(--void-900)}
+.vh-tog input:focus-visible{outline:2px solid #0b8fa8;outline-offset:3px}
+.vh-rng{width:180px;accent-color:#d63a8a}
+.vh-sel{min-height:36px;background:var(--void-800);color:var(--ink);border:1px solid var(--grid-line);border-radius:3px;padding:0 10px;font:400 14px/20px var(--font-ui)}
+.vh-val{font:15px/1 var(--font-mono);color:var(--ink);min-width:64px;text-align:right}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 32px 48px; display: flex; gap: 32px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <nav aria-label="Seções de configuração" style="width: 220px; flex: none; display: flex; flex-direction: column; gap: 4px">
+    <h1 style="margin: 0 0 18px; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 26px; line-height: 32px; color: #1f2a44">Configurações</h1>
+    <a class="vh-nav" href="#" aria-current="page">Áudio e latência</a>
+    <a class="vh-nav" href="#">Jogo</a>
+    <a class="vh-nav" href="#">Visual</a>
+    <a class="vh-nav" href="#">Acessibilidade</a>
+    <a class="vh-nav" href="Profile.dc.html">Conta</a>
+    <span style="flex: 1"></span>
+    <div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; margin-bottom: 8px; background: #ffffff; border: 2px solid #e3d8bf; border-radius: 12px">
+      <span style="font-size: 12px; color: #5b6478">Conectada como</span>
+      <b style="font-size: 14px; font-weight: 800">Lia · lia@email.com</b>
+      <a href="Login.dc.html" style="font-size: 13px; font-weight: 800; color: #d93636; text-decoration: none; margin-top: 4px">Sair da conta</a>
+    </div>
+    <a class="ns-btn ns-btn--ghost" href="Main.dc.html"><span aria-hidden="true">◂</span>Voltar</a>
+  </nav>
+
+  <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-content: start">
+
+    <section aria-label="Latência" class="ns-panel" style="padding: 8px 20px 12px">
+      <h2 class="ns-label" style="margin: 12px 0 4px">Latência</h2>
+      <label class="vh-row vh-tog"><span>Medir automaticamente<small>Recomendado, principalmente no celular</small></span><input type="checkbox" checked></label>
+      <div class="vh-row"><span>Medida agora<small>Celular · alto-falante · hoje 16:05</small></span><span style="display: flex; align-items: center; gap: 12px"><span class="vh-val" style="font-size: 20px">142 ms</span><a href="#" style="font-size: 13px">Medir de novo</a></span></div>
+      <label class="vh-row"><span>Ajuste fino<small>Se ainda sentir as notas adiantadas ou atrasadas</small></span><span style="display: flex; align-items: center; gap: 10px"><input class="vh-rng" type="range" min="-50" max="50" value="0"><span class="vh-val">0 ms</span></span></label>
+      <div class="vh-row" style="color: #b87800"><span>Fone Bluetooth detectado?<small style="color: #5b6478">Ele soma 150 a 250 ms. Prefira com fio ou alto-falante.</small></span><span style="font-size: 13px">não</span></div>
+    </section>
+
+    <section aria-label="Afinação" class="ns-panel" style="padding: 8px 20px 12px">
+      <h2 class="ns-label" style="margin: 12px 0 4px">Afinação</h2>
+      <div class="vh-row"><span>Lá de referência<small>Orquestras costumam usar 442 Hz</small></span>
+        <span style="display: flex; align-items: center; border: 1px solid #e3d8bf; border-radius: 3px">
+          <button aria-label="Diminuir 1 Hz" style="width: 36px; height: 36px; background: #ffffff; border: 0; color: #1f2a44; font: 600 16px/1 'Nunito', sans-serif">−</button>
+          <span class="vh-val" style="min-width: 80px; text-align: center">442 Hz</span>
+          <button aria-label="Aumentar 1 Hz" style="width: 36px; height: 36px; background: #ffffff; border: 0; color: #1f2a44; font: 600 16px/1 'Nunito', sans-serif">+</button>
+        </span></div>
+      <label class="vh-row"><span>Tolerância de afinação<small>Quanto pode desviar e ainda contar</small></span><select class="vh-sel"><option>Pela dificuldade</option><option>Sempre ±15 ¢</option><option>Sempre ±30 ¢</option></select></label>
+      <label class="vh-row"><span>Nome das notas</span><select class="vh-sel"><option>Dó Ré Mi</option><option>C D E</option></select></label>
+      <label class="vh-row"><span>Entrada de áudio</span><select class="vh-sel"><option>Microfone do aparelho</option><option>Interface USB</option></select></label>
+    </section>
+
+    <section aria-label="Jogo" class="ns-panel" style="padding: 8px 20px 12px">
+      <h2 class="ns-label" style="margin: 12px 0 4px">Jogo</h2>
+      <label class="vh-row vh-tog"><span>Sem falha<small>A música não para quando a orquestra para de acompanhar</small></span><input type="checkbox" checked></label>
+      <label class="vh-row"><span>Contagem antes de começar</span><select class="vh-sel"><option>1 compasso</option><option>2 compassos</option><option>Desligada</option></select></label>
+      <label class="vh-row"><span>Efeitos de brilho<small>Leve economiza bateria no celular</small></span><select class="vh-sel"><option>Automático</option><option>Completo</option><option>Leve</option></select></label>
+      <label class="vh-row"><span>Velocidade da pista</span><span style="display: flex; align-items: center; gap: 10px"><input class="vh-rng" type="range" min="50" max="200" value="125"><span class="vh-val">1,25×</span></span></label>
+    </section>
+
+    <section aria-label="Som" class="ns-panel" style="padding: 8px 20px 12px">
+      <h2 class="ns-label" style="margin: 12px 0 4px">Som</h2>
+      <label class="vh-row"><span>Música</span><span style="display: flex; align-items: center; gap: 10px"><input class="vh-rng" type="range" min="0" max="100" value="70"><span class="vh-val">70%</span></span></label>
+      <label class="vh-row"><span>Metrônomo</span><span style="display: flex; align-items: center; gap: 10px"><input class="vh-rng" type="range" min="0" max="100" value="40"><span class="vh-val">40%</span></span></label>
+      <label class="vh-row vh-tog"><span>Abaixar a música quando errar<small>Fica mais fácil se ouvir</small></span><input type="checkbox"></label>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

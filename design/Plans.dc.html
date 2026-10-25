@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Planos</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+.vh-plan{display:flex;flex-direction:column;gap:14px;padding:22px;background:var(--void-700);border:1px solid var(--grid-line);border-radius:3px}
+.vh-plan ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;font:400 14px/20px var(--font-ui);color:var(--ink)}
+.vh-plan li{display:flex;gap:10px}
+.vh-plan li b{flex:none;width:16px;font-weight:700;color:var(--neon-cyan)}
+.vh-plan li.no{color:var(--ink-muted)}
+.vh-plan li.no b{color:var(--grid-line)}
+.vh-price{font:34px/1 var(--font-mono);color:var(--ink)}
+.vh-per{font:400 14px/20px var(--font-ui);color:var(--ink-muted)}
+.vh-bill{min-height:36px;padding:0 16px;border-radius:999px;border:1px solid var(--grid-line);background:transparent;color:var(--ink-muted);font:600 12px/1 var(--font-ui);letter-spacing:.12em;text-transform:uppercase}
+.vh-bill[aria-pressed="true"]{background:var(--ink);color:var(--void-900);border-color:var(--ink)}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 30px 64px; display: flex; flex-direction: column; gap: 20px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+  <header style="display: flex; align-items: flex-end; justify-content: space-between">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="ns-label">Planos</span>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 34px; color: #1f2a44">Toque mais, aprenda mais rápido</h1>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div role="group" aria-label="Cobrança" style="display: flex; gap: 6px">
+        <button class="vh-bill" aria-pressed="false">Mensal</button>
+        <button class="vh-bill" aria-pressed="true">Anual</button>
+      </div>
+      <a class="ns-btn ns-btn--ghost" href="Profile.dc.html" style="padding: 0 18px"><span aria-hidden="true">◂</span>Voltar</a>
+    </div>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; flex-grow: 1">
+    <section aria-label="Plano Grátis" class="vh-plan">
+      <span class="ns-label">Grátis</span>
+      <div style="display: flex; align-items: baseline; gap: 8px"><span class="vh-price">R$ 0</span><span class="vh-per">para sempre</span></div>
+      <ul>
+        <li><b>✓</b>10 músicas e todos os selos</li>
+        <li><b>✓</b>Os 3 modos: Arcade, Partitura e Cordas 3D</li>
+        <li><b>✓</b>Afinador e latência automática</li>
+        <li><b>✓</b>Importar até 3 partituras</li>
+        <li class="no"><b>—</b>Loop A–B e aceleração na prática</li>
+        <li class="no"><b>—</b>Relatório de afinação por corda</li>
+      </ul>
+      <a class="ns-btn ns-btn--ghost" href="Main.dc.html" style="margin-top: auto">Seu plano atual</a>
+    </section>
+
+    <section aria-label="Plano Pro" class="vh-plan" style="border: 1.5px solid #d63a8a; position: relative">
+      <span style="position: absolute; top: -12px; left: 22px; font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #fbf6ea; background: #d63a8a; padding: 5px 10px; border-radius: 999px">MAIS ESCOLHIDO</span>
+      <span class="ns-label" style="color: #d63a8a">Pro</span>
+      <div style="display: flex; align-items: baseline; gap: 8px"><span class="vh-price">R$ [PREÇO]</span><span class="vh-per">por ano</span></div>
+      <span style="font-size: 13px; color: #0b8fa8">7 dias grátis para testar</span>
+      <ul>
+        <li><b>✓</b>Todas as músicas da biblioteca</li>
+        <li><b>✓</b>Importar partituras sem limite</li>
+        <li><b>✓</b>Modo prática completo: loop A–B, esperar a nota e aceleração</li>
+        <li><b>✓</b>Relatório de afinação e tempo por corda</li>
+        <li><b>✓</b>Desafios ilimitados com amigos</li>
+      </ul>
+      <a class="ns-btn ns-btn--primary" href="Main.dc.html" style="margin-top: auto">Testar 7 dias grátis</a>
+    </section>
+
+    <section aria-label="Plano Escola" class="vh-plan">
+      <span class="ns-label" style="color: #0b8fa8">Professor e escola</span>
+      <div style="display: flex; align-items: baseline; gap: 8px"><span class="vh-price">R$ [PREÇO]</span><span class="vh-per">por aluno / mês</span></div>
+      <ul>
+        <li><b>✓</b>Tudo do Pro para cada aluno</li>
+        <li><b>✓</b>Painel da turma com afinação e minutos praticados</li>
+        <li><b>✓</b>Passar tarefas e acompanhar quem fez</li>
+        <li><b>✓</b>Repertório da escola chega sozinho para os alunos</li>
+        <li><b>✓</b>Alunos entram só com o código da turma, sem e-mail</li>
+        <li><b>✓</b>Área do responsável com a semana de cada aluno</li>
+      </ul>
+      <a class="ns-btn ns-btn--secondary" href="Teacher.dc.html" style="margin-top: auto">Ver painel do professor</a>
+    </section>
+  </div>
+  <span style="font-size: 13px; color: #5b6478; text-align: center">Cancele quando quiser. As músicas que você importou continuam suas.</span>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

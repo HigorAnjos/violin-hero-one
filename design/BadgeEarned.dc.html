@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Selo conquistado</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:48px;padding:0 22px}
+a.ns-btn:hover{color:inherit}
+@keyframes vh-spin{to{transform:rotate(360deg)}}
+@keyframes vh-pop{0%{transform:scale(.2) rotate(-25deg);opacity:0}60%{transform:scale(1.12) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+@keyframes vh-rise{0%{transform:translateY(18px);opacity:0}100%{transform:none;opacity:1}}
+@keyframes vh-fall{0%{transform:translateY(-60px) rotate(0);opacity:0}10%{opacity:1}100%{transform:translateY(760px) rotate(540deg);opacity:1}}
+@keyframes vh-ring{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.6);opacity:0}}
+@keyframes vh-fill{from{width:0}}
+.vh-rays{animation:vh-spin 24s linear infinite;transform-origin:50% 50%}
+.vh-pop{animation:vh-pop .8s cubic-bezier(.2,1.4,.4,1) .15s both}
+.vh-ring{animation:vh-ring 1.4s ease-out .5s infinite}
+.vh-r1{animation:vh-rise .5s ease-out .6s both}
+.vh-r2{animation:vh-rise .5s ease-out .8s both}
+.vh-r3{animation:vh-rise .5s ease-out 1s both}
+.vh-cf{position:absolute;top:0;animation:vh-fall linear infinite}
+.vh-bar i{animation:vh-fill 1.2s ease-out 1.1s both}
+@media (prefers-reduced-motion: reduce){.vh-rays,.vh-pop,.vh-ring,.vh-r1,.vh-r2,.vh-r3,.vh-cf,.vh-bar i{animation:none}.vh-cf{display:none}}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <svg viewBox="0 0 1280 720" width="1280" height="720" aria-hidden="true" style="position: absolute; inset: 0; display: block">
+    <g style="stroke: #ece2cb; stroke-width: 2"><line x1="0" y1="600" x2="1280" y2="600"></line><line x1="0" y1="620" x2="1280" y2="620"></line><line x1="0" y1="640" x2="1280" y2="640"></line><line x1="0" y1="660" x2="1280" y2="660"></line><line x1="0" y1="680" x2="1280" y2="680"></line></g>
+  </svg>
+
+  <div aria-hidden="true" style="position: absolute; inset: 0; pointer-events: none">
+    <sc-for list="{{confetti}}" as="c" hint-placeholder-count="26">
+      <i class="vh-cf" style="left: {{c.x}}px; width: {{c.w}}px; height: {{c.h}}px; background: {{c.color}}; border-radius: {{c.r}}; animation-duration: {{c.d}}s; animation-delay: {{c.delay}}s"></i>
+    </sc-for>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; top: 40px; display: flex; flex-direction: column; align-items: center">
+    <span class="ns-label vh-r1" style="color: #6b4bd8">Canon em Neon · ganho nesta partida</span>
+  </div>
+
+  <div style="position: absolute; left: 340px; top: 70px; width: 600px; height: 380px; display: flex; align-items: center; justify-content: center">
+    <svg class="vh-rays" viewBox="-300 -300 600 600" width="560" height="560" aria-hidden="true" style="position: absolute; left: 20px; top: -90px">
+      <g style="fill: #fde7c8">
+        <path d="M0 0 L-26 -290 L26 -290 Z"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(30)"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(60)"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(90)"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(120)"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(150)"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(180)"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(210)"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(240)"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(270)"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(300)"></path><path d="M0 0 L-26 -290 L26 -290 Z" transform="rotate(330)"></path>
+      </g>
+      <circle r="120" style="fill: #fbf6ea"></circle>
+    </svg>
+    <span class="vh-ring" aria-hidden="true" style="position: absolute; left: 210px; top: 100px; width: 180px; height: 180px; border-radius: 999px; border: 4px solid #6b4bd8"></span>
+    <div class="vh-pop" style="position: relative" role="img" aria-label="Selo Combo 400">
+      <dc-import name="Badge" kind="combo" size="190" hint-size="190px,209px"></dc-import>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; top: 440px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+    <h1 class="vh-r1" style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 54px; line-height: 1; color: #1f2a44">Selo novo: <span style="color: #6b4bd8">Combo 400</span></h1>
+    <p class="vh-r2" style="margin: 0; font-size: 18px; line-height: 26px; color: #5b6478">Você acertou <b style="color: #1f2a44">412 notas seguidas</b> sem errar. Só 41% dos violinistas têm este selo.</p>
+    <div class="vh-r3" style="display: flex; align-items: center; gap: 14px; margin-top: 6px; padding: 10px 16px; background: #ffffff; border: 2px solid #e3d8bf; border-radius: 14px">
+      <dc-import name="Badge" kind="combo" size="30" locked="{{ true }}" hint-size="30px,33px"></dc-import>
+      <span style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px">
+        <span style="font-size: 13px; font-weight: 700">Próximo: Combo 500 · faltam 88 notas</span>
+        <span class="vh-bar" style="display: block; width: 260px; height: 8px; border-radius: 999px; background: #efe5cf; overflow: hidden"><i style="display: block; width: 82%; height: 100%; background: #6b4bd8; border-radius: 999px"></i></span>
+      </span>
+    </div>
+  </div>
+
+  <div class="vh-r3" style="position: absolute; left: 0; right: 0; bottom: 34px; display: flex; justify-content: center; gap: 12px">
+    <a class="ns-btn ns-btn--secondary" href="ShareCard.dc.html">Compartilhar</a>
+    <a class="ns-btn ns-btn--primary" href="Results.dc.html">Ver resultado <span aria-hidden="true">▸</span></a>
+  </div>
+  <span style="position: absolute; right: 32px; bottom: 44px; font-size: 12px; color: #5b6478">aparece só quando há selo novo</span>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const colors = ['#d63a8a', '#0b8fa8', '#6b4bd8', '#b87800', '#e8553d', '#1f2a44'];
+    const confetti = Array.from({ length: 26 }, (_, i) => {
+      const seed = (i * 97 + 31) % 101;
+      return {
+        x: 30 + ((i * 211) % 1220),
+        w: i % 3 === 0 ? 10 : 8,
+        h: i % 3 === 0 ? 10 : 16,
+        r: i % 3 === 0 ? '999px' : '2px',
+        color: colors[i % colors.length],
+        d: (3.2 + (seed % 20) / 10).toFixed(1),
+        delay: ((seed % 30) / 10).toFixed(1)
+      };
+    });
+    return { confetti };
+  }
+}
+</script>
+</body>
+</html>

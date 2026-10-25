@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Feedback de erros</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+.vh-col{display:flex;flex-direction:column;gap:16px;align-items:center}
+.vh-lanes{position:relative;width:320px;height:280px;background:var(--void-800);border-left:2px solid var(--neon-magenta);border-right:2px solid var(--neon-magenta);box-shadow:var(--glow-magenta);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:hidden}
+.vh-lane{position:relative;border-right:1px solid var(--grid-line)}
+.vh-lane:last-child{border-right:0}
+.vh-str{position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--lane);opacity:.35}
+.vh-gem{position:absolute;width:56px;height:20px;margin-left:-28px;border-radius:var(--radius-note);background:var(--lane);box-shadow:var(--lane-glow)}
+.vh-hit{position:absolute;left:0;right:0;bottom:70px;height:3px;background:var(--ink);opacity:.85;box-shadow:var(--glow-white)}
+.vh-tg{position:absolute;bottom:44px;width:52px;height:52px;margin-left:-26px;box-sizing:border-box;border-radius:999px;border:3px solid var(--lane);box-shadow:var(--lane-glow), inset 0 0 12px var(--lane);background:var(--void-900)}
+.vh-nm{position:absolute;bottom:10px;width:40px;margin-left:-20px;text-align:center;font:22px/1 var(--font-display);color:var(--lane);text-shadow:var(--lane-glow)}
+.vh-chip{font:700 12px/1 var(--font-ui);letter-spacing:.14em;padding:7px 12px;border-radius:999px;border:1.5px solid currentColor}
+.vh-rule{position:relative;width:320px;height:16px;background:var(--void-800);border:1px solid var(--grid-line)}
+.vh-rule .z{position:absolute;top:0;bottom:0}
+.vh-rule .c{position:absolute;top:-4px;bottom:-4px;left:50%;width:1px;background:var(--ink);opacity:.6}
+.vh-rule .m{position:absolute;top:-6px;bottom:-6px;width:4px;margin-left:-2px}
+.vh-rl{width:320px;display:flex;justify-content:space-between;font:13px/16px var(--font-mono);color:var(--ink-muted)}
+.vh-hint{width:100%;box-sizing:border-box;padding:14px 16px;background:var(--void-700);border:1px solid var(--grid-line);border-radius:3px;font:400 15px/22px var(--font-ui);color:var(--ink)}
+.vh-hint b{font-weight:700}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 28px 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <section aria-label="Nota errada" class="vh-col" style="padding: 20px 16px; background: #f4ecda; border: 1px solid #e3d8bf; border-radius: 3px">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; height: 92px; justify-content: center">
+      <span class="ns-judgment ns-judgment--miss" style="font-size: 40px">Errou</span>
+      <span class="vh-chip" style="color: #d93636">NOTA ERRADA</span>
+    </div>
+    <div class="vh-lanes" role="img" aria-label="O alvo era a corda Lá; você tocou a corda Mi">
+      <div class="vh-lane ns-g"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 30px"></div></div>
+      <div class="vh-lane ns-d"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 96px"></div></div>
+      <div class="vh-lane ns-a"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 226px; opacity: 0.3"></div><span style="position: absolute; left: 50%; top: 222px; margin-left: -8px; font: 22px/1 'Nunito', monospace; color: #d93636">×</span></div>
+      <div class="vh-lane ns-e"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 4px"></div></div>
+      <div class="vh-hit"></div>
+      <div class="vh-tg ns-a" style="left: 62.5%; border-style: dashed; box-shadow: none; opacity: 0.8"></div>
+      <div class="vh-tg" style="left: 87.5%; border-color: #d93636; box-shadow: none"></div>
+      <span class="vh-nm ns-g" style="left: 12.5%">G</span><span class="vh-nm ns-d" style="left: 37.5%">D</span><span class="vh-nm ns-a" style="left: 62.5%">A</span><span class="vh-nm ns-e" style="left: 87.5%">E</span>
+    </div>
+    <div style="display: flex; justify-content: space-between; width: 320px; font-weight: 600; font-size: 12px; letter-spacing: 0.14em">
+      <span style="color: #0b8fa8; margin-left: 168px">ALVO</span><span style="color: #d93636">VOCÊ</span>
+    </div>
+    <div class="vh-hint">Você tocou <b style="color: #b87800">Mi5</b>, corda Mi solta. O alvo era <b style="color: #0b8fa8">Ré5</b>: corda Lá, 3º dedo.</div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-top: auto">
+      <span style="font-family: 'Nunito', monospace; font-size: 18px; color: #d93636; text-decoration: line-through">COMBO 128</span>
+      <span style="font-family: 'Nunito', monospace; font-size: 18px; color: #5b6478">→ 0 · ×1</span>
+    </div>
+  </section>
+
+  <section aria-label="Fora do tempo" class="vh-col" style="padding: 20px 16px; background: #f4ecda; border: 1px solid #e3d8bf; border-radius: 3px">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; height: 92px; justify-content: center">
+      <span class="ns-judgment ns-judgment--good" style="font-size: 40px">Bom</span>
+      <span class="vh-chip" style="color: #b87800">TARDE ▸ +84 MS</span>
+    </div>
+    <div class="vh-lanes" role="img" aria-label="Nota certa na corda Lá, tocada depois da linha">
+      <div class="vh-lane ns-g"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 30px"></div></div>
+      <div class="vh-lane ns-d"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 96px"></div></div>
+      <div class="vh-lane ns-a"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 214px"></div></div>
+      <div class="vh-lane ns-e"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 4px"></div></div>
+      <div class="vh-hit"></div>
+      <div class="vh-tg ns-a" style="left: 62.5%; border-color: #b87800; box-shadow: none"></div>
+      <span class="vh-nm ns-g" style="left: 12.5%">G</span><span class="vh-nm ns-d" style="left: 37.5%">D</span><span class="vh-nm ns-a" style="left: 62.5%">A</span><span class="vh-nm ns-e" style="left: 87.5%">E</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px; align-items: center">
+      <div class="vh-rule" role="img" aria-label="Tempo: 84 milissegundos atrasado">
+        <i class="z" style="left: 0; right: 0"></i>
+        <i class="z" style="left: 20%; width: 60%; background: rgba(11, 143, 168, 0.15)"></i>
+        <i class="z" style="left: 37.5%; width: 25%; background: rgba(31, 42, 68, 0.18)"></i>
+        <i class="c"></i>
+        <i class="m" style="left: 92%; background: #b87800; box-shadow: none"></i>
+      </div>
+      <div class="vh-rl"><span>◂ CEDO</span><span>0</span><span>TARDE ▸</span></div>
+    </div>
+    <div class="vh-hint">Nota e afinação certas, mas <b style="color: #b87800">84 ms atrasada</b>. Comece o arco um pouco antes da linha.<span style="display: block; margin-top: 6px; font-size: 12px; line-height: 16px; color: #5b6478">Já descontados 142 ms de latência do seu celular.</span></div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-top: auto">
+      <span style="font-family: 'Nunito', monospace; font-size: 18px; color: #1f2a44">COMBO 129</span>
+      <span style="font-family: 'Nunito', monospace; font-size: 18px; color: #5b6478">· +50</span>
+    </div>
+  </section>
+
+  <section aria-label="Desafinado" class="vh-col" style="padding: 20px 16px; background: #f4ecda; border: 1px solid #e3d8bf; border-radius: 3px">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; height: 92px; justify-content: center">
+      <span class="ns-judgment ns-judgment--good" style="font-size: 40px">Bom</span>
+      <span class="vh-chip" style="color: #b87800">ALTO ▴ +38 ¢</span>
+    </div>
+    <div class="vh-lanes" role="img" aria-label="Nota certa na corda Lá, no tempo, mas desafinada para cima">
+      <div class="vh-lane ns-g"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 30px"></div></div>
+      <div class="vh-lane ns-d"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 96px"></div></div>
+      <div class="vh-lane ns-a"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 190px"></div><span style="position: absolute; left: 50%; top: 164px; margin-left: -6px; font: 16px/1 'Nunito', sans-serif; color: #b87800">▲</span></div>
+      <div class="vh-lane ns-e"><i class="vh-str"></i><div class="vh-gem" style="left: 50%; top: 4px"></div></div>
+      <div class="vh-hit"></div>
+      <div class="vh-tg ns-a" style="left: 62.5%; border-color: #b87800; box-shadow: none"></div>
+      <span class="vh-nm ns-g" style="left: 12.5%">G</span><span class="vh-nm ns-d" style="left: 37.5%">D</span><span class="vh-nm ns-a" style="left: 62.5%">A</span><span class="vh-nm ns-e" style="left: 87.5%">E</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px; align-items: center">
+      <div class="vh-rule" role="img" aria-label="Afinação: 38 cents acima">
+        <i class="z" style="left: 0; right: 0"></i>
+        <i class="z" style="left: 20%; width: 60%; background: rgba(11, 143, 168, 0.15)"></i>
+        <i class="z" style="left: 35%; width: 30%; background: rgba(31, 42, 68, 0.18)"></i>
+        <i class="c"></i>
+        <i class="m" style="left: 88%; background: #b87800; box-shadow: none"></i>
+      </div>
+      <div class="vh-rl"><span>◂ BAIXO</span><span>0 ¢</span><span>ALTO ▸</span></div>
+    </div>
+    <div class="vh-hint">Nota e tempo certos, mas <b style="color: #b87800">38 ¢ alta</b>. Recue o 3º dedo um pouco, em direção à voluta.</div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-top: auto">
+      <span style="font-family: 'Nunito', monospace; font-size: 18px; color: #1f2a44">COMBO 129</span>
+      <span style="font-family: 'Nunito', monospace; font-size: 18px; color: #5b6478">· +50</span>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

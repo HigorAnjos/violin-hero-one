@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Gameplay Cordas 3D</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.vh-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;box-sizing:border-box;border:1.5px solid var(--grid-line);border-radius:3px;background:var(--void-800);color:var(--ink)}
+a.vh-icon:hover{border-color:var(--neon-magenta);box-shadow:var(--glow-magenta);color:var(--ink)}
+a.vh-icon:focus-visible{outline:2px solid #0b8fa8;outline-offset:3px}
+.vh-pulse{animation:vhpulse 1.3s ease-out infinite}
+@keyframes vhpulse{0%,60%{opacity:0;transform:scale(.9)}65%{opacity:1;transform:scale(1.08)}100%{opacity:0;transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){.vh-pulse{animation:none;opacity:1}}
+</style>
+</helmet>
+<div class="ns-screen ns-anim" style="width: 1280px; height: 720px; position: relative; overflow: hidden; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <div style="position: absolute; left: 260px; top: 0">
+    <dc-import name="Orchestra" strip-width="760" energy="3" hint-size="760px,196px"></dc-import>
+  </div>
+  <svg viewBox="0 0 1280 550" width="1280" height="550" role="img" aria-label="Cordas 3D: as quatro cordas na frente e as notas chegando do fundo pelas colunas das casas. A nota no cavalete é Ré5, corda Lá, casa 5, 3º dedo" style="position: absolute; left: 0; top: 0; display: block">
+    <polygon points="601.6,168.9 734.4,168.9 1108,500 228,500" style="fill: #f4ecda; stroke: #d63a8a; stroke-width: 2; filter: none"></polygon>
+    <polygon points="654.7,168.9 668,168.9 668,500 580,500" style="fill: #d63a8a; opacity: 0.12"></polygon>
+    <g style="stroke: #e3d8bf; stroke-width: 1">
+      <line x1="614.9" y1="168.9" x2="316" y2="500"></line>
+      <line x1="628.2" y1="168.9" x2="404" y2="500"></line>
+      <line x1="641.4" y1="168.9" x2="492" y2="500"></line>
+      <line x1="654.7" y1="168.9" x2="580" y2="500"></line>
+      <line x1="668" y1="168.9" x2="668" y2="500"></line>
+      <line x1="681.3" y1="168.9" x2="756" y2="500"></line>
+      <line x1="694.6" y1="168.9" x2="844" y2="500"></line>
+      <line x1="707.8" y1="168.9" x2="932" y2="500"></line>
+      <line x1="721.1" y1="168.9" x2="1020" y2="500"></line>
+      <line x1="414.8" y1="334.5" x2="921.2" y2="334.5"></line>
+      <line x1="531" y1="231.4" x2="805" y2="231.4"></line>
+      <line x1="556.6" y1="208.7" x2="779.4" y2="208.7"></line>
+      <line x1="574.1" y1="193.2" x2="761.9" y2="193.2"></line>
+      <line x1="596.6" y1="173.3" x2="739.4" y2="173.3"></line>
+    </g>
+    <line x1="490.2" y1="267.6" x2="845.8" y2="267.6" style="stroke: #5b6478; stroke-width: 1.5; opacity: 0.6"></line>
+    <line x1="586.9" y1="181.9" x2="749.1" y2="181.9" style="stroke: #5b6478; stroke-width: 1.5; opacity: 0.6"></line>
+    <text x="851" y="271" style="font: 12px 'Nunito', monospace; fill: #5b6478">19</text>
+    <text x="754" y="185" style="font: 10px 'Nunito', monospace; fill: #5b6478">20</text>
+
+    <g style="font: 18px 'Nunito', monospace" text-anchor="middle">
+      <text x="272" y="528" style="fill: #5b6478">0</text>
+      <text x="360" y="528" style="fill: #5b6478">1</text>
+      <text x="448" y="528" style="fill: #5b6478">2</text>
+      <text x="536" y="528" style="fill: #5b6478">3</text>
+      <text x="624" y="528" style="fill: #d63a8a">4</text>
+      <text x="712" y="528" style="fill: #0b8fa8">5</text>
+      <text x="800" y="528" style="fill: #5b6478">6</text>
+      <text x="888" y="528" style="fill: #5b6478">7</text>
+      <text x="976" y="528" style="fill: #5b6478">8</text>
+      <text x="1064" y="528" style="fill: #5b6478">9</text>
+    </g>
+    <text x="1124" y="528" style="font: 600 11px 'Nunito', sans-serif; letter-spacing: 0.14em; fill: #5b6478">CASA</text>
+
+    <line x1="188" y1="278" x2="1108" y2="278" style="stroke: #6b4bd8; stroke-width: 2.5; filter: none"></line>
+    <text x="174" y="286" text-anchor="end" style="font: 24px 'Baloo 2', sans-serif; fill: #6b4bd8; filter: none">G</text>
+    <line x1="188" y1="340" x2="1108" y2="340" style="stroke: #d63a8a; stroke-width: 2.5; filter: none"></line>
+    <text x="174" y="348" text-anchor="end" style="font: 24px 'Baloo 2', sans-serif; fill: #d63a8a; filter: none">D</text>
+    <polyline points="188,402 203.3,402.2 218.7,401.7 234,401.7 249.3,402.8 264.7,401.9 280,400.9 295.3,403 310.7,402.8 326,400.2 341.3,402.3 356.7,403.9 372,400.3 387.3,400.9 402.7,404.7 418,401.4 433.3,399.5 448.7,404.4 464,403.1 479.3,398.6 494.7,403 510,404.9 525.3,399 540.7,401 556,405.8 571.3,400.6 586.7,399 602,405.4 617.3,402.8 632.7,398 648,403.7 663.3,404.8 678.7,398.4 694,401.5 709.3,405.8 724.7,400.1 740,399.5 755.3,405.5 770.7,402.2 786,398.6 801.3,404 816.7,404 832,398.9 847.3,402.1 862.7,404.8 878,400.2 893.3,400.6 908.7,404.4 924,401.8 939.3,400 954.7,403.4 970,402.9 985.3,400.4 1000.7,402.2 1016,403.1 1031.3,401.2 1046.7,401.7 1062,402.6 1077.3,401.9 1092.7,401.8 1108,402" style="fill: none; stroke: #0b8fa8; stroke-width: 3.5; filter: none"></polyline>
+    <text x="174" y="410" text-anchor="end" style="font: 24px 'Baloo 2', sans-serif; fill: #0b8fa8; filter: none">A</text>
+    <line x1="188" y1="464" x2="1108" y2="464" style="stroke: #b87800; stroke-width: 2.5; filter: none"></line>
+    <text x="174" y="472" text-anchor="end" style="font: 24px 'Baloo 2', sans-serif; fill: #b87800; filter: none">E</text>
+
+    <ellipse cx="660.9" cy="173.3" rx="8.9" ry="2.5" style="fill: #0b8fa8; opacity: 0.35"></ellipse>
+    <line x1="660.9" y1="173.3" x2="660.9" y2="157.4" style="stroke: #0b8fa8; stroke-width: 1"></line>
+    <rect x="650.5" y="150.7" width="20.7" height="13.5" rx="2" style="fill: #0b8fa8; filter: none"></rect>
+    <text x="660.9" y="162" text-anchor="middle" style="font: 13px 'Nunito', monospace; fill: #fbf6ea">2</text>
+    <ellipse cx="659.9" cy="181.9" rx="9.5" ry="2.6" style="fill: #6b4bd8; opacity: 0.35"></ellipse>
+    <line x1="659.9" y1="181.9" x2="659.9" y2="141" style="stroke: #6b4bd8; stroke-width: 1"></line>
+    <rect x="648.7" y="133.7" width="22.4" height="14.5" rx="2" style="fill: #6b4bd8; filter: none"></rect>
+    <text x="659.9" y="145.8" text-anchor="middle" style="font: 14px 'Nunito', monospace; fill: #fbf6ea">2</text>
+    <ellipse cx="583.5" cy="193.2" rx="10.4" ry="2.8" style="fill: #b87800; opacity: 0.35"></ellipse>
+    <line x1="583.5" y1="193.2" x2="583.5" y2="185.5" style="stroke: #b87800; stroke-width: 1"></line>
+    <rect x="571.2" y="177.6" width="24.6" height="15.8" rx="2" style="fill: #b87800; filter: none"></rect>
+    <text x="583.5" y="190.7" text-anchor="middle" style="font: 14px 'Nunito', monospace; fill: #fbf6ea">0</text>
+    <polygon points="579.8,193.2 587.3,193.2 550.2,231.4 539.3,231.4" style="fill: #0b8fa8; opacity: 0.4"></polygon>
+    <ellipse cx="544.7" cy="231.4" rx="13.3" ry="3.4" style="fill: #0b8fa8; opacity: 0.35"></ellipse>
+    <line x1="544.7" y1="231.4" x2="544.7" y2="200.9" style="stroke: #0b8fa8; stroke-width: 1"></line>
+    <rect x="528.6" y="190.7" width="32.3" height="20.3" rx="2.5" style="fill: #0b8fa8; filter: none"></rect>
+    <text x="544.7" y="207.1" text-anchor="middle" style="font: 17px 'Nunito', monospace; fill: #fbf6ea">0</text>
+    <text x="544.7" y="183" text-anchor="middle" style="font: 600 9px 'Nunito', sans-serif; fill: #1f2a44">Lá4</text>
+    <ellipse cx="650.2" cy="267.6" rx="16.1" ry="3.9" style="fill: #d63a8a; opacity: 0.35"></ellipse>
+    <line x1="650.2" y1="267.6" x2="650.2" y2="202.9" style="stroke: #d63a8a; stroke-width: 1"></line>
+    <rect x="630.5" y="190.6" width="39.5" height="24.6" rx="3.2" style="fill: #d63a8a; filter: none"></rect>
+    <text x="650.2" y="210.2" text-anchor="middle" style="font: 20px 'Nunito', monospace; fill: #fbf6ea">2</text>
+    <text x="650.2" y="181.8" text-anchor="middle" style="font: 600 9px 'Nunito', sans-serif; fill: #1f2a44">Fá♯4</text>
+
+    <polygon points="678.7,267.6 692.9,267.6 729.6,500 694.4,500" style="fill: #0b8fa8; opacity: 0.75; filter: none"></polygon>
+    <line x1="685.8" y1="267.6" x2="712" y2="500" style="stroke: #1f2a44; stroke-width: 2; opacity: 0.8"></line>
+    <text x="700" y="262" text-anchor="middle" style="font: 600 10px 'Nunito', sans-serif; letter-spacing: 0.14em; fill: #0b8fa8">FIM</text>
+    <ellipse cx="712" cy="500" rx="34" ry="7.5" style="fill: #0b8fa8; opacity: 0.5"></ellipse>
+    <line x1="712" y1="500" x2="712" y2="436" style="stroke: #0b8fa8; stroke-width: 2.5"></line>
+
+    <g style="stroke: #1f2a44; stroke-width: 3; stroke-linecap: round; filter: none">
+      <line x1="772" y1="402" x2="796" y2="402"></line>
+      <line x1="652" y1="402" x2="628" y2="402"></line>
+      <line x1="764" y1="362" x2="782" y2="346"></line>
+      <line x1="660" y1="362" x2="642" y2="346"></line>
+      <line x1="764" y1="442" x2="782" y2="458"></line>
+      <line x1="660" y1="442" x2="642" y2="458"></line>
+    </g>
+    <rect x="650" y="357" width="124" height="90" rx="14" style="fill: none; stroke: #1f2a44; stroke-width: 1.5; opacity: 0.35"></rect>
+    <rect x="662" y="369" width="100" height="66" rx="10" style="fill: none; stroke: #1f2a44; stroke-width: 3; filter: none"></rect>
+    <rect x="669" y="376" width="86" height="52" rx="8" style="fill: #0b8fa8; filter: none"></rect>
+    <text x="712" y="415.7" text-anchor="middle" style="font: 38px 'Nunito', monospace; fill: #fbf6ea">3</text>
+    <text x="712" y="352" text-anchor="middle" style="font: 600 16px 'Nunito', sans-serif; letter-spacing: 0.06em; fill: #1f2a44">Ré5 · SEGURE</text>
+    <rect x="662" y="441" width="100" height="6" style="fill: #e3d8bf"></rect>
+    <rect x="662" y="441" width="44" height="6" style="fill: #0b8fa8; filter: none"></rect>
+  </svg>
+
+  <a class="vh-icon" href="Pause.dc.html" aria-label="Pausar" style="position: absolute; left: 50%; top: 20px; margin-left: -22px">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" style="fill: currentColor"></rect><rect x="9.5" y="2" width="3.5" height="12" style="fill: currentColor"></rect></svg>
+  </a>
+  <div style="position: absolute; left: 50%; top: 76px; transform: translateX(-50%); font-family: 'Nunito', monospace; font-size: 18px; color: #5b6478">COMBO 128</div>
+
+  <div role="status" aria-label="Acerto perfeito" style="position: absolute; right: 56px; top: 236px; text-align: right">
+    <span class="ns-judgment ns-judgment--perfect vh-pulse" style="display: inline-block; font-size: 40px">Perfeito!</span>
+  </div>
+
+  <section aria-label="Placar" class="ns-panel" style="position: absolute; left: 40px; top: 20px; width: 290px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <span style="font-weight: 600; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; color: #1f2a44">Canon em Neon · Médio</span>
+      <span style="font-weight: 600; font-size: 12px; letter-spacing: 0.14em; color: #b87800">MÃO NA 1ª POSIÇÃO</span>
+    </div>
+    <span class="ns-score" style="font-size: 36px">1.284.560</span>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <span class="ns-mult">×4</span>
+      <span class="ns-stat" style="font-size: 16px">128 · 98,4%</span>
+    </div>
+  </section>
+
+  <section aria-label="Afinação ao vivo" class="ns-panel" style="position: absolute; right: 40px; top: 20px; width: 290px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <span class="ns-label">Afinação</span>
+      <span style="font-family: 'Nunito', monospace; font-size: 18px; color: #1f2a44">{{hz}} Hz</span>
+    </div>
+    <span style="font-size: 13px; color: #5b6478">Ré5 · corda Lá · casa 5 · 3º dedo</span>
+    <div role="img" aria-label="Afinação {{centsLabel}}" style="position: relative; height: 22px; background: #f4ecda; border: 1px solid #e3d8bf">
+      <div style="position: absolute; top: 0; bottom: 0; left: 20%; width: 60%; background: rgba(11, 143, 168, 0.12)"></div>
+      <div style="position: absolute; top: 0; bottom: 0; left: 35%; width: 30%; background: rgba(31, 42, 68, 0.14)"></div>
+      <div style="position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: #1f2a44; opacity: 0.6"></div>
+      <div style="position: absolute; top: -5px; bottom: -5px; left: {{needleLeft}}; width: 4px; margin-left: -2px; background: #0b8fa8; box-shadow: none"></div>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center">
+      <span style="font-family: 'Nunito', monospace; font-size: 18px; color: #1f2a44">{{centsLabel}}</span>
+      <span style="font-weight: 600; font-size: 13px; letter-spacing: 0.14em; color: {{statusColor}}">{{status}}</span>
+    </div>
+  </section>
+
+  <section aria-label="Partitura acompanhando a música" style="position: absolute; left: 40px; right: 40px; bottom: 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding-top: 10px; background: #f4ecda; border: 1px solid #e3d8bf; border-radius: 3px; overflow: hidden">
+    <div style="display: flex; align-items: center; gap: 16px; padding: 0 16px; height: 20px">
+      <span class="ns-label" style="white-space: nowrap">Partitura · Ré maior · compasso 18 de 64</span>
+      <span style="flex: 1"></span>
+      <span style="font-family: 'Nunito', monospace; font-size: 15px; color: #5b6478">1:42</span>
+      <div class="ns-bar" style="width: 320px"><i style="width: 53%"></i></div>
+      <span style="font-family: 'Nunito', monospace; font-size: 15px; color: #5b6478">3:12</span>
+    </div>
+    <dc-import name="SheetStrip" variant="live" strip-width="1198" measure-start="17" hint-size="1198px,112px"></dc-import>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"cents":{"editor":"range","default":6,"min":-50,"max":50,"step":1,"unit":"¢"},"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const c = Math.max(-50, Math.min(50, Number(this.props.cents ?? 6)));
+    const abs = Math.abs(c);
+    return {
+      hz: (590.0 * Math.pow(2, c / 1200)).toFixed(1).replace('.', ','),
+      centsLabel: (c > 0 ? '+' : (c < 0 ? '−' : '')) + abs + ' ¢',
+      status: abs <= 15 ? 'AFINADO' : (c > 0 ? 'ALTO ▴' : 'BAIXO ▾'),
+      statusColor: abs <= 15 ? '#1f2a44' : (abs <= 30 ? '#0b8fa8' : '#b87800'),
+      needleLeft: (50 + c) + '%'
+    };
+  }
+}
+</script>
+</body>
+</html>

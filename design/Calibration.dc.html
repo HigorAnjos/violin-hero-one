@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Afinação e calibração</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:44px}
+a.ns-btn:hover{color:inherit}
+.vh-chk{display:flex;align-items:center;gap:10px;font:400 14px/20px var(--font-ui);color:var(--ink);min-height:32px;cursor:pointer}
+.vh-chk input{width:18px;height:18px;accent-color:#0b8fa8;margin:0}
+.vh-pulse{animation:vhp 1s ease-out infinite}
+@keyframes vhp{0%{box-shadow:0 0 0 0 #d63a8aaa}100%{box-shadow:0 0 0 12px #d63a8a00}}
+@media (prefers-reduced-motion: reduce){.vh-pulse{animation:none}}
+</style>
+</helmet>
+<div class="ns-screen ns-anim" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 40px 64px; display: flex; flex-direction: column; gap: 24px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span class="ns-label">Passo 3 de 3 · Canon em Neon · Médio</span>
+      <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 28px; line-height: 34px; color: #1f2a44">Afine antes de tocar</h1>
+    </div>
+    <a class="ns-btn ns-btn--ghost" href="SongSelect.dc.html"><span aria-hidden="true">◂</span>Voltar</a>
+  </header>
+
+  <div style="display: flex; gap: 24px; flex-grow: 1; min-height: 0">
+
+    <section aria-label="Afinador" class="ns-panel" style="flex: 1 1 0; min-width: 0; box-sizing: border-box; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span class="ns-label">Afinador</span>
+        <span style="font-size: 14px; color: #5b6478">Toque cada corda solta, uma de cada vez</span>
+      </div>
+
+      <div role="group" aria-label="Lá de referência" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: #f4ecda; border: 1px solid #e3d8bf; border-radius: 3px">
+        <span style="font-weight: 600; font-size: 12px; letter-spacing: 0.14em; color: #5b6478; white-space: nowrap">LÁ DE REFERÊNCIA</span>
+        <div style="display: flex; align-items: center; border: 1px solid #e3d8bf; border-radius: 3px">
+          <button aria-label="Diminuir 1 Hz" style="width: 40px; height: 40px; background: #ffffff; border: 0; color: #1f2a44; font: 600 18px/1 'Nunito', sans-serif; cursor: pointer">−</button>
+          <span style="min-width: 92px; text-align: center; font-family: 'Nunito', monospace; font-size: 20px; color: #1f2a44">{{ref}} Hz</span>
+          <button aria-label="Aumentar 1 Hz" style="width: 40px; height: 40px; background: #ffffff; border: 0; color: #1f2a44; font: 600 18px/1 'Nunito', sans-serif; cursor: pointer">+</button>
+        </div>
+        <div style="display: flex; gap: 6px">
+          <sc-for list="{{presets}}" as="p" hint-placeholder-count="4">
+            <button aria-pressed="{{p.on}}" style="min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid {{p.border}}; background: {{p.bg}}; color: {{p.color}}; font: 600 12px/1 'Nunito', sans-serif; letter-spacing: 0.06em; cursor: pointer">{{p.label}}</button>
+          </sc-for>
+        </div>
+        <span style="margin-left: auto; font-size: 12px; line-height: 16px; color: #5b6478; text-align: right">Orquestras costumam<br>usar 442 Hz</span>
+      </div>
+
+      <div style="display: flex; align-items: flex-end; gap: 28px">
+        <span style="font-family: 'Baloo 2', sans-serif; font-size: 96px; line-height: 0.9; color: #0b8fa8; text-shadow: none">A4</span>
+        <div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 6px">
+          <span style="font-family: 'Nunito', monospace; font-size: 28px; line-height: 32px; color: #1f2a44">{{hz}} Hz</span>
+          <span style="font-weight: 600; font-size: 14px; letter-spacing: 0.14em; color: {{statusColor}}">{{centsLabel}} · {{status}}</span>
+          <span style="font-size: 14px; color: #5b6478">{{hint}}</span>
+        </div>
+      </div>
+
+      <div role="img" aria-label="Medidor de afinação: {{centsLabel}}" style="display: flex; flex-direction: column; gap: 8px">
+        <div style="position: relative; height: 56px; background: #f4ecda; border: 1px solid #e3d8bf">
+          <div style="position: absolute; top: 0; bottom: 0; left: 20%; width: 60%; background: rgba(11, 143, 168, 0.12)"></div>
+          <div style="position: absolute; top: 0; bottom: 0; left: 35%; width: 30%; background: rgba(31, 42, 68, 0.14)"></div>
+          <div style="position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: #1f2a44; opacity: 0.6"></div>
+          <div style="position: absolute; top: -8px; bottom: -8px; left: {{needleLeft}}; width: 4px; margin-left: -2px; background: #0b8fa8; box-shadow: none"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-family: 'Nunito', monospace; font-size: 14px; color: #5b6478">
+          <span>−50 ¢ · baixo</span><span>−30</span><span>−15</span><span>0</span><span>+15</span><span>+30</span><span>alto · +50 ¢</span>
+        </div>
+        <div style="display: flex; gap: 18px; font-size: 13px; color: #5b6478">
+          <span style="display: flex; align-items: center; gap: 6px"><i style="width: 12px; height: 12px; background: rgba(31,42,68,0.25)"></i>Perfeito ±15 ¢</span>
+          <span style="display: flex; align-items: center; gap: 6px"><i style="width: 12px; height: 12px; background: rgba(11,143,168,0.35)"></i>Ótimo ±30 ¢</span>
+          <span style="display: flex; align-items: center; gap: 6px"><i style="width: 12px; height: 12px; border: 1px solid #e3d8bf; box-sizing: border-box"></i>Bom ±50 ¢</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: auto">
+        <div style="border: 1px solid #e3d8bf; background: #f4ecda; border-radius: 3px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-family: 'Baloo 2', sans-serif; font-size: 24px; color: #6b4bd8; text-shadow: none">G</span>
+          <span style="font-size: 13px; color: #5b6478">Sol · {{fG}} Hz</span>
+          <span style="font-weight: 600; font-size: 13px; color: #1f2a44">✓ Afinada · −2 ¢</span>
+        </div>
+        <div style="border: 1px solid #e3d8bf; background: #f4ecda; border-radius: 3px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-family: 'Baloo 2', sans-serif; font-size: 24px; color: #d63a8a; text-shadow: none">D</span>
+          <span style="font-size: 13px; color: #5b6478">Ré · {{fD}} Hz</span>
+          <span style="font-weight: 600; font-size: 13px; color: #1f2a44">✓ Afinada · +1 ¢</span>
+        </div>
+        <div style="border: 1px solid #0b8fa8; box-shadow: none; background: #f4ecda; border-radius: 3px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-family: 'Baloo 2', sans-serif; font-size: 24px; color: #0b8fa8; text-shadow: none">A</span>
+          <span style="font-size: 13px; color: #5b6478">Lá · {{fA}} Hz</span>
+          <span style="font-weight: 600; font-size: 13px; color: #0b8fa8">● Ouvindo agora</span>
+        </div>
+        <div style="border: 1px dashed #e3d8bf; background: #f4ecda; border-radius: 3px; padding: 12px; display: flex; flex-direction: column; gap: 4px">
+          <span style="font-family: 'Baloo 2', sans-serif; font-size: 24px; color: #b87800; text-shadow: none">E</span>
+          <span style="font-size: 13px; color: #5b6478">Mi · {{fE}} Hz</span>
+          <span style="font-weight: 600; font-size: 13px; color: #5b6478">○ Pendente</span>
+        </div>
+      </div>
+    </section>
+
+    <div style="width: 400px; flex: none; display: flex; flex-direction: column; gap: 24px">
+
+      <section aria-label="Microfone" class="ns-panel" style="box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+        <span class="ns-label">Microfone</span>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #5b6478">Entrada
+          <select style="min-height: 40px; background: #f4ecda; color: #1f2a44; border: 1px solid #e3d8bf; border-radius: 3px; padding: 0 10px; font: 400 14px/20px 'Nunito', sans-serif">
+            <option>Interface USB · 48 kHz</option>
+            <option>Microfone do notebook</option>
+          </select>
+        </label>
+        <div style="display: flex; align-items: center; gap: 12px">
+          <div class="ns-segs" style="flex: 1" aria-label="Nível de entrada: 9 de 14"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+          <span style="font-family: 'Nunito', monospace; font-size: 14px; color: #5b6478">−18 dB</span>
+        </div>
+        <span style="font-size: 13px; color: #5b6478">Ruído ambiente: baixo (−52 dB)</span>
+        <label class="vh-chk"><input type="checkbox" checked>Desligar supressão de ruído</label>
+        <label class="vh-chk"><input type="checkbox" checked>Desligar ganho automático</label>
+      </section>
+
+      <section aria-label="Latência" class="ns-panel" style="box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; gap: 12px; flex-grow: 1">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span class="ns-label">Latência do aparelho</span>
+          <span style="font-weight: 700; font-size: 11px; letter-spacing: 0.14em; color: #fbf6ea; background: #0b8fa8; padding: 4px 8px; border-radius: 999px">AUTOMÁTICA</span>
+        </div>
+        <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span style="font-size: 14px; color: #1f2a44">Celular · alto-falante</span>
+            <span style="font-family: 'Nunito', monospace; font-size: 13px; color: #5b6478">saída 88 + entrada 54 ms</span>
+          </div>
+          <span style="font-family: 'Nunito', monospace; font-size: 34px; line-height: 1; color: #1f2a44">142 ms</span>
+        </div>
+        <span style="font-size: 13px; line-height: 19px; color: #5b6478">O jogo toca um clique e mede quanto o microfone demora para ouvir. Esse tempo é descontado de cada nota.</span>
+        <span style="font-size: 13px; line-height: 19px; color: #b87800">▲ Fone Bluetooth soma 150 a 250 ms. Prefira fone com fio.</span>
+        <div style="display: flex; gap: 10px; margin-top: auto">
+          <a class="ns-btn ns-btn--ghost" href="#">Medir de novo</a>
+          <a class="ns-btn ns-btn--primary" href="Countdown.dc.html" style="flex: 1">Começar <span aria-hidden="true">▸</span></a>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"cents":{"editor":"range","default":4,"min":-50,"max":50,"step":1,"unit":"¢"},"referencia":{"editor":"int","default":442,"min":415,"max":450,"unit":"Hz"},"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const c = Math.max(-50, Math.min(50, Number(this.props.cents ?? 4)));
+    const ref = Math.max(415, Math.min(450, Number(this.props.referencia ?? 442)));
+    const fmt = (v) => v.toFixed(1).replace('.', ',');
+    const hz = fmt(ref * Math.pow(2, c / 1200));
+    const presets = [[440, '440'], [442, '442'], [443, '443'], [415, '415 barroco']].map(([v, label]) => {
+      const on = v === ref;
+      return { label, on: on ? 'true' : 'false', border: on ? '#0b8fa8' : '#e3d8bf', bg: on ? '#0b8fa8' : 'transparent', color: on ? '#fbf6ea' : '#5b6478' };
+    });
+    const abs = Math.abs(c);
+    const status = abs <= 15 ? 'AFINADO' : (c > 0 ? 'ALTO' : 'BAIXO');
+    const statusColor = abs <= 15 ? '#1f2a44' : (abs <= 30 ? '#0b8fa8' : '#b87800');
+    const hint = abs <= 15 ? 'Pronto. Próxima corda: Mi (E)' : (c > 0 ? 'Afrouxe um pouco o microafinador' : 'Aperte um pouco o microafinador');
+    return {
+      hz,
+      ref: String(ref),
+      presets,
+      fG: fmt(ref * Math.pow(2, -14 / 12)),
+      fD: fmt(ref * Math.pow(2, -7 / 12)),
+      fA: fmt(ref),
+      fE: fmt(ref * Math.pow(2, 7 / 12)),
+      centsLabel: (c > 0 ? '+' : (c < 0 ? '−' : '')) + abs + ' ¢',
+      status,
+      statusColor,
+      hint,
+      needleLeft: (50 + c) + '%'
+    };
+  }
+}
+</script>
+</body>
+</html>

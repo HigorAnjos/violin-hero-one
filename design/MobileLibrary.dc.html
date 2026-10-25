@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Celular: biblioteca</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;box-sizing:border-box;min-height:44px;padding:0 16px}
+a.ns-btn:hover{color:inherit}
+a.vh-ic{display:flex;align-items:center;justify-content:center;width:44px;height:44px;box-sizing:border-box;border-radius:3px;border:1px solid #e3d8bf;color:#1f2a44;text-decoration:none}
+.vh-tab{flex:none;font:600 11px/14px var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted);background:transparent;border:1px solid var(--grid-line);border-radius:999px;padding:0 14px;min-height:36px}
+.vh-tab[aria-pressed="true"]{color:var(--ink-on-neon);background:var(--neon-cyan);border-color:var(--neon-cyan)}
+a.vh-card{flex:none;width:184px;display:flex;flex-direction:column;text-decoration:none;color:inherit;background:var(--void-700);border:1px solid var(--grid-line);border-radius:3px;overflow:hidden}
+.vh-cover{position:relative;height:84px;background:var(--void-900);border-bottom:1px solid var(--grid-line)}
+.vh-badge{position:absolute;top:6px;left:6px;font:700 9px/1 var(--font-ui);letter-spacing:.12em;padding:4px 7px;border-radius:999px}
+.vh-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.vh-t{font:600 15px/18px var(--font-ui);color:var(--ink)}
+.vh-m{font:400 12px/16px var(--font-ui);color:var(--ink-muted)}
+.vh-prog{height:4px;background:var(--grid-line)}
+.vh-prog i{display:block;height:100%;background:var(--neon-violet)}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 844px; height: 390px; position: relative; overflow: hidden; box-sizing: border-box; padding: 14px 0 14px 20px; display: flex; flex-direction: column; gap: 10px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: center; gap: 10px; padding-right: 20px">
+    <a class="vh-ic" href="MobileMain.dc.html" aria-label="Voltar"><span aria-hidden="true">◂</span></a>
+    <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 22px; line-height: 28px; color: #1f2a44">Biblioteca</h1>
+    <span style="font-size: 12px; color: #5b6478">24 músicas</span>
+    <span style="flex: 1"></span>
+    <a class="vh-ic" href="#" aria-label="Buscar"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" style="fill: none; stroke: #1f2a44; stroke-width: 1.6"></circle><path d="M11 11l4 4" style="stroke: #1f2a44; stroke-width: 1.6"></path></svg></a>
+    <a class="ns-btn ns-btn--primary" href="Import.dc.html"><span aria-hidden="true">＋</span>Importar</a>
+  </header>
+
+  <div role="group" aria-label="Filtro" style="display: flex; gap: 6px; overflow: hidden">
+    <button class="vh-tab" aria-pressed="true">Todas</button>
+    <button class="vh-tab" aria-pressed="false">Clássicas</button>
+    <button class="vh-tab" aria-pressed="false">Importadas</button>
+    <button class="vh-tab" aria-pressed="false">Treino</button>
+    <button class="vh-tab" aria-pressed="false">Favoritas</button>
+    <button class="vh-tab" aria-pressed="false">Originais</button>
+  </div>
+
+  <div style="display: flex; gap: 12px; overflow: hidden; flex-grow: 1; align-items: flex-start" aria-label="Músicas, role para o lado">
+    <a class="vh-card" href="MobileCalibration.dc.html" style="border-color: #d63a8a">
+      <div class="vh-cover"><svg viewBox="0 0 184 84" width="184" height="84" aria-hidden="true"><circle cx="92" cy="84" r="54" style="fill: #d63a8a"></circle><rect x="30" y="52" width="124" height="3" style="fill: #fbf6ea"></rect><rect x="30" y="62" width="124" height="5" style="fill: #fbf6ea"></rect><rect x="30" y="74" width="124" height="6" style="fill: #fbf6ea"></rect></svg><span class="vh-badge" style="background: #d63a8a; color: #fbf6ea">CONTINUAR</span></div>
+      <div class="vh-body"><span class="vh-t">Canon em Neon</span><span class="vh-m">Pachelbel · 112 BPM</span><div class="ns-pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div><div class="vh-prog"><i style="width: 82%"></i></div></div>
+    </a>
+    <a class="vh-card" href="MobileCalibration.dc.html">
+      <div class="vh-cover"><svg viewBox="0 0 184 84" width="184" height="84" aria-hidden="true"><rect x="30" y="20" width="8" height="64" style="fill: #0b8fa8"></rect><rect x="62" y="38" width="8" height="46" style="fill: #6b4bd8"></rect><rect x="94" y="10" width="8" height="74" style="fill: #0b8fa8"></rect><rect x="126" y="30" width="8" height="54" style="fill: #6b4bd8"></rect></svg><span class="vh-badge" style="background: #b87800; color: #fbf6ea">NOVA</span></div>
+      <div class="vh-body"><span class="vh-t">Chuva de Pixels</span><span class="vh-m">Original · 128 BPM</span><div class="ns-pips"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div><div class="vh-prog"><i style="width: 0%"></i></div></div>
+    </a>
+    <a class="vh-card" href="MobileCalibration.dc.html">
+      <div class="vh-cover"><svg viewBox="0 0 184 84" width="184" height="84" aria-hidden="true"><g style="stroke: #5b6478; stroke-width: 1.2; opacity: 0.7"><line x1="0" y1="28" x2="184" y2="28"></line><line x1="0" y1="36" x2="184" y2="36"></line><line x1="0" y1="44" x2="184" y2="44"></line><line x1="0" y1="52" x2="184" y2="52"></line><line x1="0" y1="60" x2="184" y2="60"></line></g><ellipse cx="50" cy="56" rx="7" ry="5" style="fill: #d63a8a"></ellipse><ellipse cx="84" cy="48" rx="7" ry="5" style="fill: #0b8fa8"></ellipse><ellipse cx="118" cy="40" rx="7" ry="5" style="fill: #0b8fa8"></ellipse><ellipse cx="152" cy="32" rx="7" ry="5" style="fill: #b87800"></ellipse></svg><span class="vh-badge" style="background: #0b8fa8; color: #fbf6ea">IMPORTADA</span></div>
+      <div class="vh-body"><span class="vh-t">Minueto em Sol</span><span class="vh-m">J. S. Bach · 120 BPM</span><div class="ns-pips"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div><div class="vh-prog"><i style="width: 12%"></i></div></div>
+    </a>
+    <a class="vh-card" href="MobileCalibration.dc.html">
+      <div class="vh-cover"><svg viewBox="0 0 184 84" width="184" height="84" aria-hidden="true"><rect x="50" y="12" width="34" height="34" style="fill: #b87800"></rect><rect x="100" y="40" width="34" height="34" style="fill: #d63a8a"></rect></svg></div>
+      <div class="vh-body"><span class="vh-t">Sonata 2077</span><span class="vh-m">Vivaldi · 156 BPM</span><div class="ns-pips"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div><div class="vh-prog"><i style="width: 46%"></i></div></div>
+    </a>
+    <a class="vh-card" href="MobileCalibration.dc.html" style="opacity: 0.6">
+      <div class="vh-cover"><svg viewBox="0 0 184 84" width="184" height="84" aria-hidden="true"><path d="M30 84 L92 18 L154 84 Z" style="fill: #0b8fa8"></path></svg></div>
+      <div class="vh-body"><span class="vh-t">Ode em Ré Maior</span><span class="vh-m">Beethoven · 96 BPM</span></div>
+    </a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":844,"height":390}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

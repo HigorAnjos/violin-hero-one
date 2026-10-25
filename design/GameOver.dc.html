@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — A orquestra parou</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:flex;align-items:center;justify-content:space-between;text-decoration:none;box-sizing:border-box;min-height:48px}
+a.ns-btn:hover{color:inherit}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <svg viewBox="0 0 1280 720" width="1280" height="720" aria-hidden="true" style="position: absolute; inset: 0; display: block">
+    <g style="stroke: #ece2cb; stroke-width: 2"><line x1="0" y1="600" x2="1280" y2="600"></line><line x1="0" y1="620" x2="1280" y2="620"></line><line x1="0" y1="640" x2="1280" y2="640"></line><line x1="0" y1="660" x2="1280" y2="660"></line><line x1="0" y1="680" x2="1280" y2="680"></line></g>
+    <g style="fill: #ffffff; stroke: #e3d8bf; stroke-width: 3">
+      <path d="M90 560 h80 v-40 a40 40 0 0 0 -80 0 z"></path><path d="M200 560 h80 v-40 a40 40 0 0 0 -80 0 z"></path><path d="M310 560 h80 v-40 a40 40 0 0 0 -80 0 z"></path>
+      <path d="M890 560 h80 v-40 a40 40 0 0 0 -80 0 z"></path><path d="M1000 560 h80 v-40 a40 40 0 0 0 -80 0 z"></path><path d="M1110 560 h80 v-40 a40 40 0 0 0 -80 0 z"></path>
+    </g>
+    <line x1="60" y1="562" x2="1220" y2="562" style="stroke: #e3d8bf; stroke-width: 3"></line>
+  </svg>
+
+  <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 48px">
+    <div style="display: flex; flex-direction: column; gap: 18px; width: 520px">
+      <h1 style="margin: 0; position: relative; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 52px; line-height: 1.05; color: #1f2a44">A orquestra parou… <span style="color: #d63a8a">por hoje!</span></h1>
+      <p style="margin: 0; font-size: 17px; line-height: 26px; color: #5b6478">Você chegou até o <b style="color: #1f2a44">compasso 41 de 64</b> de Canon em Neon. Acontece: o trecho do meio é o mais rápido da música.</p>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span class="ns-label">A orquestra parou de acompanhar</span>
+        <div style="width: 360px; overflow: hidden; border-radius: 12px; background: #ffffff; border: 2px solid #e3d8bf">
+          <dc-import name="Orchestra" strip-width="356" energy="0" maestro="{{ true }}" hint-size="356px,92px"></dc-import>
+        </div>
+      </div>
+      <div style="display: flex; gap: 28px">
+        <div style="display: flex; flex-direction: column; gap: 4px"><span class="ns-label">Pontos</span><span class="ns-stat">412.880</span></div>
+        <div style="display: flex; flex-direction: column; gap: 4px"><span class="ns-label">Precisão</span><span class="ns-stat">71,3%</span></div>
+        <div style="display: flex; flex-direction: column; gap: 4px"><span class="ns-label">Mais errado</span><span class="ns-stat">Corda Mi</span></div>
+      </div>
+    </div>
+
+    <nav aria-label="O que fazer agora" class="ns-panel" style="width: 380px; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 12px">
+      <span class="ns-label" style="margin-bottom: 4px">E agora?</span>
+      <a class="ns-btn ns-btn--primary" href="Practice.dc.html"><span>Praticar compassos 38–41</span><span aria-hidden="true">▸</span></a>
+      <a class="ns-btn ns-btn--secondary" href="Countdown.dc.html"><span>Tentar de novo</span></a>
+      <a class="ns-btn" href="Countdown.dc.html"><span>Tocar sem falha</span><span style="font-size: 11px; letter-spacing: 0.1em; color: #5b6478">A MÚSICA NÃO PARA</span></a>
+      <a class="ns-btn ns-btn--ghost" href="Library.dc.html"><span>Voltar à biblioteca</span></a>
+    </nav>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Selo</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: {{size}}px; height: {{h}}px; display: inline-block; vertical-align: middle; opacity: {{op}}; font-family: 'Nunito', system-ui, sans-serif; color: #1f2a44">
+  <svg width="{{size}}" height="{{h}}" viewBox="0 0 40 44" role="img" aria-label="{{label}}" style="display: block; overflow: visible">
+    <polygon points="20,2 38,12 38,32 20,42 2,32 2,12" style="fill: #fbf6ea; stroke: {{color}}; stroke-width: 2.5; stroke-linejoin: round; filter: {{glow}}"></polygon>
+    <polygon points="20,7 33.5,14.5 33.5,29.5 20,37 6.5,29.5 6.5,14.5" style="fill: {{fill}}; stroke: none"></polygon>
+    <g transform="translate(8 10)">
+      <path d="{{icon}}" style="fill: none; stroke: {{color}}; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"></path>
+    </g>
+  </svg>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"kind":{"editor":"enum","options":["afinacao","combo","sequencia","partitura","virtuose","posicao","vibrato","compositor"],"default":"virtuose"},"size":{"editor":"int","default":44,"min":16,"max":160},"locked":{"editor":"boolean","default":false},"$preview":{"width":44,"height":48}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const K = {
+      afinacao: { c: '#0b8fa8', l: 'Afinação de ouro', d: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0' },
+      combo: { c: '#6b4bd8', l: 'Combo 500', d: 'M13 2 L5 13 H11 L10 22 L18 11 H12 Z' },
+      sequencia: { c: '#d63a8a', l: '30 dias seguidos', d: 'M12 2c3 5 7 7 7 13a7 7 0 0 1 -14 0c0 -3 2 -5 3 -7c0 3 1 4 3 4c0 -4 -1 -7 1 -10z' },
+      partitura: { c: '#1f2a44', l: 'Leitor de partitura', d: 'M2 7H22 M2 12H22 M2 17H22 M15 17V4 M15 17a3 2.4 0 1 1 -0.01 0' },
+      virtuose: { c: '#b87800', l: 'Virtuose', d: 'M12 2l3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z' },
+      posicao: { c: '#6b4bd8', l: 'Terceira posição', d: 'M3 20L12 4L21 20 M7.5 14H16.5' },
+      vibrato: { c: '#d63a8a', l: 'Vibrato de ouro', d: 'M1 12q2.75 -7 5.5 0t5.5 0t5.5 0t5.5 0' },
+      compositor: { c: '#b87800', l: 'Arquivista', d: 'M12 16V4 M7 9L12 4L17 9 M4 20H20' }
+    };
+    const k = K[this.props.kind] || K.virtuose;
+    const size = Number(this.props.size ?? 44);
+    const locked = this.props.locked === true || this.props.locked === 'true';
+    const color = locked ? '#e3d8bf' : k.c;
+    return {
+      size, h: Math.round(size * 44 / 40),
+      color,
+      fill: locked ? 'transparent' : k.c + '22',
+      glow: locked ? 'none' : 'none',
+      op: locked ? 0.7 : 1,
+      icon: k.d,
+      label: 'Selo ' + k.l + (locked ? ', bloqueado' : '')
+    };
+  }
+}
+</script>
+</body>
+</html>

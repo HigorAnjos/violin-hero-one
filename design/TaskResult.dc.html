@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Violin Hero — Enviar tarefa</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/violinhero/tokens.css">
+<link rel="stylesheet" href="ds/violinhero/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#fbf6ea}
+a{color:#0b8fa8}a:hover{color:#1f2a44}
+a.ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;box-sizing:border-box;min-height:48px;padding:0 22px}
+a.ns-btn:hover{color:inherit}
+.vh-chk{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#ffffff;border:2px solid #e3d8bf;border-radius:12px;font-size:15px}
+.vh-chk i{font-style:normal;width:28px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:#0b8fa8;color:#fff;font-weight:800;flex:none}
+.vh-chk b{margin-left:auto;font:800 17px/1 'Nunito',sans-serif}
+.vh-try{display:grid;grid-template-columns:22px 36px 1fr 70px 70px;gap:12px;align-items:center;padding:10px 12px;border:2px solid #e3d8bf;border-radius:12px;background:#ffffff;font-size:14px}
+.vh-try[aria-checked="true"]{border-color:#1f2a44;box-shadow:0 3px 0 #1f2a44}
+.vh-try .rd{width:18px;height:18px;border-radius:999px;border:2px solid #5b6478;box-sizing:border-box}
+.vh-try[aria-checked="true"] .rd{border:6px solid #1f2a44}
+.vh-try button{width:32px;height:32px;border-radius:999px;border:0;background:#efe5cf;color:#1f2a44;font-size:11px}
+.vh-try .n{font-family:'Nunito',monospace;text-align:right}
+</style>
+</helmet>
+<div class="ns-screen" style="width: 1280px; height: 720px; position: relative; overflow: hidden; box-sizing: border-box; padding: 36px 64px; display: flex; gap: 40px; background: #fbf6ea; color: #1f2a44; font-family: 'Nunito', system-ui, sans-serif">
+
+  <div style="width: 500px; flex: none; display: flex; flex-direction: column; gap: 18px">
+    <span class="ns-label">Tarefa da Profª Helena · Canon em Neon · comp. 32–40</span>
+    <h1 style="margin: 0; font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 46px; line-height: 1.02">Meta batida! <span style="color: #0b8fa8">Bora mostrar?</span></h1>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div class="vh-chk"><i>✓</i>Precisão de pelo menos 90%<b>94,1%</b></div>
+      <div class="vh-chk"><i>✓</i>Afinação dentro de ±15 ¢<b>±11 ¢</b></div>
+      <div class="vh-chk"><i>✓</i>Tocar 3 vezes<b>3 de 3</b></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px dashed #e3d8bf; border-radius: 12px">
+      <span style="font-size: 22px" aria-hidden="true">🎻</span>
+      <span style="font-size: 14px; line-height: 20px; color: #5b6478">A tarefa conta mesmo se você não enviar. Enviar a gravação ajuda a professora a corrigir o que o app não ouve: postura, som, arco.</span>
+    </div>
+    <a href="Results.dc.html" style="font-size: 14px; font-weight: 700">Ver resultado completo da última tentativa ▸</a>
+  </div>
+
+  <section aria-label="Enviar para a professora" class="ns-panel" style="flex: 1; min-width: 0; box-sizing: border-box; padding: 22px 24px; display: flex; flex-direction: column; gap: 14px">
+    <span class="ns-label">Qual tentativa enviar?</span>
+    <div role="radiogroup" aria-label="Tentativas" style="display: flex; flex-direction: column; gap: 8px">
+      <div class="vh-try" role="radio" aria-checked="true"><span class="rd"></span><button aria-label="Ouvir tentativa 3">▶</button><span><b style="font-weight: 800">Tentativa 3</b> · agora há pouco <span style="font-size: 11px; font-weight: 800; letter-spacing: .08em; color: #0b8fa8; margin-left: 6px">MELHOR</span></span><span class="n">94,1%</span><span class="n">±11 ¢</span></div>
+      <div class="vh-try" role="radio" aria-checked="false"><span class="rd"></span><button aria-label="Ouvir tentativa 2">▶</button><span><b style="font-weight: 800">Tentativa 2</b> · 16:31</span><span class="n">91,0%</span><span class="n">±14 ¢</span></div>
+      <div class="vh-try" role="radio" aria-checked="false"><span class="rd"></span><button aria-label="Ouvir tentativa 1">▶</button><span><b style="font-weight: 800">Tentativa 1</b> · 16:22</span><span class="n">86,5%</span><span class="n">±18 ¢</span></div>
+    </div>
+
+    <label style="display: flex; flex-direction: column; gap: 8px">
+      <span class="ns-label">Recado para a professora (opcional)</span>
+      <span style="display: flex; gap: 8px">
+        <span style="flex: 1; min-height: 72px; box-sizing: border-box; padding: 12px 14px; background: #ffffff; border: 2px solid #e3d8bf; border-radius: 12px; font-size: 15px; line-height: 22px; color: #1f2a44">No compasso 36 eu sempre me perco na troca de corda. Tem algum truque?</span>
+        <button aria-label="Gravar recado em áudio" style="width: 56px; border-radius: 12px; border: 2px solid #e3d8bf; background: #ffffff; font-size: 20px">🎙</button>
+      </span>
+    </label>
+
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #5b6478">
+      <span style="width: 10px; height: 10px; border-radius: 999px; background: #0b8fa8"></span>
+      Vai junto: partitura com seus erros marcados, afinação por corda e o áudio de 0:48
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-top: auto">
+      <a class="ns-btn ns-btn--secondary" href="StudentTasks.dc.html">Só marcar como feita</a>
+      <a class="ns-btn ns-btn--primary" href="StudentTasks.dc.html">Enviar para Profª Helena <span aria-hidden="true">▸</span></a>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
