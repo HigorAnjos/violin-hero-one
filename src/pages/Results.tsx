@@ -177,6 +177,13 @@ const Text = styled.p`
   }
 `;
 
+/** Detalhe que some no celular deitado, onde a tela não rola. */
+const Detail = styled(Text)`
+  @media (max-height: 500px) {
+    display: none;
+  }
+`;
+
 const Stats = styled.dl`
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -444,7 +451,7 @@ export const Results: React.FC = () => {
             <Muted>
               {hard ? `${measuresLabel(hard.from, hard.to)} · ${formatPercent(hard.accuracy)}` : `${result.totalMeasures} compassos`}
             </Muted>
-            {result.mostMissedString !== null && <Text>{stringReport(result, result.mostMissedString)}</Text>}
+            {result.mostMissedString !== null && <Detail>{stringReport(result, result.mostMissedString)}</Detail>}
           </Grow>
         </div>
       </Body>
