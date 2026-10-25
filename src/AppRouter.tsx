@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { GlobalStyles } from './assets/styles/global';
+import { Calibration } from './pages/Calibration';
 import { Countdown } from './pages/Countdown';
 import { Foundation } from './pages/Foundation';
 import { MicTrouble } from './pages/MicTrouble';
@@ -41,6 +42,7 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
             <Route path={ROUTES.strings} element={<OnboardTest />} />
             <Route path={ROUTES.micTrouble} element={<MicTrouble />} />
             <Route path={ROUTES.countdown} element={<Countdown />} />
+            <Route path={ROUTES.calibration} element={<Calibration />} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
           </Routes>
         </BrowserRouter>
