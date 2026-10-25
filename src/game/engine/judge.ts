@@ -1,3 +1,4 @@
+import { centsBetween } from '../audio/tuning';
 import type { PitchReading } from '../audio/types';
 import { DEFAULT_TOLERANCE_CENTS, DEFAULT_WINDOWS } from './score';
 import type { EngineNote, TimingWindows } from './types';
@@ -30,9 +31,8 @@ export const WRONG_NOTE_CENTS = 75;
 
 const LEVEL_ALPHA = 1 - Math.exp(-0.01 / LEVEL_SLOW_SECONDS);
 
-export function centsBetween(hz: number, targetHz: number): number {
-  return 1200 * Math.log2(hz / targetHz);
-}
+// A conta de cents é do Ouvido; o Motor reexporta para quem já importava daqui
+export { centsBetween };
 
 /** O que foi ouvido perto de uma nota que acabou errada; a de maior prioridade explica o erro. */
 export interface Attempt {
