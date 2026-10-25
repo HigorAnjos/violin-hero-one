@@ -10,16 +10,13 @@ import { Kicker } from '../components/Screen/Screen';
 import type { Song } from '../game/notation/song';
 import { STRING_LETTERS } from '../game/notation/violin';
 import { FIXED_SONGS } from '../game/notation/songs';
+import type { PlayState } from '../shell/play';
+import { loadGameScreens } from './loadGameScreens';
 import { ROUTES, safeInternalPath } from '../shell/routes';
 
-/** O que quem abre a contagem passa pelo estado da navegação. */
-export interface CountdownState {
-  song?: Song;
-  /** Modo de jogo, ex.: "Arcade". */
-  mode?: string;
-  /** Latência calibrada, descontada pelo motor. */
-  latencyMs?: number;
-  /** Rota do jogo quando a contagem acaba. */
+/** O que quem abre a contagem passa pelo estado da navegação; segue adiante para o jogo. */
+export interface CountdownState extends PlayState {
+  /** Rota do jogo quando a contagem acaba; padrão: a Gameplay. */
   next?: string;
 }
 
@@ -125,9 +122,15 @@ export const Countdown: React.FC = () => {
   const state = (useLocation().state ?? {}) as CountdownState;
   // Vindo do onboarding, sem música escolhida: a primeira das músicas fixas
   const song = state.song ?? FIXED_SONGS[0].song;
-  const next = safeInternalPath(state.next ?? null, ROUTES.home);
-  const start = React.useCallback(() => navigate(next, { replace: true }), [navigate, next]);
+  const next = safeInternalPath(state.next ?? null, ROUTES.game);
+  const { mode, latencyMs, noFail } = state;
+  const start = React.useCallback(
+    () => navigate(next, { replace: true, state: { song, mode, latencyMs, noFail } satisfies PlayState }),
+    [navigate, next, song, mode, latencyMs, noFail]
+  );
   const view = useCountIn(song, start);
+  // O compasso de entrada dá tempo de baixar a tela de jogo antes de precisar dela
+  React.useEffect(() => void loadGameScreens().catch(() => undefined), []);
   const note = firstNote(song);
   const label = [song.title, state.mode ?? 'Arcade', LEVEL_NAMES[song.level]].join(' · ');
 

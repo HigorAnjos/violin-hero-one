@@ -15,7 +15,7 @@ import {
   type Animal,
   type PlayerLevel,
 } from '../services/profile';
-import { DEFAULT_TOLERANCE_CENTS } from '../game/engine';
+import { DEFAULT_TOLERANCE_CENTS } from '../game/engine/score';
 import { FIXED_SONGS } from '../game/notation/songs';
 import { ROUTES } from '../shell/routes';
 

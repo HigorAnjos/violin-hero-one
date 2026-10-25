@@ -10,10 +10,28 @@ export const ROUTES = {
   strings: '/primeira-vez/cordas',
   micTrouble: '/microfone/problema',
   countdown: '/contagem',
+  calibration: '/afinar',
+  game: '/jogo',
+  gameOver: '/orquestra-parou',
+  badge: '/selo-novo',
+  results: '/resultado',
 } as const;
 
-/** Telas que ouvem o violino; em qualquer outra (Início, Biblioteca, Configurações…) o microfone fica fechado. */
-export const MIC_ROUTES: ReadonlySet<string> = new Set([ROUTES.mic, ROUTES.strings, ROUTES.micTrouble, ROUTES.countdown]);
+/**
+ * Telas que ouvem o violino; em qualquer outra (Início, Biblioteca, Configurações…) o microfone fica fechado.
+ * Do "Tocar" (afinar) até sair do resultado ele segue aberto; a pausa é sobreposição dentro de /jogo.
+ */
+export const MIC_ROUTES: ReadonlySet<string> = new Set([
+  ROUTES.mic,
+  ROUTES.strings,
+  ROUTES.micTrouble,
+  ROUTES.countdown,
+  ROUTES.calibration,
+  ROUTES.game,
+  ROUTES.gameOver,
+  ROUTES.badge,
+  ROUTES.results,
+]);
 
 export function needsMicrophone(pathname: string): boolean {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
