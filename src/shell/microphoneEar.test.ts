@@ -1,108 +1,87 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { Microphone, PitchListener } from '../game/audio';
+import { createMicSession, type MicSessionDeps, type Microphone, type PitchListener, type VisibilitySource } from '../game/audio';
 import { reading } from './fakeEar';
-import { createMicrophoneEar, type MicrophoneEarDeps } from './microphoneEar';
+import { createMicrophoneEar } from './microphoneEar';
 
-function fakeDeps() {
+function setup() {
   const mic = { context: {}, source: {}, stream: {}, label: 'mic', stop: vi.fn().mockResolvedValue(undefined) } as unknown as Microphone;
   let pitchOut: PitchListener = () => undefined;
-  let levelOut: (db: number) => void = () => undefined;
-  const pitchStop = vi.fn().mockResolvedValue(undefined);
-  const levelStop = vi.fn();
+  let allow: (m: Microphone) => void = () => undefined;
   const deps = {
     openMicrophone: vi.fn().mockResolvedValue(mic),
-    startPitch: vi.fn(async (_source: unknown, listener: PitchListener) => {
+    startPitch: vi.fn(async (_s: unknown, listener: PitchListener) => {
       pitchOut = listener;
-      return { stop: pitchStop };
+      return { context: {}, a4: 442, setA4: vi.fn(), stop: vi.fn().mockResolvedValue(undefined) };
     }),
-    startLevelMeter: vi.fn((_c: unknown, _s: unknown, listener: (db: number) => void) => {
-      levelOut = listener;
-      return { stop: levelStop };
-    }),
+    startLevelMeter: vi.fn(() => ({ stop: vi.fn() })),
   };
+  const visibility = { listener: () => undefined as void, state: 'visible' as DocumentVisibilityState };
+  const doc: VisibilitySource = {
+    get visibilityState() {
+      return visibility.state;
+    },
+    addEventListener: (_t, l) => void (visibility.listener = l),
+    removeEventListener: () => undefined,
+  };
+  const ear = createMicrophoneEar(createMicSession({ deps: deps as unknown as MicSessionDeps, document: doc }));
   return {
-    deps: deps as unknown as MicrophoneEarDeps,
-    spies: deps,
+    ear,
+    deps,
     mic,
-    pitchStop,
-    levelStop,
     emitPitch: (r: Parameters<PitchListener>[0]) => pitchOut(r),
-    emitLevel: (db: number) => levelOut(db),
+    holdPermission: () => deps.openMicrophone.mockImplementationOnce(() => new Promise<Microphone>((resolve) => (allow = resolve))),
+    allow: () => allow(mic),
+    hide: () => {
+      visibility.state = 'hidden';
+      visibility.listener();
+    },
   };
 }
 
 describe('createMicrophoneEar', () => {
-  it('abre o microfone e liga afinação e nível na mesma fonte', async () => {
-    const f = fakeDeps();
-    const ear = createMicrophoneEar(f.deps);
-    await ear.start();
-    expect(f.spies.startPitch).toHaveBeenCalledWith(f.mic.source, expect.any(Function));
-    expect(f.spies.startLevelMeter).toHaveBeenCalledWith(f.mic.context, f.mic.source, expect.any(Function));
+  it('start abre a sessão e expõe relógio e fonte; start repetido reaproveita', async () => {
+    const f = setup();
+    await Promise.all([f.ear.start(), f.ear.start()]);
+    await f.ear.start();
+    expect(f.deps.openMicrophone).toHaveBeenCalledOnce();
+    expect(f.ear.audio()).toMatchObject({ context: f.mic.context, source: f.mic.source });
   });
 
-  it('start repetido reaproveita o microfone aberto', async () => {
-    const f = fakeDeps();
-    const ear = createMicrophoneEar(f.deps);
-    await Promise.all([ear.start(), ear.start()]);
-    await ear.start();
-    expect(f.spies.openMicrophone).toHaveBeenCalledOnce();
-  });
-
-  it('repassa leituras e nível a quem escuta, até cancelar', async () => {
-    const f = fakeDeps();
-    const ear = createMicrophoneEar(f.deps);
+  it('repassa leituras a quem escuta', async () => {
+    const f = setup();
     const onPitch = vi.fn();
-    const onLevel = vi.fn();
-    const offPitch = ear.onPitch(onPitch);
-    ear.onLevel(onLevel);
-    await ear.start();
+    f.ear.onPitch(onPitch);
+    await f.ear.start();
     f.emitPitch(reading(69, 1));
-    f.emitLevel(-30);
-    offPitch();
-    f.emitPitch(null);
     expect(onPitch).toHaveBeenCalledOnce();
-    expect(onLevel).toHaveBeenCalledWith(-30);
   });
 
-  it('recusa do navegador sobe como erro e o próximo start pede de novo', async () => {
-    const f = fakeDeps();
-    f.spies.openMicrophone.mockRejectedValueOnce(new DOMException('x', 'NotAllowedError'));
-    const ear = createMicrophoneEar(f.deps);
-    await expect(ear.start()).rejects.toMatchObject({ name: 'NotAllowedError' });
-    await ear.start();
-    expect(f.spies.openMicrophone).toHaveBeenCalledTimes(2);
-  });
-
-  it('falha ao ligar a afinação fecha o microfone aberto', async () => {
-    const f = fakeDeps();
-    f.spies.startPitch.mockRejectedValueOnce(new DOMException('x', 'InvalidStateError'));
-    const ear = createMicrophoneEar(f.deps);
-    await expect(ear.start()).rejects.toMatchObject({ name: 'InvalidStateError' });
-    expect(f.mic.stop).toHaveBeenCalledOnce();
-  });
-
-  it('stop enquanto espera a permissão fecha o microfone quando ele abre; o próximo start abre outro', async () => {
-    const f = fakeDeps();
-    let allow: (mic: Microphone) => void = () => undefined;
-    f.spies.openMicrophone.mockImplementationOnce(() => new Promise<Microphone>((resolve) => (allow = resolve)));
-    const ear = createMicrophoneEar(f.deps);
-    const pending = ear.start();
-    ear.stop();
-    allow(f.mic);
-    await pending;
+  it('stop durante a permissão: start termina sem erro e o microfone fecha ao chegar', async () => {
+    const f = setup();
+    f.holdPermission();
+    const pending = f.ear.start();
+    f.ear.stop();
+    f.allow();
+    await expect(pending).resolves.toBeUndefined();
     await vi.waitFor(() => expect(f.mic.stop).toHaveBeenCalledOnce());
-    expect(f.levelStop).toHaveBeenCalledOnce();
-    await ear.start();
-    expect(f.spies.openMicrophone).toHaveBeenCalledTimes(2);
+    expect(f.ear.audio()).toBeNull();
   });
 
-  it('stop desliga nível, afinação e microfone', async () => {
-    const f = fakeDeps();
-    const ear = createMicrophoneEar(f.deps);
-    await ear.start();
-    ear.stop();
-    await vi.waitFor(() => expect(f.mic.stop).toHaveBeenCalledOnce());
-    expect(f.levelStop).toHaveBeenCalledOnce();
-    expect(f.pitchStop).toHaveBeenCalledOnce();
+  it('recusa do navegador sobe como erro', async () => {
+    const f = setup();
+    f.deps.openMicrophone.mockRejectedValueOnce(new DOMException('x', 'NotAllowedError'));
+    await expect(f.ear.start()).rejects.toMatchObject({ name: 'NotAllowedError' });
+  });
+
+  it('aba oculta avisa onClosed com "hidden"; stop avisa com "stopped"', async () => {
+    const f = setup();
+    const onClosed = vi.fn();
+    f.ear.onClosed(onClosed);
+    await f.ear.start();
+    f.hide();
+    expect(onClosed).toHaveBeenLastCalledWith('hidden');
+    await f.ear.start();
+    f.ear.stop();
+    expect(onClosed).toHaveBeenLastCalledWith('stopped');
   });
 });

@@ -2,6 +2,17 @@ export type { PitchListener, PitchReading } from './types';
 export { RAW_AUDIO, micTrouble, openMicrophone, type MicTrouble, type Microphone } from './microphone';
 export { startPitch, type PitchHandle, type PitchOptions } from './pitch';
 export {
+  MicClosedError,
+  createMicSession,
+  isMicClosed,
+  type MicAudio,
+  type MicCloseReason,
+  type MicSession,
+  type MicSessionDeps,
+  type MicSessionOptions,
+  type VisibilitySource,
+} from './session';
+export {
   SILENCE_DB,
   fallOff,
   meterFraction,

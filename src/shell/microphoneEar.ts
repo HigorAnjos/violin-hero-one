@@ -1,68 +1,29 @@
-import { openMicrophone, startLevelMeter, startPitch, type PitchListener } from '../game/audio';
-import type { Ear, LevelListener } from './Ear';
+import { createMicSession, isMicClosed, type MicAudio, type MicCloseReason, type MicSession } from '../game/audio';
+import type { Ear } from './Ear';
 
-export interface MicrophoneEarDeps {
-  openMicrophone: typeof openMicrophone;
-  startPitch: typeof startPitch;
-  startLevelMeter: typeof startLevelMeter;
+/** O Ouvido de verdade e o que as telas de jogo precisam além dele: relógio e fonte, Lá e aviso de fechamento. */
+export interface MicrophoneEar extends Ear {
+  audio(): MicAudio | null;
+  setA4(a4: number): void;
+  onClosed(listener: (reason: MicCloseReason) => void): () => void;
 }
 
-const REAL: MicrophoneEarDeps = { openMicrophone, startPitch, startLevelMeter };
-
-/**
- * O Ouvido de verdade: abre o microfone cru, liga a detecção de afinação e o medidor de nível na
- * mesma fonte. Um só por app: start() repetido reaproveita o que já está aberto.
- */
-export function createMicrophoneEar(deps: MicrophoneEarDeps = REAL): Ear {
-  const pitchListeners = new Set<PitchListener>();
-  const levelListeners = new Set<LevelListener>();
-  let opening: Promise<void> | null = null;
-  let close: (() => void) | null = null;
-  // stop() durante a permissão: o open() em andamento fecha o que abrir em vez de deixar sem dono
-  let generation = 0;
-
-  const open = async (mine: number) => {
-    const mic = await deps.openMicrophone();
-    try {
-      const pitch = await deps.startPitch(mic.source, (reading) => pitchListeners.forEach((l) => l(reading)));
-      const level = deps.startLevelMeter(mic.context, mic.source, (db) => levelListeners.forEach((l) => l(db)));
-      const shut = () => {
-        level.stop();
-        void pitch.stop().finally(() => mic.stop());
-      };
-      if (mine !== generation) shut();
-      else close = shut;
-    } catch (error) {
-      await mic.stop().catch(() => undefined);
-      throw error;
-    }
-  };
-
+/** Porta das telas sobre a MicSession, a dona única do microfone. */
+export function createMicrophoneEar(session: MicSession = createMicSession()): MicrophoneEar {
   return {
-    start() {
-      if (!opening) {
-        const mine = generation;
-        // Falhou: o próximo start() pede de novo (o jogador pode ter liberado no cadeado)
-        opening = open(mine).catch((error) => {
-          if (mine === generation) opening = null;
-          throw error;
-        });
+    async start() {
+      try {
+        await session.open();
+      } catch (error) {
+        // Fechado por stop() ou aba oculta antes de abrir: quem pediu já saiu, não é problema de microfone
+        if (!isMicClosed(error)) throw error;
       }
-      return opening;
     },
-    stop() {
-      generation += 1;
-      close?.();
-      close = null;
-      opening = null;
-    },
-    onPitch(listener) {
-      pitchListeners.add(listener);
-      return () => void pitchListeners.delete(listener);
-    },
-    onLevel(listener) {
-      levelListeners.add(listener);
-      return () => void levelListeners.delete(listener);
-    },
+    stop: () => session.close(),
+    onPitch: (listener) => session.onPitch(listener),
+    onLevel: (listener) => session.onLevel(listener),
+    audio: () => session.audio(),
+    setA4: (a4) => session.setA4(a4),
+    onClosed: (listener) => session.onClose(listener),
   };
 }

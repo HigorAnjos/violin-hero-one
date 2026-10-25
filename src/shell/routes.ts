@@ -12,6 +12,14 @@ export const ROUTES = {
   countdown: '/contagem',
 } as const;
 
+/** Telas que ouvem o violino; em qualquer outra (Início, Biblioteca, Configurações…) o microfone fica fechado. */
+export const MIC_ROUTES: ReadonlySet<string> = new Set([ROUTES.mic, ROUTES.strings, ROUTES.micTrouble, ROUTES.countdown]);
+
+export function needsMicrophone(pathname: string): boolean {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  return MIC_ROUTES.has(path);
+}
+
 const PROBLEM_SLUG: Record<MicProblem, string> = { 'no-sound': 'sem-som', noisy: 'barulho', blocked: 'sem-permissao' };
 
 /** Só caminho interno: `?depois=` vindo da URL nunca leva para fora do jogo. */
