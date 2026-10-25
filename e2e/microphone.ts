@@ -13,6 +13,9 @@ export function microphoneArgs(take: TakeName, { loop = true }: MicrophoneOption
     `--use-file-for-fake-audio-capture=${takePath(take)}${loop ? '' : '%noloop'}`,
     // Sem gesto o AudioContext nasce suspenso e a tela cairia em "áudio bloqueado"
     '--autoplay-policy=no-user-gesture-required',
+    // Saída falsa no relógio do sistema, o mesmo do arquivo: com a placa de som real o AudioContext deriva do WAV
+    // sob carga (até 300 ms numa música) e os julgamentos saem adiantados; também não toca nada nos alto-falantes
+    '--disable-audio-output',
   ];
 }
 
