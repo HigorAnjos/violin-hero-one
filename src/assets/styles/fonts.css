@@ -1,0 +1,148 @@
+/*
+ * Fontes servidas pelo próprio app (arquivos do @fontsource, só woff2 e só os pesos usados).
+ * As faces "Fallback" põem Arial (ou a Liberation Sans, de mesma métrica, no Linux da CI) no tamanho da fonte real:
+ * medidas com fontTools sobre os woff2 e uma amostra dos textos das telas, uma face por peso porque a largura da Baloo muda com ele.
+ */
+
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('@fontsource/baloo-2/files/baloo-2-latin-500-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('@fontsource/baloo-2/files/baloo-2-latin-700-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/nunito/files/nunito-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('@fontsource/nunito/files/nunito-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('@fontsource/nunito/files/nunito-latin-700-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('@fontsource/nunito/files/nunito-latin-800-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* A clave (U+1D11E) e os acidentes (♯ ♭) só existem no subset music; só baixa em tela com partitura */
+@font-face {
+  font-family: 'Noto Music';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('@fontsource/noto-music/files/noto-music-music-400-normal.woff2') format('woff2');
+  unicode-range: U+25CC, U+2669-266F, U+1D000-1D0F5, U+1D100-1D126, U+1D129-1D1EA, U+1D200-1D245;
+}
+
+@font-face {
+  font-family: 'Baloo 2 Fallback';
+  font-weight: 500;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans');
+  size-adjust: 95.79%;
+  ascent-override: 112.54%;
+  descent-override: 54.7%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Baloo 2 Fallback';
+  font-weight: 700;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 92.65%;
+  ascent-override: 116.35%;
+  descent-override: 56.56%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Baloo 2 Fallback';
+  font-weight: 800;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 93.94%;
+  ascent-override: 114.75%;
+  descent-override: 55.78%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Nunito Fallback';
+  font-weight: 400;
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('LiberationSans');
+  size-adjust: 100.27%;
+  ascent-override: 100.83%;
+  descent-override: 35.2%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Nunito Fallback';
+  font-weight: 600;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 95.63%;
+  ascent-override: 105.72%;
+  descent-override: 36.91%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Nunito Fallback';
+  font-weight: 700;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 97.46%;
+  ascent-override: 103.74%;
+  descent-override: 36.22%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Nunito Fallback';
+  font-weight: 800;
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('LiberationSans-Bold');
+  size-adjust: 99.47%;
+  ascent-override: 101.64%;
+  descent-override: 35.49%;
+  line-gap-override: 0%;
+}

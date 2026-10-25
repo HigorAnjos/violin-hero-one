@@ -1,8 +1,8 @@
 // Grava o catálogo (songs + song_sources + song_charts) a partir de content/songs/, de forma
 // idempotente: rodar de novo com os mesmos arquivos não muda nada. Roda como o servidor
 // (DATABASE_URL), nunca pelo app. Uso: npm run seed:songs
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { basename, dirname, extname, join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, extname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import dotenv from 'dotenv';
 import pg from 'pg';
@@ -17,41 +17,12 @@ async function importTs(path) {
   return module;
 }
 
-/**
- * Cada arquivo do diretório vira { sheet, source, charts }. MusicXML passa pelo conversor
- * (convertSongFile, do floor ciclo2-conversor); o JSON do ciclo 1 (Song v1) entra só como easy,
- * sem arquivo original, até o conversor substituir os .json pelos .musicxml.
- */
+/** Cada .musicxml do diretório vira { sheet, source, charts } pelo conversor (convertSongFile). */
 export async function loadCatalog(dir = SONGS_DIR) {
-  const files = readdirSync(dir).filter((f) => ['.musicxml', '.json'].includes(extname(f))).sort();
-  const notation = await importTs(join(root, 'src', 'game', 'notation', 'song.ts'));
-  let converter = null;
-  const entries = [];
-  for (const file of files) {
-    const content = readFileSync(join(dir, file), 'utf8');
-    if (extname(file) === '.musicxml') {
-      if (!existsSync(CONVERTER)) throw new Error(`${file}: o conversor (src/game/notation/catalog.ts) ainda não existe`);
-      converter ??= await importTs(CONVERTER);
-      entries.push(converter.convertSongFile({ name: file, content }));
-      continue;
-    }
-    const song = notation.parseSong(JSON.parse(content));
-    if (song.id !== basename(file, '.json')) throw new Error(`${file}: id "${song.id}" difere do nome do arquivo`);
-    entries.push({
-      sheet: {
-        id: song.id,
-        title: song.title,
-        composer: song.composer,
-        bpm: song.bpm,
-        timeSignature: song.timeSignature,
-        key: song.key,
-        durationSeconds: notation.songDurationSeconds(song),
-      },
-      source: null,
-      charts: { easy: song },
-    });
-  }
-  const order = converter?.CATALOG_ORDER ?? [];
+  const files = readdirSync(dir).filter((f) => extname(f) === '.musicxml').sort();
+  const converter = await importTs(CONVERTER);
+  const entries = files.map((file) => converter.convertSongFile({ name: file, content: readFileSync(join(dir, file), 'utf8') }));
+  const order = converter.CATALOG_ORDER;
   const position = (e) => (order.includes(e.sheet.id) ? order.indexOf(e.sheet.id) : order.length);
   return entries.sort((a, b) => position(a) - position(b) || a.sheet.id.localeCompare(b.sheet.id));
 }

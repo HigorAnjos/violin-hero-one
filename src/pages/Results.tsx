@@ -18,7 +18,7 @@ import {
   tuningStat,
 } from '../components/ResultSummary/summary';
 import { formatPercent, formatPoints } from '../components/ScoreCard/ScoreCard';
-import { Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
+import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
 import { JUDGMENT_LABEL, JUDGMENTS } from '../game/engine';
 import { STRING_LETTERS } from '../game/notation/violin';
 import { readResultState } from '../shell/play';
@@ -35,9 +35,19 @@ const Header = styled.header`
   gap: ${({ theme }) => theme.spacing.lg};
 
   > div:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: ${({ theme }) => theme.spacing.xs};
+  }
+
+  > div:first-child ${Kicker} {
+    ${clampLines(1)}
+  }
+
+  h1 {
+    ${clampLines(2)}
   }
 
   @media (max-height: 500px) {
@@ -48,6 +58,7 @@ const Header = styled.header`
     }
 
     h1 {
+      ${clampLines(1)}
       font-size: 1.25rem;
     }
 
@@ -59,7 +70,9 @@ const Header = styled.header`
 `;
 
 const NewBadge = styled.div<{ $color: string }>`
+  flex: none;
   display: flex;
+  white-space: nowrap;
   align-items: center;
   gap: 0.625rem;
   padding: 0.375rem 1rem 0.375rem 0.5rem;
@@ -152,6 +165,7 @@ const Grow = styled(Panel)`
 `;
 
 const Score = styled.span`
+  ${clampLines(1)}
   font-weight: 800;
   font-size: 3.75rem;
   line-height: 1;
@@ -190,6 +204,7 @@ const Stats = styled.dl`
   gap: 0.75rem;
 
   > div {
+    min-width: 0;
     display: flex;
     flex-direction: column-reverse;
     gap: 0.375rem;
@@ -197,6 +212,11 @@ const Stats = styled.dl`
     background-color: ${({ theme }) => theme.colors.surface};
     border: 2px solid ${({ theme }) => theme.colors.surfaceBorder};
     border-radius: ${({ theme }) => theme.borderRadius.sm};
+  }
+
+  dt,
+  dd {
+    ${clampLines(1)}
   }
 
   dd {
@@ -212,6 +232,11 @@ const Stats = styled.dl`
       padding: ${({ theme }) => theme.spacing.xxs} ${({ theme }) => theme.spacing.xs};
     }
 
+    dt {
+      font-size: 0.625rem;
+      letter-spacing: 0.04em;
+    }
+
     dd {
       font-size: 1rem;
     }
@@ -223,6 +248,11 @@ const Row = styled.div`
   grid-template-columns: 6.875rem 1fr 3.5rem;
   gap: 0.875rem;
   align-items: center;
+
+  > span:first-child,
+  > b {
+    ${clampLines(1)}
+  }
 
   > span:first-child {
     font-family: ${({ theme }) => theme.fonts.display};
