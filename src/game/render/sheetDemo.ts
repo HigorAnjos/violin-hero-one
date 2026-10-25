@@ -19,7 +19,8 @@ declare global {
 const params = new URLSearchParams(location.search);
 const song = (findFixedSong(params.get('musica') ?? '') ?? FIXED_SONGS[1]).song;
 const theme = getTheme(params.get('tema'));
-const height = Number(params.get('altura') ?? 280);
+// Padrão: a proporção da tela 5b (280 px numa tela de 720)
+const height = Number(params.get('altura') ?? Math.round((innerHeight * 280) / 720));
 const factor = Number(params.get('andamento') ?? 1);
 const spb = 60 / (song.bpm * factor);
 const loop = /^(\d+)-(\d+)$/.exec(params.get('laco') ?? '');
