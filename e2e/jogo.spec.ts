@@ -2,19 +2,13 @@ import { expect, test, type Page } from '@playwright/test';
 import { simulateGame, type GameResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
 import { fontsReady } from './fonts';
+import { openWithState } from './state';
 
 // Build do e2e (--mode e2e): ?ouvido=simulado e ?simular valem. Sem gesto o Chromium não libera o áudio;
 // a política de autoplay deixa abrir /jogo direto pela URL.
 test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } });
 
 const played = (errors: number, noFail = true): GameResult => simulateGame({ song: ODE, startAt: 1, noFail }, { errors, seed: 2 }).result;
-
-/** Abre uma tela com o estado de navegação que a partida deixaria (o BrowserRouter lê history.state.usr). */
-async function openWithState(page: Page, path: string, state: unknown) {
-  await page.goto('/teste');
-  await page.evaluate(([p, s]) => history.replaceState({ usr: s, key: 'e2e', idx: 0 }, '', p as string), [path, state] as const);
-  await page.reload();
-}
 
 async function tooSmallTargets(page: Page) {
   return page.evaluate(() =>
