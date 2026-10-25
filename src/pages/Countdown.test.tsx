@@ -2,7 +2,7 @@ import { act, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { palcoTheme } from '../assets/styles/themes/palco';
 import { SONG_FORMAT_VERSION, type Song } from '../game/notation/song';
-import { WARM_UP_SONG } from '../shell/firstSong';
+import { FIXED_SONGS } from '../game/notation/songs';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
 import { Countdown, countdownDetails, type CountdownState } from './Countdown';
@@ -52,9 +52,9 @@ describe('Countdown', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/jogar');
   });
 
-  it('sem música escolhida, usa o aquecimento de cordas soltas; pular vai direto', () => {
+  it('sem música escolhida, usa a primeira das músicas fixas; pular vai direto', () => {
     renderCountdown();
-    expect(screen.getByText(`${WARM_UP_SONG.title} · Arcade · Fácil`)).toBeInTheDocument();
+    expect(screen.getByText(`${FIXED_SONGS[0].title} · Arcade · Fácil`)).toBeInTheDocument();
     act(() => screen.getByRole('button', { name: /Pular contagem/ }).click());
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
   });

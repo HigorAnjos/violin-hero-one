@@ -9,7 +9,7 @@ import { OrchestraBackdrop } from '../components/OrchestraBackdrop/OrchestraBack
 import { Kicker } from '../components/Screen/Screen';
 import type { Song } from '../game/notation/song';
 import { STRING_LETTERS } from '../game/notation/violin';
-import { WARM_UP_SONG } from '../shell/firstSong';
+import { FIXED_SONGS } from '../game/notation/songs';
 import { ROUTES, safeInternalPath } from '../shell/routes';
 
 /** O que quem abre a contagem passa pelo estado da navegação. */
@@ -123,7 +123,8 @@ export function countdownDetails(song: Song, latencyMs?: number): string {
 export const Countdown: React.FC = () => {
   const navigate = useNavigate();
   const state = (useLocation().state ?? {}) as CountdownState;
-  const song = state.song ?? WARM_UP_SONG;
+  // Vindo do onboarding, sem música escolhida: a primeira das músicas fixas
+  const song = state.song ?? FIXED_SONGS[0].song;
   const next = safeInternalPath(state.next ?? null, ROUTES.home);
   const start = React.useCallback(() => navigate(next, { replace: true }), [navigate, next]);
   const view = useCountIn(song, start);
