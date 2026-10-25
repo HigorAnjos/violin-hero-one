@@ -127,6 +127,25 @@ describe('SheetScene', () => {
     expect(s.noteView(4).find((c) => Math.abs(c.x - needleX) < 1)?.alpha).toBe(1);
   });
 
+  it('relógio vazio (antes do microfone abrir): faixa só com a pauta, sem quebrar', () => {
+    const segments: BeatSegment[] = [];
+    const { s } = scene({ segments: () => segments });
+    expect(() => s.update(START)).not.toThrow();
+    expect(s.visibleNotes()).toHaveLength(0);
+    segments.push({ time: START, beat: 0, spb: SPB, endTime: Infinity, endBeat: Infinity });
+    s.update(START + 0.3);
+    expect(s.visibleNotes().length).toBeGreaterThan(0);
+  });
+
+  it('não copia a lista do relógio a cada quadro: pede de novo a cada 250 ms', () => {
+    const clock = steadyClock(START, 100);
+    const segments = vi.fn(clock.segments);
+    const { s } = scene({ segments });
+    segments.mockClear();
+    for (let f = 0; f < 60; f++) s.update(START + f / 60);
+    expect(segments.mock.calls.length).toBeLessThanOrEqual(5);
+  });
+
   it('ignora julgamento de nota que não existe', () => {
     const { s } = scene();
     expect(() => s.judge(judgment(9999, 'perfect'))).not.toThrow();

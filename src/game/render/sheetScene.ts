@@ -18,6 +18,7 @@ import {
   stepY,
   TOP_STEP,
   windowTime,
+  type BeatSegment,
   type BeatWindow,
   type SheetClock,
   type SheetLayout,
@@ -30,9 +31,6 @@ export interface SheetSceneOptions {
   clock: SheetClock;
   reducedMotion: boolean;
 }
-
-/** Fonte da clave e dos acidentes (servida pelo app, ciclo2-fontes); o tema só tem as de texto. */
-export const MUSIC_FONT = "'Noto Music', 'Noto Sans Symbols 2', serif";
 
 // Texturas assadas uma vez com este espaço entre linhas e escaladas no quadro: o resize não refaz textura
 const REF = 24;
@@ -58,6 +56,7 @@ const ISSUE_GLYPH: Record<Issue, string> = {
   'not-played': '×',
 };
 const MISS_GLYPH = '×';
+const CLOCK_REFRESH_SECONDS = 0.25;
 
 interface NoteSlot {
   root: Container;
@@ -139,7 +138,9 @@ export class SheetScene extends Container {
 
   private l: SheetLayout;
   private lastNow = 0;
-  private until = 0;
+  private until = -Infinity;
+  private fetchedAt = -Infinity;
+  private segments: readonly BeatSegment[] = [];
   private usedSlots = 0;
   private usedBars = 0;
 
@@ -175,14 +176,14 @@ export class SheetScene extends Container {
     this.hollowTextures = p.strings.map((c) => this.bakeHead(p.paper, c));
     this.flagTexture = this.bakeFlag(p.ink);
     this.dotTexture = this.bake(new Graphics().circle(REF * 0.16, REF * 0.16, REF * 0.16).fill(p.ink));
-    this.accidentalTextures = new Map((['♯', '♭', '♮'] as const).map((a) => [a, this.bakeText(a, { fontFamily: MUSIC_FONT, fontSize: REF * 1.78, fill: p.ink })]));
+    this.accidentalTextures = new Map((['♯', '♭', '♮'] as const).map((a) => [a, this.bakeText(a, { fontFamily: theme.fonts.music, fontSize: REF * 1.78, fill: p.ink })]));
     this.fingerTextures = p.strings.map((c) => [0, 1, 2, 3, 4].map((f) => this.bakeText(String(f), { fontFamily: ui, fontWeight: '700', fontSize: REF, fill: c })));
     this.letterTextures = p.strings.map((c, i) => this.bakeText(STRING_LETTERS[i], { fontFamily: display, fontWeight: '800', fontSize: REF * 1.05, fill: c }));
     const names = [...new Set(this.notes.map((n) => n.name))];
     this.nameTextures = new Map(names.map((name) => [name, this.bakeText(name, { fontFamily: ui, fontSize: REF * 0.72, fill: p.line })]));
     this.numberTextures = this.bars.map((_, m) => this.bakeText(String(m + 1), { fontFamily: ui, fontSize: REF * 0.78, fill: p.line }));
     this.labelTexture = this.bakeText('AGORA', { fontFamily: ui, fontWeight: '700', fontSize: REF * 0.61, letterSpacing: REF * 0.085, fill: p.needleText });
-    this.clefTexture = this.bakeText('𝄞', { fontFamily: MUSIC_FONT, fontSize: REF * 5.8, fill: p.ink });
+    this.clefTexture = this.bakeText('𝄞', { fontFamily: theme.fonts.music, fontSize: REF * 5.8, fill: p.ink });
     const glyph = (text: string, judgment: Judgment) => this.bakeText(text, { fontFamily: ui, fontWeight: '800', fontSize: REF * 0.9, fill: p.judgments[judgment] });
     const glyphs = new Map<string, Texture>();
     const glyphFor = (judgment: Judgment, issue: Issue | null): Texture | null => {
@@ -282,6 +283,7 @@ export class SheetScene extends Container {
       bar.number.position.y = l.numberY;
     }
     this.until = -Infinity;
+    this.fetchedAt = -Infinity;
     this.update(this.lastNow);
   }
 
@@ -303,11 +305,16 @@ export class SheetScene extends Container {
   update(now: number): void {
     this.lastNow = now;
     const l = this.l;
-    const segments = this.clock.segments(Math.max(now + 1, this.until));
-    const last = segments[segments.length - 1];
-    // Pede o relógio até onde a faixa enxerga no andamento mais lento da prática (metade do da partida)
-    this.until = now + l.ahead * last.spb * 2 + 1;
-    const count = beatWindows(segments, now, l.behind, l.ahead, this.windows);
+    // A lista é copiada a cada pedido e cresce uma volta por vez: pede de novo só quando o horizonte acaba ou a prática
+    // pode ter mudado (laço, andamento)
+    const spb = this.segments.length ? this.segments[this.segments.length - 1].spb : 1;
+    const horizon = now + l.ahead * spb * 2 + 1;
+    if (horizon > this.until || now - this.fetchedAt >= CLOCK_REFRESH_SECONDS || now < this.fetchedAt) {
+      this.segments = this.clock.segments(horizon + 2);
+      this.until = horizon + 2;
+      this.fetchedAt = now;
+    }
+    const count = beatWindows(this.segments, now, l.behind, l.ahead, this.windows);
 
     let used = 0;
     let bars = 0;
