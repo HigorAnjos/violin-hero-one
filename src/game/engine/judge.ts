@@ -120,7 +120,9 @@ export function createJudge(notes: readonly EngineNote[], options: JudgeOptions,
     if (!sounding) return false;
     const time = reading.time - latency;
     if (expected(time, reading.midi)) return false;
-    return sounding(time).some((midi) => MASK_HARMONIC_STEPS.some((step) => midi + step === reading.midi));
+    const fromOrchestra = (midi: number) => MASK_HARMONIC_STEPS.some((step) => midi + step === reading.midi);
+    // A janela da leitura começa ~lag antes de time: numa troca de acorde nela, os dois acordes estão no ar.
+    return sounding(time).some(fromOrchestra) || sounding(time - lag).some(fromOrchestra);
   }
 
   function settle(verdict: Verdict): void {

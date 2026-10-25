@@ -283,7 +283,16 @@ describe('descarte da orquestra (sounding)', () => {
       },
     });
     feed([reading(5.13, 60)]);
-    expect(asked).toEqual([expect.closeTo(5.03, 9)]);
+    expect(asked).toEqual([expect.closeTo(5.03, 9), expect.closeTo(5.03 - DETECTION_LAG_SECONDS, 9)]);
+  });
+
+  it('troca de acorde no meio da janela da leitura: o acorde que acabou de sair ainda descarta', () => {
+    const change = 1.02;
+    const chords = (t: number) => (t < change ? [62] : [64]);
+    const { judge, verdicts, feed } = setup([note(0, 1, 66)], { sounding: chords });
+    feed([...held(0.96, change + DETECTION_LAG_SECONDS, 62), null]);
+    judge.advance(3);
+    expect(verdicts[0]).toEqual({ kind: 'miss', index: 0, attempt: null });
   });
 
   it('sem sounding, nada muda', () => {
