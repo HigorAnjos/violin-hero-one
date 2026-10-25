@@ -47,9 +47,17 @@ export function songIdFromFileName(name: string): string {
   return match[1];
 }
 
+function inFile<T>(name: string, convert: () => T): T {
+  try {
+    return convert();
+  } catch (error) {
+    throw new RangeError(`${name}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
+}
+
 export function convertSongFile(input: { name: string; content: string }): SongFile {
   const id = songIdFromFileName(input.name);
-  try {
+  return inFile(input.name, () => {
     const score = parseMusicXml(input.content);
     const charts = Object.fromEntries(LEVELS.map((level) => [level, levelChart(score, id, level)])) as Record<Level, Song>;
     const { title, composer, bpm, timeSignature } = charts.hard;
@@ -58,7 +66,11 @@ export function convertSongFile(input: { name: string; content: string }): SongF
       source: { format: 'musicxml', content: input.content },
       charts,
     };
-  } catch (error) {
-    throw new RangeError(`${input.name}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
-  }
+  });
+}
+
+/** Só um nível, para quem não precisa dos três (as fixas do bundle usam só o Fácil). */
+export function convertSongChart(input: { name: string; content: string }, level: Level): Song {
+  const id = songIdFromFileName(input.name);
+  return inFile(input.name, () => levelChart(parseMusicXml(input.content), id, level));
 }

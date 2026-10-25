@@ -2,7 +2,7 @@
 import escalaReMaior from '../../../content/songs/escala-re-maior.musicxml?raw';
 import odeAAlegria from '../../../content/songs/ode-a-alegria.musicxml?raw';
 import brilhaBrilhaEstrelinha from '../../../content/songs/brilha-brilha-estrelinha.musicxml?raw';
-import { convertSongFile } from './catalog';
+import { convertSongChart } from './catalog';
 import type { Song } from './song';
 
 export interface CatalogSong {
@@ -19,7 +19,7 @@ export const FIXED_SONG_SOURCES: readonly { name: string; content: string }[] = 
 
 /** O nível Fácil de cada uma, igual ao JSON do ciclo 1. */
 export const FIXED_SONGS: readonly CatalogSong[] = FIXED_SONG_SOURCES.map((file) => {
-  const song = convertSongFile(file).charts.easy;
+  const song = convertSongChart(file, 'easy');
   return { id: song.id, title: song.title, song };
 });
 

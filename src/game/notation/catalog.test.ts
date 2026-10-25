@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CATALOG_ORDER, convertSongFile, songIdFromFileName } from './catalog';
+import { CATALOG_ORDER, convertSongChart, convertSongFile, songIdFromFileName } from './catalog';
 import { placements } from './fingering';
 import { LEVEL_RULES } from './levels';
 import { attacks, LEVELS, parseSong, songDurationBeats, timeline } from './song';
@@ -128,5 +128,18 @@ describe('convertSongFile', () => {
   it('source devolve o conteúdo como veio', () => {
     const [path, content] = Object.entries(FILES)[0];
     expect(convertSongFile({ name: path, content }).source.content).toBe(content);
+  });
+});
+
+describe('convertSongChart', () => {
+  it.each([...LEVELS])('o nível %s sai igual ao de convertSongFile', (level) => {
+    for (const [path, content] of Object.entries(FILES)) {
+      expect(convertSongChart({ name: path, content }, level)).toEqual(convertSongFile({ name: path, content }).charts[level]);
+    }
+  });
+
+  it('erro de nome e de conteúdo dizem o arquivo', () => {
+    expect(() => convertSongChart({ name: 'ode.json', content: '' }, 'easy')).toThrow(/só \.musicxml/);
+    expect(() => convertSongChart({ name: 'quebrada.musicxml', content: '<score-partwise>' }, 'easy')).toThrow(/^quebrada\.musicxml: /);
   });
 });
