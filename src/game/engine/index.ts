@@ -25,6 +25,17 @@ export {
 } from './levels';
 export { BADGES, COMBO_BADGES, badgesFor, newBadges, type Badge } from './badges';
 export { buildResult } from './result';
+export {
+  createPractice,
+  nextMeasureTime,
+  type LapSummary,
+  type Practice,
+  type PracticeEvent,
+  type PracticeLoop,
+  type PracticeOptions,
+  type PracticeResult,
+  type PracticeSegment,
+} from './practice';
 export { AudioClock, MAX_STAMP_AGE_MS, fallbackStamp, isUsableStamp, type OutputStamp } from './clock';
 export {
   parseSimulate,

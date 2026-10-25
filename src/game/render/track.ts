@@ -25,6 +25,8 @@ export interface Track {
   update(now: number): void;
   /** Evento `judgment` do motor, para o feedback (acerto, erro com motivo, combo). */
   onJudgment(event: JudgmentEvent): void;
+  /** Troca as notas (a prática: volta nova, troca de andamento); o índice de onJudgment é o desta lista. */
+  setNotes(notes: readonly EngineNote[]): void;
   resize(width: number, height: number): void;
   destroy(): void;
 }
@@ -86,6 +88,9 @@ export async function createTrack(host: HTMLCanvasElement | HTMLElement, options
     },
     onJudgment(event) {
       if (!destroyed) scene.judge(event);
+    },
+    setNotes(notes) {
+      if (!destroyed) scene.setNotes(notes);
     },
     resize(width, height) {
       if (destroyed) return;

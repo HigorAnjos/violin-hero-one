@@ -72,6 +72,35 @@ describe('trecho e andamento da prática', () => {
     expect(done && done.type === 'done' && done.result.counts.perfect).toBe(3);
     expect(engine.status).toBe('finished');
   });
+
+  it('trecho que continua a música (tiedIn): a ligada que o abre segue a nota de antes e não é julgada', () => {
+    const song = { ...ODE, measures: [{ beats: 4, notes: [n(0, 4, 78, 3, 1)] }, { beats: 4, notes: [n(0, 2, 78, 3, 1, true), n(2, 2, 76, 3, 0)] }] };
+    const notes = scheduleNotes(song, START, 60, A4, { from: 1, to: 2 }, true);
+    expect(notes.map((x) => [x.index, x.noteIndex, x.time - START])).toEqual([[0, 2, 2]]);
+  });
+
+  it('retire tira as notas em aberto a partir do instante e termina quando não sobra nenhuma', () => {
+    const { engine, events, play } = setup();
+    play(0);
+    play(1);
+    engine.retire(engine.notes[4].time);
+    expect(engine.notes).toHaveLength(4);
+    expect(engine.state.total).toBe(4);
+    play(2);
+    play(3);
+    expect(engine.status).toBe('finished');
+    expect(events.at(-1)?.type).toBe('done');
+    expect(engine.result().judgments).toHaveLength(4);
+  });
+
+  it('retire nunca tira nota já julgada', () => {
+    const { engine, play } = setup();
+    play(0);
+    play(1);
+    engine.retire(engine.notes[0].time);
+    expect(engine.notes).toHaveLength(2);
+    expect(engine.status).toBe('finished');
+  });
 });
 
 describe('julgamentos', () => {
