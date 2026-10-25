@@ -1,4 +1,13 @@
-export { createOrchestra, type Orchestra, type OrchestraOptions } from './orchestra';
+export { LOOKAHEAD_SECONDS, createOrchestra, type Orchestra, type OrchestraOptions } from './orchestra';
+export {
+  MAX_TEMPO_FACTOR,
+  MIN_TEMPO_FACTOR,
+  createTimeline,
+  type LoopRange,
+  type TempoSegment,
+  type Timeline,
+  type TimelineSpan,
+} from './timeline';
 export {
   FORBIDDEN_INTERVALS,
   arrange,
