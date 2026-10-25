@@ -47,6 +47,41 @@ export function toTint(css: string): Tint {
 
 const solid = (css: string) => toTint(css).color;
 
+export interface SheetPalette {
+  /** Papel da faixa (o mesmo fundo da pista). */
+  paper: number;
+  /** Linhas da pauta, barras de compasso, números de compasso e nome da nota. */
+  line: number;
+  /** Clave, armadura, hastes e acidentes. */
+  ink: number;
+  /** Cabeça, dedo e letra de cada corda, G D A E. */
+  strings: readonly [number, number, number, number];
+  /** Agulha do "agora" e o rótulo dela (texto em AA). */
+  needle: number;
+  needleText: number;
+  judgments: Record<Judgment, number>;
+}
+
+/** Cores da faixa de partitura, todas do tema. */
+export function sheetPalette(theme: Theme): SheetPalette {
+  const g = theme.game;
+  const [G, D, A, E] = STRING_LETTERS.map((letter) => solid(g.strings[letter].main));
+  return {
+    paper: solid(g.track),
+    line: solid(theme.colors.textMuted),
+    ink: solid(theme.colors.text),
+    strings: [G, D, A, E],
+    needle: solid(theme.colors.info.main),
+    needleText: solid(theme.colors.info.text),
+    judgments: {
+      perfect: solid(g.judgments.perfect),
+      great: solid(g.judgments.great),
+      good: solid(g.judgments.good),
+      miss: solid(g.judgments.miss),
+    },
+  };
+}
+
 /** Todas as cores da pista saem do tema; o render não tem cor própria. */
 export function trackPalette(theme: Theme): TrackPalette {
   const g = theme.game;
