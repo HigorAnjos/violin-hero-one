@@ -24,6 +24,26 @@ function themeBootScript(): Plugin {
 }
 
 /**
+ * O conversor de MusicXML roda no build (songs:fixed), no seed e no banco, nunca no pacote do app:
+ * se algum chunk levar um módulo dele ou uma partitura, o build falha.
+ */
+const CONVERTER_MODULE = /\/src\/game\/notation\/(catalog|musicxml|xml|levels|fingering)\.ts$|\.musicxml(\?|$)/;
+
+function noConverterInApp(): Plugin {
+  return {
+    name: 'no-converter-in-app',
+    apply: 'build',
+    generateBundle(_, bundle) {
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== 'chunk') continue;
+        const found = chunk.moduleIds.filter((id) => CONVERTER_MODULE.test(id.replaceAll('\\', '/')));
+        if (found.length) this.error(`${chunk.fileName} leva o conversor de MusicXML: ${found.join(', ')}`);
+      }
+    },
+  };
+}
+
+/**
  * Únicas variáveis que vão para o navegador, pelo nome. Não usamos `envPrefix` de propósito:
  * liberar o prefixo SUPABASE_ levaria junto o SUPABASE_ACCESS_TOKEN (e qualquer segredo novo).
  * Lidas do .env.local ou do ambiente da hospedagem.
@@ -33,7 +53,7 @@ const PUBLIC_ENV = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SCHEMA'] as c
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
-    plugins: [react(), themeBootScript()],
+    plugins: [react(), themeBootScript(), noConverterInApp()],
     server: { port: 5173, strictPort: true },
     define: Object.fromEntries(
       PUBLIC_ENV.map((key) => [`import.meta.env.${key}`, JSON.stringify(env[key] ?? '')])
