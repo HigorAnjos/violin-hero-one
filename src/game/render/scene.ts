@@ -205,6 +205,9 @@ export class TrackScene extends Container {
     }
 
     this.feedbackBase = l.feedback.size / LABEL_PX;
+    const ax = l.feedback.align === 'right' ? 1 : 0.5;
+    this.feedbackLabel.anchor.set(ax, 1);
+    this.feedbackDetail.anchor.set(ax, 0);
     this.feedbackLabel.position.set(l.feedback.x, l.feedback.y + l.feedback.size);
     this.feedbackDetail.position.set(l.feedback.x, l.feedback.y + l.feedback.size + 2);
     this.feedbackDetail.style.fontSize = l.feedback.detailSize;

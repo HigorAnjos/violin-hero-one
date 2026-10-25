@@ -62,8 +62,12 @@ export interface TrackLayout {
   letterSize: number;
   /** Unidades do plano por segundo de música. */
   speed: number;
-  feedback: { x: number; y: number; size: number; detailSize: number };
+  /** `x` é o centro (center) ou a borda direita (right) do texto; `y` é o topo do rótulo. */
+  feedback: { x: number; y: number; size: number; detailSize: number; align: 'center' | 'right' };
 }
+
+/** Caixa larga e baixa (celular deitado): o feedback vai para o canto direito, fora das notas. */
+const WIDE_BOX = 1.4;
 
 export function trackLayout(width: number, height: number): TrackLayout {
   const perspective = height * 1.6;
@@ -79,6 +83,7 @@ export function trackLayout(width: number, height: number): TrackLayout {
   const farDepth = (planeBottom * perspective) / (cos * perspective - originY * sin);
   const enterDepth = farDepth - noteHeight;
   const feedbackSize = Math.max(20, Math.round(height * 0.085));
+  const wide = width / height >= WIDE_BOX;
   return {
     width,
     height,
@@ -102,10 +107,11 @@ export function trackLayout(width: number, height: number): TrackLayout {
     letterSize: laneWidth * 0.32,
     speed: (enterDepth - hitDepth) / LEAD_SECONDS,
     feedback: {
-      x: width / 2,
-      y: Math.round(height * 0.36),
+      x: wide ? width - SIDE_GUTTER / 2 : width / 2,
+      y: Math.round(height * (wide ? 0.47 : 0.36)),
       size: feedbackSize,
       detailSize: Math.max(12, Math.round(feedbackSize * 0.35)),
+      align: wide ? 'right' : 'center',
     },
   };
 }

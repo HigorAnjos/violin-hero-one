@@ -74,6 +74,24 @@ describe.each(boxes)('trackLayout %ix%i', (w, h) => {
   });
 });
 
+describe('lugar do feedback', () => {
+  it('desktop 640×550: centralizado acima da linha de acerto', () => {
+    expect(trackLayout(640, 550).feedback).toMatchObject({ align: 'center', x: 320 });
+  });
+
+  it('celular 440×272: no canto direito, fora do plano onde as notas descem', () => {
+    const l = trackLayout(440, 272);
+    expect(l.feedback.align).toBe('right');
+    expect(l.feedback.x).toBeLessThanOrEqual(440);
+    // "Perfeito!" tem ~4,2× a altura de largura: precisa caber entre a borda do plano e a da caixa
+    const bottom = l.feedback.y + l.feedback.size * 1.6;
+    let d = 0;
+    while (projectY(l, d) > bottom) d += 1;
+    const planeEdge = projectX(l, l.planeWidth / 2, d);
+    expect(l.feedback.x - l.feedback.size * 4.2).toBeGreaterThanOrEqual(planeEdge - 1);
+  });
+});
+
 describe('perspectiva', () => {
   const l = trackLayout(640, 550);
 
