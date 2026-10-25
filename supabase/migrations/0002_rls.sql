@@ -21,7 +21,9 @@ revoke all on all functions in schema violinhero from public, anon, authenticate
 
 -- Objetos futuros nascem fechados: função nova não fica chamável por qualquer jogador, e
 -- tabela nova não fica legível antes da migração dela decidir quem lê.
-alter default privileges in schema violinhero revoke execute on functions from public;
+-- O EXECUTE para PUBLIC vem do default global e "in schema" só soma a ele: o revoke tem de ser global.
+-- No public o Supabase já concede EXECUTE por schema a anon/authenticated, então lá nada muda.
+alter default privileges for role postgres revoke execute on functions from public;
 alter default privileges in schema violinhero revoke all on tables from public, anon, authenticated;
 
 -- O servidor (Edge Functions, webhooks) ignora RLS, mas não GRANT: escreve o que "só o servidor" escreve.
