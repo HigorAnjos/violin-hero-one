@@ -1,0 +1,154 @@
+{
+  "formatVersion": 1,
+  "id": "ode-a-alegria",
+  "title": "Ode à Alegria",
+  "composer": "Ludwig van Beethoven",
+  "key": "D major",
+  "bpm": 100,
+  "timeSignature": { "beats": 4, "unit": 4 },
+  "level": "easy",
+  "measures": [
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 1, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 2, "beats": 1, "midi": 79, "string": 3, "finger": 2 },
+        { "beat": 3, "beats": 1, "midi": 81, "string": 3, "finger": 3 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 81, "string": 3, "finger": 3 },
+        { "beat": 1, "beats": 1, "midi": 79, "string": 3, "finger": 2 },
+        { "beat": 2, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 3, "beats": 1, "midi": 76, "string": 3, "finger": 0 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 74, "string": 2, "finger": 3 },
+        { "beat": 1, "beats": 1, "midi": 74, "string": 2, "finger": 3 },
+        { "beat": 2, "beats": 1, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 3, "beats": 1, "midi": 78, "string": 3, "finger": 1 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1.5, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 1.5, "beats": 0.5, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 2, "beats": 2, "midi": 76, "string": 3, "finger": 0 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 1, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 2, "beats": 1, "midi": 79, "string": 3, "finger": 2 },
+        { "beat": 3, "beats": 1, "midi": 81, "string": 3, "finger": 3 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 81, "string": 3, "finger": 3 },
+        { "beat": 1, "beats": 1, "midi": 79, "string": 3, "finger": 2 },
+        { "beat": 2, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 3, "beats": 1, "midi": 76, "string": 3, "finger": 0 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 74, "string": 2, "finger": 3 },
+        { "beat": 1, "beats": 1, "midi": 74, "string": 2, "finger": 3 },
+        { "beat": 2, "beats": 1, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 3, "beats": 1, "midi": 78, "string": 3, "finger": 1 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1.5, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 1.5, "beats": 0.5, "midi": 74, "string": 2, "finger": 3 },
+        { "beat": 2, "beats": 2, "midi": 74, "string": 2, "finger": 3 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 1, "beats": 1, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 2, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 3, "beats": 1, "midi": 74, "string": 2, "finger": 3 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 1, "beats": 0.5, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 1.5, "beats": 0.5, "midi": 79, "string": 3, "finger": 2 },
+        { "beat": 2, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 3, "beats": 1, "midi": 74, "string": 2, "finger": 3 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 1, "beats": 0.5, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 1.5, "beats": 0.5, "midi": 79, "string": 3, "finger": 2 },
+        { "beat": 2, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 3, "beats": 1, "midi": 76, "string": 3, "finger": 0 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 74, "string": 2, "finger": 3 },
+        { "beat": 1, "beats": 1, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 2, "beats": 2, "midi": 69, "string": 2, "finger": 0 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 1, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 2, "beats": 1, "midi": 79, "string": 3, "finger": 2 },
+        { "beat": 3, "beats": 1, "midi": 81, "string": 3, "finger": 3 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 81, "string": 3, "finger": 3 },
+        { "beat": 1, "beats": 1, "midi": 79, "string": 3, "finger": 2 },
+        { "beat": 2, "beats": 1, "midi": 78, "string": 3, "finger": 1 },
+        { "beat": 3, "beats": 1, "midi": 76, "string": 3, "finger": 0 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1, "midi": 74, "string": 2, "finger": 3 },
+        { "beat": 1, "beats": 1, "midi": 74, "string": 2, "finger": 3 },
+        { "beat": 2, "beats": 1, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 3, "beats": 1, "midi": 78, "string": 3, "finger": 1 }
+      ]
+    },
+    {
+      "beats": 4,
+      "notes": [
+        { "beat": 0, "beats": 1.5, "midi": 76, "string": 3, "finger": 0 },
+        { "beat": 1.5, "beats": 0.5, "midi": 74, "string": 2, "finger": 3 },
+        { "beat": 2, "beats": 2, "midi": 74, "string": 2, "finger": 3 }
+      ]
+    }
+  ]
+}
