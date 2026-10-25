@@ -14,6 +14,15 @@ export {
   multiplierFor,
 } from './score';
 export { ENERGY_DELTA, ENERGY_MAX, ENERGY_START } from './energy';
+export {
+  LEVEL_SETTINGS,
+  PLAYER_LEVELS,
+  levelSettings,
+  levelSummary,
+  type LevelSettings,
+  type LevelSummaryLine,
+  type PlayerLevel,
+} from './levels';
 export { BADGES, COMBO_BADGES, badgesFor, newBadges, type Badge } from './badges';
 export { buildResult } from './result';
 export { AudioClock, MAX_STAMP_AGE_MS, fallbackStamp, isUsableStamp, type OutputStamp } from './clock';
