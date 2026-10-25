@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { attacks, parseSong, songDurationBeats, songDurationSeconds, timeline } from './song';
-import { FIXED_SONGS, FIXED_SONG_SOURCES, findFixedSong } from './songs';
+import { convertSongChart } from './catalog';
+import { FIXED_SONGS, findFixedSong } from './songs';
 import { OPEN_STRING_MIDI, stringFits } from './violin';
 
 const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -49,10 +50,24 @@ const SCORES = [
   },
 ];
 
+const SOURCES = import.meta.glob('../../../content/songs/*.musicxml', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+
 describe('músicas fixas do ciclo 1', () => {
-  it('parseSong aceita as 3 de content/songs', () => {
-    expect(FIXED_SONG_SOURCES).toHaveLength(3);
-    for (const raw of FIXED_SONG_SOURCES) expect(() => parseSong(raw)).not.toThrow();
+  it('as 3 embutidas, na ordem, e parseSong aceita', () => {
+    expect(FIXED_SONGS.map((s) => s.id)).toEqual(['escala-re-maior', 'ode-a-alegria', 'brilha-brilha-estrelinha']);
+    for (const { song } of FIXED_SONGS) expect(parseSong(JSON.parse(JSON.stringify(song)))).toEqual(song);
+  });
+
+  it('fixedSongs.json bate com o Fácil do MusicXML (senão rode npm run songs:fixed)', () => {
+    for (const { id, song } of FIXED_SONGS) {
+      const name = `${id}.musicxml`;
+      expect(song, id).toEqual(convertSongChart({ name, content: SOURCES[`../../../content/songs/${name}`] }, 'easy'));
+    }
+  });
+
+  it('Ode: corda solta no Mi e no Lá, como no JSON do ciclo 1', () => {
+    const strings = timeline(findFixedSong('ode-a-alegria')!.song).map((n) => 'GDAE'[n.string]).join('');
+    expect(strings).toBe('EEEEEEEEAAEEEEEEEEEEEEEAAEEEAAEEEAEEEEAEEEEEAEAEEEEEEEEAAEEEAA');
   });
 
   it('ids únicos e iguais aos da Song', () => {

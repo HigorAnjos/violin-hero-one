@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react';
 import { loadEnv, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 import { DEFAULT_THEME, THEMES, THEME_STORAGE_KEY } from './src/assets/styles/themes';
+import { noConverterInApp } from './src/build/noConverterInApp';
 
 /**
  * Anti-flash: antes do app carregar, pinta a página com o fundo e o texto do tema salvo no
@@ -33,7 +34,7 @@ const PUBLIC_ENV = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SCHEMA'] as c
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
-    plugins: [react(), themeBootScript()],
+    plugins: [react(), themeBootScript(), noConverterInApp()],
     server: { port: 5173, strictPort: true },
     define: Object.fromEntries(
       PUBLIC_ENV.map((key) => [`import.meta.env.${key}`, JSON.stringify(env[key] ?? '')])

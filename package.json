@@ -15,6 +15,7 @@
     "test": "vitest run",
     "migrate": "node scripts/migrate.mjs",
     "seed:songs": "node scripts/seed-songs.mjs",
+    "songs:fixed": "node scripts/fixed-songs.mjs",
     "test:db": "node --test scripts/test-db.mjs",
     "db:local": "node scripts/db-local.mjs",
     "test:e2e": "playwright test"
