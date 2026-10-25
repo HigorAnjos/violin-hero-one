@@ -4,7 +4,9 @@ import { parseSong, songDurationBeats, songDurationSeconds, type Song } from '..
 import { findFixedSong } from '../notation/songs';
 import { midiToFrequency } from '../notation/violin';
 import { arrange } from './arrange';
-import { beatTime, scheduleOrchestra } from './schedule';
+import { n } from '../engine/testing';
+import { beatTime, duckWindows, notesSoundingAt, scheduleOrchestra } from './schedule';
+import { VOICES } from './voices';
 
 const START_AT = 7.3;
 
@@ -50,11 +52,58 @@ describe('agenda da orquestra no relógio do Motor', () => {
   it('frequências no Lá da partida e só os naipes pedidos', () => {
     const notes = scheduleOrchestra(song, { startAt: 0, a4: 440, sections: ['percussion'] });
     expect(new Set(notes.map((note) => note.part))).toEqual(new Set(['timpani']));
-    expect(notes[0].frequency).toBeCloseTo(midiToFrequency(38, 440), 9);
+    for (const note of notes) expect(note.frequency).toBeCloseTo(midiToFrequency(note.midi, 440), 9);
+  });
+
+  it('end soma o release da voz; com fone, o arranjo completo, sem desvio', () => {
+    const notes = scheduleOrchestra(song, { startAt: START_AT });
+    for (const note of notes) expect(note.end).toBeCloseTo(note.time + note.duration + VOICES[note.part].release, 12);
+    const full = scheduleOrchestra(song, { startAt: START_AT, headphones: true });
+    expect(full.length).toBeGreaterThanOrEqual(notes.length);
+    expect(full.map((note) => note.midi)).not.toEqual(notes.map((note) => note.midi));
   });
 
   it('em ordem de tempo', () => {
     const notes = scheduleOrchestra(song, { startAt: START_AT });
     for (let i = 1; i < notes.length; i++) expect(notes[i].time).toBeGreaterThanOrEqual(notes[i - 1].time);
+  });
+});
+
+describe('notesSoundingAt', () => {
+  const song = findFixedSong('brilha-brilha-estrelinha')!.song;
+  const notes = scheduleOrchestra(song, { startAt: 2 });
+
+  it('é o mesmo que filtrar a lista inteira, em qualquer instante', () => {
+    for (let t = 0; t < 40; t += 0.137) {
+      const brute = notes.filter((note) => note.time <= t && t < note.end);
+      expect(notesSoundingAt(notes, t)).toEqual(brute);
+      expect(notesSoundingAt(notes, t, ['strings'])).toEqual(brute.filter((note) => note.section === 'strings'));
+    }
+  });
+
+  it('nunca devolve a nota esperada do violino nem a oitava dela enquanto ela soa', () => {
+    for (const note of scheduleNotes(song, 2)) {
+      const mid = note.time + Math.min(note.duration, 0.2) / 2;
+      for (const sounding of notesSoundingAt(notes, mid)) {
+        if (sounding.time + sounding.duration <= mid) continue;
+        expect([0, 12]).not.toContain(Math.abs(sounding.midi - note.midi));
+      }
+    }
+  });
+});
+
+describe('duckWindows', () => {
+  it('uma janela de ±50 ms por ataque, sem as ligadas, juntando as que se encostam', () => {
+    const song: Song = {
+      ...findFixedSong('escala-re-maior')!.song,
+      bpm: 600,
+      measures: [{ beats: 4, notes: [n(0, 1, 62, 1, 0), n(1, 1, 62, 1, 0, true), n(2, 1, 64, 1, 1), n(3, 1, 66, 1, 2)] }],
+    };
+    const windows = duckWindows(song, 1);
+    expect(windows).toHaveLength(2);
+    expect(windows[0].from).toBeCloseTo(0.95, 12);
+    expect(windows[0].to).toBeCloseTo(1.05, 12);
+    expect(windows[1].from).toBeCloseTo(1.15, 12);
+    expect(windows[1].to).toBeCloseTo(1.35, 12);
   });
 });
