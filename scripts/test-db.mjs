@@ -45,7 +45,9 @@ const denied = (promise) => assert.rejects(promise, /permission denied/);
 describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL && 'DATABASE_URL vazio' }, () => {
   let c;
   before(async () => {
-    c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+    // O Postgres do `supabase start` (127.0.0.1:54322) não aceita SSL; o da nuvem exige
+    const local = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(process.env.DATABASE_URL);
+    c = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: local ? false : { rejectUnauthorized: false } });
     await c.connect();
   });
   after(async () => { await c?.end(); });
@@ -101,6 +103,17 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
     it('sem login (anon) NÃO enxerga o schema', async () => {
       await newUser(c);
       await denied(as(c, null, `select * from ${S}.profiles`));
+    });
+
+    it('apelido com espaço nas pontas é recusado', async () => {
+      const a = await newUser(c);
+      await assert.rejects(as(c, a, `update ${S}.profiles set nickname = ' Ana ' where id = $1`, [a]), /check constraint/);
+    });
+
+    it('função nova no schema nasce sem execute para o jogador', async () => {
+      const a = await newUser(c);
+      await c.query(`create function ${S}.tmp_probe() returns int language sql security definer as 'select 1'`);
+      await denied(as(c, a, `select ${S}.tmp_probe()`));
     });
 
     it('Lá fora de 415–466 Hz é recusado', async () => {
