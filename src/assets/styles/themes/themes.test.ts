@@ -82,7 +82,7 @@ describe.each(THEMES.map((t) => [t.id, t] as const))('tema %s', (_id, theme) => 
     expect(contrast(c.primary.main, c.background)).toBeGreaterThanOrEqual(UI);
   });
 
-  it.each(['danger', 'warning', 'success'] as const)('%s: legível em qualquer fundo', (tone) => {
+  it.each(['danger', 'warning', 'success', 'info'] as const)('%s: legível em qualquer fundo', (tone) => {
     const t = c[tone];
     expect(contrast(t.main, c.surface)).toBeGreaterThanOrEqual(UI);
     for (const bg of [c.surface, c.background, solidOver(t.surface, c.surface)]) {
