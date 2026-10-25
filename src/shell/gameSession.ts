@@ -92,6 +92,8 @@ export function createGameSession(options: GameSessionOptions): GameSession {
     latencySeconds,
     noFail: options.noFail,
     earnedBadges: options.earnedBadges,
+    // Com fone a orquestra não vaza no microfone: não há o que descartar
+    sounding: options.orchestraPrefs?.headphones ? undefined : (t) => orchestra?.soundingAt(t - offset) ?? [],
     onEvent: (event) => {
       if (event.type === 'judgment') {
         track?.onJudgment(event);

@@ -5,6 +5,8 @@ import type { Song } from '../game/notation/song';
 export interface GameOrchestra {
   /** O state de cada julgamento do Motor (energia e combo). */
   update(drive: { energy: number; combo: number }): void;
+  /** Notas MIDI que a orquestra toca no instante (relógio do contexto): o motor descarta o vazamento. */
+  soundingAt(t: number): number[];
   setVolume(volume: number): void;
   stop(fadeSeconds?: number): Promise<void>;
   dispose(): void;

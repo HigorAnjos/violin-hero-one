@@ -22,7 +22,7 @@ function fakeAudio(start = 10) {
 function orchestraSpy() {
   const made: { startAt: number; orchestra: GameOrchestra }[] = [];
   const factory = vi.fn(async (_c: BaseAudioContext, _s: unknown, o: { startAt: number }) => {
-    const orchestra = { update: vi.fn(), setVolume: vi.fn(), stop: vi.fn().mockResolvedValue(undefined), dispose: vi.fn() };
+    const orchestra = { update: vi.fn(), setVolume: vi.fn(), soundingAt: vi.fn(() => [] as number[]), stop: vi.fn().mockResolvedValue(undefined), dispose: vi.fn() };
     made.push({ startAt: o.startAt, orchestra });
     return orchestra;
   });
@@ -128,6 +128,30 @@ describe('createGameSession', () => {
     const push = vi.spyOn(session.engine, 'push');
     session.push(reading(0.5, 78));
     expect(push).toHaveBeenCalledWith(expect.objectContaining({ time: expect.closeTo(21.3, 6) }));
+  });
+
+  it('o motor pergunta à orquestra o que soa, no relógio do contexto atual', async () => {
+    const first = fakeAudio(20);
+    const { factory, made } = orchestraSpy();
+    const session = createGameSession(base(first.audio, { orchestra: factory }));
+    await vi.waitFor(() => expect(made).toHaveLength(1));
+    first.context.currentTime = 21;
+    await session.pause();
+    const second = fakeAudio(0.2);
+    await session.reanchor(second.audio);
+    await session.resume();
+    await vi.waitFor(() => expect(made).toHaveLength(2));
+    session.push(reading(0.5, 78));
+    expect(made[1].orchestra.soundingAt).toHaveBeenCalledWith(expect.closeTo(0.5 - 0.1 - 0.03, 2));
+  });
+
+  it('com fone não pergunta: a orquestra não vaza', async () => {
+    const { audio } = fakeAudio(0);
+    const { factory, made } = orchestraSpy();
+    const session = createGameSession(base(audio, { orchestra: factory, orchestraPrefs: { enabled: true, volume: 0.5, headphones: true } }));
+    await vi.waitFor(() => expect(made).toHaveLength(1));
+    session.push(reading(0.5, 78));
+    expect(made[0].orchestra.soundingAt).not.toHaveBeenCalled();
   });
 
   it('o volume da orquestra vale agora e na orquestra recriada', async () => {
