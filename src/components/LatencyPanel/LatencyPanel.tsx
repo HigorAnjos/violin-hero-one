@@ -18,8 +18,8 @@ const Panel = styled.section`
   box-shadow: ${({ theme }) => theme.shadows.card};
 
   @media (max-height: 500px) {
-    gap: ${({ theme }) => theme.spacing.xs};
-    padding: ${({ theme }) => `${theme.spacing.sm} ${theme.spacing.md}`};
+    gap: ${({ theme }) => theme.spacing.xxs};
+    padding: ${({ theme }) => `${theme.spacing.xs} ${theme.spacing.sm}`};
   }
 `;
 
@@ -89,6 +89,12 @@ const Value = styled.div`
     line-height: 1;
     white-space: nowrap;
   }
+
+  @media (max-height: 500px) {
+    > div {
+      display: none;
+    }
+  }
 `;
 
 const Text = styled.p<{ $tone?: 'warning' | 'info' | 'danger' }>`
@@ -100,7 +106,8 @@ const Text = styled.p<{ $tone?: 'warning' | 'info' | 'danger' }>`
     font-size: 0.75rem;
     line-height: 1rem;
 
-    &[data-extra] {
+    &[data-extra],
+    [data-wide] {
       display: none;
     }
   }
@@ -171,7 +178,7 @@ export const LatencyPanel: React.FC<LatencyPanelProps> = ({ phase, seconds, meas
           </Choice>
         </div>
       </Question>
-      {!headphones && <Text $tone="warning">Melhor com fone. Sem fone, afaste o aparelho do violino e baixe o volume: alto e encostado, ele atrapalha o jogo a te ouvir.</Text>}
+      {!headphones && <Text $tone="warning">Melhor com fone. Sem fone, afaste o aparelho do violino e baixe o volume.</Text>}
       <Value>
         <div>
           <span>Este aparelho · {headphones ? 'fone' : 'alto-falante'}</span>
@@ -179,8 +186,13 @@ export const LatencyPanel: React.FC<LatencyPanelProps> = ({ phase, seconds, meas
         </div>
         <strong>{latencyToMs(seconds)} ms</strong>
       </Value>
-      <Text data-extra>O jogo toca um clique e mede quanto o microfone demora para ouvir. Esse tempo é descontado de cada nota.</Text>
-      {!measured && !running && <Text $tone="warning">Este microfone com esta saída de som ainda não foi medido. Meça antes de tocar.</Text>}
+      {!measured && !running ? (
+        <Text $tone="warning">
+          <span data-wide>Este microfone com esta saída de som ainda não foi medido. </span>Meça antes de tocar.
+        </Text>
+      ) : (
+        <Text data-extra>O jogo toca um clique e mede quanto o microfone demora para ouvir. Esse tempo é descontado de cada nota.</Text>
+      )}
       <Text $tone="warning" data-extra>
         ▲ Fone Bluetooth soma 150 a 250 ms. Prefira fone com fio.
       </Text>

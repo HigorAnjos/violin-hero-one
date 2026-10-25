@@ -34,10 +34,10 @@ const Panel = styled.section`
 const Row = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.sm};
 
   > span:last-child {
+    margin-left: auto;
     font-size: 0.875rem;
     color: ${({ theme }) => theme.colors.textMuted};
   }
@@ -53,8 +53,18 @@ const Reference = styled.div`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
+  gap: ${({ theme }) => theme.spacing.xs};
   padding: 0.625rem 0.75rem;
+
+  > ${Kicker} {
+    letter-spacing: 0.1em;
+  }
+
+  @media (max-width: 1340px) {
+    > small {
+      display: none;
+    }
+  }
   background-color: ${({ theme }) => theme.game.track};
   border: 1px solid ${({ theme }) => theme.colors.surfaceBorder};
   border-radius: ${({ theme }) => theme.borderRadius.sm};
@@ -92,7 +102,7 @@ const Stepper = styled.div`
   }
 
   output {
-    min-width: 5.75rem;
+    min-width: 5rem;
     text-align: center;
     font-size: 1.25rem;
   }
@@ -305,7 +315,7 @@ const STRINGS: StringIndex[] = [0, 1, 2, 3];
 const OCTAVES = [3, 4, 4, 5];
 
 /** Afinador da tela 4: Lá de referência, agulha e as quatro cordas soltas. */
-export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: TunerState }> = ({ a4, onA4, state }) => {
+export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: TunerState; back?: React.ReactNode }> = ({ a4, onA4, state, back }) => {
   const theme = useTheme();
   const live = state.live;
   const shown: StringIndex = live?.string ?? (Math.max(0, state.tuned.findIndex((c) => c === null)) as StringIndex);
@@ -318,6 +328,7 @@ export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: Tu
   return (
     <Panel aria-label="Afinador">
       <Row>
+        {back}
         <Kicker>Afinador</Kicker>
         <span>Toque cada corda solta, uma de cada vez</span>
       </Row>

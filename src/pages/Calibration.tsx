@@ -31,17 +31,7 @@ const Header = styled.header`
   }
 
   @media (max-height: 500px) {
-    align-items: center;
-
-    > div {
-      flex-direction: row;
-      align-items: baseline;
-      gap: ${({ theme }) => theme.spacing.sm};
-    }
-
-    ${Kicker} {
-      display: none;
-    }
+    display: none;
   }
 `;
 
@@ -61,7 +51,7 @@ const Side = styled.div`
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.lg};
+  gap: ${({ theme }) => theme.spacing.md};
 
   @media (max-width: 1000px) {
     width: 16rem;
@@ -104,6 +94,17 @@ const Mic = styled.section`
 
   @media (max-height: 500px) {
     display: none;
+  }
+`;
+
+/** Voltar do celular deitado (o cabeçalho some): ícone de 44 px dentro do afinador. */
+const BackIcon = styled(Button)`
+  display: none;
+  min-width: 2.75rem;
+  padding: 0;
+
+  @media (max-height: 500px) {
+    display: inline-flex;
   }
 `;
 
@@ -180,7 +181,7 @@ export const Calibration: React.FC = () => {
   const noise = noiseView(meters.noiseDb);
 
   return (
-    <Screen $gap="1.5rem">
+    <Screen $gap="1.25rem">
       <Header>
         <div>
           <Kicker>
@@ -210,7 +211,16 @@ export const Calibration: React.FC = () => {
       )}
 
       <Body>
-        <Tuner a4={a4} onA4={changeA4} state={tuner} />
+        <Tuner
+          a4={a4}
+          onA4={changeA4}
+          state={tuner}
+          back={
+            <BackIcon as={Link} to={ROUTES.home} aria-label="Voltar" $variant="ghost">
+              <span aria-hidden="true">◂</span>
+            </BackIcon>
+          }
+        />
         <Side>
           <Mic aria-label="Microfone">
             <Kicker>Microfone</Kicker>
