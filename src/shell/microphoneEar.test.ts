@@ -36,8 +36,22 @@ describe('createMicrophoneEar', () => {
     const f = fakeDeps();
     const ear = createMicrophoneEar(f.deps);
     await ear.start();
-    expect(f.spies.startPitch).toHaveBeenCalledWith(f.mic.source, expect.any(Function));
+    expect(f.spies.startPitch).toHaveBeenCalledWith(f.mic.source, expect.any(Function), { a4: 442 });
     expect(f.spies.startLevelMeter).toHaveBeenCalledWith(f.mic.context, f.mic.source, expect.any(Function));
+    expect(ear.audio()).toEqual({ context: f.mic.context, source: f.mic.source, stream: f.mic.stream });
+  });
+
+  it('abre com o Lá escolhido antes e avisa quem joga quando fecha', async () => {
+    const f = fakeDeps();
+    const ear = createMicrophoneEar(f.deps);
+    const closed = vi.fn();
+    ear.onClosed(closed);
+    ear.setA4(440);
+    await ear.start();
+    expect(f.spies.startPitch).toHaveBeenCalledWith(f.mic.source, expect.any(Function), { a4: 440 });
+    ear.stop();
+    expect(closed).toHaveBeenCalledWith('stopped');
+    expect(ear.audio()).toBeNull();
   });
 
   it('start repetido reaproveita o microfone aberto', async () => {
