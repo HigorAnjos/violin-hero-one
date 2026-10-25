@@ -40,6 +40,10 @@ const Card = styled.section`
     background: none;
     border: 0;
     box-shadow: none;
+
+    > ${Kicker} {
+      display: none;
+    }
   }
 `;
 

@@ -40,6 +40,10 @@ const Section = styled.section<{ $paused: boolean }>`
     border-radius: 0;
     box-shadow: none;
     background-color: ${({ theme }) => theme.game.track};
+
+    svg {
+      margin-top: -0.75rem;
+    }
   }
 `;
 

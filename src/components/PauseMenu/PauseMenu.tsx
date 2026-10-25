@@ -17,7 +17,7 @@ const Veil = styled.div`
 
   &::before {
     content: '';
-    position: fixed;
+    position: absolute;
     inset: 0;
     background-color: ${({ theme }) => rgba(theme.colors.background, 0.6)};
   }
@@ -75,7 +75,7 @@ const Menu = styled(Panel)`
   }
 
   @media (max-height: 500px) {
-    width: 20rem;
+    width: 25rem;
 
     h1 {
       font-size: 1.75rem;
@@ -85,6 +85,12 @@ const Menu = styled(Panel)`
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: ${({ theme }) => theme.spacing.xs};
+
+      > * {
+        padding: 0 0.625rem;
+        font-size: 0.75rem;
+        letter-spacing: 0.04em;
+      }
     }
 
     > small {
@@ -141,7 +147,7 @@ const Settings = styled(Panel)`
   }
 
   @media (max-height: 500px) {
-    width: 14rem;
+    width: 12.5rem;
     margin: 0;
 
     > p {
