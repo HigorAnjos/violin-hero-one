@@ -16,7 +16,7 @@ import {
 
 const seg = (time: number, beat: number, spb: number, endTime = Infinity, endBeat = Infinity): BeatSegment => ({ time, beat, spb, endTime, endBeat });
 
-function windows(segments: BeatSegment[], now: number, behind: number, ahead: number) {
+function windows(segments: readonly BeatSegment[], now: number, behind: number, ahead: number) {
   const out: BeatWindow[] = [];
   const count = beatWindows(segments, now, behind, ahead, out);
   return out.slice(0, count).map((w) => ({ from: w.fromBeat, to: w.toBeat, shift: w.shift }));

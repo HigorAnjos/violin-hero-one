@@ -1,0 +1,544 @@
+import { Container, Graphics, Sprite, Text, Texture, type TextStyleOptions } from 'pixi.js';
+import type { Theme } from '../../assets/styles/themes';
+import type { Issue, Judgment } from '../engine/types';
+import type { Song } from '../notation/song';
+import { STRING_LETTERS } from '../notation/violin';
+import { formatFps, type FpsReport } from './fps';
+import { lowerBound, maxNotesInWindow } from './layout';
+import { sheetPalette, type SheetPalette } from './palette';
+import { feedbackScale } from './present';
+import type { JudgmentEvent, TextureBaker } from './scene';
+import {
+  beatWindows,
+  beatX,
+  BOTTOM_STEP,
+  markApplies,
+  noteAlpha,
+  sheetLayout,
+  stepY,
+  TOP_STEP,
+  windowTime,
+  type BeatWindow,
+  type SheetClock,
+  type SheetLayout,
+} from './sheetLayout';
+import { keySignature, ledgerSteps, staffLayout, type Accidental, type StaffNote } from './staff';
+
+export interface SheetSceneOptions {
+  theme: Theme;
+  song: Song;
+  clock: SheetClock;
+  reducedMotion: boolean;
+}
+
+/** Fonte da clave e dos acidentes (servida pelo app, ciclo2-fontes); o tema só tem as de texto. */
+export const MUSIC_FONT = "'Noto Music', 'Noto Sans Symbols 2', serif";
+
+// Texturas assadas uma vez com este espaço entre linhas e escaladas no quadro: o resize não refaz textura
+const REF = 24;
+const HEAD_RX = REF * 0.64;
+const HEAD_RY = REF * 0.47;
+const HEAD_ANGLE = (-20 * Math.PI) / 180;
+const STAFF_LINES = [0, 1, 2, 3, 4].map((k) => BOTTOM_STEP + k * 2);
+const MAX_LEDGERS = 3;
+const HOLD_BG_ALPHA = 0.18;
+const HOLD_FILL_ALPHA = 0.55;
+const ZONE_ALPHA = 0.08;
+const STAFF_ALPHA = 0.7;
+/** Ajuste ótico dos glifos da Noto Music: centro da caixa de texto acima do ponto da pauta, em espaços. */
+const CLEF_LIFT = 0.15;
+const ACCIDENTAL_LIFT = 0.05;
+
+const ISSUE_GLYPH: Record<Issue, string> = {
+  early: '◂',
+  late: '▸',
+  sharp: '▴',
+  flat: '▾',
+  'wrong-note': '×',
+  'not-played': '×',
+};
+const MISS_GLYPH = '×';
+
+interface NoteSlot {
+  root: Container;
+  ledgers: Sprite[];
+  stem: Sprite;
+  head: Sprite;
+  /** Colchetes: um na colcheia, dois na semicolcheia. */
+  flags: Sprite[];
+  dot: Sprite;
+  accidental: Sprite;
+  finger: Sprite;
+  letter: Sprite;
+  name: Sprite;
+  mark: Sprite;
+  /** Nota da timeline que este slot mostra, ou −1 depois de um layout. */
+  note: number;
+}
+
+interface BarSlot {
+  line: Sprite;
+  number: Sprite;
+}
+
+const HIT = 1;
+const MISSED = 2;
+
+/**
+ * A faixa de partitura: pauta, clave, armadura e as notas da música correndo sob a agulha do "agora", no relógio de
+ * tempos da partida (SheetClock). Nada é alocado em update(); o tema é fixo na vida da cena.
+ */
+export class SheetScene extends Container {
+  private readonly palette: SheetPalette;
+  private readonly reducedMotion: boolean;
+  private readonly clock: SheetClock;
+  private readonly notes: readonly StaffNote[];
+  private readonly at: Float64Array;
+  private readonly bars: readonly number[];
+  private readonly fifths: number;
+  /** A nota de ataque de cada nota (a ligada aponta para a que ela continua) e a duração somada das ligadas. */
+  private readonly attackOf: Int32Array;
+  private readonly holdBeats: Float64Array;
+  private readonly markAt: Float64Array;
+  private readonly markState: Uint8Array;
+  private readonly markTexture: (Texture | null)[];
+  private readonly windows: BeatWindow[] = [];
+
+  private readonly paper = new Sprite(Texture.WHITE);
+  private readonly staff: Sprite[] = [];
+  private readonly zone = new Sprite(Texture.WHITE);
+  private readonly holdBg = new Sprite(Texture.WHITE);
+  private readonly holdFill = new Sprite(Texture.WHITE);
+  private readonly barLayer = new Container();
+  private readonly noteLayer = new Container();
+  private readonly needle = new Sprite(Texture.WHITE);
+  private readonly needleLabel: Sprite;
+  private readonly cover = new Container();
+  private readonly coverPaper = new Sprite(Texture.WHITE);
+  private readonly coverStaff: Sprite[] = [];
+  private readonly coverEnd = new Sprite(Texture.WHITE);
+  private readonly clef: Sprite;
+  private readonly keySprites: Sprite[];
+  private readonly fpsText: Text;
+  private readonly slots: NoteSlot[] = [];
+  private readonly barSlots: BarSlot[] = [];
+
+  private readonly headTextures: Texture[];
+  private readonly hollowTextures: Texture[];
+  private readonly flagTexture: Texture;
+  private readonly dotTexture: Texture;
+  private readonly accidentalTextures: Map<Accidental, Texture>;
+  private readonly fingerTextures: Texture[][];
+  private readonly letterTextures: Texture[];
+  private readonly nameTextures: Map<string, Texture>;
+  private readonly numberTextures: Texture[];
+  private readonly labelTexture: Texture;
+  private readonly clefTexture: Texture;
+  private readonly glyphTextures: Texture[];
+  private readonly glyphFor: (judgment: Judgment, issue: Issue | null) => Texture | null;
+
+  private l: SheetLayout;
+  private lastNow = 0;
+  private until = 0;
+  private usedSlots = 0;
+  private usedBars = 0;
+
+  constructor(
+    private readonly baker: TextureBaker,
+    options: SheetSceneOptions,
+  ) {
+    super();
+    const { theme, song } = options;
+    this.palette = sheetPalette(theme);
+    this.reducedMotion = options.reducedMotion;
+    this.clock = options.clock;
+    const staff = staffLayout(song);
+    this.notes = staff.notes;
+    this.bars = staff.bars;
+    this.fifths = staff.fifths;
+    this.at = Float64Array.from(this.notes, (n) => n.at);
+    this.attackOf = new Int32Array(this.notes.length);
+    this.holdBeats = Float64Array.from(this.notes, (n) => n.beats);
+    for (let i = 0; i < this.notes.length; i++) {
+      const attack = this.notes[i].tie && i > 0 ? this.attackOf[i - 1] : i;
+      this.attackOf[i] = attack;
+      if (attack !== i) this.holdBeats[attack] += this.notes[i].beats;
+    }
+    this.markAt = new Float64Array(this.notes.length).fill(NaN);
+    this.markState = new Uint8Array(this.notes.length);
+    this.markTexture = new Array(this.notes.length).fill(null);
+
+    const p = this.palette;
+    const ui = theme.fonts.ui;
+    const display = theme.fonts.display;
+    this.headTextures = p.strings.map((c) => this.bakeHead(c, null));
+    this.hollowTextures = p.strings.map((c) => this.bakeHead(p.paper, c));
+    this.flagTexture = this.bakeFlag(p.ink);
+    this.dotTexture = this.bake(new Graphics().circle(REF * 0.16, REF * 0.16, REF * 0.16).fill(p.ink));
+    this.accidentalTextures = new Map((['♯', '♭', '♮'] as const).map((a) => [a, this.bakeText(a, { fontFamily: MUSIC_FONT, fontSize: REF * 1.78, fill: p.ink })]));
+    this.fingerTextures = p.strings.map((c) => [0, 1, 2, 3, 4].map((f) => this.bakeText(String(f), { fontFamily: ui, fontWeight: '700', fontSize: REF, fill: c })));
+    this.letterTextures = p.strings.map((c, i) => this.bakeText(STRING_LETTERS[i], { fontFamily: display, fontWeight: '800', fontSize: REF * 0.8, fill: c }));
+    const names = [...new Set(this.notes.map((n) => n.name))];
+    this.nameTextures = new Map(names.map((name) => [name, this.bakeText(name, { fontFamily: ui, fontSize: REF * 0.72, fill: p.line })]));
+    this.numberTextures = this.bars.map((_, m) => this.bakeText(String(m + 1), { fontFamily: ui, fontSize: REF * 0.78, fill: p.line }));
+    this.labelTexture = this.bakeText('AGORA', { fontFamily: ui, fontWeight: '700', fontSize: REF * 0.61, letterSpacing: REF * 0.085, fill: p.needleText });
+    this.clefTexture = this.bakeText('𝄞', { fontFamily: MUSIC_FONT, fontSize: REF * 5.8, fill: p.ink });
+    const glyph = (text: string, judgment: Judgment) => this.bakeText(text, { fontFamily: ui, fontWeight: '800', fontSize: REF * 0.9, fill: p.judgments[judgment] });
+    const glyphs = new Map<string, Texture>();
+    const glyphFor = (judgment: Judgment, issue: Issue | null): Texture | null => {
+      if (judgment === 'perfect' && !issue) return null;
+      const text = judgment === 'miss' ? MISS_GLYPH : issue ? ISSUE_GLYPH[issue] : null;
+      if (!text) return null;
+      const key = `${judgment}${text}`;
+      if (!glyphs.has(key)) glyphs.set(key, glyph(text, judgment));
+      return glyphs.get(key)!;
+    };
+    for (const j of ['great', 'good'] as const) for (const issue of ['early', 'late', 'sharp', 'flat'] as const) glyphFor(j, issue);
+    glyphFor('miss', 'not-played');
+    this.glyphTextures = [...glyphs.values()];
+    this.glyphFor = glyphFor;
+
+    this.paper.tint = p.paper;
+    for (let k = 0; k < STAFF_LINES.length; k++) {
+      const line = new Sprite(Texture.WHITE);
+      line.tint = p.line;
+      line.alpha = STAFF_ALPHA;
+      this.staff.push(line);
+      const cover = new Sprite(Texture.WHITE);
+      cover.tint = p.line;
+      cover.alpha = STAFF_ALPHA;
+      this.coverStaff.push(cover);
+    }
+    this.zone.tint = p.needle;
+    this.zone.alpha = ZONE_ALPHA;
+    this.holdBg.anchor.set(0, 0.5);
+    this.holdFill.anchor.set(0, 0.5);
+    this.holdBg.visible = this.holdFill.visible = false;
+    this.needle.tint = p.needle;
+    this.needle.anchor.set(0.5, 0);
+    this.needleLabel = new Sprite(this.labelTexture);
+    this.needleLabel.anchor.set(1, 0);
+    this.coverPaper.tint = p.paper;
+    this.coverEnd.tint = p.line;
+    this.clef = new Sprite(this.clefTexture);
+    this.clef.anchor.set(0, 0.5);
+    this.keySprites = keySignature(this.fifths).map((k) => {
+      const s = new Sprite(this.accidentalTextures.get(k.glyph));
+      s.anchor.set(0.5);
+      return s;
+    });
+    this.cover.addChild(this.coverPaper, ...this.coverStaff, this.coverEnd, this.clef, ...this.keySprites);
+    this.fpsText = new Text({ text: '', style: { fill: p.line, fontFamily: ui, fontWeight: '700', fontSize: 12 } });
+    this.fpsText.visible = false;
+
+    this.l = sheetLayout(1, 1, this.keySprites.length);
+    this.eventMode = 'none';
+    this.addChild(this.paper, ...this.staff, this.zone, this.holdBg, this.holdFill, this.barLayer, this.noteLayer, this.needle, this.needleLabel, this.cover, this.fpsText);
+  }
+
+  layout(width: number, height: number): void {
+    const l = (this.l = sheetLayout(width, height, this.keySprites.length));
+    const p = this.palette;
+    const k = l.space / REF;
+    this.paper.position.set(0, 0);
+    this.paper.setSize(width, height);
+    STAFF_LINES.forEach((step, i) => {
+      const y = stepY(l, step) - l.line / 2;
+      this.staff[i].position.set(0, y);
+      this.staff[i].setSize(width, l.line);
+      this.coverStaff[i].position.set(0, y);
+      this.coverStaff[i].setSize(l.clefWidth, l.line);
+    });
+    this.zone.position.set(l.needleX - l.needle.zone / 2, l.needle.top);
+    this.zone.setSize(l.needle.zone, l.needle.bottom - l.needle.top);
+    this.needle.position.set(l.needleX, l.needle.top);
+    this.needle.setSize(l.needle.width, l.needle.bottom - l.needle.top);
+    this.needleLabel.scale.set(l.needle.labelSize / (REF * 0.61));
+    this.needleLabel.position.set(l.needleX - l.space * 0.55, l.needle.labelY);
+    this.needleLabel.visible = !l.compact;
+    this.coverPaper.setSize(l.clefWidth, height);
+    this.coverEnd.position.set(l.clefWidth - l.line, stepY(l, TOP_STEP));
+    this.coverEnd.setSize(l.line, stepY(l, BOTTOM_STEP) - stepY(l, TOP_STEP));
+    this.clef.scale.set(k);
+    this.clef.position.set(l.clef.x, l.clef.y - CLEF_LIFT * l.space);
+    keySignature(this.fifths).forEach((key, i) => {
+      this.keySprites[i].scale.set(k);
+      this.keySprites[i].position.set(l.keyX + i * l.keyStep, stepY(l, key.step) - ACCIDENTAL_LIFT * l.space);
+    });
+    this.fpsText.position.set(l.clefWidth + 8, 4);
+    this.holdBg.tint = this.holdFill.tint = p.strings[0];
+
+    const span = l.behind + l.ahead;
+    const slots = 2 * maxNotesInWindow(this.at, span) + 2;
+    while (this.slots.length < slots) this.slots.push(this.makeSlot());
+    for (const slot of this.slots) slot.note = -1;
+    const minMeasure = Math.max(1, Math.min(...this.bars.map((b, i) => (this.bars[i + 1] ?? Infinity) - b)));
+    const bars = 2 * Math.ceil(span / minMeasure) + 2;
+    while (this.barSlots.length < bars) this.barSlots.push(this.makeBar());
+    for (const bar of this.barSlots) {
+      bar.line.position.y = stepY(l, TOP_STEP);
+      bar.line.setSize(l.line * 1.1, stepY(l, BOTTOM_STEP) - stepY(l, TOP_STEP));
+      bar.number.scale.set(l.numberSize / (REF * 0.78));
+      bar.number.position.y = l.numberY;
+    }
+    this.until = -Infinity;
+    this.update(this.lastNow);
+  }
+
+  /** Marca o julgamento do motor na própria nota; `at` é a hora do relógio do julgamento. */
+  judge(event: JudgmentEvent, at: number = this.lastNow): void {
+    const i = event.noteIndex;
+    if (!(i >= 0 && i < this.notes.length)) return;
+    this.markAt[i] = at;
+    this.markState[i] = event.judgment === 'miss' ? MISSED : HIT;
+    this.markTexture[i] = this.glyphFor(event.judgment, event.issue);
+  }
+
+  showFps(report: FpsReport | null): void {
+    this.fpsText.visible = report !== null;
+    if (report) this.fpsText.text = formatFps(report);
+  }
+
+  /** Desenha o quadro da hora `now` do AudioContext. */
+  update(now: number): void {
+    this.lastNow = now;
+    const l = this.l;
+    const segments = this.clock.segments(Math.max(now + 1, this.until));
+    const last = segments[segments.length - 1];
+    // Pede o relógio até onde a faixa enxerga no andamento mais lento da prática (metade do da partida)
+    this.until = now + l.ahead * last.spb * 2 + 1;
+    const count = beatWindows(segments, now, l.behind, l.ahead, this.windows);
+
+    let used = 0;
+    let bars = 0;
+    let holding = -1;
+    let holdX = 0;
+    for (let w = 0; w < count; w++) {
+      const win = this.windows[w];
+      for (let i = lowerBound(this.at, win.fromBeat); i < this.at.length && this.at[i] < win.toBeat && used < this.slots.length; i++) {
+        const slot = this.slots[used++];
+        if (slot.note !== i) this.fill(slot, i);
+        const distance = this.at[i] + win.shift;
+        const attack = this.attackOf[i];
+        const markOn = markApplies(windowTime(win, this.at[attack]), this.markAt[attack]);
+        const state = markOn ? this.markState[attack] : 0;
+        slot.root.visible = true;
+        slot.root.x = beatX(l, distance);
+        slot.root.alpha = noteAlpha(distance, this.notes[i].beats, state === HIT);
+        const mark = markOn && attack === i ? this.markTexture[attack] : null;
+        slot.mark.visible = mark !== null;
+        if (mark) {
+          slot.mark.texture = mark;
+          slot.mark.scale.set((l.space / REF) * feedbackScale(now - this.markAt[attack], this.reducedMotion));
+        }
+        if (attack === i && distance <= 0 && distance + this.holdBeats[i] > 0) {
+          holding = i;
+          holdX = slot.root.x;
+        }
+      }
+      for (let m = lowerBound(this.bars, Math.max(win.fromBeat, 1e-9)); m < this.bars.length && this.bars[m] < win.toBeat && bars < this.barSlots.length; m++) {
+        const bar = this.barSlots[bars++];
+        const x = beatX(l, this.bars[m] + win.shift - 0.5);
+        bar.line.visible = bar.number.visible = true;
+        bar.line.x = x;
+        bar.number.x = x + l.space * 0.35;
+        bar.number.texture = this.numberTextures[m];
+      }
+    }
+    for (let i = used; i < this.usedSlots; i++) this.slots[i].root.visible = false;
+    for (let i = bars; i < this.usedBars; i++) this.barSlots[i].line.visible = this.barSlots[i].number.visible = false;
+    this.usedSlots = used;
+    this.usedBars = bars;
+
+    this.holdBg.visible = this.holdFill.visible = holding >= 0;
+    if (holding >= 0) {
+      const n = this.notes[holding];
+      const y = stepY(l, n.step);
+      const color = this.palette.strings[n.string];
+      this.holdBg.tint = this.holdFill.tint = color;
+      this.holdBg.alpha = HOLD_BG_ALPHA;
+      this.holdFill.alpha = HOLD_FILL_ALPHA;
+      this.holdBg.position.set(holdX, y);
+      this.holdBg.setSize(this.holdBeats[holding] * l.pxPerBeat, l.holdHeight);
+      this.holdFill.position.set(holdX, y);
+      this.holdFill.setSize(Math.max(0, l.needleX - holdX), l.holdHeight);
+    }
+  }
+
+  /** Notas na faixa agora (também as que já passaram, sob a clave); para testes. */
+  visibleNotes(): number[] {
+    return this.slots.filter((s) => s.root.visible).map((s) => s.note);
+  }
+
+  /** Transparência e marca de cada nota visível; para testes. */
+  noteView(note: number): { alpha: number; x: number; marked: boolean }[] {
+    return this.slots
+      .filter((s) => s.root.visible && s.note === note)
+      .map((s) => ({ alpha: s.root.alpha, x: s.root.x, marked: s.mark.visible }));
+  }
+
+  holdVisible(): boolean {
+    return this.holdBg.visible;
+  }
+
+  bakedTextures(): Texture[] {
+    return [
+      ...this.headTextures,
+      ...this.hollowTextures,
+      this.flagTexture,
+      this.dotTexture,
+      ...this.accidentalTextures.values(),
+      ...this.fingerTextures.flat(),
+      ...this.letterTextures,
+      ...this.nameTextures.values(),
+      ...this.numberTextures,
+      this.labelTexture,
+      this.clefTexture,
+      ...this.glyphTextures,
+    ];
+  }
+
+  override destroy(): void {
+    const baked = this.bakedTextures();
+    super.destroy({ children: true });
+    for (const t of baked) t.destroy(true);
+  }
+
+  /** Monta o slot para a nota `i` (textura, haste, linhas suplementares): só quando a nota do slot muda. */
+  private fill(slot: NoteSlot, i: number): void {
+    const l = this.l;
+    const n = this.notes[i];
+    const k = l.space / REF;
+    const y = stepY(l, n.step);
+    slot.note = i;
+
+    const ledgers = ledgerSteps(n.step);
+    slot.ledgers.forEach((ledger, j) => {
+      ledger.visible = j < ledgers.length;
+      if (!ledger.visible) return;
+      ledger.position.set(-l.ledgerHalf, stepY(l, ledgers[j]) - l.line / 2);
+      ledger.setSize(l.ledgerHalf * 2, l.line);
+    });
+
+    slot.head.texture = n.hollow ? this.hollowTextures[n.string] : this.headTextures[n.string];
+    slot.head.scale.set(k);
+    slot.head.position.set(0, y);
+
+    slot.stem.visible = n.stem;
+    const stemX = n.stemUp ? l.head.rx * 0.9 : -l.head.rx * 0.9;
+    if (n.stem) {
+      slot.stem.position.set(stemX - l.stem.width / 2, n.stemUp ? y - l.stem.length : y);
+      slot.stem.setSize(l.stem.width, l.stem.length);
+    }
+    const tip = n.stemUp ? y - l.stem.length : y + l.stem.length;
+    const toHead = n.stemUp ? 1 : -1;
+    slot.flags.forEach((flag, j) => {
+      flag.visible = j < n.flags;
+      if (!flag.visible) return;
+      flag.position.set(stemX + l.stem.width / 2, tip + toHead * j * l.space * 0.75);
+      flag.scale.set(k, toHead * k);
+    });
+    slot.dot.visible = n.dotted;
+    if (n.dotted) {
+      slot.dot.scale.set(k);
+      slot.dot.position.set(l.head.rx + l.space * 0.55, n.step % 2 === 0 ? y - l.space / 2 : y);
+    }
+    slot.accidental.visible = n.accidental !== null;
+    if (n.accidental) {
+      slot.accidental.texture = this.accidentalTextures.get(n.accidental)!;
+      slot.accidental.scale.set(k * 0.85);
+      slot.accidental.position.set(-l.head.rx - l.space * 0.75, y - ACCIDENTAL_LIFT * l.space);
+    }
+
+    // A ligada continua a nota anterior: sem dedo nem letra de novo
+    const labelled = !n.tie;
+    slot.finger.visible = slot.letter.visible = labelled;
+    slot.name.visible = labelled && !l.compact;
+    if (labelled) {
+      slot.finger.texture = this.fingerTextures[n.string][n.finger];
+      slot.finger.scale.set(k);
+      slot.finger.position.set(-l.space * 0.3, l.fingerY);
+      slot.letter.texture = this.letterTextures[n.string];
+      slot.letter.scale.set(k);
+      slot.letter.position.set(l.space * 0.45, l.fingerY + l.space * 0.08);
+      slot.name.texture = this.nameTextures.get(n.name)!;
+      slot.name.scale.set(k);
+      slot.name.position.set(0, l.nameY);
+    }
+    slot.mark.position.set(l.head.rx + l.space * 0.8, l.fingerY - l.space * 0.05);
+  }
+
+  private makeSlot(): NoteSlot {
+    const sprite = (texture: Texture = Texture.WHITE, ax = 0.5, ay = 0.5) => {
+      const s = new Sprite(texture);
+      s.anchor.set(ax, ay);
+      return s;
+    };
+    const p = this.palette;
+    const ledgers = Array.from({ length: MAX_LEDGERS }, () => {
+      const s = sprite(Texture.WHITE, 0, 0);
+      s.tint = p.line;
+      return s;
+    });
+    const stem = sprite(Texture.WHITE, 0, 0);
+    stem.tint = p.ink;
+    const head = sprite();
+    head.rotation = HEAD_ANGLE;
+    const flags = [sprite(this.flagTexture, 0, 0), sprite(this.flagTexture, 0, 0)];
+    const dot = sprite(this.dotTexture);
+    const accidental = sprite();
+    const finger = sprite();
+    const letter = sprite();
+    const name = sprite();
+    const mark = sprite();
+    mark.visible = false;
+    const root = new Container();
+    root.visible = false;
+    root.addChild(...ledgers, stem, head, ...flags, dot, accidental, finger, letter, name, mark);
+    this.noteLayer.addChild(root);
+    return { root, ledgers, stem, head, flags, dot, accidental, finger, letter, name, mark, note: -1 };
+  }
+
+  private makeBar(): BarSlot {
+    const line = new Sprite(Texture.WHITE);
+    line.tint = this.palette.line;
+    line.alpha = 0.8;
+    const number = new Sprite();
+    number.anchor.set(0, 1);
+    line.visible = number.visible = false;
+    this.barLayer.addChild(line, number);
+    return { line, number };
+  }
+
+  private bake(target: Container): Texture {
+    const texture = this.baker.generateTexture({ target, resolution: this.baker.resolution, antialias: true });
+    target.destroy();
+    return texture;
+  }
+
+  private bakeText(text: string, style: TextStyleOptions): Texture {
+    return this.bake(new Text({ text, style }));
+  }
+
+  /** Cabeça de nota do design: elipse (girada no sprite); vazada = papel com contorno da corda. */
+  private bakeHead(fill: number, stroke: number | null): Texture {
+    const width = HEAD_RY * 0.35;
+    const g = new Graphics().ellipse(HEAD_RX + width, HEAD_RY + width, HEAD_RX - (stroke === null ? 0 : width / 2), HEAD_RY - (stroke === null ? 0 : width / 2)).fill(fill);
+    if (stroke !== null) g.stroke({ color: stroke, width });
+    return this.bake(g);
+  }
+
+  /** Colchete da colcheia, desenhado para a haste para cima (para baixo, o sprite espelha). */
+  private bakeFlag(color: number): Texture {
+    const w = REF * 0.9;
+    const h = REF * 2.2;
+    return this.bake(
+      new Graphics()
+        .moveTo(0, 0)
+        .bezierCurveTo(w * 0.1, h * 0.35, w * 1.1, h * 0.45, w * 0.6, h)
+        .bezierCurveTo(w * 0.85, h * 0.55, w * 0.2, h * 0.45, 0, h * 0.4)
+        .closePath()
+        .fill(color),
+    );
+  }
+}
