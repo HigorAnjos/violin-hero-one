@@ -61,6 +61,19 @@ function orchestra(song: Song): Float32Array {
   return renderOrchestra(song, { sampleRate: SAMPLE_RATE, length: length(song), startSeconds: LEAD, a4: A4 });
 }
 
+/** Alto-falante pequeno: a orquestra com o 2º e o 3º harmônico de cada nota a `harmonicDb` (RMS) da fundamental. */
+function withHarmonics(song: Song, harmonicDb: number): Float32Array {
+  const base = orchestra(song);
+  const render = (multiple: number) =>
+    renderOrchestra(song, { sampleRate: SAMPLE_RATE, length: length(song), startSeconds: LEAD, a4: A4 * multiple });
+  const scale = (signal: Float32Array) => (rms(base) / rms(signal)) * 10 ** (harmonicDb / 20);
+  const second = render(2);
+  const third = render(3);
+  const s2 = scale(second);
+  const s3 = scale(third);
+  return base.map((v, i) => v + second[i] * s2 + third[i] * s3);
+}
+
 function rms(signal: Float32Array): number {
   let sum = 0;
   for (const v of signal) sum += v * v;
@@ -120,6 +133,17 @@ describe('a orquestra vazando no microfone não atrapalha o Ouvido', { timeout: 
     const song = findFixedSong('escala-re-maior')!.song;
     const result = judge(mix(violin(song), orchestra(song), 0), song);
     expect(hits(result)).toBe(result.judgments.length);
+  });
+
+  it.each(['escala-re-maior', 'ode-a-alegria'])('%s com 2º e 3º harmônicos a -20 dB, sozinha: nenhuma nota pontua', (id) => {
+    const song = findFixedSong(id)!.song;
+    expect(hits(judge(peakTo(withHarmonics(song, -20), 0.95), song))).toBe(0);
+  });
+
+  it('com 2º e 3º harmônicos a -20 dB debaixo do violino a -6 dB: o julgamento é o mesmo de sem orquestra', () => {
+    const song = findFixedSong('escala-re-maior')!.song;
+    const lead = violin(song);
+    expect(verdicts(judge(mix(lead, withHarmonics(song, -20), -6), song))).toEqual(verdicts(judge(lead, song)));
   });
 
   it('distorcida debaixo do violino a -6 dB: todas as notas ainda acertam', () => {
