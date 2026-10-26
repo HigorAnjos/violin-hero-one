@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { latencyToMs, loadLatency } from '../game/audio';
 import { DEFAULT_A4, MAX_A4, MIN_A4 } from '../game/notation/violin';
 import type { ProfileClient } from './profile';
+import { clearProfilePending, markProfilePending } from './profilePending';
 import { ensureSession, type SessionState } from './session';
 import { supabase } from './supabase';
 
@@ -48,12 +49,16 @@ export interface CalibrationProfile {
   latencySeconds?: number;
 }
 
+function calibrationRow(calibration: CalibrationProfile): { a4_hz: number; latency_ms?: number } {
+  const row: { a4_hz: number; latency_ms?: number } = { a4_hz: clampA4(calibration.a4) };
+  if (calibration.latencySeconds !== undefined) row.latency_ms = latencyToMs(calibration.latencySeconds);
+  return row;
+}
+
 /** Grava a4_hz (e latency_ms, quando confiável) no perfil da sessão. Sem cliente ou sessão, devolve false. */
 export async function syncCalibration(client: ProfileClient | null, session: SessionState, calibration: CalibrationProfile): Promise<boolean> {
   if (!client || session.status !== 'signed-in') return false;
-  const row: { a4_hz: number; latency_ms?: number } = { a4_hz: clampA4(calibration.a4) };
-  if (calibration.latencySeconds !== undefined) row.latency_ms = latencyToMs(calibration.latencySeconds);
-  const { error } = await client.from('profiles').update(row).eq('id', session.userId);
+  const { error } = await client.from('profiles').update(calibrationRow(calibration)).eq('id', session.userId);
   if (error) throw error;
   return true;
 }
@@ -63,12 +68,16 @@ export function useSaveCalibration(client: ProfileClient | null = supabase) {
   return useMutation({
     mutationFn: async (calibration: CalibrationProfile) => {
       saveA4(calibration.a4);
+      const change = calibrationRow(calibration);
+      markProfilePending(change);
       const session = await queryClient.fetchQuery({
         queryKey: ['session'],
         queryFn: () => ensureSession(client),
         staleTime: Infinity,
       });
-      return syncCalibration(client, session, calibration);
+      const synced = await syncCalibration(client, session, calibration);
+      if (synced) clearProfilePending(change);
+      return synced;
     },
   });
 }

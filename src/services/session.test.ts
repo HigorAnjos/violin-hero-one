@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ensureSession, type AuthClient } from './session';
+import { currentUserId, USER_STORAGE_KEY } from './user';
 
 function fakeClient({ session = null as unknown, signIn = {} as unknown } = {}) {
   const auth = {
@@ -29,6 +30,12 @@ describe('ensureSession', () => {
     const { auth, spies } = fakeClient({ signIn: { data: { user: { id: 'anon', is_anonymous: true } }, error: null } });
     expect(await ensureSession({ auth })).toEqual({ status: 'signed-in', userId: 'anon', anonymous: true });
     expect(spies.signInAnonymously).toHaveBeenCalledOnce();
+  });
+
+  it('não decide o dono do cache e da fila: isso é do adoptUser (shell/accountSwitch), na primeira sessão e na troca', async () => {
+    localStorage.removeItem(USER_STORAGE_KEY);
+    await ensureSession({ auth: fakeClient({ session: { user: { id: 'u1', is_anonymous: true } } }).auth });
+    expect(currentUserId()).toBeNull();
   });
 
   it('falha ao entrar (sem rede, login anônimo desligado): offline, sem erro', async () => {

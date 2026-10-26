@@ -26,5 +26,6 @@ export async function ensureSession(client: { auth: AuthClient } | null): Promis
     if (error || !data.user) return { status: 'offline' };
     user = data.user;
   }
+  // O dono do cache e da fila (vh:usuario) é gravado pelo adoptUser da conta, na primeira sessão e em toda troca
   return signedIn(user);
 }

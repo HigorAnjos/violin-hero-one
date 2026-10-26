@@ -24,6 +24,8 @@ export interface ResultState extends PlayState {
   result: GameResult;
   /** O recorde local antes desta partida; ausente quando ela não vale recorde (prática, laço, velocidade < 100%). */
   record?: RecordCheck;
+  /** A partida na fila de envio (playQueue): o Resultado troca o recorde e os selos pelos do servidor quando ele responde. */
+  clientId?: string;
 }
 
 export const DEFAULT_MODE: GameMode = 'Arcade';
@@ -43,7 +45,7 @@ export function readPlayState(raw: unknown): Required<Pick<PlayState, 'song' | '
   return { ...state, song: state.song ?? FIXED_SONGS[0].song, mode: isGameMode(state.mode) ? state.mode : DEFAULT_MODE };
 }
 
-export function readResultState(raw: unknown): (ReturnType<typeof readPlayState> & Pick<ResultState, 'result' | 'record'>) | null {
+export function readResultState(raw: unknown): (ReturnType<typeof readPlayState> & Pick<ResultState, 'result' | 'record' | 'clientId'>) | null {
   const state = raw && typeof raw === 'object' ? (raw as Partial<ResultState>) : null;
   return state?.result ? { ...readPlayState(state), result: state.result } : null;
 }

@@ -1,12 +1,17 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import type { PlayOutcome } from '../services/progress';
 import { palcoTheme } from '../assets/styles/themes/palco';
 import { playedResult } from '../components/ResultSummary/testing';
 import { ODE } from '../game/engine/testing';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
 import { practiceHardest, Results } from './Results';
+
+// O que o servidor respondeu para a partida 'c1' (a fila de verdade precisa do Supabase)
+const server = vi.hoisted(() => ({ outcome: undefined as PlayOutcome | undefined }));
+vi.mock('../services/sync', () => ({ usePlayOutcome: (id?: string) => (id === 'c1' ? server.outcome : undefined) }));
 
 const render = (result = playedResult(), theme = palcoTheme) =>
   renderScreen(<Results />, { path: ROUTES.results, route: ROUTES.results, state: { song: ODE, mode: 'Arcade', result }, theme });
@@ -65,6 +70,28 @@ describe('Results', () => {
     show({ previous: 6000, improved: false });
     expect(screen.queryByText(/sobre o recorde|Novo recorde/)).not.toBeInTheDocument();
     expect(screen.getByText('Recorde: 6.000')).toBeInTheDocument();
+  });
+
+  it('com a resposta do servidor, o recorde e os selos são os que ele confirmou; no reenvio, os locais', () => {
+    const show = () =>
+      renderScreen(<Results />, {
+        path: ROUTES.results,
+        route: ROUTES.results,
+        state: { song: ODE, mode: 'Arcade', result: { ...playedResult(), score: 5200, badges: ['primeira-musica'] }, record: { previous: null, improved: true }, clientId: 'c1' },
+      });
+    server.outcome = { playId: 'p', accuracy: 100, record: { previous: 6000, improved: false }, badges: ['combo-25'], streak: null, duplicate: false };
+    let view = show();
+    expect(screen.queryByText('Novo recorde!')).not.toBeInTheDocument();
+    expect(screen.getByText('Recorde: 6.000')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Selo conquistado nesta partida: Combo 25' })).toBeInTheDocument();
+    view.unmount();
+    server.outcome = { ...server.outcome, duplicate: true };
+    view = show();
+    expect(screen.getByText('Novo recorde!')).toBeInTheDocument();
+    view.unmount();
+    server.outcome = undefined;
+    show();
+    expect(screen.getByRole('status', { name: 'Selo conquistado nesta partida: Primeira música' })).toBeInTheDocument();
   });
 
   it('partida de prática: avisa que não vale selo nem recorde', () => {

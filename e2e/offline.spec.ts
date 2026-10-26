@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ODE } from '../src/game/engine/testing';
-import { SONG_DB_NAME, SONG_DB_STORE, type CachedSong } from '../src/services/songCache';
+import { DEVICE_DB_NAME, DEVICE_DB_VERSION, SONGS_STORE } from '../src/services/deviceDb';
+import type { CachedSong } from '../src/services/songCache';
 import { chooseSong, skipOnboarding } from './choose';
 
 /** As embutidas (src/game/notation/fixedSongs.json; o Playwright não importa JSON sem atributo). */
@@ -12,6 +13,7 @@ test.use({ serviceWorkers: 'allow', launchOptions: { args: ['--autoplay-policy=n
 
 /** Uma música do catálogo aberta antes, com internet: o que o cache do aparelho guardou dela. */
 const BAIXADA: CachedSong = {
+  userId: 'jogador-do-aparelho',
   id: 'greensleeves',
   level: 'medium',
   hash: 'a'.repeat(64),
@@ -41,10 +43,11 @@ async function firstVisit(page: Page) {
 /** Grava a baixada no IndexedDB como o app gravaria depois de abrir a música (o build do e2e não tem Supabase). */
 async function saveSong(page: Page, entry: CachedSong) {
   await page.evaluate(
-    ([name, store, value]) =>
+    ([name, version, store, value]) =>
       new Promise<void>((resolve, reject) => {
-        const open = indexedDB.open(name, 1);
-        open.onupgradeneeded = () => open.result.createObjectStore(store, { keyPath: ['id', 'level'] });
+        // O dono da baixada é o último usuário com sessão no aparelho (user.ts); o app cria os stores na primeira visita
+        localStorage.setItem('vh:usuario', value.userId);
+        const open = indexedDB.open(name, version);
         open.onerror = () => reject(open.error);
         open.onsuccess = () => {
           const tx = open.result.transaction(store, 'readwrite');
@@ -53,7 +56,7 @@ async function saveSong(page: Page, entry: CachedSong) {
           tx.onerror = () => reject(tx.error);
         };
       }),
-    [SONG_DB_NAME, SONG_DB_STORE, entry] as const
+    [DEVICE_DB_NAME, DEVICE_DB_VERSION, SONGS_STORE, entry] as const
   );
 }
 
