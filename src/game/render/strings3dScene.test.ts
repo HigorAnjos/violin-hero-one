@@ -224,6 +224,19 @@ describe('Strings3DScene', () => {
     expect(frames(120)).toEqual(at60);
   });
 
+  it.each([
+    [1280, 550],
+    [440, 272],
+  ])('em %i×%i nenhum rótulo do canvas fica abaixo de 12 px (letras, casas, "CASA", compassos)', (width, height) => {
+    const bars = song.measures.reduce<number[]>((acc, _m, i) => [...acc, i === 0 ? 0 : acc[i - 1] + song.measures[i - 1].beats], []);
+    const { s } = make({ clock: steadyClock(START, song.bpm), bars });
+    s.layout(width, height);
+    s.update(START);
+    const labels = s.labelFontSizes();
+    expect(labels.some((l) => l.label.startsWith('compasso'))).toBe(true);
+    expect(labels.filter((l) => l.px < 12 - 1e-9)).toEqual([]);
+  });
+
   it('ignora julgamento de nota que não existe', () => {
     const { s } = make();
     expect(() => s.judge({ ...judgment(notes[0], 'perfect'), index: 9999 })).not.toThrow();

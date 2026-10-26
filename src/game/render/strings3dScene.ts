@@ -9,7 +9,7 @@ import { beatWindows, windowTime, type BeatWindow, type SheetClock } from './she
 import {
   BOX,
   boxScale,
-  CASA_OFFSET,
+  casaNumberInto,
   casaOf,
   columnsFor,
   entryAlpha3d,
@@ -17,6 +17,7 @@ import {
   LEAD_SECONDS_3D,
   LETTER_HEIGHT,
   LETTER_OFFSET,
+  MIN_LABEL_PX,
   noteZ,
   NUMBER_HEIGHT,
   NUMBER_Z,
@@ -88,6 +89,12 @@ interface BoxInfo {
   finger: number;
   string: number;
 }
+
+/**
+ * Escala do rótulo assado em LABEL_PX para ter `height` px de altura na tela, sem a letra ficar abaixo de MIN_LABEL_PX
+ * (na caixa pequena do celular o mundo encolhe, a letra não).
+ */
+const labelScale = (height: number, texture: Texture) => Math.max(height / texture.height, MIN_LABEL_PX / LABEL_PX);
 
 const white = (anchorX = 0.5, anchorY = 0.5) => {
   const s = new Sprite(Texture.WHITE);
@@ -297,16 +304,17 @@ export class Strings3DScene extends Container {
       const letter = this.letters[s];
       pt(l.left - LETTER_OFFSET, STRING_HEIGHTS[s], 0);
       letter.position.set(a.x, a.y);
-      letter.scale.set((LETTER_HEIGHT * a.scale) / this.letterTextures[s].height);
+      letter.scale.set(labelScale(LETTER_HEIGHT * a.scale, this.letterTextures[s]));
     }
     for (let i = 0; i < this.columns; i++) {
-      pt(l.columnX[i], 0, NUMBER_Z);
+      casaNumberInto(l, i, a);
       this.numbers[i].position.set(a.x, a.y);
-      this.numbers[i].scale.set((NUMBER_HEIGHT * a.scale) / this.numberTextures[i].height);
+      this.numbers[i].scale.set(labelScale(NUMBER_HEIGHT * a.scale, this.numberTextures[i]));
     }
-    pt(l.right + CASA_OFFSET - 0.25, 0, NUMBER_Z);
+    // "CASA" começa na borda direita do chão, na linha dos números, e cabe em CASA_OFFSET + 0,6 (o enquadramento)
+    pt(l.right, 0, NUMBER_Z);
     this.casa.position.set(a.x, a.y);
-    this.casa.scale.set((NUMBER_HEIGHT * 0.7 * a.scale) / this.casaTexture.height);
+    this.casa.scale.set(labelScale(NUMBER_HEIGHT * 0.7 * a.scale, this.casaTexture));
 
     this.update(this.lastNow);
   }
@@ -527,6 +535,22 @@ export class Strings3DScene extends Container {
       .reverse();
   }
 
+  /** Tamanho da letra de cada rótulo na tela, em px (letras G D A E, casas, "CASA" e compassos à vista); para testes. */
+  labelFontSizes(): { label: string; px: number }[] {
+    const sprites: [string, Sprite][] = [
+      ...this.letters.map((s, i): [string, Sprite] => [this.palette.strings[i].letter, s]),
+      ...this.numbers.map((s, i): [string, Sprite] => [`casa ${i}`, s]),
+      ['CASA', this.casa],
+      ...this.barLabels.filter((s) => s.visible).map((s, i): [string, Sprite] => [`compasso ${i}`, s]),
+    ];
+    return sprites.map(([label, s]) => ({ label, px: LABEL_PX * s.scale.y }));
+  }
+
+  /** Centro de cada número de casa na tela; para testes. */
+  numberPositions(): number[] {
+    return this.numbers.map((n) => n.x);
+  }
+
   /** As caixas visíveis usam pedaços do atlas (mesma fonte de textura, um lote); para testes. */
   boxesShareAtlas(): boolean {
     return this.chips.every((c) => !c.box.visible || c.box.texture.source === this.atlas.source);
@@ -658,7 +682,7 @@ export class Strings3DScene extends Container {
     label.visible = true;
     label.texture = texture;
     label.position.set(this.pa.x, this.pa.y);
-    label.scale.set((h * this.pa.scale) / texture.height);
+    label.scale.set(labelScale(h * this.pa.scale, texture));
   }
 
   private bake(target: Container): Texture {

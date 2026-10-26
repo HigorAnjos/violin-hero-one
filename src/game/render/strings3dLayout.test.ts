@@ -3,6 +3,8 @@ import { stageBox, strings3dBox } from './layout';
 import {
   BOX,
   boxScale,
+  CASA_OFFSET,
+  casaNumberInto,
   casaOf,
   columnsFor,
   entryAlpha3d,
@@ -90,10 +92,12 @@ describe('posição da nota no tempo', () => {
   it('em 1280×550 bate com o design (5c): corda G em y 278, chão de 228 a 1108 na linha das cordas', () => {
     expect(Math.abs(project(l, 0, STRING_HEIGHTS[0], 0).y - 278)).toBeLessThan(5);
     expect(Math.abs(project(l, 0, STRING_HEIGHTS[3], 0).y - 464)).toBeLessThan(15);
-    const left = project(l, l.left, 0, 0).x;
-    const right = project(l, l.right, 0, 0).x;
+    // As 10 casas medem ~880 px na linha das cordas; o chão passa delas pela margem
+    const left = project(l, l.columnX[0] - 0.5, 0, 0).x;
+    const right = project(l, l.columnX[9] + 0.5, 0, 0).x;
     expect(right - left).toBeGreaterThan(800);
     expect(right - left).toBeLessThan(900);
+    expect(project(l, l.left, 0, 0).x).toBeLessThan(left);
     expect(Math.abs(project(l, 0, 0, -FLOOR_LENGTH).y - 169)).toBeLessThan(10);
   });
 
@@ -132,9 +136,35 @@ describe.each(VIEWPORTS)('layout por proporção em %i×%i', (viewportWidth, vie
     expect(numbers).toBeLessThanOrEqual(height);
   });
 
+  it('casas 0 e 9 inteiras dentro do chão: o número e a moldura do acerto na corda Mi', () => {
+    const out = { x: 0, y: 0, scale: 0 };
+    const nearLeft = p(l.left, 0, 0).x;
+    const nearRight = p(l.right, 0, 0).x;
+    const half = (casaNumberInto(l, 0, out), out.scale * NUMBER_HEIGHT * 0.4);
+    expect(casaNumberInto(l, 0, out).x - half).toBeGreaterThan(nearLeft);
+    expect(casaNumberInto(l, l.columns - 1, out).x + half).toBeLessThan(nearRight);
+    // A borda do chão na altura da tela em que a moldura está (o chão sobe em perspectiva)
+    const borderAt = (edge: number, screenY: number) => {
+      let lo = -FLOOR_LENGTH;
+      let hi = 0;
+      for (let i = 0; i < 50; i++) {
+        const mid = (lo + hi) / 2;
+        if (p(edge, 0, mid).y < screenY) lo = mid;
+        else hi = mid;
+      }
+      return p(edge, 0, (lo + hi) / 2).x;
+    };
+    const frame = (BOX.width * 1.24) / 2;
+    const e = STRING_HEIGHTS[3];
+    const leftFrame = p(l.columnX[0] - frame, e, 0);
+    const rightFrame = p(l.columnX[l.columns - 1] + frame, e, 0);
+    expect(leftFrame.x).toBeGreaterThanOrEqual(borderAt(l.left, leftFrame.y));
+    expect(rightFrame.x).toBeLessThanOrEqual(borderAt(l.right, rightFrame.y));
+  });
+
   it('letras G D A E e o rótulo das casas dentro da caixa', () => {
     const letter = p(l.left - LETTER_OFFSET - LETTER_HEIGHT / 2, STRING_HEIGHTS[0], 0);
-    const casa = p(l.right + 1.4, 0, NUMBER_Z);
+    const casa = p(l.right + CASA_OFFSET + 0.6, 0, NUMBER_Z);
     expect(letter.x).toBeGreaterThanOrEqual(0);
     expect(casa.x).toBeLessThanOrEqual(width);
   });
@@ -155,7 +185,7 @@ describe('caixa estreita', () => {
   it('abre o campo de visão para as letras e o "CASA" caberem', () => {
     const l = strings3dLayout(600, 550);
     expect(project(l, l.left - LETTER_OFFSET - LETTER_HEIGHT / 2, STRING_HEIGHTS[0], 0).x).toBeGreaterThanOrEqual(0);
-    expect(project(l, l.right + 1.35, 0, NUMBER_Z).x).toBeLessThanOrEqual(600);
+    expect(project(l, l.right + CASA_OFFSET + 0.6, 0, NUMBER_Z).x).toBeLessThanOrEqual(600);
     expect(l.camera.fov).toBeGreaterThan(strings3dLayout(1280, 550).camera.fov);
   });
 });

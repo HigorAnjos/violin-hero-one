@@ -21,12 +21,17 @@ export const FLOOR_LENGTH = 48;
 /** Câmera do design: altura e distância até a linha das cordas, inclinada para baixo. */
 const CAMERA_HEIGHT = 4.25;
 const CAMERA_DISTANCE = 6.74;
-/** Até onde as cordas passam do chão à esquerda, e onde fica o centro da letra. */
-export const STRING_OVERHANG = 0.45;
-export const LETTER_OFFSET = 0.8;
+/**
+ * Chão além das casas da ponta, de cada lado: a moldura do acerto (1,24 × a caixa) e a caixa vista de cima da corda
+ * ficam inteiras dentro do chão na casa 0 e na última, como no design.
+ */
+export const FLOOR_MARGIN = 0.75;
+/** Até onde as cordas passam do chão à esquerda (a margem do chão já as leva além da casa 0), e o centro da letra. */
+export const STRING_OVERHANG = 0;
+export const LETTER_OFFSET = 0.45;
 /** Linha dos números das casas, à frente das cordas, e o rótulo "CASA" à direita. */
 export const NUMBER_Z = 0.5;
-export const CASA_OFFSET = 0.75;
+export const CASA_OFFSET = 0.25;
 
 /** Tamanho da caixa da nota na linha das cordas; no fundo ela cresce para continuar legível (o design faz o mesmo). */
 export const BOX = { width: 0.95, height: 0.6, farGrowth: 0.7 } as const;
@@ -46,7 +51,7 @@ export interface Strings3DLayout {
   columns: number;
   /** Centro de cada coluna em x; a casa 0 à esquerda. */
   columnX: readonly number[];
-  /** Bordas do chão em x. */
+  /** Bordas do chão em x: as colunas mais a margem (FLOOR_MARGIN) de cada lado. */
   left: number;
   right: number;
   camera: {
@@ -122,8 +127,8 @@ const maxBy = (points: Point[], pose: CameraPose, f: (p: { tx: number; ty: numbe
  */
 export function strings3dLayout(width: number, height: number, columns: number = MIN_COLUMNS, lead: number = LEAD_SECONDS_3D): Strings3DLayout {
   const aspect = width > 0 && height > 0 ? width / height : 1;
-  const left = -columns / 2;
-  const right = columns / 2;
+  const left = -columns / 2 - FLOOR_MARGIN;
+  const right = columns / 2 + FLOOR_MARGIN;
   const points = framePoints(left, right);
   // As letras ficam à esquerda: a câmera vai para o meio do conteúdo, não do chão
   const x = (left - LETTER_OFFSET - LETTER_HEIGHT / 2 + right + CASA_OFFSET + 0.6) / 2;
@@ -175,7 +180,7 @@ export function strings3dLayout(width: number, height: number, columns: number =
     width,
     height,
     columns,
-    columnX: Array.from({ length: columns }, (_, i) => left + i + 0.5),
+    columnX: Array.from({ length: columns }, (_, i) => -columns / 2 + i + 0.5),
     left,
     right,
     camera: { ...pose, fov: (2 * Math.atan(tanHalf) * 180) / Math.PI, tanHalf, aspect },
@@ -212,6 +217,22 @@ export function projectInto(l: Strings3DLayout, x: number, y: number, z: number,
   out.scale = half / (depth * c.tanHalf);
   return out;
 }
+
+/**
+ * Onde fica o número da casa `column`: o x é o da coluna na borda da frente do chão, como no design (projetado mais à
+ * frente, ele abriria para fora do chão), e o y e a escala são os da linha dos números.
+ */
+export function casaNumberInto(l: Strings3DLayout, column: number, out: ScreenPoint): ScreenPoint {
+  projectInto(l, l.columnX[column], 0, NUMBER_Z, out);
+  const { y, scale } = out;
+  projectInto(l, l.columnX[column], 0, 0, out);
+  out.y = y;
+  out.scale = scale;
+  return out;
+}
+
+/** Menor letra dos rótulos do canvas, em px de tela: a mesma regra do texto das telas (12 px). */
+export const MIN_LABEL_PX = 12;
 
 /** z da nota da hora `time` quando o relógio marca `now`: chega à corda (0) na hora e não passa dela. */
 export function noteZ(l: Strings3DLayout, time: number, now: number): number {
