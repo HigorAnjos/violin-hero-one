@@ -3,7 +3,7 @@ import { simulateGame, type GameResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
 import { chooseSong, skipOnboarding } from './choose';
 import { fontsReady } from './fonts';
-import { expectFits, expectVisibleFocus, tooSmallTargets } from './layout';
+import { expectFits, expectVisibleFocus, tinyText, tooSmallTargets } from './layout';
 import { openWithState } from './state';
 
 // Build do e2e (--mode e2e): ?ouvido=simulado e ?simular valem. Sem gesto o Chromium não libera o áudio;
@@ -16,6 +16,7 @@ async function checkScreen(page: Page) {
   await fontsReady(page);
   await expectFits(page);
   expect(await tooSmallTargets(page), 'alvos de toque abaixo de 44 px').toEqual([]);
+  expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);
   await expectVisibleFocus(page);
 }
 

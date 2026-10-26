@@ -123,7 +123,7 @@ const Chip = styled.span<{ $color: string; $on: boolean }>`
   background-color: ${({ $on, $color }) => ($on ? $color : 'transparent')};
   color: ${({ $on, $color, theme }) => ($on ? theme.colors.background : $color)};
   font-weight: 800;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
 `;
 
 const Strip = styled.div`

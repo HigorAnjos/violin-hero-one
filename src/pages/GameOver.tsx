@@ -145,8 +145,8 @@ const Next = styled.nav`
   }
 
   small {
-    font-size: 0.6875rem;
-    letter-spacing: 0.1em;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
   }
 
   @media (max-height: 500px) {

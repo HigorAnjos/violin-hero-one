@@ -94,8 +94,8 @@ const Status = styled.span<{ $state: OpenStringState }>`
     $state === 'listening' ? theme.colors.info.text : $state === 'heard' ? theme.colors.text : theme.colors.textMuted};
 
   @media (max-height: 500px) {
-    font-size: 0.6875rem;
-    letter-spacing: 0.06em;
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
   }
 `;
 
