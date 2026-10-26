@@ -2,7 +2,7 @@ import react from '@vitejs/plugin-react';
 import { loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
-import { cadernoTheme, DEFAULT_THEME, THEMES, THEME_STORAGE_KEY } from './src/assets/styles/themes';
+import { cadernoTheme, DEFAULT_THEME, SPECIAL_THEMES, THEMES, THEME_STORAGE_KEY } from './src/assets/styles/themes';
 import { noConverterInApp } from './src/build/noConverterInApp';
 
 /**
@@ -11,7 +11,7 @@ import { noConverterInApp } from './src/build/noConverterInApp';
  */
 function themeBootScript(): Plugin {
   const colors = Object.fromEntries(
-    THEMES.map((t) => [t.id, [t.colors.background, t.colors.text, t.mode, t.colors.surface]])
+    [...THEMES, ...SPECIAL_THEMES].map((t) => [t.id, [t.colors.background, t.colors.text, t.mode, t.colors.surface]])
   );
   const fallback = JSON.stringify(DEFAULT_THEME.id);
   const script =
@@ -67,6 +67,8 @@ function offlineApp() {
       // Rotas do jogo (/tocar, /jogo…) abrem a casca guardada; o BrowserRouter resolve o resto
       navigateFallback: '/index.html',
       cleanupOutdatedCaches: true,
+      // Lembrete de prática: notificação local, sem servidor de push (services/reminder.ts)
+      importScripts: ['reminder-sw.js'],
     },
   });
 }

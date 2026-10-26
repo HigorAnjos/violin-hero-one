@@ -5,7 +5,78 @@ import { volumeLabel } from '../../game/synth';
 import { Button } from '../Button/Button';
 import { Kicker, SongKicker } from '../Screen/Screen';
 import { clock } from '../../game/render/staff';
+import type { PlayPrefs } from '../../shell/playPrefs';
 import { SpeedPicker, speedLabel } from '../SpeedPicker/SpeedPicker';
+
+/**
+ * Caixa de marcar do design (.vh-chk): o input tem 44 px (toque) e a caixa de 18 px é desenhada no meio dele, como o
+ * trilho do Toggle.
+ */
+const Check = styled.label`
+  && {
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+    min-height: 2.75rem;
+    cursor: pointer;
+  }
+
+  && input {
+    appearance: none;
+    flex: none;
+    position: relative;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: 0 0 0 -0.8125rem;
+    background: none;
+    cursor: pointer;
+  }
+
+  && input::before {
+    content: '';
+    position: absolute;
+    inset: 0.8125rem;
+    border: 2px solid ${({ theme }) => theme.colors.textMuted};
+    border-radius: 3px;
+    background-color: ${({ theme }) => theme.colors.surface};
+  }
+
+  && input:checked::before {
+    border-color: ${({ theme }) => theme.colors.info.main};
+    background-color: ${({ theme }) => theme.colors.info.main};
+  }
+
+  && input:checked::after {
+    content: '';
+    position: absolute;
+    left: 1.1875rem;
+    top: 0.9375rem;
+    width: 0.3125rem;
+    height: 0.625rem;
+    /* O ciano da caixa tem 3:1 contra o cartão: o visto na cor do cartão também */
+    border: solid ${({ theme }) => theme.colors.surface};
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  && input:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.info.main};
+    outline-offset: -0.5rem;
+  }
+
+  @media (max-height: 500px) {
+    && {
+      font-size: 0.75rem;
+      line-height: 1rem;
+    }
+  }
+`;
+
+const CHECKS: { key: keyof PlayPrefs; label: string }[] = [
+  { key: 'tuningLine', label: 'Mostrar linha de afinação' },
+  { key: 'noteNames', label: 'Mostrar nome das notas' },
+  { key: 'colorblind', label: 'Padrões para daltonismo' },
+];
 
 const Veil = styled.div`
   position: absolute;
@@ -243,6 +314,9 @@ export interface PauseMenuProps {
   /** Volume do metrônomo, 0 a 1; 0 = desligado. */
   metronome?: number;
   onMetronome?: (volume: number) => void;
+  /** Linha de afinação, nome das notas e modo daltônico; sem onPrefs, sem as caixas. */
+  prefs?: PlayPrefs;
+  onPrefs?: (change: Partial<PlayPrefs>) => void;
 }
 
 export const PRACTICE_WARNING = 'A partir daqui, esta partida conta como prática: sem selos e sem recorde.';
@@ -265,6 +339,8 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
   speedNeedsConfirm = false,
   metronome = 0,
   onMetronome,
+  prefs,
+  onPrefs,
 }) => {
   const first = React.useRef<HTMLButtonElement>(null);
   const [pendingSpeed, setPendingSpeed] = React.useState<number | null>(null);
@@ -362,6 +438,14 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
             <input type="range" min={0} max={100} step={5} value={Math.round(metronome * 100)} onChange={(e) => onMetronome(Number(e.target.value) / 100)} />
           </label>
         )}
+        {prefs &&
+          onPrefs &&
+          CHECKS.map(({ key, label }) => (
+            <Check key={key}>
+              <input type="checkbox" checked={prefs[key]} onChange={(e) => onPrefs({ [key]: e.target.checked })} />
+              {label}
+            </Check>
+          ))}
         <p>
           <kbd>ESC</kbd>
           <span>continuar</span>

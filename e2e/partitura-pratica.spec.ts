@@ -20,10 +20,10 @@ async function checkScreen(page: Page) {
   expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);
 }
 
-for (const tema of ['caderno', 'palco'] as const) {
+for (const tema of ['caderno', 'palco', '8-bits'] as const) {
   for (const fonte of ['real', 'reserva'] as const) {
     test.describe(`${tema}, fonte ${fonte}`, () => {
-      const ready = async (page: Page) => (fonte === 'real' ? fontsReady(page) : fallbackFontsReady(page));
+      const ready = async (page: Page) => (fonte === 'real' ? fontsReady(page, tema) : fallbackFontsReady(page, tema));
 
       test.beforeEach(async ({ page }) => {
         if (fonte === 'reserva') await blockWebFonts(page);

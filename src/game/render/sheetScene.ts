@@ -5,6 +5,7 @@ import type { Song } from '../notation/song';
 import { STRING_LETTERS } from '../notation/violin';
 import { formatFps, type FpsReport } from './fps';
 import { lowerBound, maxNotesInWindow } from './layout';
+import { glowLayers, noteLook, type NoteLook } from './look';
 import { sheetPalette, type SheetPalette } from './palette';
 import { feedbackScale, playedString } from './present';
 import type { JudgmentEvent, TextureBaker } from './scene';
@@ -155,6 +156,7 @@ const MISSED = 2;
  */
 export class SheetScene extends Container {
   private readonly palette: SheetPalette;
+  private readonly look: NoteLook;
   private readonly reducedMotion: boolean;
   private readonly clock: SheetClock;
   private readonly notes: readonly StaffNote[];
@@ -274,6 +276,7 @@ export class SheetScene extends Container {
     super();
     const { theme, song } = options;
     this.palette = sheetPalette(theme);
+    this.look = noteLook(theme);
     this.reducedMotion = options.reducedMotion;
     this.clock = options.clock;
     const staff = staffLayout(song);
@@ -977,7 +980,8 @@ export class SheetScene extends Container {
     const stem = sprite(Texture.WHITE, 0, 0);
     stem.tint = p.ink;
     const head = sprite();
-    head.rotation = HEAD_ANGLE;
+    // Cabeça quadrada (8-Bits) fica reta: girada, viraria losango
+    head.rotation = this.look.square ? 0 : HEAD_ANGLE;
     const flags = [sprite(this.flagTexture, 0, 0), sprite(this.flagTexture, 0, 0)];
     const dot = sprite(this.dotTexture);
     const accidental = sprite();
@@ -987,7 +991,7 @@ export class SheetScene extends Container {
     const mark = sprite();
     mark.visible = false;
     const ghost = sprite(this.ghostTexture);
-    ghost.rotation = HEAD_ANGLE;
+    ghost.rotation = head.rotation;
     ghost.visible = false;
     const root = new Container();
     root.visible = false;
@@ -1069,10 +1073,20 @@ export class SheetScene extends Container {
     return this.bake(new Text({ text, style }));
   }
 
-  /** Cabeça de nota do design: elipse (girada no sprite); vazada = papel com contorno da corda. */
+  /**
+   * Cabeça de nota do design: elipse (girada no sprite); vazada = papel com contorno da corda. No 8-Bits, quadrada; no
+   * Neon, com halo na cor da corda (a textura cresce por igual em volta, o centro não muda).
+   */
   private bakeHead(fill: number, stroke: number | null): Texture {
     const width = HEAD_RY * 0.35;
-    const g = new Graphics().ellipse(HEAD_RX + width, HEAD_RY + width, HEAD_RX - (stroke === null ? 0 : width / 2), HEAD_RY - (stroke === null ? 0 : width / 2)).fill(fill);
+    const [cx, cy] = [HEAD_RX + width, HEAD_RY + width];
+    const shape = (g: Graphics, rx: number, ry: number) => (this.look.square ? g.rect(cx - ry * 1.15, cy - ry, ry * 2.3, ry * 2) : g.ellipse(cx, cy, rx, ry));
+    const g = new Graphics();
+    for (const { spread, alpha } of glowLayers(this.look)) {
+      const grow = HEAD_RY * 2 * spread;
+      shape(g, HEAD_RX + grow, HEAD_RY + grow).fill({ color: stroke ?? fill, alpha });
+    }
+    shape(g, HEAD_RX - (stroke === null ? 0 : width / 2), HEAD_RY - (stroke === null ? 0 : width / 2)).fill(fill);
     if (stroke !== null) g.stroke({ color: stroke, width });
     return this.bake(g);
   }

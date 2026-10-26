@@ -82,11 +82,13 @@ export interface LiveTuningProps {
   /** Frequência da nota da vez no Lá da partida; null sem nota. */
   targetHz: number | null;
   bands?: TuningBands;
+  /** "Mostrar linha de afinação": desligada, só o ponto de agora. */
+  showLine?: boolean;
   className?: string;
 }
 
 /** Painel "Afinação ao vivo" da 5b: Hz, traço com as faixas do nível e para que lado corrigir. */
-export const LiveTuning: React.FC<LiveTuningProps> = ({ trace, liveCents, targetHz, bands = DEFAULT_BANDS, className }) => {
+export const LiveTuning: React.FC<LiveTuningProps> = ({ trace, liveCents, targetHz, bands = DEFAULT_BANDS, showLine = true, className }) => {
   const theme = useTheme();
   const px = H / 2 / bands.good;
   const points = liveTrace(trace, bands);
@@ -105,7 +107,7 @@ export const LiveTuning: React.FC<LiveTuningProps> = ({ trace, liveCents, target
         <rect x="0" y={H / 2 - bands.great * px} width={W} height={bands.great * px * 2} fill={rgba(theme.colors.info.main, 0.1)} />
         <rect x="0" y={H / 2 - bands.perfect * px} width={W} height={bands.perfect * px * 2} fill={rgba(theme.colors.text, 0.1)} />
         <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke={theme.colors.text} strokeOpacity="0.5" />
-        {points.length > 1 && (
+        {showLine && points.length > 1 && (
           <polyline points={points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')} fill="none" stroke={theme.colors.info.main} strokeWidth="2.5" strokeLinejoin="round" />
         )}
         {last && <circle cx={last.x} cy={last.y} r="5" fill={theme.colors.text} />}

@@ -274,7 +274,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
             <Orchestra level={paused ? 4 : hud.level} maestro={paused} notes={!paused} />
           </div>
         </Middle>
-        <LiveTuning trace={hud.trace} liveCents={hud.liveCents} targetHz={hud.target?.frequency ?? null} bands={bands} />
+        <LiveTuning trace={hud.trace} liveCents={hud.liveCents} targetHz={hud.target?.frequency ?? null} bands={bands} showLine={game.prefs.tuningLine} />
       </Bottom>
 
       {paused && (

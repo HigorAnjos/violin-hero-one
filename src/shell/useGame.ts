@@ -16,6 +16,7 @@ import { createGameSession, type GameSession, type GameSessionOptions, type Prac
 import { loadOrchestra, type OrchestraFactory } from './orchestra';
 import { loadMetronome, saveMetronome } from './metronome';
 import { createShowQueue } from '../game/render/showQueue';
+import { loadPlayPrefs, savePlayPrefs, type PlayPrefs } from './playPrefs';
 import { isRehearsalEar } from './simulatedEar';
 
 export type TrackLoader = (host: HTMLElement, options: TrackOptions) => Promise<Track>;
@@ -178,11 +179,14 @@ export function useGame(options: GameOptions) {
   const [metronome, setMetronome] = React.useState(loadMetronome);
   const [practiced, setPracticed] = React.useState(false);
   const [latencyMs, setLatencyMs] = React.useState<number | null>(null);
-  const live = React.useRef<{ session: GameSession | null; latency: number; paused: boolean; closes: number }>({
+  const [prefs, setPrefs] = React.useState(loadPlayPrefs);
+  const live = React.useRef<{ session: GameSession | null; latency: number; paused: boolean; closes: number; prefs: PlayPrefs; surface: Track | Sheet | Strings3D | null }>({
     session: null,
     latency: 0,
     paused: false,
     closes: 0,
+    prefs,
+    surface: null,
   });
 
   const follow = React.useCallback(() => {
@@ -322,6 +326,7 @@ export function useGame(options: GameOptions) {
       const box = opts.current.box();
       const { theme, reducedMotion, showFps, onFps } = opts.current.trackOptions;
       const view = opts.current.view;
+      const { colorblind: patterns, noteNames } = shared.prefs;
       const surface: Promise<Track | Sheet | Strings3D> =
         view === 'sheet'
           ? deps.loadSheet(host, { theme, reducedMotion, showFps, onFps, song, clock: session.clock, width: box.width, height: box.height })
@@ -336,6 +341,7 @@ export function useGame(options: GameOptions) {
                 leadSeconds: player?.trackLeadSeconds,
                 width: box.width,
                 height: box.height,
+                patterns,
               })
             : deps.loadTrack(host, {
               ...opts.current.trackOptions,
@@ -343,11 +349,13 @@ export function useGame(options: GameOptions) {
               notes: session.engine.notes,
               width: box.width,
               height: box.height,
+              patterns,
+              noteNames,
             });
       surface
         .then((created) => {
           if (!alive) return created.destroy();
-          track = created;
+          track = shared.surface = created;
           session?.setTrack(created);
         })
         .catch(() => undefined);
@@ -379,6 +387,7 @@ export function useGame(options: GameOptions) {
       track?.destroy();
       session?.destroy();
       shared.session = null;
+      shared.surface = null;
     };
   }, [ear, song, a4, noFail, performance, follow]);
 
@@ -436,6 +445,16 @@ export function useGame(options: GameOptions) {
     saveMetronome(next);
   }, []);
 
+  /** Opções de tela da Pausa: guardadas e aplicadas na pista (ou nas Cordas 3D) já no próximo quadro. */
+  const changePrefs = React.useCallback((change: Partial<PlayPrefs>) => {
+    const next = { ...live.current.prefs, ...change };
+    live.current.prefs = next;
+    setPrefs(next);
+    savePlayPrefs(next);
+    const surface = live.current.surface;
+    if (surface && 'setLook' in surface) surface.setLook({ patterns: next.colorblind, noteNames: next.noteNames });
+  }, []);
+
   const practice = React.useMemo<PracticeApi>(
     () => ({
       setSpeed: (speed) => void live.current.session?.practice?.setSpeed(speed),
@@ -470,6 +489,8 @@ export function useGame(options: GameOptions) {
     changeVolume,
     metronome,
     changeMetronome,
+    prefs,
+    changePrefs,
     practice,
     /** A partida comum já virou prática (sem selos e sem recorde). */
     practiced,

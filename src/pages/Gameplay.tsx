@@ -119,7 +119,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
       </Backdrop>
       <TrackHost ref={host} style={{ left: stage.x, top: stage.y, width: stage.width, height: stage.height }} data-testid="pista" aria-hidden="true" />
       <ScoreCard score={hud.score} multiplier={hud.multiplier} combo={hud.combo} accuracy={hud.accuracy} level={hud.level} />
-      <TuningCard target={target} trace={hud.trace} liveCents={hud.liveCents} a4={a4} explanation={hud.explanation} compact={compact} bands={bands} />
+      <TuningCard target={target} trace={hud.trace} liveCents={hud.liveCents} a4={a4} explanation={hud.explanation} compact={compact} bands={bands} showLine={game.prefs.tuningLine} />
       {!paused && (
         <PauseButton type="button" aria-label="Pausar" onClick={pause} disabled={phase !== 'playing'}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
