@@ -1,10 +1,13 @@
 import { screen } from '@testing-library/react';
-import { beforeAll, describe, it, expect } from 'vitest';
+import { beforeAll, describe, it, expect, vi } from 'vitest';
 import { playedResult } from '../components/ResultSummary/testing';
 import { ODE } from '../game/engine/testing';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
 import { BadgeEarned } from './BadgeEarned';
+
+// A partida simulada do beforeAll e a primeira renderização com o selo animado passam dos 5 s sob carga
+vi.setConfig({ testTimeout: 15_000, hookTimeout: 15_000 });
 
 describe('BadgeEarned', () => {
   // A partida simulada sai do tempo dos testes: sob carga, simular e renderizar juntos passa de 5 s

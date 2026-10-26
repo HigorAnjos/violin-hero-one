@@ -1,12 +1,15 @@
 node_modules
 dist
+dist-catalogo
 .env
 .env.local
 .env.*.local
 *.log
 .DS_Store
 playwright-report
+playwright-report-catalogo
 test-results
+test-results-catalogo
 e2e/screenshots
 e2e/audio/synthetic
 e2e/audio/aligned

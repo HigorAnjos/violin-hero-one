@@ -1,5 +1,53 @@
 import { expect, type Page } from '@playwright/test';
 
+/** Título comprido de propósito: as telas com o nome da música precisam cortar ou quebrar sem passar da janela. */
+export const LONG_TITLE = 'Concerto para Violino em Mi Menor, Op. 64 — Allegro molto appassionato (versão completa com cadência)';
+
+/**
+ * Botões com ▸ ou ◂ (fora do subset latin, desenhados por outra fonte): a seta não muda a altura do botão
+ * (medida com e sem ela) e fica no meio do texto, na mesma linha dos botões vizinhos.
+ */
+export async function expectArrowsAligned(page: Page) {
+  const buttons = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('button, a[href]')]
+      .filter((el) => el.offsetParent !== null && /[▸◂]/.test(el.textContent ?? ''))
+      .map((el) => {
+        const arrow = [...el.querySelectorAll('[aria-hidden="true"]')].find((s) => /^[▸◂]$/.test((s.textContent ?? '').trim()))!;
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        let text: DOMRect | null = null;
+        while (!text && walker.nextNode()) {
+          const node = walker.currentNode;
+          if (arrow.contains(node) || !node.textContent?.trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          text = range.getBoundingClientRect();
+        }
+        const range = document.createRange();
+        range.selectNodeContents(arrow);
+        const a = range.getBoundingClientRect();
+        const mid = (r: DOMRect) => (r.top + r.bottom) / 2;
+        const box = el.getBoundingClientRect();
+        (arrow as HTMLElement).style.display = 'none';
+        const without = el.getBoundingClientRect().height;
+        (arrow as HTMLElement).style.display = '';
+        const neighbors = [...(el.parentElement?.children ?? [])].filter((s) => s !== el && s.matches('button, a[href]'));
+        const half = (n: number) => Math.round(n * 2) / 2;
+        return {
+          label: (el.textContent ?? '').trim(),
+          growth: half(box.height - without),
+          offset: text ? half(Math.abs(mid(a) - mid(text))) : 0,
+          rowShift: half(Math.max(0, ...neighbors.map((s) => Math.abs(mid(s.getBoundingClientRect()) - mid(box))))),
+        };
+      })
+  );
+  expect(buttons.length, 'botões com seta na tela').toBeGreaterThan(0);
+  for (const b of buttons) {
+    expect(b.growth, `altura que a seta acrescenta a "${b.label}" (px)`).toBe(0);
+    expect(b.offset, `seta de "${b.label}" fora do meio do texto (px)`).toBeLessThanOrEqual(2);
+    expect(b.rowShift, `"${b.label}" desalinhado dos botões vizinhos (px)`).toBeLessThanOrEqual(0.5);
+  }
+}
+
 /**
  * Nada passa da janela: sem rolagem e nenhum elemento visível além da borda direita ou de baixo. O que um ancestral
  * recorta (overflow: as notas da partitura dentro da SVG, listas que rolam por dentro) conta só pela parte que aparece.

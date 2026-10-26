@@ -19,7 +19,8 @@
     "icons": "node scripts/pwa-icons.mjs",
     "test:db": "node --test scripts/test-db.mjs",
     "db:local": "node scripts/db-local.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:catalogo": "playwright test -c playwright.catalogo.config.ts"
   },
   "dependencies": {
     "@fontsource/baloo-2": "^5.3.0",
