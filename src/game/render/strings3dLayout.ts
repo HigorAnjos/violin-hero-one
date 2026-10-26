@@ -102,7 +102,8 @@ type Point = readonly [number, number, number];
 function framePoints(left: number, right: number): { top: Point[]; bottom: Point[]; sides: Point[] } {
   const farBox = STRING_HEIGHTS[0] + BOX.height * (1 + BOX.farGrowth);
   const top: Point[] = [[0, farBox, -FLOOR_LENGTH]];
-  const bottom: Point[] = [[0, 0, NUMBER_Z + NUMBER_HEIGHT]];
+  // O número é uma placa de pé no chão, centrada em y = 0: o pé dela fica abaixo do chão
+  const bottom: Point[] = [[0, -NUMBER_HEIGHT / 2, NUMBER_Z]];
   const sides: Point[] = [
     [left - LETTER_OFFSET - LETTER_HEIGHT / 2, STRING_HEIGHTS[0] + LETTER_HEIGHT / 2, 0],
     [left - LETTER_OFFSET - LETTER_HEIGHT / 2, 0, NUMBER_Z],

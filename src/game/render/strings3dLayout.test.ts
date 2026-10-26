@@ -106,7 +106,7 @@ describe.each(SIZES)('layout por proporção em %i×%i', (width, height) => {
 
   it('o fundo fica no alto (sob os cartões) e os números das casas no pé da caixa', () => {
     const farTop = p(0, STRING_HEIGHTS[0] + BOX.height * (1 + BOX.farGrowth), -FLOOR_LENGTH).y;
-    const numbers = p(0, 0, NUMBER_Z + NUMBER_HEIGHT).y;
+    const numbers = p(0, -NUMBER_HEIGHT / 2, NUMBER_Z).y;
     expect(farTop / height).toBeGreaterThanOrEqual(0.2);
     expect(farTop / height).toBeLessThanOrEqual(0.3);
     expect(numbers / height).toBeGreaterThan(0.93);
