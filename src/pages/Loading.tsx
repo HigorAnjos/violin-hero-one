@@ -213,9 +213,13 @@ const Preparing: React.FC<{ choice: SongChoice }> = ({ choice }) => {
 
   return (
     <Screen $gap="1rem">
-      {shelf.status === 'ready' && shelf.fallback && <OfflineBanner reason={shelf.reason} count={shelf.songs.length} />}
+      {shelf.status === 'ready' && shelf.fallback && (
+        <OfflineBanner reason={shelf.reason} count={shelf.songs.length} saved={shelf.songs.some((s) => s.saved)} />
+      )}
       <Body>
-        <Cover id={choice.songId}>{(sheet?.embedded || (playable.status === 'ready' && playable.embedded)) && <Badge>No app</Badge>}</Cover>
+        <Cover id={choice.songId}>
+          {sheet?.embedded || (playable.status === 'ready' && playable.embedded) ? <Badge>No app</Badge> : sheet?.saved && <Badge>Baixada</Badge>}
+        </Cover>
         <Column>
           <div>
             <Kicker>

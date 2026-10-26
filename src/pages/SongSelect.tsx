@@ -7,7 +7,7 @@ import { useRadioGroup } from '../components/RadioGroup/useRadioGroup';
 import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
 import { matchesSearch, SearchField } from '../components/SearchField/SearchField';
 import { SongCover } from '../components/SongCover/SongCover';
-import { songMeta } from '../components/SongCover/songFacts';
+import { offlineTag, songMeta } from '../components/SongCover/songFacts';
 import { SongDetails } from '../components/SongDetails/SongDetails';
 import { levelSettings, type PlayerLevel } from '../game/engine/levels';
 import type { Level } from '../game/notation/song';
@@ -208,16 +208,19 @@ const SongList: React.FC<{ songs: ShelfSong[]; selected: string; onSelect: (id: 
   const radio = useRadioGroup(ids, ids.includes(selected) ? selected : null, onSelect);
   return (
     <List role="radiogroup" aria-label="Músicas">
-      {songs.map((song) => (
-        <Row key={song.id} {...radio(song.id)} aria-label={song.title}>
-          <Art id={song.id} />
-          <RowText>
-            <b>{song.title}</b>
-            <span>{songMeta(song)}</span>
-          </RowText>
-          {song.embedded && !offline ? <Tag>No app</Tag> : <span />}
-        </Row>
-      ))}
+      {songs.map((song) => {
+        const tag = offlineTag(song, offline);
+        return (
+          <Row key={song.id} {...radio(song.id)} aria-label={song.title}>
+            <Art id={song.id} />
+            <RowText>
+              <b>{song.title}</b>
+              <span>{songMeta(song)}</span>
+            </RowText>
+            {tag ? <Tag>{tag}</Tag> : <span />}
+          </Row>
+        );
+      })}
     </List>
   );
 };
@@ -290,7 +293,7 @@ export const SongSelect: React.FC = () => {
         </Tools>
       </Header>
 
-      {shelf.status === 'ready' && shelf.fallback && <OfflineBanner reason={shelf.reason} count={songs.length} />}
+      {shelf.status === 'ready' && shelf.fallback && <OfflineBanner reason={shelf.reason} count={songs.length} saved={songs.some((s) => s.saved)} />}
 
       <Body>
         {shelf.status === 'loading' ? (

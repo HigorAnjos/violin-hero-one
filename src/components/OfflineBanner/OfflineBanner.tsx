@@ -28,13 +28,18 @@ const Bar = styled.p`
   }
 `;
 
-/** Aviso de que a estante são só as músicas do app: sem internet, ou o servidor não respondeu. */
-export const OfflineBanner: React.FC<{ reason: SongErrorKind; count: number }> = ({ reason, count }) => (
+/**
+ * Aviso de que a estante são só as músicas do app e as baixadas: sem internet, ou o servidor não respondeu.
+ * `saved`: tem música baixada entre elas.
+ */
+export const OfflineBanner: React.FC<{ reason: SongErrorKind; count: number; saved?: boolean }> = ({ reason, count, saved = false }) => (
   <Bar role="status">
     <b>
       <span aria-hidden="true">▲ </span>
       {reason === 'offline' ? 'Sem internet' : 'Servidor fora do ar'}
     </b>
-    <span>Você pode tocar as {count} músicas que vêm no app. O resto volta quando a conexão voltar.</span>
+    <span>
+      Você pode tocar as {count} músicas {saved ? 'do app e as baixadas' : 'que vêm no app'}. O resto volta quando a conexão voltar.
+    </span>
   </Bar>
 );
