@@ -81,7 +81,8 @@ export const ModeSelect: React.FC = () => {
   const fromUrl = modeFromSlug(search.get('modo'));
   const [mode, setMode] = React.useState<GameMode>(fromUrl === 'Prática' ? 'Arcade' : readyMode(fromUrl));
   const radio = useRadioGroup(PLAYABLE, mode, setMode);
-  const confirm = () => navigate(songsUrl(mode));
+  // Vindo da Biblioteca, a música já escolhida segue para a seleção
+  const confirm = () => navigate(songsUrl(mode, search.get('musica') ?? undefined));
 
   return (
     <Screen $gap="1.75rem">
