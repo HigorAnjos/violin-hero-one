@@ -16,6 +16,9 @@ export interface AppUpdate {
   apply(): void;
 }
 
+/** Versão nova sempre esperando, sem service worker: ?nova-versao (ferramenta de conferência, main.tsx). */
+export const pendingUpdate = (): AppUpdate => ({ subscribe: () => () => undefined, waiting: () => true, apply: () => undefined });
+
 /** Com o app aberto por horas (PWA instalado), confere de hora em hora se saiu versão nova. */
 export const UPDATE_CHECK_MS = 60 * 60_000;
 
