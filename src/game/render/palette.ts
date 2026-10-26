@@ -60,6 +60,9 @@ export interface SheetPalette {
   needle: number;
   needleText: number;
   judgments: Record<Judgment, number>;
+  /** Laço A–B: banda, marcadores, arco de volta e o texto sobre a bandeirinha (o magenta da prática). */
+  loop: number;
+  loopText: number;
 }
 
 /** Cores da faixa de partitura, todas do tema. */
@@ -79,6 +82,8 @@ export function sheetPalette(theme: Theme): SheetPalette {
       good: solid(g.judgments.good),
       miss: solid(g.judgments.miss),
     },
+    loop: solid(theme.colors.primary.main),
+    loopText: solid(theme.colors.primary.text),
   };
 }
 

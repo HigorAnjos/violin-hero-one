@@ -1,5 +1,6 @@
 import { JUDGMENTS, JUDGMENT_LABEL } from '../engine/score';
 import type { Issue, Judgment } from '../engine/types';
+import { OPEN_STRING_MIDI, stringFits, type StringIndex } from '../notation/violin';
 
 export { JUDGMENTS };
 
@@ -71,6 +72,27 @@ export function glowRing(age: number, reducedMotion: boolean): { alpha: number; 
   const alpha = feedbackAlpha(age);
   if (reducedMotion) return { alpha: 0, scale: 1 };
   return { alpha, scale: 1 + 0.35 * Math.min(1, Math.max(0, age) / (FEEDBACK_HOLD_SECONDS + FEEDBACK_FADE_SECONDS)) };
+}
+
+/** ALVO e VOCÊ ficam este tanto nas cordas depois da nota errada, e somem em ERROR_FADE_SECONDS. */
+export const ERROR_HOLD_SECONDS = 0.8;
+export const ERROR_FADE_SECONDS = 0.4;
+
+/** Transparência do ALVO / VOCÊ da nota errada mostrada há `age` segundos; 0 é escondido. */
+export function errorAlpha(age: number): number {
+  if (age < 0) return 0;
+  if (age <= ERROR_HOLD_SECONDS) return 1;
+  return Math.max(0, 1 - (age - ERROR_HOLD_SECONDS) / ERROR_FADE_SECONDS);
+}
+
+/**
+ * A corda em que a nota tocada no lugar provavelmente saiu: a do alvo, se ela cabe nele (dedo errado na mesma corda);
+ * senão a corda mais aguda em que ela cabe (1ª posição); fora do violino, a corda mais perto.
+ */
+export function playedString(midi: number, target: StringIndex): StringIndex {
+  if (stringFits(midi, target)) return target;
+  for (let s = 3; s >= 0; s--) if (stringFits(midi, s as StringIndex)) return s as StringIndex;
+  return midi < OPEN_STRING_MIDI[0] ? 0 : 3;
 }
 
 /** Preferência do sistema "reduzir movimento"; fora do navegador, falso. */

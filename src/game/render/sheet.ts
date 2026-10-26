@@ -55,29 +55,38 @@ export async function createSheet(host: HTMLCanvasElement | HTMLElement, options
   // Clave, acidentes e textos são assados uma vez: as fontes precisam estar carregadas antes
   await loadFonts(theme);
 
+  const density = globalThis.devicePixelRatio || 1;
   const app = new Application();
   await app.init({
     canvas: host instanceof HTMLCanvasElement ? host : undefined,
     width: options.width,
     height: options.height,
     backgroundAlpha: 0,
-    antialias: true,
+    // Como nas Cordas 3D: com tela densa (dpr ≥ 2) o serrilhado quase não aparece, e o MSAA pesa no celular
+    antialias: density < 2,
     autoDensity: true,
-    resolution: Math.min(globalThis.devicePixelRatio || 1, MAX_RESOLUTION),
+    resolution: Math.min(density, MAX_RESOLUTION),
     autoStart: false,
     sharedTicker: false,
     preference: 'webgl',
   });
   if (!(host instanceof HTMLCanvasElement)) host.appendChild(app.canvas);
 
-  const scene = new SheetScene(app.renderer, {
-    theme,
-    song: options.song,
-    clock: options.clock,
-    reducedMotion: options.reducedMotion ?? prefersReducedMotion(),
-  });
-  app.stage.addChild(scene);
-  scene.layout(options.width, options.height);
+  let scene: SheetScene;
+  try {
+    scene = new SheetScene(app.renderer, {
+      theme,
+      song: options.song,
+      clock: options.clock,
+      reducedMotion: options.reducedMotion ?? prefersReducedMotion(),
+    });
+    app.stage.addChild(scene);
+    scene.layout(options.width, options.height);
+  } catch (error) {
+    // Ninguém recebe a faixa para destruir: o contexto WebGL não pode ficar preso
+    app.destroy({ removeView: !(host instanceof HTMLCanvasElement) }, { children: true, texture: true, textureSource: true });
+    throw error;
+  }
 
   const meter = new FpsMeter(1000);
   let lastFrame = -1;

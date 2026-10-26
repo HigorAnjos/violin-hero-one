@@ -7,7 +7,25 @@ import { scheduleNotes } from '../engine';
 import type { EngineNote, Judgment } from '../engine/types';
 import { FIXED_SONGS } from '../notation/songs';
 import { LEAD_SECONDS } from './layout';
-import { TrackScene, type JudgmentEvent, type TextureBaker } from './scene';
+import { playedString } from './present';
+import { dashedTarget, playedTarget, TrackScene, type JudgmentEvent, type TextureBaker } from './scene';
+
+describe('alvos da nota errada', () => {
+  // Centro e raio da arte (RING_R = 64): perto do canto só o quadrado tem traço; no meio de um lado, os dois
+  const corner = { x: 64 + 0.95 * 64 - 4, y: 64 + 0.95 * 64 - 4 };
+  const side = { x: 64, y: 4 };
+
+  it.each([
+    ['ALVO (tracejado)', dashedTarget],
+    ['VOCÊ', playedTarget],
+  ])('%s: quadrado no 8-Bits, redondo nos outros temas', (_name, shape) => {
+    const square = shape(0xff0000, true);
+    const round = shape(0xff0000, false);
+    expect(square.containsPoint(corner)).toBe(true);
+    expect(round.containsPoint(corner)).toBe(false);
+    expect(square.containsPoint(side) && round.containsPoint(side)).toBe(true);
+  });
+});
 
 function fakeBaker() {
   const generateTexture = vi.fn(() => new Texture({ source: new TextureSource({ width: 8, height: 8 }) }));
@@ -91,6 +109,45 @@ describe('TrackScene', () => {
     expect(s.feedbackVisible()).toBe(true);
     s.update(START + 2);
     expect(s.feedbackVisible()).toBe(false);
+  });
+
+  it('nota errada: × na nota, ALVO na corda dela e VOCÊ na corda tocada; somem depois de um tempo', () => {
+    const { s } = scene();
+    const note = notes.find((n) => n.string === 2)!;
+    const at = note.time + 0.3;
+    // Tocou Mi6 (88) no lugar de uma nota da corda Lá: não cabe na Lá, só na Mi
+    s.judge({ ...judgment(note, 'miss', 'wrong-note'), playedMidi: 88 }, at);
+    s.update(at);
+    expect(s.errorView()).toEqual({ aim: 2, you: 3, crossed: 1 });
+    s.update(at + 2);
+    expect(s.errorView().aim).toBeNull();
+  });
+
+  it('não tocada também leva ×, mas sem ALVO / VOCÊ', () => {
+    const { s } = scene();
+    s.judge(judgment(notes[0], 'miss', 'not-played'), notes[0].time + 0.3);
+    s.update(notes[0].time + 0.3);
+    expect(s.errorView()).toEqual({ aim: null, you: null, crossed: 1 });
+  });
+
+  it('a corda tocada: a do alvo se a nota cabe nele, senão a mais aguda em que cabe', () => {
+    expect(playedString(71, 2)).toBe(2);
+    expect(playedString(88, 2)).toBe(3);
+    expect(playedString(60, 3)).toBe(0);
+    expect(playedString(40, 3)).toBe(0);
+    expect(playedString(100, 0)).toBe(3);
+  });
+
+  it('o rótulo central segue a fila: cada julgamento fica ao menos 250 ms, na ordem, mesmo vindo juntos', () => {
+    const { s } = scene();
+    s.judge(judgment(notes[0], 'perfect'), START);
+    s.judge(judgment(notes[1], 'miss', 'not-played'), START + 0.02);
+    s.judge(judgment(notes[2], 'good', 'late'), START + 0.04);
+    const at = (t: number) => {
+      s.update(START + t);
+      return s.feedbackShown();
+    };
+    expect([at(0.05), at(0.24), at(0.26), at(0.49), at(0.51), at(0.9), at(2)]).toEqual(['perfect', 'perfect', 'miss', 'miss', 'good', 'good', null]);
   });
 
   it('setNotes: a volta seguinte entra na pista, e as notas que ficam guardam o acerto', () => {

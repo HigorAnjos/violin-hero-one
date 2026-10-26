@@ -17,10 +17,18 @@ export interface BeatSegment {
   endBeat: number;
 }
 
+/** Laço A–B em compassos, a partir de 0, B incluso (o LoopRange da prática). */
+export interface MeasureLoop {
+  startMeasure: number;
+  endMeasure: number;
+}
+
 /** De onde a faixa tira o tempo da música: a prática (laço A–B e andamento) ou um andamento só. */
 export interface SheetClock {
   /** Os trechos desde o começo da partida até pelo menos `until`, em ordem. */
   segments(until: number): readonly BeatSegment[];
+  /** O laço ligado agora, para a faixa marcar A e B; sem ele (ou null), nada é marcado. */
+  currentLoop?(): MeasureLoop | null;
 }
 
 /** Partida sem prática: o primeiro tempo em `startAt`, andamento fixo. */
@@ -31,8 +39,9 @@ export function steadyClock(startAt: number, bpm: number): SheetClock {
 }
 
 /**
- * Pedaço da música visível na faixa: os tempos [fromBeat, toBeat) aparecem a `beat + shift` tempos da agulha (negativo =
- * já passou). Uma volta do laço vira dois pedaços: o fim de B e, logo depois dele, o começo de A.
+ * Pedaço da música visível na faixa: os tempos [fromBeat, toBeat) aparecem a `warp.forward(beat) + shift` tempos de
+ * faixa da agulha (negativo = já passou). Uma volta do laço vira dois pedaços: o fim de B e, logo depois dele, o começo
+ * de A.
  */
 export interface BeatWindow {
   fromBeat: number;
@@ -50,6 +59,54 @@ export interface BeatWindow {
   passTo: number;
 }
 
+/**
+ * Do tempo da música ao "tempo de faixa", em que a faixa mede o espaço: crescente e contínua, inclinação 1 fora das
+ * notas. O espaçamento é proporcional, mas dois ataques seguidos nunca ficam a menos de `minGap` tempos de faixa: a
+ * semicolcheia e a pausa curta não colam na vizinha. A nota continua passando na agulha na hora dela; só a velocidade
+ * da faixa muda no trecho apertado.
+ */
+export interface BeatWarp {
+  forward(beat: number): number;
+  inverse(spaced: number): number;
+}
+
+export const IDENTITY_WARP: BeatWarp = { forward: (beat) => beat, inverse: (spaced) => spaced };
+
+/** Menor vão entre dois ataques na faixa, em espaços da pauta: cabeça, dedo + letra e nome da nota sem encostar. */
+export const MIN_GAP_SPACES = 3;
+/** Largura de um tempo na faixa, em espaços (o design: 100 px por tempo com espaço de 18 px). */
+export const BEAT_SPACES = 5.6;
+/** MIN_GAP_SPACES em tempos de faixa: o mesmo em qualquer tamanho, porque tudo escala com o espaço. */
+export const MIN_GAP_BEATS = MIN_GAP_SPACES / BEAT_SPACES;
+
+function bisect(xs: Float64Array, x: number): number {
+  let lo = 0;
+  let hi = xs.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (xs[mid] <= x) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
+/** A deformação para os ataques em `onsets` (notas e pausas, em qualquer ordem, com repetição). */
+export function beatWarp(onsets: ArrayLike<number>, minGap: number = MIN_GAP_BEATS): BeatWarp {
+  const beats = Float64Array.from(new Set(Array.from(onsets))).sort();
+  if (beats.length < 2) return IDENTITY_WARP;
+  const spaced = new Float64Array(beats.length);
+  spaced[0] = beats[0];
+  for (let i = 1; i < beats.length; i++) spaced[i] = spaced[i - 1] + Math.max(beats[i] - beats[i - 1], minGap);
+  // Entre dois nós, reta; antes do primeiro e depois do último, inclinação 1
+  const map = (from: Float64Array, to: Float64Array, x: number) => {
+    if (!(x > from[0])) return to[0] + (x - from[0]);
+    const i = bisect(from, x);
+    if (i === from.length - 1) return to[i] + (x - from[i]);
+    return to[i] + ((x - from[i]) * (to[i + 1] - to[i])) / (from[i + 1] - from[i]);
+  };
+  return { forward: (beat) => map(beats, spaced, beat), inverse: (s) => map(spaced, beats, s) };
+}
+
 /** O trecho `b` continua o `a` sem salto (só o andamento pode mudar). */
 const continues = (a: BeatSegment, b: BeatSegment) => Math.abs(a.endBeat - b.beat) < 1e-9;
 
@@ -64,7 +121,16 @@ function segmentIndexAt(segments: readonly BeatSegment[], t: number): number {
   return lo;
 }
 
-function put(out: BeatWindow[], count: number, segments: readonly BeatSegment[], j: number, fromBeat: number, toBeat: number, startDistance: number): number {
+function put(
+  out: BeatWindow[],
+  count: number,
+  segments: readonly BeatSegment[],
+  j: number,
+  fromBeat: number,
+  toBeat: number,
+  startDistance: number,
+  warp: BeatWarp,
+): number {
   if (!(toBeat > fromBeat)) return count;
   const segment = segments[j];
   const w = out[count] ?? (out[count] = { fromBeat: 0, toBeat: 0, shift: 0, time: 0, beat: 0, spb: 1, passFrom: 0, passTo: 0 });
@@ -76,7 +142,7 @@ function put(out: BeatWindow[], count: number, segments: readonly BeatSegment[],
   w.passTo = segments[last].endBeat;
   w.fromBeat = fromBeat;
   w.toBeat = toBeat;
-  w.shift = startDistance - segment.beat;
+  w.shift = startDistance - warp.forward(segment.beat);
   w.time = segment.time;
   w.beat = segment.beat;
   w.spb = segment.spb;
@@ -90,39 +156,49 @@ export function beatAt(segments: readonly BeatSegment[], now: number): number {
 }
 
 /**
- * Os pedaços da música entre `behind` tempos atrás e `ahead` tempos à frente da agulha, em `out` (reaproveitado, sem
+ * Os pedaços da música entre `behind` tempos de faixa atrás e `ahead` à frente da agulha, em `out` (reaproveitado, sem
  * alocar no quadro); devolve quantos. O espaço é contado em tempos tocados: depois do salto do laço, A vem colado em B.
  */
-export function beatWindows(segments: readonly BeatSegment[], now: number, behind: number, ahead: number, out: BeatWindow[]): number {
+export function beatWindows(
+  segments: readonly BeatSegment[],
+  now: number,
+  behind: number,
+  ahead: number,
+  out: BeatWindow[],
+  warp: BeatWarp = IDENTITY_WARP,
+): number {
   if (segments.length === 0) return 0;
+  const f = warp.forward;
+  const g = warp.inverse;
+  const span = (s: BeatSegment) => f(s.endBeat) - f(s.beat);
   const k = segmentIndexAt(segments, now);
   const current = segments[k];
-  const nowBeat = current.beat + (now - current.time) / current.spb;
+  const nowSpaced = f(current.beat + (now - current.time) / current.spb);
   let count = 0;
 
   // Para trás: distância do começo de cada trecho até a agulha
-  let end = current.beat - nowBeat;
+  let end = f(current.beat) - nowSpaced;
   const before: [number, number][] = [];
   for (let j = k - 1; j >= 0 && end > -behind; j--) {
-    const s = segments[j];
-    const start = end - (s.endBeat - s.beat);
+    const start = end - span(segments[j]);
     before.push([j, start]);
     end = start;
   }
   for (let i = before.length - 1; i >= 0; i--) {
     const [j, start] = before[i];
     const s = segments[j];
-    count = put(out, count, segments, j, Math.max(s.beat, s.beat - behind - start), s.endBeat, start);
+    count = put(out, count, segments, j, Math.max(s.beat, g(f(s.beat) - behind - start)), s.endBeat, start, warp);
   }
 
-  const from = k === 0 ? nowBeat - behind : Math.max(current.beat, nowBeat - behind);
-  count = put(out, count, segments, k, from, Math.min(current.endBeat, nowBeat + ahead), current.beat - nowBeat);
+  const back = g(nowSpaced - behind);
+  const from = k === 0 ? back : Math.max(current.beat, back);
+  count = put(out, count, segments, k, from, Math.min(current.endBeat, g(nowSpaced + ahead)), f(current.beat) - nowSpaced, warp);
 
-  let start = current.beat - nowBeat + (current.endBeat - current.beat);
+  let start = f(current.endBeat) - nowSpaced;
   for (let j = k + 1; j < segments.length && start < ahead; j++) {
     const s = segments[j];
-    count = put(out, count, segments, j, s.beat, Math.min(s.endBeat, s.beat + ahead - start), start);
-    start += s.endBeat - s.beat;
+    count = put(out, count, segments, j, s.beat, Math.min(s.endBeat, g(f(s.beat) + ahead - start)), start, warp);
+    start += span(s);
   }
   return count;
 }
@@ -136,6 +212,9 @@ export function windowTime(w: BeatWindow, beat: number): number {
 export const MIDDLE_STEP = 34;
 export const BOTTOM_STEP = MIDDLE_STEP - 4;
 export const TOP_STEP = MIDDLE_STEP + 4;
+
+/** Menor texto da interface, também no canvas. */
+export const MIN_TEXT_PX = 12;
 
 /** Abaixo desta altura a faixa é a compacta (SheetStrip.dc, celular deitado): sem o nome da nota. */
 export const COMPACT_HEIGHT = 180;
@@ -186,7 +265,7 @@ export function sheetLayout(width: number, height: number, keyAccidentals: numbe
   const keyStep = space * 1.22;
   const clefWidth = keyX + keyAccidentals * keyStep + space * 1.5;
   const needleX = Math.min(clefWidth + space * 7.8, width * 0.45);
-  const pxPerBeat = space * 5.6;
+  const pxPerBeat = space * BEAT_SPACES;
   const fingerY = middleY + space * 5.1;
   return {
     width,
@@ -204,18 +283,18 @@ export function sheetLayout(width: number, height: number, keyAccidentals: numbe
     line: Math.max(1, space * 0.09),
     ledgerHalf: space * 1.2,
     fingerY,
-    fingerSize: compact ? space * 1.3 : space,
+    fingerSize: Math.max(MIN_TEXT_PX, compact ? space * 1.3 : space),
     nameY: fingerY + space * 1.15,
-    nameSize: space * 0.72,
+    nameSize: Math.max(MIN_TEXT_PX, space * 0.72),
     numberY: middleY - space * 3,
-    numberSize: Math.max(10, space * 0.78),
+    numberSize: Math.max(MIN_TEXT_PX, space * 0.78),
     needle: {
       top: compact ? space * 0.6 : middleY - space * 4.9,
       bottom: compact ? height - space * 0.6 : middleY + space * 4.8,
       width: Math.max(2, space * 0.17),
       zone: space * 2.67,
       labelY: compact ? space * 0.2 : middleY - space * 5.3,
-      labelSize: Math.max(9, space * 0.61),
+      labelSize: Math.max(MIN_TEXT_PX, space * 0.61),
     },
     clef: { x: space * 0.8, y: middleY + space * 0.35, size: space * 5.8 },
     keyX,
@@ -242,7 +321,7 @@ export const BAR_LEAD_BEATS = 0.5;
  * Quantos tempos antes do início de cada compasso vai a barra: meio tempo, ou o meio do vão quando a última nota do
  * compasso anterior começa mais perto (colcheia no fim), para a barra não cair em cima dela.
  */
-export function barOffsets(bars: readonly number[], noteStarts: ArrayLike<number>): Float64Array {
+export function barOffsets(bars: ArrayLike<number>, noteStarts: ArrayLike<number>): Float64Array {
   return Float64Array.from(bars, (start) => {
     let previous = -Infinity;
     for (let i = 0; i < noteStarts.length && noteStarts[i] < start; i++) previous = noteStarts[i];
@@ -304,4 +383,75 @@ export const PASSED_ALPHA = 0.35;
 /** A nota que já passou inteira pela agulha fica apagada, a não ser que tenha sido acertada. */
 export function noteAlpha(distance: number, beats: number, hit: boolean): number {
   return hit || distance + beats > 0 ? 1 : PASSED_ALPHA;
+}
+
+/** Marcadores do laço A–B (Practice.dc): bandeirinha "A · 18" no alto, linha até embaixo e arco tracejado de B a A. */
+export interface LoopMarks {
+  flagTop: number;
+  flagHeight: number;
+  /** Texto da bandeirinha, nunca abaixo de MIN_TEXT_PX. */
+  labelSize: number;
+  lineBottom: number;
+  lineWidth: number;
+  /** O arco de volta, acima da pauta; null na faixa compacta, que não tem lugar para ele. */
+  arc: { baseY: number; topY: number; width: number; dash: number; gap: number } | null;
+}
+
+/** Medidas do design (espaço de 18 px): bandeirinha de 22 px a 20 px do topo, texto de 12 px, arco de 56 a 10 px. */
+export function loopMarks(l: SheetLayout): LoopMarks {
+  const labelSize = Math.max(MIN_TEXT_PX, l.space * 0.67);
+  const flagHeight = Math.max(l.space * 1.22, labelSize * 1.83);
+  const flagTop = l.compact ? l.space * 0.2 : l.middleY - l.space * 7.2;
+  return {
+    flagTop,
+    flagHeight,
+    labelSize,
+    lineBottom: l.height - flagTop,
+    lineWidth: Math.max(2, l.space * 0.17),
+    arc: l.compact
+      ? null
+      : { baseY: flagTop + flagHeight + l.space * 0.8, topY: flagTop - l.space * 0.55, width: Math.max(1, l.space * 0.083), dash: l.space / 3, gap: l.space / 3 },
+  };
+}
+
+/**
+ * Curva cúbica de (x0, y0) a (x3, y3) cortada em traços de `dash` com vãos de `gap`, medidos ao longo da curva: cada
+ * traço é uma linha quebrada [x, y, x, y, …].
+ */
+export function dashedCubic(points: readonly [number, number, number, number, number, number, number, number], dash: number, gap: number, steps = 96): number[][] {
+  const [x0, y0, x1, y1, x2, y2, x3, y3] = points;
+  const at = (t: number): [number, number] => {
+    const u = 1 - t;
+    const a = u * u * u;
+    const b = 3 * u * u * t;
+    const c = 3 * u * t * t;
+    const d = t * t * t;
+    return [a * x0 + b * x1 + c * x2 + d * x3, a * y0 + b * y1 + c * y2 + d * y3];
+  };
+  const out: number[][] = [];
+  let [px, py] = at(0);
+  let on = true;
+  let left = dash;
+  let current: number[] = [px, py];
+  for (let i = 1; i <= steps; i++) {
+    const [x, y] = at(i / steps);
+    let length = Math.hypot(x - px, y - py);
+    while (length > 0) {
+      const step = Math.min(left, length);
+      const k = step / length;
+      px += (x - px) * k;
+      py += (y - py) * k;
+      length -= step;
+      left -= step;
+      if (on) current.push(px, py);
+      if (left <= 1e-9) {
+        if (on && current.length >= 4) out.push(current);
+        on = !on;
+        left = on ? dash : gap;
+        current = on ? [px, py] : [];
+      }
+    }
+  }
+  if (on && current.length >= 4) out.push(current);
+  return out;
 }

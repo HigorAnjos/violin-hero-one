@@ -96,6 +96,34 @@ test('joga uma música inteira em Partitura com ?simular', async ({ page }) => {
   await expect(page.getByTestId('resultado')).toContainText('Partitura');
 });
 
+test('travadas da thread principal não viram "não tocada": o quadro de depois vem antes das leituras da fila', async ({ page }) => {
+  test.setTimeout(90000);
+  // A cada 2,5 s um quadro trava 800 ms antes do jogo rodar nele, como o aparelho lento montando a partitura; o ouvido
+  // simulado (setInterval) só entrega as leituras de durante a travada depois desse quadro
+  await page.addInitScript(() => {
+    const w = window as Window & { __vhStalls?: number };
+    const raf = window.requestAnimationFrame.bind(window);
+    let due = performance.now() + 2500;
+    w.__vhStalls = 0;
+    window.requestAnimationFrame = (callback) =>
+      raf((time) => {
+        if (performance.now() >= due) {
+          const end = performance.now() + 800;
+          while (performance.now() < end);
+          due = performance.now() + 2500;
+          w.__vhStalls! += 1;
+        }
+        callback(time);
+      });
+  });
+  await page.goto('/jogo/partitura?ouvido=simulado&musica=escala-re-maior');
+  await expect(page).toHaveURL(/\/(selo-novo|resultado)$/, { timeout: 70000 });
+  const result = await lastResult(page);
+  expect(await page.evaluate(() => (window as Window & { __vhStalls?: number }).__vhStalls)).toBeGreaterThan(3);
+  expect(result?.status).toBe('finished');
+  expect(result?.judgments.filter((j) => j.judgment === 'miss').map((j) => `${j.index}:${j.issue}`)).toEqual([]);
+});
+
 test('prática com laço e velocidade do início ao fim com ?simular', async ({ page }) => {
   test.setTimeout(90000);
   await openWithState(page, '/pratica?ouvido=simulado&simular=0', { song: ODE, mode: 'Prática', practice: { loop: { startMeasure: 0, endMeasure: 1 }, speed: 1 } });
