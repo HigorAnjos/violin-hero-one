@@ -96,6 +96,8 @@ export interface PlaySync {
    */
   flush(userId?: string, options?: { strict?: boolean }): Promise<void>;
   pending(userId: string): Promise<number>;
+  /** Apaga a fila do usuário (troca de conta). */
+  forget(userId: string): Promise<void>;
   /** O que o servidor respondeu para a partida, nesta visita. */
   outcome(clientId: string): PlayOutcome | undefined;
   subscribe(listener: () => void): () => void;
@@ -236,6 +238,7 @@ export function createPlaySync(deps: PlaySyncDeps): PlaySync {
     async pending(userId) {
       return (await deps.store.all(userId)).length;
     },
+    forget: (userId) => deps.store.clear(userId),
     outcome: (clientId) => outcomes.get(clientId),
     subscribe(listener) {
       listeners.add(listener);

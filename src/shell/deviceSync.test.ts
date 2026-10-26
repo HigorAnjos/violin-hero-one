@@ -1,0 +1,72 @@
+import { QueryClient } from '@tanstack/react-query';
+import { describe, expect, it, vi } from 'vitest';
+import { ODE } from '../game/engine/testing';
+import { createPlaySync, memoryPlayQueueStore } from '../services/playQueue';
+import type { SessionState } from '../services/session';
+import { songKeys } from '../services/songs';
+import { playedChart, reconnect } from './deviceSync';
+
+const SIGNED_IN: SessionState = { status: 'signed-in', userId: 'u1', anonymous: true };
+
+function setup() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  let net = false;
+  const ensure = vi.fn(async (): Promise<SessionState> => (net ? SIGNED_IN : { status: 'offline' }));
+  const session = () => queryClient.fetchQuery({ queryKey: ['session'], queryFn: ensure, staleTime: Infinity });
+  const sync = createPlaySync({
+    store: memoryPlayQueueStore(),
+    user: () => 'u1',
+    session,
+    submit: vi.fn(async () => ({ playId: 'p', accuracy: 0, record: null, badges: [], streak: null, duplicate: false })),
+    chart: async () => ({ hash: 'h', song: ODE }),
+    online: () => net,
+  });
+  return { queryClient, ensure, session, sync, goOnline: () => (net = true) };
+}
+
+describe('reconnect', () => {
+  it('a sessão que caiu para Offline tenta de novo e a fila sobe, sem recarregar', async () => {
+    const t = setup();
+    expect(await t.session()).toEqual({ status: 'offline' });
+    await t.sync.enqueue({ payload: { client_id: 'a' } as never, chartHash: 'h', checkChart: false });
+    t.goOnline();
+    // staleTime Infinity: sem o reconnect, a sessão em cache continuaria Offline
+    expect(await t.session()).toEqual({ status: 'offline' });
+    await reconnect(t.queryClient, t.sync, t.session);
+    expect(t.queryClient.getQueryData(['session'])).toEqual(SIGNED_IN);
+    expect(await t.sync.pending('u1')).toBe(0);
+  });
+
+  it('sessão que já estava ok não é refeita', async () => {
+    const t = setup();
+    t.goOnline();
+    await t.session();
+    await reconnect(t.queryClient, t.sync, t.session);
+    expect(t.ensure).toHaveBeenCalledTimes(1);
+  });
+
+  it('as queries que falharam tentam de novo; a música aberta do aparelho confere o hash', async () => {
+    const t = setup();
+    t.goOnline();
+    await t.session();
+    const catalog = vi.fn().mockRejectedValueOnce(new Error('sem rede')).mockResolvedValue(['ok']);
+    await t.queryClient.fetchQuery({ queryKey: ['songs', 'catalog'], queryFn: catalog }).catch(() => undefined);
+    t.queryClient.setQueryData(songKeys.song('greensleeves', 'easy'), { hash: 'a', saved: 'device' });
+    t.queryClient.setQueryData(songKeys.song('canon', 'easy'), { hash: 'b', saved: 'unchanged' });
+    await reconnect(t.queryClient, t.sync, t.session);
+    expect(t.queryClient.getQueryData(['songs', 'catalog'])).toEqual(['ok']);
+    expect(t.queryClient.getQueryState(songKeys.song('greensleeves', 'easy'))?.isInvalidated).toBe(true);
+    expect(t.queryClient.getQueryState(songKeys.song('canon', 'easy'))?.isInvalidated).toBe(false);
+  });
+});
+
+describe('playedChart', () => {
+  it('do servidor: hash e sem conferir; do aparelho ou sem query (embutida): confere antes de enviar', () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(songKeys.song('canon', 'easy'), { hash: 'b', saved: 'saved' });
+    queryClient.setQueryData(songKeys.song('greensleeves', 'easy'), { hash: 'a', saved: 'device' });
+    expect(playedChart(queryClient, 'canon', 'easy')).toEqual({ chartHash: 'b', checkChart: false });
+    expect(playedChart(queryClient, 'greensleeves', 'easy')).toEqual({ chartHash: 'a', checkChart: true });
+    expect(playedChart(queryClient, 'ode-a-alegria', 'easy')).toEqual({ chartHash: null, checkChart: true });
+  });
+});

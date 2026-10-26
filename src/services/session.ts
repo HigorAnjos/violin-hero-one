@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { currentUserId, rememberUser } from './user';
 
 export type SessionState =
   | { status: 'offline' }
@@ -20,5 +21,7 @@ export async function ensureSession(client: { auth: AuthClient } | null): Promis
     if (error || !data.user) return { status: 'offline' };
     user = data.user;
   }
+  // Primeira sessão no aparelho: o cache e a fila passam a ser dela (a troca de conta usa DeviceData.use)
+  if (!currentUserId()) rememberUser(user.id);
   return { status: 'signed-in', userId: user.id, anonymous: user.is_anonymous ?? false };
 }
