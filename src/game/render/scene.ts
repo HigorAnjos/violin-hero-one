@@ -20,7 +20,9 @@ import { trackPalette, type TrackPalette } from './palette';
 import {
   FEEDBACK_FADE_SECONDS,
   FEEDBACK_HOLD_SECONDS,
+  errorAlpha,
   feedbackLabel,
+  playedString,
   feedbackAlpha,
   feedbackScale,
   glowRing,
@@ -54,8 +56,12 @@ const GEM_H = 64;
 const RING_R = 64;
 const LETTER_PX = 64;
 const LABEL_PX = 96;
+const TAG_PX = 32;
 // A textura do texto inclui a entrelinha: a letra visível fica com ~75% da altura da nota
 const LETTER_ON_NOTE = 1.15;
+/** ALVO e VOCÊ embaixo das letras das cordas: nunca abaixo de 12 px. */
+const MIN_TAG_PX = 12;
+const DASHES = 12;
 
 const HIT = 1;
 const MISSED = 2;
@@ -66,6 +72,8 @@ interface Chip {
   tail: Sprite;
   gem: Sprite;
   letter: Sprite;
+  /** O × da nota errada, em cima da nota apagada. */
+  mark: Sprite;
 }
 
 /**
@@ -102,6 +110,21 @@ export class TrackScene extends Container {
   private readonly fillTextures: Texture[];
   private readonly glowTextures: Texture[];
   private readonly labelTextures: Map<Judgment, Texture>;
+  private readonly missMarkTexture: Texture;
+  private readonly aimRingTextures: Texture[];
+  private readonly youRingTexture: Texture;
+  private readonly aimTagTextures: Texture[];
+  private readonly youTagTexture: Texture;
+
+  // Nota errada (GameplayErrors.dc): o alvo tracejado com ALVO na corda certa, anel e VOCÊ na corda tocada
+  private readonly aimRing = new Sprite();
+  private readonly youRing = new Sprite();
+  private readonly aimTag = new Sprite();
+  private readonly youTag = new Sprite();
+  private errorAt = -Infinity;
+  private errorTarget = 0;
+  private errorPlayed = 0;
+  private tagY = 0;
 
   private readonly lead: number;
   private l: TrackLayout;
@@ -135,6 +158,12 @@ export class TrackScene extends Container {
     this.fillTextures = p.lanes.map((lane) => this.bakeCircle(lane.main));
     this.glowTextures = p.lanes.map((lane) => this.bakeCircle(lane.glow.color, undefined, lane.glow.alpha));
     this.labelTextures = new Map(JUDGMENTS.map((j) => [j, this.bakeText(feedbackLabel(j), LABEL_PX, p.judgments[j], display)]));
+    const miss = p.judgments.miss;
+    this.missMarkTexture = this.bakeText('×', LETTER_PX, miss, theme.fonts.ui);
+    this.aimRingTextures = p.lanes.map((lane) => this.bakeDashedRing(lane.main));
+    this.youRingTexture = this.bake(new Graphics().circle(RING_R, RING_R, RING_R - 4).stroke({ color: miss, width: (RING_R * 0.04) / 0.28 }));
+    this.aimTagTextures = p.lanes.map((lane) => this.bakeText('ALVO', TAG_PX, lane.main, theme.fonts.ui));
+    this.youTagTexture = this.bakeText('VOCÊ', TAG_PX, miss, theme.fonts.ui);
 
     const targets = new Container();
     for (let i = 0; i < 4; i++) {
@@ -150,6 +179,13 @@ export class TrackScene extends Container {
       this.fills.push(fill);
       this.stringLetters.push(letter);
     }
+    for (const s of [this.aimRing, this.youRing]) s.anchor.set(0.5);
+    this.aimTag.anchor.set(0.5);
+    this.youTag.anchor.set(0.5);
+    this.youRing.texture = this.youRingTexture;
+    this.youTag.texture = this.youTagTexture;
+    for (const s of [this.aimRing, this.youRing, this.aimTag, this.youTag]) s.visible = false;
+    targets.addChild(this.aimRing, this.youRing);
 
     this.setNotes(options.notes);
 
@@ -164,7 +200,8 @@ export class TrackScene extends Container {
 
     for (const layer of [this.tailLayer, this.gemLayer, this.letterLayer]) layer.eventMode = 'none';
     this.eventMode = 'none';
-    this.addChild(this.bg, targets, this.tailLayer, this.gemLayer, this.letterLayer, this.feedbackLabel, this.feedbackDetail, this.fpsText);
+    // ALVO e VOCÊ por cima das notas que descem: a nota seguinte não pode cobrir o rótulo
+    this.addChild(this.bg, targets, this.tailLayer, this.gemLayer, this.letterLayer, this.aimTag, this.youTag, this.feedbackLabel, this.feedbackDetail, this.fpsText);
   }
 
   layout(width: number, height: number): void {
@@ -209,6 +246,17 @@ export class TrackScene extends Container {
       this.stringLetters[i].position.set(projectX(l, l.lanes[i], l.letterDepth), letterY);
       this.stringLetters[i].scale.set(letterScale);
     }
+    // ALVO / VOCÊ entre o anel e a letra da corda: embaixo da pista o celular deitado não tem lugar
+    const tagPx = Math.max(MIN_TAG_PX, l.letterSize * 0.36);
+    const tagScale = tagPx / TAG_PX;
+    this.aimTag.scale.set(tagScale);
+    this.youTag.scale.set(tagScale);
+    const ringBottom = hitY + radiusY;
+    const letterTop = letterY - (l.letterSize * depthScale(l, l.letterDepth)) / 2;
+    this.tagY = Math.max(ringBottom + tagPx * 0.5, (ringBottom + letterTop) / 2);
+    this.aimRing.scale.set(this.ringScale[0], this.ringScale[1]);
+    this.youRing.scale.set(this.ringScale[0] * 1.18, this.ringScale[1] * 1.18);
+    this.aimRing.y = this.youRing.y = hitY;
 
     this.feedbackBase = l.feedback.size / LABEL_PX;
     const ax = l.feedback.align === 'right' ? 1 : 0.5;
@@ -239,14 +287,16 @@ export class TrackScene extends Container {
       const tail = new Sprite(Texture.WHITE);
       const gem = new Sprite();
       const letter = new Sprite();
+      const mark = new Sprite(this.missMarkTexture);
       tail.anchor.set(0.5, 1);
       gem.anchor.set(0.5);
       letter.anchor.set(0.5);
-      tail.visible = gem.visible = letter.visible = false;
+      mark.anchor.set(0.5);
+      tail.visible = gem.visible = letter.visible = mark.visible = false;
       this.tailLayer.addChild(tail);
       this.gemLayer.addChild(gem);
-      this.letterLayer.addChild(letter);
-      this.chips.push({ tail, gem, letter });
+      this.letterLayer.addChild(letter, mark);
+      this.chips.push({ tail, gem, letter, mark });
     }
   }
 
@@ -257,6 +307,11 @@ export class TrackScene extends Container {
     const miss = event.judgment === 'miss';
     this.state[event.index] = miss ? MISSED : HIT;
     if (!miss) this.laneHitAt[note.string] = at;
+    if (event.issue === 'wrong-note' && event.playedMidi !== null) {
+      this.errorAt = at;
+      this.errorTarget = note.string;
+      this.errorPlayed = playedString(event.playedMidi, note.string);
+    }
     const fill = event.issue ? this.palette.judgments[event.judgment] : this.palette.muted;
     this.called.push({ judgment: event.judgment, detail: judgmentDetail(event), fill }, at);
   }
@@ -304,7 +359,9 @@ export class TrackScene extends Container {
         chip.tail.alpha = TAIL_ALPHA * fade * entryAlpha(l, Math.min(d, l.enterDepth));
       }
 
-      chip.gem.visible = chip.letter.visible = showGem;
+      chip.gem.visible = showGem;
+      chip.letter.visible = showGem && s !== MISSED;
+      chip.mark.visible = showGem && s === MISSED;
       if (showGem) {
         const scale = depthScale(l, d);
         const px = projectX(l, x, d);
@@ -318,11 +375,14 @@ export class TrackScene extends Container {
         chip.letter.position.set(px, py);
         chip.letter.scale.set((l.note.height * scale * LETTER_ON_NOTE) / LETTER_PX);
         chip.letter.alpha = alpha;
+        chip.mark.position.set(px, py);
+        chip.mark.scale.set(chip.letter.scale.x);
+        chip.mark.alpha = entryAlpha(l, d);
       }
     }
     for (let i = used; i < this.usedChips; i++) {
       const chip = this.chips[i];
-      chip.tail.visible = chip.gem.visible = chip.letter.visible = false;
+      chip.tail.visible = chip.gem.visible = chip.letter.visible = chip.mark.visible = false;
     }
     this.usedChips = used;
 
@@ -335,6 +395,26 @@ export class TrackScene extends Container {
       this.glows[i].visible = ring.alpha > 0;
       this.glows[i].alpha = ring.alpha;
       this.glows[i].scale.set(this.ringScale[0] * 1.3 * ring.scale, this.ringScale[1] * 1.3 * ring.scale);
+    }
+
+    const errAlpha = errorAlpha(now - this.errorAt);
+    const showError = errAlpha > 0;
+    const target = this.errorTarget;
+    const played = this.errorPlayed;
+    for (let i = 0; i < 4; i++) this.rings[i].visible = !(showError && i === target);
+    this.aimRing.visible = this.youRing.visible = this.aimTag.visible = this.youTag.visible = showError;
+    if (showError) {
+      this.aimRing.texture = this.aimRingTextures[target];
+      this.aimTag.texture = this.aimTagTextures[target];
+      this.aimRing.x = this.rings[target].x;
+      this.youRing.x = this.rings[played].x;
+      // Na mesma corda (dedo errado), ALVO e VOCÊ lado a lado embaixo dela
+      const gap = this.aimTag.height * 0.25;
+      const aimShift = target === played ? this.aimTag.width / 2 + gap : 0;
+      const youShift = target === played ? this.youTag.width / 2 + gap : 0;
+      this.aimTag.position.set(this.rings[target].x - aimShift, this.tagY);
+      this.youTag.position.set(this.rings[played].x + youShift, this.tagY);
+      this.aimRing.alpha = this.youRing.alpha = this.aimTag.alpha = this.youTag.alpha = errAlpha;
     }
 
     const shown = this.called.current(now);
@@ -389,7 +469,22 @@ export class TrackScene extends Container {
       ...this.fillTextures,
       ...this.glowTextures,
       ...this.labelTextures.values(),
+      this.missMarkTexture,
+      ...this.aimRingTextures,
+      this.youRingTexture,
+      ...this.aimTagTextures,
+      this.youTagTexture,
     ];
+  }
+
+  /** ALVO e VOCÊ agora: a corda de cada um, ou null se escondidos; e quantas notas visíveis levam ×. Para testes. */
+  errorView(): { aim: number | null; you: number | null; crossed: number } {
+    const shown = this.aimTag.visible;
+    return {
+      aim: shown ? this.errorTarget : null,
+      you: shown ? this.errorPlayed : null,
+      crossed: this.chips.filter((c) => c.mark.visible).length,
+    };
   }
 
   override destroy(): void {
@@ -420,6 +515,22 @@ export class TrackScene extends Container {
         .roundRect(GEM_W * 0.1, GEM_H * 0.2, GEM_W * 0.18, GEM_H * 0.15, GEM_H * 0.08)
         .fill({ color: shine, alpha: 0.7 }),
     );
+  }
+
+  /** O alvo tracejado da corda certa na nota errada. */
+  private bakeDashedRing(color: number): Texture {
+    const width = (RING_R * 0.04) / 0.28;
+    const r = RING_R - width / 2;
+    const g = new Graphics();
+    const step = (Math.PI * 2) / DASHES;
+    for (let k = 0; k < DASHES; k++) {
+      const from = k * step;
+      g.moveTo(RING_R + r * Math.cos(from), RING_R + r * Math.sin(from)).arc(RING_R, RING_R, r, from, from + step * 0.55);
+    }
+    g.stroke({ color, width });
+    // Mantém a textura do tamanho do anel inteiro, como as outras
+    g.rect(0, 0, RING_R * 2, RING_R * 2).fill({ color, alpha: 0 });
+    return this.bake(g);
   }
 
   private bakeCircle(fill: number, stroke?: number, alpha = 1): Texture {

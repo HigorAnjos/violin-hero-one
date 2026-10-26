@@ -6,6 +6,7 @@ import { scheduleNotes } from '../engine';
 import type { EngineNote, Judgment } from '../engine/types';
 import { FIXED_SONGS } from '../notation/songs';
 import { LEAD_SECONDS } from './layout';
+import { playedString } from './present';
 import { TrackScene, type JudgmentEvent, type TextureBaker } from './scene';
 
 function fakeBaker() {
@@ -90,6 +91,33 @@ describe('TrackScene', () => {
     expect(s.feedbackVisible()).toBe(true);
     s.update(START + 2);
     expect(s.feedbackVisible()).toBe(false);
+  });
+
+  it('nota errada: × na nota, ALVO na corda dela e VOCÊ na corda tocada; somem depois de um tempo', () => {
+    const { s } = scene();
+    const note = notes.find((n) => n.string === 2)!;
+    const at = note.time + 0.3;
+    // Tocou Mi6 (88) no lugar de uma nota da corda Lá: não cabe na Lá, só na Mi
+    s.judge({ ...judgment(note, 'miss', 'wrong-note'), playedMidi: 88 }, at);
+    s.update(at);
+    expect(s.errorView()).toEqual({ aim: 2, you: 3, crossed: 1 });
+    s.update(at + 2);
+    expect(s.errorView().aim).toBeNull();
+  });
+
+  it('não tocada também leva ×, mas sem ALVO / VOCÊ', () => {
+    const { s } = scene();
+    s.judge(judgment(notes[0], 'miss', 'not-played'), notes[0].time + 0.3);
+    s.update(notes[0].time + 0.3);
+    expect(s.errorView()).toEqual({ aim: null, you: null, crossed: 1 });
+  });
+
+  it('a corda tocada: a do alvo se a nota cabe nele, senão a mais aguda em que cabe', () => {
+    expect(playedString(71, 2)).toBe(2);
+    expect(playedString(88, 2)).toBe(3);
+    expect(playedString(60, 3)).toBe(0);
+    expect(playedString(40, 3)).toBe(0);
+    expect(playedString(100, 0)).toBe(3);
   });
 
   it('o rótulo central segue a fila: cada julgamento fica ao menos 250 ms, na ordem, mesmo vindo juntos', () => {
