@@ -16,10 +16,11 @@ export const done = <T>(request: IDBRequest<T>) =>
     request.onerror = () => reject(request.error);
   });
 
-function upgrade(db: IDBDatabase) {
-  if (db.objectStoreNames.contains(SONGS_STORE)) db.deleteObjectStore(SONGS_STORE);
-  db.createObjectStore(SONGS_STORE, { keyPath: ['userId', 'id', 'level'] }).createIndex(BY_USER, 'userId');
-  if (!db.objectStoreNames.contains(PLAYS_STORE)) {
+/** Cada passo só roda vindo de antes dele: a v3 não pode apagar de novo as músicas guardadas na v2. */
+function upgrade(db: IDBDatabase, oldVersion: number) {
+  if (oldVersion < 2) {
+    if (db.objectStoreNames.contains(SONGS_STORE)) db.deleteObjectStore(SONGS_STORE);
+    db.createObjectStore(SONGS_STORE, { keyPath: ['userId', 'id', 'level'] }).createIndex(BY_USER, 'userId');
     db.createObjectStore(PLAYS_STORE, { keyPath: ['userId', 'clientId'] }).createIndex(BY_USER, 'userId');
   }
 }
@@ -32,9 +33,7 @@ export function deviceDb(factory: IDBFactory): DeviceDb {
   const db = () => {
     if (!opening) {
       const request = factory.open(DEVICE_DB_NAME, DEVICE_DB_VERSION);
-      request.onupgradeneeded = (event) => {
-        if (event.oldVersion < DEVICE_DB_VERSION) upgrade(request.result);
-      };
+      request.onupgradeneeded = (event) => upgrade(request.result, event.oldVersion);
       opening = done(request);
       // Outra aba com a versão nova: esta fecha a antiga para não travar a atualização
       opening.then((open) => (open.onversionchange = () => open.close())).catch(() => (opening = null));
