@@ -54,7 +54,7 @@ export interface GameHud {
   explanation: Explanation | null;
   /** O último julgamento em fila (cada um fica ao menos 250 ms); null depois que some. */
   callout: Callout | null;
-  /** Segundos desde o primeiro tempo (negativo antes). */
+  /** Onde a música está, em segundos no andamento dela (negativo antes do primeiro tempo; no laço, volta ao A). */
   elapsed: number;
   measure: number;
   judged: number;
@@ -197,7 +197,8 @@ export function useGame(options: GameOptions) {
       if (!session) return;
       const s = session.engine.state;
       while (trace.length && now - trace[0].time > TRACE_SECONDS) trace.shift();
-      const elapsed = now - session.startAt;
+      // Posição na música (no laço, volta ao A), no andamento original: o relógio da barra de progresso
+      const elapsed = session.beatAt(now) * secondsPerBeat(song);
       const t = target();
       const call = called.current(now);
       setHud({
