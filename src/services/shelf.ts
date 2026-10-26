@@ -71,7 +71,7 @@ export function embeddedChart(id: string, level: Level): Song | undefined {
 export type PlayableSong =
   | { status: 'loading' }
   | { status: 'ready'; song: Song; embedded: boolean }
-  | { status: 'error'; error: SongError };
+  | { status: 'error'; error: SongError; retry: () => void };
 
 /**
  * A partitura do nível pronta para tocar: do banco por get_song e, se ele falhar, a embutida do mesmo nível. Sem
@@ -83,7 +83,11 @@ export function usePlayableSong(id: string, level: Level, client: SongsClient | 
   if (remote.isSuccess) return { status: 'ready', song: remote.data.song, embedded: false };
   if (remote.isError) {
     if (fixed) return { status: 'ready', song: fixed, embedded: true };
-    return { status: 'error', error: remote.error instanceof SongError ? remote.error : new SongError('server', remote.error) };
+    return {
+      status: 'error',
+      error: remote.error instanceof SongError ? remote.error : new SongError('server', remote.error),
+      retry: () => void remote.refetch(),
+    };
   }
   return { status: 'loading' };
 }

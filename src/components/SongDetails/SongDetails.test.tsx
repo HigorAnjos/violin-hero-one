@@ -34,7 +34,7 @@ describe('SongDetails', () => {
 
   it('erro ao baixar a partitura aparece no painel', () => {
     renderScreen(
-      <SongDetails song={SONG} level="medium" onLevel={vi.fn()} playable={{ status: 'error', error: new SongError('offline') }} settings={levelSettings('beginner')} actions={null} />
+      <SongDetails song={SONG} level="medium" onLevel={vi.fn()} playable={{ status: 'error', error: new SongError('offline'), retry: vi.fn() }} settings={levelSettings('beginner')} actions={null} />
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Sem conexão com o servidor');
   });
