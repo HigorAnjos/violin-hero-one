@@ -7,7 +7,7 @@ const MODE_SLUG: Record<GameMode, string> = { Arcade: 'arcade', Partitura: 'part
 const LEVEL_SLUG: Record<Level, string> = { easy: 'facil', medium: 'medio', hard: 'dificil' };
 
 /** Modos com tela registrada no AppRouter: o teste do AppRouter confere que toda rota daqui existe. */
-export const READY_MODES: readonly GameMode[] = ['Arcade', 'Partitura', 'Prática'];
+export const READY_MODES: readonly GameMode[] = ['Arcade', 'Partitura', 'Prática', 'Cordas 3D'];
 
 export const isReadyMode = (mode: GameMode) => READY_MODES.includes(mode);
 

@@ -13,12 +13,12 @@ describe('escolha na URL', () => {
     expect(loadingUrl({ mode: 'Partitura', songId: 'a', level: 'easy' })).toBe('/tocar/carregando?modo=partitura&musica=a&nivel=facil');
   });
 
-  it('os modos prontos passam pela URL; sem modo, Arcade', () => {
-    for (const mode of READY_MODES) {
-      expect(GAME_MODES).toContain(mode);
+  it('os quatro modos têm tela e passam pela URL; sem modo, Arcade', () => {
+    expect(READY_MODES).toEqual(GAME_MODES);
+    for (const mode of GAME_MODES) {
+      expect(isReadyMode(mode)).toBe(true);
       expect(parseSongChoice(search(loadingUrl({ mode, songId: 'a', level: 'easy' })))?.mode).toBe(mode);
     }
-    expect(isReadyMode('Arcade')).toBe(true);
     expect(readyMode(null)).toBe('Arcade');
     expect(modeFromSlug('cordas-3d')).toBe('Cordas 3D');
   });
