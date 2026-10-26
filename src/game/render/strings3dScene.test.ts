@@ -1,6 +1,6 @@
-import { Container, Text, Texture, TextureSource } from 'pixi.js';
+import { Container, Graphics, Text, Texture, TextureSource } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
-import { cadernoTheme } from '../../assets/styles/themes';
+import { cadernoTheme, getTheme, type Theme } from '../../assets/styles/themes';
 import { palcoTheme } from '../../assets/styles/themes/palco';
 import { scheduleNotes } from '../engine';
 import type { EngineNote, Judgment } from '../engine/types';
@@ -247,5 +247,29 @@ describe('Strings3DScene', () => {
     const baked = s.bakedTextures();
     s.destroy();
     expect(baked.every((t) => t.destroyed)).toBe(true);
+  });
+});
+
+describe('Strings3DScene: especiais e modo daltônico', () => {
+  /** Traços da Graphics do atlas (a primeira textura assada) e da corda G desenhada no layout. */
+  function drawn(theme: Theme, patterns = false) {
+    let atlas = 0;
+    const generateTexture = vi.fn(({ target }: { target: Container }) => {
+      if (!atlas) atlas = (target.children[0] as Graphics).context.instructions.length;
+      return new Texture({ source: new TextureSource({ width: 400, height: 320 }) });
+    });
+    const s = new Strings3DScene({ resolution: 1, generateTexture } as unknown as TextureBaker, { theme, notes, reducedMotion: false, patterns });
+    s.layout(1280, 550);
+    const string = s.children.find((c): c is Graphics => c instanceof Graphics && c !== s.children[0] && c.context.instructions.some((i) => i.action === 'stroke'));
+    return { atlas, strokes: string!.context.instructions.filter((i) => i.action === 'stroke').length };
+  }
+
+  it('modo daltônico: padrões nas caixas das cordas D, A e E', () => {
+    expect(drawn(cadernoTheme, true).atlas).toBeGreaterThan(drawn(cadernoTheme).atlas);
+  });
+
+  it('Neon: a corda acesa com halo (mais traços); Caderno, um traço só', () => {
+    expect(drawn(cadernoTheme).strokes).toBe(1);
+    expect(drawn(getTheme('neon')).strokes).toBeGreaterThan(1);
   });
 });

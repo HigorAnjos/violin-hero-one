@@ -36,7 +36,7 @@ describe('Main', () => {
     window.localStorage.setItem(A4_STORAGE_KEY, '440');
     window.localStorage.setItem(THEME_STORAGE_KEY, 'palco');
     renderScreen(<Main />);
-    expect(screen.getByRole('button', { name: 'Palco' })).toHaveAttribute('aria-pressed', 'true');
+    expect(document.documentElement.dataset.theme).toBe('palco');
     const title = findFixedSong(levelSettings('never').firstSongId)!.title;
     expect(menu().getByRole('link', { name: new RegExp(`^Tocar ${title}`) })).toBeInTheDocument();
     expect(menu().getByRole('link', { name: 'Afinar Lá 440' })).toBeInTheDocument();
@@ -48,9 +48,16 @@ describe('Main', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/tocar');
   });
 
-  it('tema no canto, sessão Offline sem banco', async () => {
+  it('Configurações e Perfil no canto, sessão Offline sem banco', async () => {
     renderScreen(<Main />);
-    expect(screen.getByRole('group', { name: 'Tema' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Configurações' })).toHaveAttribute('href', '/configuracoes');
+    expect(screen.getByRole('link', { name: 'Perfil' })).toHaveAttribute('href', '/perfil');
     expect(await screen.findByText('Offline', undefined, { timeout: 5000 })).toBeInTheDocument();
+  });
+
+  it('o bicho escolhido aparece no botão do Perfil', () => {
+    localStorage.setItem('vh:profile', JSON.stringify({ level: 'beginner', nickname: null, animal: 'cat' }));
+    renderScreen(<Main />);
+    expect(screen.getByRole('link', { name: 'Perfil' })).toHaveTextContent('🐱');
   });
 });

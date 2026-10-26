@@ -29,6 +29,7 @@ export {
   clearLatency,
   latencySeconds,
   latencyToMs,
+  latestLatency,
   loadLatency,
   msToLatency,
   saveLatency,

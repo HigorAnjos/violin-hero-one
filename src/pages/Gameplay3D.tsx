@@ -167,7 +167,7 @@ export const Gameplay3D: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => 
         data-testid="cordas-3d"
       />
       <ScoreCard score={hud.score} multiplier={hud.multiplier} combo={hud.combo} accuracy={hud.accuracy} level={hud.level} sections={false} />
-      <TuningCard target={target} trace={hud.trace} liveCents={hud.liveCents} a4={a4} explanation={hud.explanation} compact={compact} bands={bands} />
+      <TuningCard target={target} trace={hud.trace} liveCents={hud.liveCents} a4={a4} explanation={hud.explanation} compact={compact} bands={bands} showLine={game.prefs.tuningLine} />
       <Callout callout={hud.callout} />
       {!paused && (
         <PauseButton type="button" aria-label="Pausar" onClick={pause} disabled={phase !== 'playing'}>

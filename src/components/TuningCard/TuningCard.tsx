@@ -140,10 +140,12 @@ export interface TuningCardProps {
   compact?: boolean;
   /** Faixas da tolerância do nível; padrão: as do motor. */
   bands?: TuningBands;
+  /** "Mostrar linha de afinação" (Pausa, Configurações): desligada, só o ponto de agora, sem o traço. */
+  showLine?: boolean;
 }
 
 /** Cartão "Afinação" da Gameplay: a nota da vez, o traço dos últimos 2 s e o motivo do último erro (5d). */
-export const TuningCard: React.FC<TuningCardProps> = ({ target, trace, liveCents, a4, explanation, compact = false, bands = DEFAULT_BANDS }) => {
+export const TuningCard: React.FC<TuningCardProps> = ({ target, trace, liveCents, a4, explanation, compact = false, bands = DEFAULT_BANDS, showLine = true }) => {
   const theme = useTheme();
   const color = target ? theme.game.strings[STRING_LETTERS[target.string]].main : theme.colors.textMuted;
   const status = liveCents === null ? null : tuningStatus(liveCents, bands);
@@ -169,7 +171,7 @@ export const TuningCard: React.FC<TuningCardProps> = ({ target, trace, liveCents
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Sua afinação nos últimos 2 segundos: ${status ? (status.tuned ? 'afinado' : status.text.toLowerCase()) : 'sem som'}`} style={{ background: theme.colors.background }}>
         <rect x="0" y={H / 2 - bands.perfect * px} width={W} height={bands.perfect * px * 2} fill={theme.colors.info.surface} />
         <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke={theme.colors.textMuted} strokeDasharray="4 4" />
-        {points && <polyline points={points} fill="none" stroke={traceColor} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />}
+        {points && showLine && <polyline points={points} fill="none" stroke={traceColor} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />}
         {last && last.length === 2 && <circle cx={last[0]} cy={last[1]} r="6" fill={theme.colors.surface} stroke={traceColor} strokeWidth="3" />}
       </svg>
       <Status $color={status ? statusColor : theme.colors.textMuted} aria-live="off">

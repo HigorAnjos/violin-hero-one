@@ -82,6 +82,8 @@ export function buildTheme(p: Palette): Theme {
         brass: strings.E.main,
         percussion: strings.G.main,
       },
+      noteShape: 'round',
+      glow: 0,
     },
     art: p.art,
     ...base,

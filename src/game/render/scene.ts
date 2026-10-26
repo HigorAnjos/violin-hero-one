@@ -16,6 +16,7 @@ import {
   trackLayout,
   type TrackLayout,
 } from './layout';
+import { corner, drawPattern, glowLayers, noteLabel, noteLook, STRING_PATTERNS, type LookOptions, type NoteLook, type StringPattern } from './look';
 import { trackPalette, type TrackPalette } from './palette';
 import { feedbackLabel, feedbackAlpha, feedbackScale, glowRing, judgmentDetail, JUDGMENTS } from './present';
 
@@ -23,7 +24,7 @@ export type JudgmentEvent = Extract<EngineEvent, { type: 'judgment' }>;
 
 export type TextureBaker = Pick<Renderer, 'generateTexture' | 'resolution'>;
 
-export interface SceneOptions {
+export interface SceneOptions extends LookOptions {
   theme: Theme;
   notes: readonly EngineNote[];
   reducedMotion: boolean;
@@ -39,6 +40,9 @@ const LETTER_PX = 64;
 const LABEL_PX = 96;
 // A textura do texto inclui a entrelinha: a letra visível fica com ~75% da altura da nota
 const LETTER_ON_NOTE = 1.15;
+// Nome da nota acima dela, um pouco menor que a letra
+const NAME_PX = 48;
+const NAME_ON_NOTE = 0.9;
 
 const HIT = 1;
 const MISSED = 2;
@@ -49,6 +53,7 @@ interface Chip {
   tail: Sprite;
   gem: Sprite;
   letter: Sprite;
+  name: Sprite;
 }
 
 /**
@@ -58,7 +63,9 @@ interface Chip {
  */
 export class TrackScene extends Container {
   private readonly palette: TrackPalette;
+  private look: NoteLook;
   private readonly reducedMotion: boolean;
+  private readonly uiFont: string;
   private notes: readonly EngineNote[] = [];
   private times = new Float64Array(0);
   private tails = new Float64Array(0);
@@ -69,6 +76,7 @@ export class TrackScene extends Container {
   private readonly tailLayer = new Container();
   private readonly gemLayer = new Container();
   private readonly letterLayer = new Container();
+  private readonly nameLayer = new Container();
   private readonly glows: Sprite[] = [];
   private readonly rings: Sprite[] = [];
   private readonly fills: Sprite[] = [];
@@ -85,6 +93,8 @@ export class TrackScene extends Container {
   private readonly fillTextures: Texture[];
   private readonly glowTextures: Texture[];
   private readonly labelTextures: Map<Judgment, Texture>;
+  /** Nome de cada nota da música (Dó, Ré…), assado quando a nota chega na lista; só com noteNames. */
+  private readonly nameTextures = new Map<string, Texture>();
 
   private readonly lead: number;
   private l: TrackLayout;
@@ -102,13 +112,15 @@ export class TrackScene extends Container {
     super();
     const { theme } = options;
     this.palette = trackPalette(theme);
+    this.look = noteLook(theme, options);
     this.reducedMotion = options.reducedMotion;
+    this.uiFont = theme.fonts.ui;
     this.lead = options.leadSeconds ?? LEAD_SECONDS;
     this.l = trackLayout(1, 1, this.lead);
 
     const p = this.palette;
     const display = theme.fonts.display;
-    this.gemTextures = p.lanes.map((lane) => this.bakeGem(lane.main, lane.onNote));
+    this.gemTextures = p.lanes.map((lane, i) => this.bakeGem(lane.main, lane.onNote, STRING_PATTERNS[i]));
     this.noteLetterTextures = p.lanes.map((lane) => this.bakeText(lane.letter, LETTER_PX, lane.onNote, display));
     this.stringLetterTextures = p.lanes.map((lane) => this.bakeText(lane.letter, LETTER_PX, lane.main, display));
     this.ringTextures = p.lanes.map((lane) => this.bakeCircle(p.target, lane.main));
@@ -142,9 +154,9 @@ export class TrackScene extends Container {
     this.fpsText.position.set(8, 8);
     this.fpsText.visible = false;
 
-    for (const layer of [this.tailLayer, this.gemLayer, this.letterLayer]) layer.eventMode = 'none';
+    for (const layer of [this.tailLayer, this.gemLayer, this.letterLayer, this.nameLayer]) layer.eventMode = 'none';
     this.eventMode = 'none';
-    this.addChild(this.bg, targets, this.tailLayer, this.gemLayer, this.letterLayer, this.feedbackLabel, this.feedbackDetail, this.fpsText);
+    this.addChild(this.bg, targets, this.tailLayer, this.gemLayer, this.letterLayer, this.nameLayer, this.feedbackLabel, this.feedbackDetail, this.fpsText);
   }
 
   layout(width: number, height: number): void {
@@ -152,7 +164,7 @@ export class TrackScene extends Container {
     const p = this.palette;
     const far = l.farDepth * 1.02;
     const half = l.planeWidth / 2;
-    const corner = (x: number, d: number) => [projectX(l, x, d), projectY(l, d)];
+    const edge = (x: number, d: number) => [projectX(l, x, d), projectY(l, d)];
     const line = (x: number, color: number, width: number, alpha = 1) =>
       this.bg
         .moveTo(projectX(l, x, 0), projectY(l, 0))
@@ -160,9 +172,12 @@ export class TrackScene extends Container {
         .stroke({ color, width, alpha });
 
     this.bg.clear();
-    this.bg.poly([...corner(-half, 0), ...corner(half, 0), ...corner(half, far), ...corner(-half, far)]).fill(p.track);
+    this.bg.poly([...edge(-half, 0), ...edge(half, 0), ...edge(half, far), ...edge(-half, far)]).fill(p.track);
     for (let k = 1; k < 4; k++) line(-half + k * l.laneWidth, p.trackLine, 2);
-    l.lanes.forEach((x, i) => line(x, p.lanes[i].main, Math.max(2, l.laneWidth * 0.024), 0.3));
+    const laneWidth = Math.max(2, l.laneWidth * 0.024);
+    // Neon: a linha de cada corda acesa, com halo largo e fraco por baixo
+    for (const { spread, alpha } of glowLayers(this.look)) l.lanes.forEach((x, i) => line(x, p.lanes[i].main, laneWidth + l.laneWidth * spread * 0.5, alpha));
+    l.lanes.forEach((x, i) => line(x, p.lanes[i].main, laneWidth, this.look.glow > 0 ? 0.3 + 0.5 * this.look.glow : 0.3));
     const border = Math.max(2, l.height * 0.007);
     line(-half, p.hitLine, border);
     line(half, p.hitLine, border);
@@ -219,14 +234,41 @@ export class TrackScene extends Container {
       const tail = new Sprite(Texture.WHITE);
       const gem = new Sprite();
       const letter = new Sprite();
+      const name = new Sprite();
       tail.anchor.set(0.5, 1);
       gem.anchor.set(0.5);
       letter.anchor.set(0.5);
-      tail.visible = gem.visible = letter.visible = false;
+      name.anchor.set(0.5, 1);
+      tail.visible = gem.visible = letter.visible = name.visible = false;
       this.tailLayer.addChild(tail);
       this.gemLayer.addChild(gem);
       this.letterLayer.addChild(letter);
-      this.chips.push({ tail, gem, letter });
+      this.nameLayer.addChild(name);
+      this.chips.push({ tail, gem, letter, name });
+    }
+    this.bakeNames();
+  }
+
+  /**
+   * Liga ou desliga o modo daltônico e o nome das notas (a Pausa muda na hora): reassa só as 4 notas e os nomes que
+   * faltam. A forma e o brilho continuam os do tema.
+   */
+  setLook(options: LookOptions): void {
+    const patterns = options.patterns ?? false;
+    const noteNames = options.noteNames ?? false;
+    if (patterns === this.look.patterns && noteNames === this.look.noteNames) return;
+    this.look = { ...this.look, patterns, noteNames };
+    const old = this.gemTextures.splice(0, 4, ...this.palette.lanes.map((lane, i) => this.bakeGem(lane.main, lane.onNote, STRING_PATTERNS[i])));
+    this.bakeNames();
+    this.update(this.lastNow);
+    for (const t of old) t.destroy(true);
+  }
+
+  private bakeNames(): void {
+    if (!this.look.noteNames) return;
+    for (const n of this.notes) {
+      const label = noteLabel(n.midi);
+      if (!this.nameTextures.has(label)) this.nameTextures.set(label, this.bakeText(label, NAME_PX, this.palette.hitLine, this.uiFont));
     }
   }
 
@@ -301,10 +343,20 @@ export class TrackScene extends Container {
         chip.letter.scale.set((l.note.height * scale * LETTER_ON_NOTE) / LETTER_PX);
         chip.letter.alpha = alpha;
       }
+
+      const name = showGem && this.look.noteNames ? this.nameTextures.get(noteLabel(this.notes[i].midi)) : undefined;
+      chip.name.visible = name !== undefined;
+      if (name) {
+        const scale = depthScale(l, d);
+        chip.name.texture = name;
+        chip.name.position.set(projectX(l, x, d), projectY(l, d) - (l.note.height * scale) / 2);
+        chip.name.scale.set((l.note.height * scale * NAME_ON_NOTE) / NAME_PX);
+        chip.name.alpha = fade * entryAlpha(l, d);
+      }
     }
     for (let i = used; i < this.usedChips; i++) {
       const chip = this.chips[i];
-      chip.tail.visible = chip.gem.visible = chip.letter.visible = false;
+      chip.tail.visible = chip.gem.visible = chip.letter.visible = chip.name.visible = false;
     }
     this.usedChips = used;
 
@@ -348,6 +400,11 @@ export class TrackScene extends Container {
     return this.feedbackLabel.visible;
   }
 
+  /** Nomes de nota visíveis agora; para testes. */
+  visibleNames(): number {
+    return this.chips.filter((c) => c.name.visible).length;
+  }
+
   /** Texturas que esta cena assou; destruídas junto com ela. */
   bakedTextures(): Texture[] {
     return [
@@ -358,6 +415,7 @@ export class TrackScene extends Container {
       ...this.fillTextures,
       ...this.glowTextures,
       ...this.labelTextures.values(),
+      ...this.nameTextures.values(),
     ];
   }
 
@@ -377,23 +435,33 @@ export class TrackScene extends Container {
     return this.bake(new Text({ text, style: { fill, fontFamily, fontWeight: '800', fontSize: size } }));
   }
 
-  /** Nota do design: barra arredondada com contorno de tinta e um risco de brilho. */
-  private bakeGem(fill: number, shine: number): Texture {
+  /**
+   * Nota do design: barra arredondada com contorno de tinta e um risco de brilho. No 8-Bits, canto reto; no Neon, halo
+   * por fora (a textura cresce em volta, a nota continua do mesmo tamanho porque a escala usa GEM_W); no modo
+   * daltônico, o padrão da corda por dentro.
+   */
+  private bakeGem(fill: number, shine: number, pattern: StringPattern): Texture {
     const stroke = 5;
-    const r = GEM_H * 0.43;
-    return this.bake(
-      new Graphics()
-        .roundRect(stroke / 2, stroke / 2, GEM_W - stroke, GEM_H - stroke, r)
-        .fill(fill)
-        .stroke({ color: this.palette.hitLine, width: stroke })
-        .roundRect(GEM_W * 0.1, GEM_H * 0.2, GEM_W * 0.18, GEM_H * 0.15, GEM_H * 0.08)
-        .fill({ color: shine, alpha: 0.7 }),
-    );
+    const look = this.look;
+    const r = corner(look, GEM_H * 0.43);
+    const g = new Graphics();
+    for (const { spread, alpha } of glowLayers(look)) {
+      const grow = GEM_H * spread;
+      g.roundRect(-grow, -grow, GEM_W + 2 * grow, GEM_H + 2 * grow, corner(look, r + grow)).fill({ color: fill, alpha });
+    }
+    g.roundRect(stroke / 2, stroke / 2, GEM_W - stroke, GEM_H - stroke, r).fill(fill);
+    if (look.patterns) drawPattern(g, pattern, stroke, stroke, GEM_W - 2 * stroke, GEM_H - 2 * stroke, shine);
+    g.roundRect(stroke / 2, stroke / 2, GEM_W - stroke, GEM_H - stroke, r).stroke({ color: this.palette.hitLine, width: stroke });
+    g.roundRect(GEM_W * 0.1, GEM_H * 0.2, GEM_W * 0.18, GEM_H * 0.15, corner(look, GEM_H * 0.08)).fill({ color: shine, alpha: 0.7 });
+    return this.bake(g);
   }
 
   private bakeCircle(fill: number, stroke?: number, alpha = 1): Texture {
     const width = (RING_R * 0.04) / 0.28;
-    const g = new Graphics().circle(RING_R, RING_R, stroke === undefined ? RING_R : RING_R - width / 2).fill({ color: fill, alpha });
+    const r = stroke === undefined ? RING_R : RING_R - width / 2;
+    // No 8-Bits o alvo também é quadrado, do tamanho da nota que cai nele
+    const g = this.look.square ? new Graphics().rect(RING_R - r, RING_R - r, 2 * r, 2 * r) : new Graphics().circle(RING_R, RING_R, r);
+    g.fill({ color: fill, alpha });
     if (stroke !== undefined) g.stroke({ color: stroke, width });
     return this.bake(g);
   }

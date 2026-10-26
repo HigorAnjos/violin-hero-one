@@ -56,7 +56,7 @@ export function usePlayScreen(mode: GameMode) {
   return { play, a4, performance, level, bands, finish, micError, navigate };
 }
 
-type Game = Pick<ReturnType<typeof useGame>, 'hud' | 'practiced' | 'practice' | 'toPractice' | 'metronome' | 'changeMetronome'>;
+type Game = Pick<ReturnType<typeof useGame>, 'hud' | 'practiced' | 'practice' | 'toPractice' | 'metronome' | 'changeMetronome' | 'prefs' | 'changePrefs'>;
 
 /**
  * Velocidade e metrônomo da pausa. Na partida comum, mudar a velocidade avisa e, confirmado, a partida vira prática no
@@ -70,6 +70,8 @@ export function pauseSettings(game: Game) {
     onSpeed: (speed: number) => (inPractice ? game.practice.setSpeed(speed) : void game.toPractice(speed)),
     metronome: game.metronome,
     onMetronome: game.changeMetronome,
+    prefs: game.prefs,
+    onPrefs: game.changePrefs,
   };
 }
 

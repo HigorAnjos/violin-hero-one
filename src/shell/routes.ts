@@ -21,6 +21,9 @@ export const ROUTES = {
   gameOver: '/orquestra-parou',
   badge: '/selo-novo',
   results: '/resultado',
+  profile: '/perfil',
+  settings: '/configuracoes',
+  reminder: '/lembrete',
 } as const;
 
 /**

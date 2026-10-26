@@ -12,15 +12,22 @@ test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required']
 
 const played = (errors: number, noFail = true): GameResult => simulateGame({ song: ODE, startAt: 1, noFail }, { errors, seed: 2 }).result;
 
-async function checkScreen(page: Page) {
-  await fontsReady(page);
+async function checkThemed(page: Page, tema: string) {
+  await fontsReady(page, tema);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', tema);
   await expectFits(page);
   expect(await tooSmallTargets(page), 'alvos de toque abaixo de 44 px').toEqual([]);
   expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);
   await expectVisibleFocus(page);
 }
 
-test.describe('telas de jogo: cabem, 44 px de toque, foco visível', () => {
+for (const tema of ['caderno', 'palco', '8-bits'] as const) test.describe(`${tema}: telas de jogo cabem, 44 px de toque, foco visível`, () => {
+  const checkScreen = (page: Page) => checkThemed(page, tema);
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript((id) => localStorage.setItem('vh:theme', id), tema);
+  });
+
   test('afinação', async ({ page }) => {
     await page.goto('/afinar?ouvido=simulado');
     await expect(page.getByRole('region', { name: 'Afinador' })).toBeVisible();

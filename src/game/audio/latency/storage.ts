@@ -94,6 +94,17 @@ export function clearLatency(deviceKey?: string, storage: Storage | undefined = 
   }
 }
 
+/**
+ * A medida mais recente de qualquer par entrada→saída (as Configurações mostram sem abrir o microfone, então não sabem o
+ * par de agora). Sem data, conta como a mais antiga.
+ */
+export function latestLatency(storage: Storage | undefined = defaultStorage()): StoredLatency | null {
+  const all = Object.keys(readEntries(storage))
+    .map((key) => loadLatency(key, storage))
+    .filter((e): e is StoredLatency => e !== null);
+  return all.sort((a, b) => b.measuredAt.localeCompare(a.measuredAt))[0] ?? null;
+}
+
 /** Latência a descontar de PitchReading.time, em segundos: a calibrada deste par, ou o padrão. */
 export function latencySeconds(
   deviceKey: string = DEFAULT_DEVICE_KEY,

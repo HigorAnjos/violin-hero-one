@@ -39,7 +39,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const strings = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), setNotes: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
+const strings = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), setNotes: vi.fn(), setLook: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
 
 function setup(search = '', state: PlayState = { song: FAST, mode: 'Cordas 3D' }) {
   const ear: FakeEar = createFakeEar();

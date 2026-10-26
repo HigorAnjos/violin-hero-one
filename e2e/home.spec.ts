@@ -32,10 +32,14 @@ test.describe('depois da primeira vez', () => {
     await expect(page.getByRole('status').filter({ hasText: 'Offline' })).toBeVisible();
   });
 
-  test('trocar para o tema Palco', async ({ page }) => {
-    const palco = page.getByRole('group', { name: 'Tema' }).getByRole('button', { name: 'Palco' });
+  test('trocar para o tema Palco pelas Configurações › Visual, e ele fica na volta', async ({ page }) => {
+    await page.getByRole('link', { name: 'Configurações' }).click();
+    await page.getByRole('link', { name: 'Visual' }).click();
+    const palco = page.getByRole('radiogroup', { name: 'Temas' }).getByRole('radio', { name: /^Palco/ });
     await palco.click();
-    await expect(palco).toHaveAttribute('aria-pressed', 'true');
+    await expect(palco).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'palco');
+    await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'palco');
   });
 
