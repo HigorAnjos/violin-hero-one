@@ -6,6 +6,12 @@ import { BADGES_STORAGE_KEY } from '../services/badges';
 import type { DeviceData } from '../services/deviceData';
 import { isOnboarded, loadLocalProfile, ONBOARDED_STORAGE_KEY, PROFILE_STORAGE_KEY } from '../services/profile';
 import type { SessionState } from '../services/session';
+import { ODE } from '../game/engine/testing';
+import { createPlaySync, memoryPlayQueueStore } from '../services/playQueue';
+import type { PlayPayload } from '../services/progress';
+import { memorySongStore } from '../services/songCache';
+import { createDeviceData } from '../services/sync';
+import { currentUserId } from '../services/user';
 import { adoptUser, DEVICE_USER_STORAGE_KEY, useAccountWatch } from './accountSwitch';
 import { loadRecords, RECORDS_STORAGE_KEY } from './records';
 
@@ -37,7 +43,8 @@ describe('adoptUser', () => {
     deviceOf('u1');
     const { data, calls } = fakeDevice();
     expect(await adoptUser(profileRpc(), session('u1'), data)).toBe('same');
-    expect(calls).toEqual(['use:u1']);
+    // Nem o use: no sync ele limparia as queries a cada renovação de token
+    expect(calls).toEqual([]);
     expect(loadRecords()).toHaveLength(1);
     expect(loadLocalProfile().nickname).toBe('Anon');
   });
@@ -46,7 +53,9 @@ describe('adoptUser', () => {
     localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify({ 'brilha:easy': 900 }));
     const { data, calls } = fakeDevice();
     expect(await adoptUser(profileRpc(), session('u1', true), data)).toBe('first');
-    expect(calls).toEqual(['use:u1']);
+    // A primeira sessão vira dona do cache e da fila pela chave de services/user.ts; nada a esquecer
+    expect(calls).toEqual([]);
+    expect(currentUserId()).toBe('u1');
     expect(loadRecords()).toHaveLength(1);
     expect(localStorage.getItem(DEVICE_USER_STORAGE_KEY)).toBe('u1');
   });
@@ -81,6 +90,47 @@ describe('adoptUser', () => {
     expect(await adoptUser(client, session('conta-1'), fakeDevice().data)).toBe('switched');
     expect(loadLocalProfile()).toEqual({});
     expect(isOnboarded()).toBe(true);
+  });
+});
+
+describe('adoptUser com o DeviceData do sync', () => {
+  function realDevice() {
+    const submitted: string[] = [];
+    let current: SessionState = session('anon-1', true);
+    const sync = createPlaySync({
+      store: memoryPlayQueueStore(),
+      user: currentUserId,
+      session: async () => current,
+      submit: async (s, payload) => {
+        if (s.status === 'signed-in') submitted.push(`${s.userId}:${payload.client_id}`);
+        return { playId: 'p', accuracy: 100, record: null, badges: [], streak: null, duplicate: false };
+      },
+      chart: async () => ({ hash: 'h', song: ODE }),
+      online: () => true,
+    });
+    const songs = memorySongStore();
+    return { sync, songs, submitted, data: createDeviceData(sync, songs), setSession: (s: SessionState) => (current = s) };
+  }
+  const play = (id: string) => ({ payload: { client_id: id, song_id: 'ode', level: 'easy' } as PlayPayload, chartHash: 'h', checkChart: false });
+
+  it('login noutro aparelho: a fila do convidado sobe na conta dele, a troca esquece o resto e a fila passa a ser da conta', async () => {
+    const t = realDevice();
+    expect(await adoptUser(null, session('anon-1', true), t.data)).toBe('first');
+    await t.sync.enqueue(play('a'));
+    await t.songs.put({ userId: 'anon-1', id: 'ode', level: 'easy', hash: 'h', sheet: {} as never, song: ODE, savedAt: 1, openedAt: 1 });
+    // Antes do link (sendLoginLink): flush na conta anônima
+    await t.data.flush('anon-1');
+    expect(t.submitted).toEqual(['anon-1:a']);
+    // Partida sem rede depois do link e antes de abrir: fica com o convidado e some na troca, nunca vai para a conta
+    await t.sync.enqueue(play('b'));
+    t.setSession(session('conta-1'));
+    expect(await adoptUser(null, session('conta-1'), t.data)).toBe('switched');
+    expect(currentUserId()).toBe('conta-1');
+    expect(await t.data.pending('anon-1')).toBe(0);
+    expect(await t.songs.all('anon-1')).toEqual([]);
+    await t.sync.enqueue(play('c'));
+    await t.sync.flush();
+    expect(t.submitted).toEqual(['anon-1:a', 'conta-1:c']);
   });
 });
 

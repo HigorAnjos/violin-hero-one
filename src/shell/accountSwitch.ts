@@ -7,10 +7,11 @@ import { markOnboarded, PROFILE_STORAGE_KEY, saveLocalProfile, type Animal, type
 import { progressKeys } from '../services/progress';
 import { signedIn, type SessionState } from '../services/session';
 import { supabase } from '../services/supabase';
+import { currentUserId, rememberUser, USER_STORAGE_KEY } from '../services/user';
 import { RECORDS_STORAGE_KEY } from './records';
 
-/** De quem é o que o aparelho guarda (recordes, selos e perfil locais, cache e fila da sincronização). */
-export const DEVICE_USER_STORAGE_KEY = 'vh:usuario';
+/** De quem é o que o aparelho guarda: a mesma chave do cache e da fila da sincronização (services/user.ts). */
+export const DEVICE_USER_STORAGE_KEY = USER_STORAGE_KEY;
 
 /** O que é do jogador e não do aparelho: some na troca de usuário. Tema, Lá, latência e ajustes ficam. */
 export const PER_USER_KEYS = [RECORDS_STORAGE_KEY, BADGES_STORAGE_KEY, PROFILE_STORAGE_KEY] as const;
@@ -42,20 +43,13 @@ async function pullProfile(client: { rpc: SupabaseClient['rpc'] }): Promise<void
  */
 export async function adoptUser(client: { rpc: SupabaseClient['rpc'] } | null, session: SessionState, data: DeviceData = deviceData()): Promise<SwitchOutcome> {
   if (session.status !== 'signed-in') return 'same';
-  const store = storage();
-  const previous = store?.getItem(DEVICE_USER_STORAGE_KEY) ?? null;
-  if (previous === session.userId) {
-    data.use(session.userId);
-    return 'same';
-  }
-  store?.setItem(DEVICE_USER_STORAGE_KEY, session.userId);
-  // Aparelho de antes desta versão: o que está nele é do usuário que já estava na sessão
-  if (!previous) {
-    data.use(session.userId);
-    return 'first';
-  }
+  // Mesmo usuário (renovação do token, e-mail confirmado no anônimo): cache e fila já são dele
+  if (currentUserId() === session.userId) return 'same';
+  // Primeira sessão no aparelho (ou aparelho de antes desta versão): o que está nele é desse usuário
+  const previous = rememberUser(session.userId);
+  if (!previous) return 'first';
   await data.forget(previous);
-  for (const key of PER_USER_KEYS) store?.removeItem(key);
+  for (const key of PER_USER_KEYS) storage()?.removeItem(key);
   data.use(session.userId);
   if (!session.anonymous) {
     // Conta que já existe já jogou: o aparelho novo vai direto para a tela inicial
