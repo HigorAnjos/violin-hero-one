@@ -13,6 +13,8 @@ import {
   sheetLayout,
   steadyClock,
   stepY,
+  tieArc,
+  tieShows,
   windowTime,
   type BeatSegment,
   type BeatWindow,
@@ -72,6 +74,41 @@ describe('relógio de tempos', () => {
     expect(markApplies(14, 22)).toBe(false);
   });
 
+  it('passada contínua: o salto do laço corta, a troca de andamento não', () => {
+    const loop = [seg(10, 0, 1, 22, 12), seg(22, 4, 1, 30, 12), seg(30, 4, 1)];
+    const out: BeatWindow[] = [];
+    const count = beatWindows(loop, 21, 2, 6, out);
+    expect(out.slice(0, count).map((w) => [w.passFrom, w.passTo])).toEqual([
+      [0, 12],
+      [4, 12],
+    ]);
+    const tempo = [seg(0, 0, 0.5, 4, 8), seg(4, 8, 1)];
+    beatWindows(tempo, 3, 4, 6, out);
+    expect([out[0].passFrom, out[0].passTo, out[1].passFrom, out[1].passTo]).toEqual([0, Infinity, 0, Infinity]);
+  });
+
+  it('ligadura: na mesma passada, uma vez só; no salto do laço B não se liga a A', () => {
+    // laço dos tempos 4 a 12, salto às 22 s; agulha no tempo 11 da 1ª volta
+    const loop = [seg(10, 0, 1, 22, 12), seg(22, 4, 1, 30, 12), seg(30, 4, 1)];
+    const out: BeatWindow[] = [];
+    beatWindows(loop, 21, 4, 6, out);
+    const [b, a] = out;
+    // dentro de B e atravessando a barra do tempo 8
+    expect(tieShows(b, undefined, 9, 10)).toBe(true);
+    expect(tieShows(b, undefined, 7, 9)).toBe(true);
+    // a última nota de B (tempo 11) ligada a uma que viria no tempo 12: fora da passada
+    expect(tieShows(b, undefined, 11, 12)).toBe(false);
+    // a primeira de A ligada a uma de antes de A: fora da passada
+    expect(tieShows(a, b, 3, 4)).toBe(false);
+    expect(tieShows(a, b, 4, 5)).toBe(true);
+    // troca de andamento no tempo 8: o arco de 7 a 9 sai no primeiro pedaço e não repete no segundo
+    const tempo = [seg(0, 0, 0.5, 4, 8), seg(4, 8, 1)];
+    beatWindows(tempo, 3.5, 4, 6, out);
+    expect(tieShows(out[0], undefined, 7, 9)).toBe(true);
+    expect(tieShows(out[1], out[0], 7, 9)).toBe(false);
+    expect(tieShows(out[1], out[0], 9, 10)).toBe(true);
+  });
+
   it('reaproveita o vetor de saída entre quadros', () => {
     const out: BeatWindow[] = [];
     const segments = steadyClock(0, 60).segments(10);
@@ -118,15 +155,17 @@ describe('medidas da faixa', () => {
   it.each([
     ['tela 5b', 1198, 280],
     ['faixa compacta', 764, 112],
-  ])('%s: nenhuma cabeça nem haste encosta na barra de compasso, em nenhuma música fixa', (_name, width, height) => {
+  ])('%s: nenhuma cabeça, haste nem pausa encosta na barra de compasso, em nenhuma música fixa', (_name, width, height) => {
     for (const { song } of FIXED_SONGS) {
       const staff = staffLayout(song);
       const l = sheetLayout(width, height, keySignature(staff.fifths).length);
-      const offsets = barOffsets(staff.bars, staff.notes.map((n) => n.at));
+      const starts = [...staff.notes, ...staff.rests].map((x) => x.at).sort((a, b) => a - b);
+      const offsets = barOffsets(staff.bars, starts);
       const gaps: number[] = [];
       staff.bars.forEach((start, m) => {
         if (m === 0) return;
         const bar = (start - offsets[m]) * l.pxPerBeat;
+        for (const r of staff.rests) gaps.push(Math.abs(r.at * l.pxPerBeat - bar) - l.head.rx);
         for (const n of staff.notes) {
           const x = n.at * l.pxPerBeat - bar;
           const stem = x + (n.stemUp ? 1 : -1) * l.head.rx * 0.9;
@@ -136,6 +175,24 @@ describe('medidas da faixa', () => {
       });
       expect(Math.min(...gaps), song.id).toBeGreaterThanOrEqual(l.space * 0.5);
     }
+  });
+
+  it('arco da ligadura: entre as cabeças, do lado contrário à haste, depois do ponto, mais alto quando mais longo', () => {
+    const l = sheetLayout(1198, 280, 2);
+    const out = { x: 0, y: 0, width: 0, height: 0 };
+    const short = { ...tieArc(l, 300, 300 + l.pxPerBeat, { step: 33, below: true, dotted: false }, out) };
+    expect(short.x).toBeGreaterThan(300);
+    expect(short.x + short.width).toBeLessThan(300 + l.pxPerBeat);
+    expect(short.y).toBeGreaterThan(stepY(l, 33));
+    expect(short.height).toBeGreaterThan(0);
+    const above = { ...tieArc(l, 300, 300 + l.pxPerBeat, { step: 40, below: false, dotted: false }, out) };
+    expect(above.y).toBeLessThan(stepY(l, 40));
+    expect(above.height).toBeLessThan(0);
+    const dotted = tieArc(l, 300, 300 + 1.5 * l.pxPerBeat, { step: 33, below: true, dotted: true }, out);
+    expect(dotted.x).toBeGreaterThan(300 + l.head.rx + l.space * 0.7);
+    const long = tieArc(l, 300, 300 + 4 * l.pxPerBeat, { step: 33, below: true, dotted: false }, out);
+    expect(long.height).toBeGreaterThan(short.height);
+    expect(long.height).toBeLessThanOrEqual(l.space * 1.1);
   });
 
   it('a nota apaga ao entrar sob a clave, e não antes', () => {

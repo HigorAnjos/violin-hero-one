@@ -42,7 +42,16 @@ export interface BeatWindow {
   time: number;
   beat: number;
   spb: number;
+  /**
+   * A passada contínua da música em que este pedaço está, em tempos: do salto (ou do começo) até o próximo salto do
+   * laço. A troca de andamento não corta a passada. A ligadura só se desenha com as duas notas na mesma passada.
+   */
+  passFrom: number;
+  passTo: number;
 }
+
+/** O trecho `b` continua o `a` sem salto (só o andamento pode mudar). */
+const continues = (a: BeatSegment, b: BeatSegment) => Math.abs(a.endBeat - b.beat) < 1e-9;
 
 function segmentIndexAt(segments: readonly BeatSegment[], t: number): number {
   let lo = 0;
@@ -55,9 +64,16 @@ function segmentIndexAt(segments: readonly BeatSegment[], t: number): number {
   return lo;
 }
 
-function put(out: BeatWindow[], count: number, segment: BeatSegment, fromBeat: number, toBeat: number, startDistance: number): number {
+function put(out: BeatWindow[], count: number, segments: readonly BeatSegment[], j: number, fromBeat: number, toBeat: number, startDistance: number): number {
   if (!(toBeat > fromBeat)) return count;
-  const w = out[count] ?? (out[count] = { fromBeat: 0, toBeat: 0, shift: 0, time: 0, beat: 0, spb: 1 });
+  const segment = segments[j];
+  const w = out[count] ?? (out[count] = { fromBeat: 0, toBeat: 0, shift: 0, time: 0, beat: 0, spb: 1, passFrom: 0, passTo: 0 });
+  let first = j;
+  while (first > 0 && continues(segments[first - 1], segments[first])) first--;
+  let last = j;
+  while (last + 1 < segments.length && continues(segments[last], segments[last + 1])) last++;
+  w.passFrom = segments[first].beat;
+  w.passTo = segments[last].endBeat;
   w.fromBeat = fromBeat;
   w.toBeat = toBeat;
   w.shift = startDistance - segment.beat;
@@ -86,25 +102,26 @@ export function beatWindows(segments: readonly BeatSegment[], now: number, behin
 
   // Para trás: distância do começo de cada trecho até a agulha
   let end = current.beat - nowBeat;
-  const before: [BeatSegment, number][] = [];
+  const before: [number, number][] = [];
   for (let j = k - 1; j >= 0 && end > -behind; j--) {
     const s = segments[j];
     const start = end - (s.endBeat - s.beat);
-    before.push([s, start]);
+    before.push([j, start]);
     end = start;
   }
   for (let i = before.length - 1; i >= 0; i--) {
-    const [s, start] = before[i];
-    count = put(out, count, s, Math.max(s.beat, s.beat - behind - start), s.endBeat, start);
+    const [j, start] = before[i];
+    const s = segments[j];
+    count = put(out, count, segments, j, Math.max(s.beat, s.beat - behind - start), s.endBeat, start);
   }
 
   const from = k === 0 ? nowBeat - behind : Math.max(current.beat, nowBeat - behind);
-  count = put(out, count, current, from, Math.min(current.endBeat, nowBeat + ahead), current.beat - nowBeat);
+  count = put(out, count, segments, k, from, Math.min(current.endBeat, nowBeat + ahead), current.beat - nowBeat);
 
   let start = current.beat - nowBeat + (current.endBeat - current.beat);
   for (let j = k + 1; j < segments.length && start < ahead; j++) {
     const s = segments[j];
-    count = put(out, count, s, s.beat, Math.min(s.endBeat, s.beat + ahead - start), start);
+    count = put(out, count, segments, j, s.beat, Math.min(s.endBeat, s.beat + ahead - start), start);
     start += s.endBeat - s.beat;
   }
   return count;
@@ -236,6 +253,43 @@ export function barOffsets(bars: readonly number[], noteStarts: ArrayLike<number
 /** As notas somem ao entrar sob a clave: a cabeça começa a apagar um espaço e meio antes da borda. */
 export function clefFade(l: SheetLayout, x: number): number {
   return Math.max(0, Math.min(1, (x - l.head.rx - l.clefWidth) / (l.space * 1.5)));
+}
+
+export interface TieArc {
+  /** Ponta esquerda do arco. */
+  x: number;
+  y: number;
+  width: number;
+  /** Flecha do arco: positiva abaixo das pontas, negativa acima. */
+  height: number;
+}
+
+/**
+ * Arco da ligadura entre as cabeças em `x0` e `x1` (escrito em `out`, sem alocar no quadro): do lado contrário à haste,
+ * colado às cabeças, começando depois do ponto da primeira; quanto mais longo, mais alto.
+ */
+export function tieArc(l: SheetLayout, x0: number, x1: number, tie: { step: number; below: boolean; dotted: boolean }, out: TieArc): TieArc {
+  const start = x0 + (tie.dotted ? l.head.rx + l.space * 0.9 : l.head.rx * 0.8);
+  const end = x1 - l.head.rx * 0.8;
+  const width = Math.max(l.space * 0.5, end - start);
+  const height = l.space * Math.min(1.1, Math.max(0.45, 0.3 + (0.06 * width) / l.space));
+  out.x = start;
+  out.width = width;
+  out.y = stepY(l, tie.step) + (tie.below ? 1 : -1) * l.space * 0.55;
+  out.height = tie.below ? height : -height;
+  return out;
+}
+
+/**
+ * A ligadura entre as notas que começam em `fromAt` e `toAt` aparece neste pedaço? Só com as duas na mesma passada (no
+ * salto do laço a última nota de B não se liga à primeira de A) e só no primeiro pedaço visível que o arco toca, para
+ * não sair duas vezes quando a troca de andamento divide a passada.
+ */
+export function tieShows(win: BeatWindow, previous: BeatWindow | undefined, fromAt: number, toAt: number): boolean {
+  if (fromAt < win.passFrom - 1e-9 || toAt > win.passTo - 1e-9) return false;
+  if (toAt < win.fromBeat || fromAt >= win.toBeat) return false;
+  const sameRun = previous !== undefined && Math.abs(previous.shift - win.shift) < 1e-9 && Math.abs(previous.toBeat - win.fromBeat) < 1e-9;
+  return !(sameRun && fromAt < win.fromBeat);
 }
 
 /** Julgamento e nota se encontram por noteIndex; a cópia certa (a volta do laço) é a que toca perto do julgamento. */
