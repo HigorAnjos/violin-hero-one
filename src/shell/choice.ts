@@ -3,7 +3,7 @@ import { GAME_MODES, type GameMode } from './play';
 import { ROUTES } from './routes';
 
 /** Modo, música e nível ficam na URL: recarregar ou voltar não perde a escolha. */
-const MODE_SLUG: Record<GameMode, string> = { Arcade: 'arcade', Partitura: 'partitura', Prática: 'pratica' };
+const MODE_SLUG: Record<GameMode, string> = { Arcade: 'arcade', Partitura: 'partitura', Prática: 'pratica', 'Cordas 3D': 'cordas-3d' };
 const LEVEL_SLUG: Record<Level, string> = { easy: 'facil', medium: 'medio', hard: 'dificil' };
 
 /** Modos com tela registrada no AppRouter: o teste do AppRouter confere que toda rota daqui existe. */

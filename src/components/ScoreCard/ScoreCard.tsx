@@ -152,10 +152,12 @@ export interface ScoreCardProps {
   combo: number;
   accuracy: number;
   level: OrchestraLevel;
+  /** Falso: sem a faixa dos naipes no desktop (Cordas 3D, onde o cartão não pode descer sobre a corda G). */
+  sections?: boolean;
 }
 
 /** Placar da Gameplay: pontos, multiplicador, precisão e os naipes que tocam junto. */
-export const ScoreCard: React.FC<ScoreCardProps> = ({ score, multiplier, combo, accuracy, level }) => {
+export const ScoreCard: React.FC<ScoreCardProps> = ({ score, multiplier, combo, accuracy, level, sections: showSections = true }) => {
   const sections = SECTION_ORDER.slice(0, level) as OrchestraSection[];
   const label = `${LEVEL_LABEL[level]} tocando; ${orchestraHint(level, combo).toLowerCase()}`;
   return (
@@ -169,15 +171,17 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({ score, multiplier, combo, 
           {formatPercent(accuracy)} de acertos
         </span>
       </Row>
-      <Band>
-        <Kicker>Orquestra tocando com você</Kicker>
-        <Sections role="img" aria-label={label}>
-          {SECTION_ORDER.map((s) => (
-            <SectionChip key={s} section={s} on={sections.includes(s)} />
-          ))}
-        </Sections>
-        <small>{orchestraHint(level, combo)}</small>
-      </Band>
+      {showSections && (
+        <Band>
+          <Kicker>Orquestra tocando com você</Kicker>
+          <Sections role="img" aria-label={label}>
+            {SECTION_ORDER.map((s) => (
+              <SectionChip key={s} section={s} on={sections.includes(s)} />
+            ))}
+          </Sections>
+          <small>{orchestraHint(level, combo)}</small>
+        </Band>
+      )}
       <Strip>
         <Orchestra level={level} />
       </Strip>
