@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test';
 
 /**
  * Nada passa da janela: sem rolagem e nenhum elemento visível além da borda direita ou de baixo. O que um ancestral
- * recorta (overflow: listas que rolam por dentro) conta só pela parte que aparece.
+ * recorta (overflow: as notas da partitura dentro da SVG, listas que rolam por dentro) conta só pela parte que aparece.
  */
 export async function expectFits(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'rolagem horizontal').toBeLessThanOrEqual(0);
@@ -29,7 +29,7 @@ export async function expectFits(page: Page) {
   expect(outside, 'elementos fora da janela').toEqual([]);
 }
 
-/** Controles visíveis (e não recortados por uma lista que rola) com menos de 44 px de lado. */
+/** Botões, links, campos e opções visíveis abaixo de 44 px de toque. */
 export async function tooSmallTargets(page: Page) {
   return page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('button, a[href], input, select, [role="radio"]')]
@@ -51,4 +51,19 @@ export async function expectVisibleFocus(page: Page) {
     return own === 'solid' || field === 'solid' ? 'solid' : `${own}/${field}`;
   });
   expect(ring, 'contorno de foco').toBe('solid');
+}
+
+/** Texto visível menor que `min` px (rótulos que encolheram no celular). */
+export async function tinyText(page: Page, min = 12) {
+  return page.evaluate((limit) => {
+    const out: string[] = [];
+    const walker = document.createTreeWalker(document.querySelector('main') ?? document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const el = node.parentElement;
+      if (!el || !node.textContent?.trim() || el.closest('[aria-hidden="true"]') || el.offsetParent === null) continue;
+      const size = parseFloat(getComputedStyle(el).fontSize);
+      if (size < limit - 0.01) out.push(`"${node.textContent.trim().slice(0, 24)}": ${size}px`);
+    }
+    return out;
+  }, min);
 }

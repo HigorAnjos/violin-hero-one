@@ -1,6 +1,6 @@
 import { judgmentDetail } from '../../game/render/present';
 import { DEFAULT_TOLERANCE_CENTS, DEFAULT_WINDOWS, TUNING_GREAT, TUNING_PERFECT } from '../../game/engine/score';
-import type { Judgment, NoteJudgment } from '../../game/engine/types';
+import type { Judgment, NoteJudgment, TimingWindows } from '../../game/engine/types';
 import type { Finger } from '../../game/notation/song';
 import { OPEN_STRING_MIDI, STRING_SOLFEGE, type StringIndex } from '../../game/notation/violin';
 import { noteName } from '../CountIn/countIn';
@@ -57,8 +57,15 @@ const zone = (half: number, range: number): [number, number] => [50 - (half / ra
 const clamp = (v: number) => Math.max(2, Math.min(98, v));
 
 /** 5d · Por que a nota não saiu Perfeito, no texto do design, a partir do julgamento do motor. */
-export function explainJudgment(j: NoteJudgment, target: TargetNote, latencyMs?: number): Explanation | null {
+export function explainJudgment(
+  j: NoteJudgment,
+  target: TargetNote,
+  latencyMs?: number,
+  limits: { windows?: TimingWindows; toleranceCents?: number } = {},
+): Explanation | null {
   if (!j.issue) return null;
+  const windows = limits.windows ?? DEFAULT_WINDOWS;
+  const tolerance = limits.toleranceCents ?? DEFAULT_TOLERANCE_CENTS;
   const chip = judgmentDetail({ ...j, state: { combo: 0 } });
   const name = noteName(target.midi);
   const where = placeOf(target.string, target.finger);
@@ -87,7 +94,7 @@ export function explainJudgment(j: NoteJudgment, target: TargetNote, latencyMs?:
     case 'late': {
       const ms = Math.abs(Math.round(j.offsetMs ?? 0));
       const late = j.issue === 'late';
-      const range = DEFAULT_WINDOWS.good;
+      const range = windows.good;
       return {
         ...base,
         hint: [
@@ -99,8 +106,8 @@ export function explainJudgment(j: NoteJudgment, target: TargetNote, latencyMs?:
         ruler: {
           kind: 'timing',
           at: clamp(50 + ((j.offsetMs ?? 0) / range) * 50),
-          perfect: zone(DEFAULT_WINDOWS.perfect, range),
-          great: zone(DEFAULT_WINDOWS.great, range),
+          perfect: zone(windows.perfect, range),
+          great: zone(windows.great, range),
           label: `Tempo: ${ms} milissegundos ${late ? 'atrasado' : 'adiantado'}`,
           ends: ['◂ CEDO', '0', 'TARDE ▸'],
         },
@@ -110,7 +117,7 @@ export function explainJudgment(j: NoteJudgment, target: TargetNote, latencyMs?:
     case 'flat': {
       const cents = Math.abs(Math.round(j.cents ?? 0));
       const sharp = j.issue === 'sharp';
-      const range = DEFAULT_TOLERANCE_CENTS;
+      const range = tolerance;
       const fix =
         target.finger === 0
           ? ` Confira a afinação da corda ${STRING_SOLFEGE[target.string]}.`
