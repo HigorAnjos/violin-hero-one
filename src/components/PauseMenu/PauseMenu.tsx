@@ -8,22 +8,60 @@ import { clock } from '../../game/render/staff';
 import type { PlayPrefs } from '../../shell/playPrefs';
 import { SpeedPicker, speedLabel } from '../SpeedPicker/SpeedPicker';
 
-/** Caixa de marcar do design (.vh-chk): 18 px de caixa, a linha inteira com 44 px de toque. */
+/**
+ * Caixa de marcar do design (.vh-chk): o input tem 44 px (toque) e a caixa de 18 px é desenhada no meio dele, como o
+ * trilho do Toggle.
+ */
 const Check = styled.label`
   && {
     flex-direction: row;
     align-items: center;
-    gap: 0.625rem;
+    gap: 0;
     min-height: 2.75rem;
     cursor: pointer;
   }
 
   && input {
+    appearance: none;
     flex: none;
-    width: 1.125rem;
-    height: 1.125rem;
-    margin: 0;
-    accent-color: ${({ theme }) => theme.colors.info.main};
+    position: relative;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: 0 0 0 -0.8125rem;
+    background: none;
+    cursor: pointer;
+  }
+
+  && input::before {
+    content: '';
+    position: absolute;
+    inset: 0.8125rem;
+    border: 2px solid ${({ theme }) => theme.colors.textMuted};
+    border-radius: 3px;
+    background-color: ${({ theme }) => theme.colors.surface};
+  }
+
+  && input:checked::before {
+    border-color: ${({ theme }) => theme.colors.info.main};
+    background-color: ${({ theme }) => theme.colors.info.main};
+  }
+
+  && input:checked::after {
+    content: '';
+    position: absolute;
+    left: 1.1875rem;
+    top: 0.9375rem;
+    width: 0.3125rem;
+    height: 0.625rem;
+    /* O ciano da caixa tem 3:1 contra o cartão: o visto na cor do cartão também */
+    border: solid ${({ theme }) => theme.colors.surface};
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  && input:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.info.main};
+    outline-offset: -0.5rem;
   }
 
   @media (max-height: 500px) {
