@@ -328,6 +328,12 @@ export class TrackScene extends Container {
     return this.chips.filter((c) => c.gem.visible).length;
   }
 
+  /** Posição, tamanho e transparência das notas e caudas visíveis, em texto; para testes. */
+  visibleChips(): string[] {
+    const view = (s: Sprite) => (s.visible ? `${s.x.toFixed(3)},${s.y.toFixed(3)},${s.scale.x.toFixed(4)},${s.scale.y.toFixed(4)},${s.alpha.toFixed(3)}` : '-');
+    return this.chips.slice(0, this.usedChips).map((c) => `${view(c.gem)} ${view(c.tail)}`);
+  }
+
   /** Quanto as notas visíveis estão apagadas (1 = acesas); para testes. */
   visibleNoteAlphas(): number[] {
     return this.chips.filter((c) => c.gem.visible).map((c) => c.gem.alpha);
