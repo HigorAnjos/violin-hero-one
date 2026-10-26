@@ -14,6 +14,7 @@ import { CATALOG } from './catalogo';
 const MODES = [
   { name: 'Arcade', route: /\/jogo$/ },
   { name: 'Partitura', route: /\/jogo\/partitura$/ },
+  { name: 'Cordas 3D', route: /\/jogo\/3d$/ },
 ] as const;
 
 const ALL_BADGES: BadgeId[] = ['primeira-musica', 'sem-erros', 'combo-25', 'combo-50', 'combo-100', 'afinacao-de-ouro'];

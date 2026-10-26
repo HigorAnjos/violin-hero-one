@@ -11,7 +11,7 @@ export async function skipOnboarding(page: Page) {
  * Da tela inicial até afinar, como o jogador: Tocar → modo → música → nível → Tocar. Termina em /afinar. Sem nível,
  * fica o que a tela já escolheu.
  */
-export async function chooseSong(page: Page, title: string | RegExp, mode: 'Arcade' | 'Partitura' = 'Arcade', level?: Level) {
+export async function chooseSong(page: Page, title: string | RegExp, mode: 'Arcade' | 'Partitura' | 'Cordas 3D' = 'Arcade', level?: Level) {
   await page.getByRole('navigation', { name: 'Menu principal' }).getByRole('link', { name: /^Tocar/ }).click();
   await expect(page).toHaveURL(/\/tocar$/);
   if (mode !== 'Arcade') await page.getByRole('radio', { name: mode }).click();
@@ -24,5 +24,6 @@ export async function chooseSong(page: Page, title: string | RegExp, mode: 'Arca
     await expect(button).toHaveAttribute('aria-pressed', 'true');
   }
   await details.getByRole('link', { name: /Tocar/ }).click();
-  await expect(page).toHaveURL(/\/afinar(\?.*)?$/);
+  // O carregando busca o chart (get_song, quando há banco): a primeira chamada ao Supabase local recém-subido demora
+  await expect(page).toHaveURL(/\/afinar(\?.*)?$/, { timeout: 15000 });
 }
