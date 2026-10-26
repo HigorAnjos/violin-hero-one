@@ -5,7 +5,7 @@ import { ROUTES } from './routes';
 import { renderScreen } from './testing';
 
 describe('MicGuard', () => {
-  it.each([ROUTES.home, ROUTES.foundation, ROUTES.level, '/biblioteca'])('fecha o microfone em %s', (path) => {
+  it.each([ROUTES.home, ROUTES.modes, ROUTES.library, ROUTES.level])('fecha o microfone em %s', (path) => {
     const ear = createFakeEar();
     renderScreen(<MicGuard />, { ear, path });
     expect(ear.stopped).toBe(1);
