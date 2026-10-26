@@ -12,6 +12,7 @@ import { MicTrouble } from './pages/MicTrouble';
 import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
 import { OnboardTest } from './pages/OnboardTest';
+import { Settings } from './pages/Settings';
 import { isOnboarded } from './services/profile';
 import type { AppUpdate } from './shell/appUpdate';
 import { EarProvider, type Ear } from './shell/Ear';
@@ -62,6 +63,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.gameOver} element={<GameOver />} />
             <Route path={ROUTES.badge} element={<BadgeEarned />} />
             <Route path={ROUTES.results} element={<Results />} />
+            <Route path={ROUTES.settings} element={<Settings />} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           </React.Suspense>
