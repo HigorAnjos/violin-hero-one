@@ -16,7 +16,11 @@ const ZERO = '00000000-0000-0000-0000-000000000000';
  * Funções de violinhero que o app chama, por papel ("papel assinatura", como em regprocedure).
  * Função nova só entra aqui junto com o GRANT dela na migração; o resto fica só para o servidor.
  */
-const ALLOWED_FUNCTIONS = ['authenticated violinhero.get_song(text,violinhero.chart_level)'];
+const ALLOWED_FUNCTIONS = [
+  'authenticated violinhero.ensure_my_profile()',
+  'authenticated violinhero.get_song(text,violinhero.chart_level)',
+  'authenticated violinhero.submit_play(jsonb)',
+];
 
 /** Chart mínimo e válido do formato Song v1, com o id e o nível da linha. */
 function chartOf(id, level = 'easy', extra = {}) {
@@ -28,8 +32,20 @@ function chartOf(id, level = 'easy', extra = {}) {
   };
 }
 
+/** `notes` semínimas em compassos de 4 (a 60 bpm, uma por segundo); a última ligada à anterior com `tie`. */
+function measuresOf(notes, { tie = false } = {}) {
+  const measures = [];
+  for (let i = 0; i < notes; i++) {
+    if (i % 4 === 0) measures.push({ beats: 4, notes: [] });
+    const note = { beat: i % 4, beats: 1, midi: 62, string: 1, finger: 0 };
+    if (tie && i === notes - 1 && i > 0) note.tie = true;
+    measures.at(-1).notes.push(note);
+  }
+  return measures;
+}
+
 /** Música gravada como o servidor (sem RLS): do catálogo quando owner é null, importada senão. */
-async function serverSong(c, { owner = null, levels = ['easy'] } = {}) {
+async function serverSong(c, { owner = null, levels = ['easy'], notes = null, tie = false } = {}) {
   const id = owner ? randomUUID() : `t-${randomUUID().slice(0, 8)}`;
   await c.query(
     `insert into ${S}.songs (id, title, bpm, time_beats, time_unit, duration_seconds, origin, owner_id, visibility)
@@ -37,13 +53,51 @@ async function serverSong(c, { owner = null, levels = ['easy'] } = {}) {
     [id, owner ? 'imported' : 'catalog', owner, owner ? 'private' : 'public']);
   for (const level of levels) {
     await c.query(`insert into ${S}.song_charts (song_id, level, format_version, chart) values ($1, $2, 1, $3)`,
-      [id, level, JSON.stringify(chartOf(id, level))]);
+      [id, level, JSON.stringify(chartOf(id, level, notes ? { measures: measuresOf(notes, { tie }) } : {}))]);
   }
   await c.query(`insert into ${S}.song_sources (song_id, format, file_name, content) values ($1, 'musicxml', 'a.musicxml', '<score-partwise/>')`, [id]);
   return id;
 }
 
 const getSong = (c, uid, id, level = 'easy') => as(c, uid, `select * from ${S}.get_song($1, $2)`, [id, level]);
+
+const POINTS = { perfect: 100, great: 70, good: 40, miss: 0 };
+
+/** Pontos de uma partida tocada na ordem dada, como score.ts (×1 nos 10 primeiros seguidos, até ×4). */
+function scoreOf(sequence) {
+  let score = 0;
+  let combo = 0;
+  let maxCombo = 0;
+  for (const j of sequence) {
+    if (j === 'miss') { combo = 0; continue; }
+    score += POINTS[j] * Math.min(4, 1 + Math.floor(combo / 10));
+    maxCombo = Math.max(maxCombo, ++combo);
+  }
+  return { score, maxCombo };
+}
+
+/** Partida coerente, como o app manda depois de buildResult; `sequence` é a ordem dos julgamentos. */
+function playOf(songId, { sequence = ['perfect'], ...overrides } = {}) {
+  const counts = { perfect: 0, great: 0, good: 0, miss: 0 };
+  for (const j of sequence) counts[j]++;
+  const total = sequence.length;
+  const hits = total - counts.miss;
+  const earned = counts.perfect * 100 + counts.great * 70 + counts.good * 40;
+  const { score, maxCombo } = scoreOf(sequence);
+  return {
+    client_id: randomUUID(), song_id: songId, level: 'easy', mode: 'arcade',
+    finished: true, no_fail: false, looped: false, speed: 1, score, max_combo: maxCombo,
+    accuracy: total ? (100 * earned) / (100 * total) : 0,
+    counts, mean_abs_cents: hits ? 14.5 : null, string_cents: [null, hits ? 3.25 : null, null, null],
+    duration_ms: 1000 * total + 500, played_at: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+const submit = (c, uid, play) => as(c, uid, `select ${S}.submit_play($1) as r`, [JSON.stringify(play)]).then((res) => res.rows[0].r);
+const invalid = (promise, message) => assert.rejects(promise, (e) => e.code === '22023', message);
+const notFound = (promise) => assert.rejects(promise, (e) => e.code === 'P0002');
+const PROGRESS_TABLES = ['plays', 'records', 'badges_earned', 'play_days', 'streaks'];
 
 // ---------- helpers ----------
 async function newUser(c, { anonymous = true } = {}) {
@@ -335,6 +389,279 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
           assert.deepEqual(rows[0].chart, JSON.parse(JSON.stringify(charts[level])));
         }
       }
+    });
+  });
+
+  describe('partidas', () => {
+    it('anônimo envia a partida e lê o que ela rendeu: partida, recorde, selos, dia e sequência', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 4 });
+      const play = playOf(id, { sequence: ['perfect', 'great', 'good', 'perfect'] });
+      const r = await submit(c, u, play);
+      assert.equal(r.duplicate, false);
+      assert.equal(r.accuracy, 77.5);
+      assert.deepEqual(r.record, { previous: null, improved: true });
+      assert.deepEqual(r.badges, ['primeira-musica', 'sem-erros']);
+      assert.equal(r.streak.current_days, 1);
+      const { rows: [p] } = await as(c, u, `select * from ${S}.plays`);
+      assert.equal(p.id, r.play_id);
+      assert.deepEqual([p.score, p.perfect, p.great, p.good, p.miss, p.max_combo], [310, 2, 1, 1, 0, 4]);
+      assert.deepEqual(p.string_cents.map((v) => (v === null ? null : Number(v))), [null, 3.25, null, null]);
+      assert.equal(p.chart_hash, (await c.query(`select hash from ${S}.song_charts where song_id = $1`, [id])).rows[0].hash);
+      assert.deepEqual((await as(c, u, `select score, play_id from ${S}.records`)).rows, [{ score: 310, play_id: r.play_id }]);
+      assert.equal((await as(c, u, `select badge_id from ${S}.badges_earned`)).rows.length, 2);
+      assert.deepEqual((await as(c, u, `select seconds, plays from ${S}.play_days`)).rows, [{ seconds: 4, plays: 1 }]);
+      assert.equal((await as(c, u, `select best_days from ${S}.streaks`)).rows[0].best_days, 1);
+      // Afinação de ouro: até 10 ¢ de média acertando 90% ou mais; o selo só vem na primeira vez
+      const gold = await submit(c, u, playOf(id, { sequence: Array(4).fill('perfect'), mean_abs_cents: 9.5 }));
+      assert.deepEqual(gold.badges, ['afinacao-de-ouro']);
+      assert.deepEqual((await submit(c, u, playOf(id, { mean_abs_cents: 9.5, sequence: Array(4).fill('perfect') }))).badges, []);
+    });
+
+    it('reenvio do mesmo client_id devolve a mesma partida e não conta de novo', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c);
+      const play = playOf(id);
+      const first = await submit(c, u, play);
+      const again = await submit(c, u, play);
+      assert.equal(again.duplicate, true);
+      assert.equal(again.play_id, first.play_id);
+      assert.deepEqual(again.badges, [...first.badges].sort());
+      assert.equal((await c.query(`select count(*)::int as n from ${S}.plays where user_id = $1`, [u])).rows[0].n, 1);
+      assert.equal((await c.query(`select plays from ${S}.play_days where user_id = $1`, [u])).rows[0].plays, 1);
+      // O mesmo client_id de outro jogador é outra partida
+      assert.equal((await submit(c, await newUser(c), play)).duplicate, false);
+    });
+
+    for (const anonymous of [true, false]) {
+      const who = anonymous ? 'anônimo' : 'com conta';
+      it(`outro jogador (${who}) NÃO lê partida, recorde, selo, dia nem sequência alheios`, async () => {
+        const dono = await newUser(c);
+        const outro = await newUser(c, { anonymous });
+        await submit(c, dono, playOf(await serverSong(c)));
+        for (const table of PROGRESS_TABLES) {
+          assert.equal((await c.query(`select count(*)::int as n from ${S}.${table} where user_id = $1`, [dono])).rows[0].n > 0, true, table);
+          assert.deepEqual((await as(c, outro, `select * from ${S}.${table}`)).rows, [], table);
+        }
+      });
+    }
+
+    it('ninguém do app escreve direto em plays, records, badges_earned, play_days ou streaks, nem nas próprias linhas', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c);
+      const { play_id } = await submit(c, u, playOf(id));
+      await denied(as(c, u, `insert into ${S}.plays (user_id, client_id, song_id, level, chart_hash, mode, finished, score, accuracy,
+        perfect, great, good, miss, max_combo, string_cents, duration_ms, played_at, week)
+        values ($1, $2, $3, 'easy', 'x', 'arcade', true, 999999, 100, 1, 0, 0, 0, 1, '{null,null,null,null}', 1, now(), current_date)`,
+      [u, randomUUID(), id]));
+      await denied(as(c, u, `update ${S}.plays set score = 999999 where user_id = $1`, [u]));
+      await denied(as(c, u, `delete from ${S}.plays where user_id = $1`, [u]));
+      await denied(as(c, u, `insert into ${S}.records (user_id, song_id, level, score, accuracy, play_id) values ($1, $2, 'hard', 1, 1, $3)`, [u, id, play_id]));
+      await denied(as(c, u, `insert into ${S}.badges_earned (user_id, badge_id, play_id) values ($1, 'combo-100', $2)`, [u, play_id]));
+      await denied(as(c, u, `insert into ${S}.streaks (user_id, current_days, best_days, last_day) values ($1, 99, 99, current_date)`, [u]));
+      for (const table of ['records', 'play_days', 'streaks']) {
+        await denied(as(c, u, `update ${S}.${table} set user_id = user_id where user_id = $1`, [u]));
+        await denied(as(c, u, `delete from ${S}.${table} where user_id = $1`, [u]));
+      }
+      await denied(as(c, u, `delete from ${S}.badges_earned where user_id = $1`, [u]));
+    });
+
+    it('partida forjada é recusada: pontos acima do máximo, fora do mínimo, precisão, combo e notas incoerentes', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 12 });
+      const twelve = Array(12).fill('perfect');
+      const ok = playOf(id, { sequence: twelve });
+      assert.equal(ok.score, 1400);
+      const forged = [
+        { ...ok, score: 1410 },                                   // um nada acima do teto
+        { ...ok, score: 1395 },                                   // não fecha em dezenas
+        { ...ok, score: 1100 },                                   // abaixo de 12 Perfeitos a ×1
+        { ...ok, accuracy: 99 },                                  // precisão que as contagens não dão
+        { ...ok, max_combo: 13 },                                 // combo maior que os acertos
+        { ...ok, max_combo: 5 },                                  // 12 acertos sem erro dão combo 12
+        { ...ok, counts: { ...ok.counts, perfect: 13 } },         // mais notas que o chart
+        { ...ok, finished: true, counts: { ...ok.counts, perfect: 11 }, score: 1200, max_combo: 11 }, // terminou sem julgar todas
+        { ...ok, score: 1400.5 },                                 // não inteiro
+        { ...ok, counts: { ...ok.counts, miss: -1 } },
+        { ...ok, mean_abs_cents: null },                          // acertou e não mediu afinação
+        { ...ok, string_cents: [0, 0, 0] },                       // 3 cordas
+        { ...ok, string_cents: [null, 300, null, null] },         // outra nota, não desafino
+        { ...ok, looped: true },                                  // laço fora da prática
+        { ...ok, speed: 0.7 },                                    // velocidade fora da prática
+        { ...ok, mode: 'karaoke' },
+        { ...ok, played_at: new Date(Date.now() - 40 * 86400e3).toISOString() },
+        { ...ok, counts: 'tudo perfeito' },
+      ];
+      for (const play of forged) await invalid(submit(c, u, play), JSON.stringify(play));
+      // Sem acerto não há afinação
+      const allMiss = playOf(id, { sequence: Array(12).fill('miss') });
+      await invalid(submit(c, u, { ...allMiss, string_cents: [0, null, null, null] }));
+      await invalid(submit(c, u, { ...allMiss, mean_abs_cents: 3 }));
+      assert.equal((await submit(c, u, allMiss)).badges.length, 1);
+      assert.equal((await submit(c, u, ok)).duplicate, false);
+      assert.equal((await c.query(`select count(*)::int as n from ${S}.plays where user_id = $1`, [u])).rows[0].n, 2);
+    });
+
+    it('o teto de pontos é o do motor: 25 Perfeitos dão 4500 e o selo de combo 25; um Erro no meio tira o teto', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 25 });
+      const perfect = playOf(id, { sequence: Array(25).fill('perfect') });
+      assert.equal(perfect.score, 4500);
+      assert.deepEqual((await submit(c, u, perfect)).badges, ['primeira-musica', 'sem-erros', 'combo-25']);
+      const broken = playOf(id, { sequence: [...Array(12).fill('perfect'), 'miss', ...Array(12).fill('perfect')] });
+      await invalid(submit(c, u, { ...broken, score: broken.score + 10 }));
+      assert.equal((await submit(c, u, broken)).record.improved, false);
+    });
+
+    it('ligada não é ataque: o chart de 4 notas com 1 ligada pede 3 julgamentos', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 4, tie: true });
+      await invalid(submit(c, u, playOf(id, { sequence: Array(4).fill('perfect') })));
+      await submit(c, u, playOf(id, { sequence: Array(3).fill('perfect') }));
+    });
+
+    it('música inexistente, nível que ela não tem e importada alheia dão o mesmo "não encontrada"', async () => {
+      const u = await newUser(c);
+      const dono = await newUser(c);
+      await notFound(submit(c, u, playOf('nao-existe')));
+      await notFound(submit(c, u, playOf(await serverSong(c), { level: 'hard' })));
+      await notFound(submit(c, u, playOf(await serverSong(c, { owner: dono }))));
+      // A própria importada vale
+      await submit(c, dono, playOf(await serverSong(c, { owner: dono })));
+    });
+
+    it('partida interrompida guarda o que foi julgado, sem recorde, sem selo de fim e sem ranking', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 30 });
+      const r = await submit(c, u, playOf(id, { finished: false, sequence: Array(26).fill('perfect') }));
+      assert.equal(r.record, null);
+      assert.deepEqual(r.badges, ['combo-25']);
+      const { rows } = await as(c, u, `select ranking_points, counts_for_record from ${S}.plays`);
+      assert.deepEqual(rows, [{ ranking_points: 0, counts_for_record: false }]);
+    });
+
+    it('recorde só sobe: pontuação menor não troca o recorde e devolve o anterior', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 4 });
+      const best = await submit(c, u, playOf(id, { sequence: Array(4).fill('perfect') }));
+      const worse = await submit(c, u, playOf(id, { sequence: ['perfect', 'miss', 'good', 'good'] }));
+      assert.deepEqual(worse.record, { previous: 400, improved: false });
+      assert.deepEqual((await as(c, u, `select score, play_id from ${S}.records`)).rows, [{ score: 400, play_id: best.play_id }]);
+      assert.deepEqual(worse.badges, []);
+    });
+
+    it('prática (com laço e devagar) entra no histórico e no tempo do dia, mas não vale recorde, selo nem ranking', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 4 });
+      // 30 s num chart de 1 nota por segundo: cabem 30 + um compasso, além disso é forjada
+      const practice = (n) => playOf(id, { mode: 'practice', looped: true, speed: 0.5, duration_ms: 30000, sequence: Array(n).fill('perfect') });
+      await invalid(submit(c, u, practice(35)));
+      const r = await submit(c, u, practice(30));
+      assert.equal(r.record, null);
+      assert.deepEqual(r.badges, []);
+      const { rows } = await as(c, u, `select practice, looped, speed, ranking_points from ${S}.plays`);
+      assert.deepEqual(rows, [{ practice: true, looped: true, speed: '0.50', ranking_points: 0 }]);
+      assert.deepEqual((await as(c, u, `select * from ${S}.records`)).rows, []);
+      assert.deepEqual((await as(c, u, `select seconds from ${S}.play_days`)).rows, [{ seconds: 30 }]);
+    });
+
+    it('partida comum que virou prática (combo zera na virada) vale como prática e não como partida normal', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 20 });
+      // 10 Perfeitos antes da virada e 10 na prática, que começa do combo zero: 2000 pontos, combo máximo 10
+      const converted = { ...playOf(id, { sequence: Array(20).fill('perfect') }), score: 2000, max_combo: 10 };
+      await invalid(submit(c, u, converted));
+      const r = await submit(c, u, { ...converted, mode: 'practice', speed: 0.7, duration_ms: 25000 });
+      assert.equal(r.record, null);
+      assert.deepEqual(r.badges, []);
+      // Duas quebras sem erro, nem na prática
+      await invalid(submit(c, u, { ...converted, mode: 'practice', speed: 0.7, duration_ms: 25000, client_id: randomUUID(), max_combo: 6, score: 2000 }));
+    });
+
+    it('sequência: dias seguidos somam, um buraco zera a atual e mantém a melhor, dia fora de ordem recalcula', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c);
+      // Meio-dia em São Paulo, n dias atrás
+      const daysAgo = (n) => new Date(Date.now() - n * 86400e3).toISOString().slice(0, 10) + 'T15:00:00Z';
+      const on = (n) => submit(c, u, playOf(id, { played_at: daysAgo(n) }));
+      await on(6);
+      await on(5);
+      let s = (await on(4)).streak;
+      assert.deepEqual([s.current_days, s.best_days], [3, 3]);
+      s = (await on(1)).streak;
+      assert.deepEqual([s.current_days, s.best_days], [1, 3]);
+      // A fila offline entrega os dias 2 e 3 depois: a atual cresce e, fechado o buraco, emenda com a de antes
+      s = (await on(2)).streak;
+      assert.deepEqual([s.current_days, s.best_days], [2, 3]);
+      s = (await on(3)).streak;
+      assert.deepEqual([s.current_days, s.best_days], [6, 6]);
+      assert.equal(s.last_day, daysAgo(1).slice(0, 10));
+      // Duas no mesmo dia: o tempo soma, a sequência não
+      s = (await on(1)).streak;
+      assert.equal(s.current_days, 6);
+      assert.equal((await as(c, u, `select plays from ${S}.play_days where day = $1`, [daysAgo(1).slice(0, 10)])).rows[0].plays, 2);
+    });
+
+    it('hora no futuro vira agora; o dia é o de São Paulo', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c);
+      await submit(c, u, playOf(id, { played_at: new Date(Date.now() + 86400e3).toISOString() }));
+      const { rows } = await as(c, u, `select played_at <= now() as ok from ${S}.plays`);
+      assert.deepEqual(rows, [{ ok: true }]);
+      const { rows: [d] } = await c.query(`select ${S}.local_day('2026-10-27T02:30:00Z')::text as day`);
+      assert.equal(d.day, '2026-10-26');
+    });
+
+    it('ranking: pontos pesados pelo nível, semana a partir de segunda e apelido de bicho + número', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { levels: ['easy', 'hard'] });
+      await submit(c, u, playOf(id));
+      await submit(c, u, playOf(id, { level: 'hard' }));
+      const { rows } = await c.query(
+        `select level, ranking_points, extract(isodow from week)::int as dow, ${S}.local_day(played_at) - week as since
+           from ${S}.plays where user_id = $1 order by level`, [u]);
+      assert.deepEqual(rows.map((r) => [r.level, r.ranking_points, r.dow]), [['easy', 100, 1], ['hard', 150, 1]]);
+      for (const r of rows) assert.ok(r.since >= 0 && r.since < 7);
+      await as(c, u, `update ${S}.profiles set animal = 'fox' where id = $1`, [u]);
+      const { rows: [p] } = await c.query(`select ${S}.ranking_name(animal, nickname_tag) as name, nickname_tag from ${S}.profiles where id = $1`, [u]);
+      assert.match(p.name, /^Raposa \d{4}$/);
+      assert.ok(p.nickname_tag >= 1000 && p.nickname_tag <= 9999);
+      await denied(as(c, u, `update ${S}.profiles set nickname_tag = 1234 where id = $1`, [u]));
+    });
+
+    it('sem login (anon) NÃO envia partida, NÃO pede perfil e NÃO lê progresso', async () => {
+      const id = await serverSong(c);
+      await denied(as(c, null, `select ${S}.submit_play($1)`, [JSON.stringify(playOf(id))]));
+      await denied(as(c, null, `select ${S}.ensure_my_profile()`));
+      for (const table of PROGRESS_TABLES) await denied(as(c, null, `select * from ${S}.${table}`));
+    });
+  });
+
+  describe('ensure_my_profile', () => {
+    it('cria o perfil de quem estava em auth.users antes do trigger e devolve o existente nas outras vezes', async () => {
+      const u = await newUser(c, { anonymous: false });
+      await c.query(`delete from ${S}.profiles where id = $1`, [u]);
+      const { rows: [first] } = await as(c, u, `select * from ${S}.ensure_my_profile()`);
+      assert.deepEqual([first.id, first.is_anonymous, Number(first.a4_hz)], [u, false, 442]);
+      await as(c, u, `update ${S}.profiles set nickname = 'Bia' where id = $1`, [u]);
+      const { rows: [again] } = await as(c, u, `select * from ${S}.ensure_my_profile()`);
+      assert.equal(again.nickname, 'Bia');
+    });
+
+    it('NÃO cria nem devolve perfil de outro jogador', async () => {
+      const a = await newUser(c);
+      const b = await newUser(c);
+      await c.query(`delete from ${S}.profiles where id = $1`, [b]);
+      const { rows } = await as(c, a, `select id from ${S}.ensure_my_profile()`);
+      assert.deepEqual(rows, [{ id: a }]);
+      assert.equal((await c.query(`select count(*)::int as n from ${S}.profiles where id = $1`, [b])).rows[0].n, 0);
+    });
+
+    it('envio de partida cria o perfil que faltava', async () => {
+      const u = await newUser(c);
+      await c.query(`delete from ${S}.profiles where id = $1`, [u]);
+      await submit(c, u, playOf(await serverSong(c)));
+      assert.equal((await c.query(`select count(*)::int as n from ${S}.profiles where id = $1`, [u])).rows[0].n, 1);
     });
   });
 
