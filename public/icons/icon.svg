@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Ícone do app no Caderno: papel creme, pauta em tinta azul-marinho e a colcheia magenta. Tudo dentro do círculo
+       seguro do ícone "maskable" (raio de 40% do lado), para o sistema poder recortar em círculo ou gota. -->
+  <rect width="512" height="512" fill="#fbf6ea"/>
+  <g stroke="#5b6478" stroke-width="6" stroke-linecap="round">
+    <line x1="80" y1="196" x2="432" y2="196"/>
+    <line x1="72" y1="226" x2="440" y2="226"/>
+    <line x1="68" y1="256" x2="444" y2="256"/>
+    <line x1="72" y1="286" x2="440" y2="286"/>
+    <line x1="80" y1="316" x2="432" y2="316"/>
+  </g>
+  <path d="M282 132h18v176h-18z" fill="#1f2a44"/>
+  <path d="M300 132c10 44 66 58 62 116-12-36-40-46-62-50z" fill="#1f2a44"/>
+  <ellipse cx="240" cy="314" rx="56" ry="40" transform="rotate(-22 240 314)" fill="#d63a8a"/>
+</svg>
