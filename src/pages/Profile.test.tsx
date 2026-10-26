@@ -35,7 +35,7 @@ describe('Profile', () => {
     expect(best.getByText('1.234.567')).toBeInTheDocument();
     expect(best.getByText(`${song.title} · Fácil`)).toBeInTheDocument();
     const records = within(screen.getByRole('region', { name: 'Seus recordes' })).getAllByRole('listitem');
-    expect(records.map((li) => li.textContent)).toEqual([`${song.title}Fácil1.234.567`, 'outraDifícil10']);
+    expect(records.map((li) => li.textContent)).toEqual([`${song.title}Fácil1.234.567`, 'OutraDifícil10']);
     expect(screen.getByRole('progressbar', { name: 'Selos conquistados' })).toHaveAttribute('aria-valuenow', '2');
     expect(screen.getByRole('img', { name: 'Selo Primeira música' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Selo Sem erros, bloqueado' })).toBeInTheDocument();

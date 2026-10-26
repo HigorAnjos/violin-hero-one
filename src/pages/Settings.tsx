@@ -198,10 +198,7 @@ const AudioSection: React.FC = () => {
           onChange={(headphones) => changeOrchestra({ headphones })}
         />
         <Warning>
-          <span>
-            Fone Bluetooth?
-            <small>Ele soma 150 a 250 ms. Prefira com fio ou alto-falante.</small>
-          </span>
+          <span>Fone Bluetooth soma 150 a 250 ms. Prefira com fio ou alto-falante.</span>
         </Warning>
       </SettingsPanel>
 

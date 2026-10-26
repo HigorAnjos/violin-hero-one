@@ -350,11 +350,17 @@ const Empty = styled.p`
 
 const score = new Intl.NumberFormat('pt-BR');
 
+/** Música que não está na estante deste aparelho: o id vira um nome legível ("minueto-em-sol" → "Minueto em sol"). */
+export const titleFromId = (id: string) => {
+  const words = id.replace(/[-_]+/g, ' ').trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
 /** 11 · Perfil e progresso: quem joga, nível, recordes, sequência e conquistas. */
 export const Profile: React.FC = () => {
   const progress = useProgress();
   const shelf = useShelf();
-  const titleOf = (id: string) => (shelf.status === 'ready' ? shelf.songs.find((s) => s.id === id)?.title : undefined) ?? findFixedSong(id)?.title ?? id;
+  const titleOf = (id: string) => (shelf.status === 'ready' ? shelf.songs.find((s) => s.id === id)?.title : undefined) ?? findFixedSong(id)?.title ?? titleFromId(id);
   const owned = new Set(progress.badges);
   const nextBadge = BADGES.find((b) => !owned.has(b.id));
   const look = progress.animal ? ANIMAL_LOOK[progress.animal] : null;
