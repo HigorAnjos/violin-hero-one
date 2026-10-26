@@ -17,6 +17,7 @@ import { Reminder } from './pages/Reminder';
 import { Settings } from './pages/Settings';
 import { isOnboarded } from './services/profile';
 import type { AppUpdate } from './shell/appUpdate';
+import { useAccountWatch } from './shell/accountSwitch';
 import { EarProvider, type Ear } from './shell/Ear';
 import { MicGuard } from './shell/MicGuard';
 import { createMicrophoneEar } from './shell/microphoneEar';
@@ -41,6 +42,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
   // Sem Ouvido de conferência (main.tsx, ?ouvido=simulado), o microfone de verdade
   const [chosen] = React.useState(() => ear ?? createMicrophoneEar());
   useReminderTimer();
+  useAccountWatch();
   return (
     <ThemeChoiceProvider>
       <GlobalStyles />
