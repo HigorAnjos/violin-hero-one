@@ -213,6 +213,26 @@ describe('Strings3DScene', () => {
     expect(s.visibleNotes()).toBeGreaterThan(60);
   });
 
+  it('a 60 e a 120 fps, no mesmo instante as caixas estão no mesmo lugar (movimento por tempo, não por quadro)', () => {
+    const frames = (fps: number) => {
+      const { s } = make({ clock: steadyClock(START, song.bpm) });
+      const seen: string[] = [];
+      for (let f = 0; f <= 6 * fps; f++) {
+        const now = START - LEAD_SECONDS_3D + f / fps;
+        if (f === 3 * fps) {
+          s.judge(judgment(notes[0], 'perfect'), now);
+          s.judge(judgment(notes[1], 'miss', 'not-played'), now);
+        }
+        s.update(now);
+        if (f % (fps / 60) === 0) seen.push(JSON.stringify([s.visibleBoxes(), s.gridLines(), s.highlightedColumn()]));
+      }
+      return seen;
+    };
+    const at60 = frames(60);
+    expect(at60).toHaveLength(6 * 60 + 1);
+    expect(frames(120)).toEqual(at60);
+  });
+
   it('ignora julgamento de nota que não existe', () => {
     const { s } = make();
     expect(() => s.judge({ ...judgment(notes[0], 'perfect'), index: 9999 })).not.toThrow();
