@@ -1,4 +1,4 @@
-import { timeline, type Song } from '../notation/song';
+import { timeline, type Measure, type Song, type TimeSignature } from '../notation/song';
 import type { StringIndex } from '../notation/violin';
 
 /** Pauta da faixa (SheetStrip.dc): linha de baixo (Mi4) em y 72, 5 px por grau. */
@@ -103,6 +103,110 @@ export function noteShape(quarters: number): NoteShape {
   return { ...shape, dotted: Math.abs(quarters - unit * 1.5) < 1e-6 };
 }
 
+/** Figura da pausa em semínimas: semibreve (4) a semicolcheia (0,25). */
+export type RestValue = 4 | 2 | 1 | 0.5 | 0.25;
+
+/** Pausa dentro do compasso, em tempos desde o começo dele (como SongNote.beat). */
+export interface MeasureRest {
+  beat: number;
+  beats: number;
+  value: RestValue;
+  dotted: boolean;
+}
+
+const EPSILON = 1e-6;
+/** Figuras que a pausa pode ter, da maior para a menor: [semínimas, figura, pontuada]. */
+const REST_FIGURES: readonly [number, RestValue, boolean][] = [
+  [4, 4, false],
+  [3, 2, true],
+  [2, 2, false],
+  [1.5, 1, true],
+  [1, 1, false],
+  [0.75, 0.5, true],
+  [0.5, 0.5, false],
+  [0.25, 0.25, false],
+];
+
+const isMultiple = (x: number, of: number) => Math.abs(x / of - Math.round(x / of)) < EPSILON;
+
+/**
+ * Pode uma pausa de `length` semínimas começar em `p` (semínimas desde o tempo forte do compasso)? Mais longa que o
+ * tempo: começa num tempo, vale tempos inteiros e, em 4/4 e afins, não atravessa o meio do compasso; a de dois tempos
+ * ou mais começa num tempo ímpar (1 ou 3). Mais curta: fica dentro de um tempo, alinhada ao próprio valor, e a
+ * pontuada só no começo do tempo.
+ */
+function restFits(p: number, length: number, dotted: boolean, beat: number, bar: number): boolean {
+  if (length >= beat - EPSILON) {
+    if (!isMultiple(p, beat) || !isMultiple(length, beat)) return false;
+    if (length > beat + EPSILON && !isMultiple(p, 2 * beat)) return false;
+    const beats = Math.round(bar / beat);
+    const half = beats % 2 === 0 && beats >= 4 ? bar / 2 : NaN;
+    return !(p < half - EPSILON && p + length > half + EPSILON);
+  }
+  const start = Math.floor((p + EPSILON) / beat) * beat;
+  if (p + length > start + beat + EPSILON) return false;
+  return dotted ? Math.abs(p - start) < EPSILON : isMultiple(p - start, length);
+}
+
+/**
+ * As pausas de um compasso, derivadas do vão entre as notas (o modelo Song não tem pausa explícita), em figuras
+ * legíveis pela métrica: compasso inteiro vazio é a pausa de semibreve; o resto se decompõe do maior valor que cabe
+ * para o menor, respeitando os tempos. Na anacruse (primeiro compasso mais curto) o compasso é o fim de um inteiro.
+ */
+export function measureRests(measure: Measure, time: TimeSignature, pickup = false): MeasureRest[] {
+  const quarter = 4 / time.unit;
+  const bar = time.beats * quarter;
+  const compound = time.unit === 8 && time.beats % 3 === 0 && time.beats > 3;
+  const beat = compound ? 1.5 : quarter;
+  if (measure.notes.length === 0 && Math.abs(measure.beats - time.beats) < EPSILON) {
+    return [{ beat: 0, beats: measure.beats, value: 4, dotted: false }];
+  }
+  const offset = pickup ? time.beats - measure.beats : 0;
+  const rests: MeasureRest[] = [];
+  const fill = (from: number, to: number) => {
+    let p = (from + offset) * quarter;
+    const end = (to + offset) * quarter;
+    while (p < end - EPSILON) {
+      const figure = REST_FIGURES.find(([length, , dotted]) => p + length <= end + EPSILON && restFits(p, length, dotted, beat, bar));
+      if (!figure) {
+        // Resto que nenhuma figura escreve (quiáltera): pula até a próxima semicolcheia
+        p = Math.min(end, (Math.floor(p / 0.25 + EPSILON) + 1) * 0.25);
+        continue;
+      }
+      const [length, value, dotted] = figure;
+      rests.push({ beat: p / quarter - offset, beats: length / quarter, value, dotted });
+      p += length;
+    }
+  };
+  let cursor = 0;
+  for (const note of measure.notes) {
+    if (note.beat > cursor + EPSILON) fill(cursor, note.beat);
+    cursor = Math.max(cursor, note.beat + note.beats);
+  }
+  if (cursor < measure.beats - EPSILON) fill(cursor, measure.beats);
+  return rests;
+}
+
+export interface StaffRest extends MeasureRest {
+  measure: number;
+  /** Início, em tempos desde o começo da música. */
+  at: number;
+}
+
+/** Arco entre duas notas ligadas: `from` é a nota que ataca (ou a ligada anterior), `to` a que continua. */
+export interface StaffTie {
+  from: number;
+  to: number;
+  /** Inícios das duas notas, em tempos desde o começo da música. */
+  fromAt: number;
+  toAt: number;
+  step: number;
+  /** Do lado contrário à haste: abaixo das cabeças quando a haste sobe. */
+  below: boolean;
+  /** A primeira nota tem ponto: o arco começa depois dele. */
+  dotted: boolean;
+}
+
 export interface StaffNote extends NoteShape {
   index: number;
   measure: number;
@@ -122,6 +226,10 @@ export interface StaffNote extends NoteShape {
 
 export interface StaffLayout {
   notes: StaffNote[];
+  /** Em ordem de início. */
+  rests: StaffRest[];
+  /** Em ordem de início da nota que continua (e da que ataca, porque não se sobrepõem). */
+  ties: StaffTie[];
   /** Começo de cada compasso, em tempos. */
   bars: number[];
   totalBeats: number;
@@ -168,7 +276,15 @@ export function staffLayout(song: Song): StaffLayout {
       ...noteShape(n.beats * quarter),
     };
   });
-  return { notes, bars, totalBeats: start, fifths };
+  const rests = song.measures.flatMap((m, i) =>
+    measureRests(m, song.timeSignature, i === 0 && m.beats < song.timeSignature.beats).map((r): StaffRest => ({ ...r, measure: i, at: bars[i] + r.beat })),
+  );
+  const ties = notes.flatMap((n, i): StaffTie[] => {
+    const from = notes[i - 1];
+    if (!n.tie || !from) return [];
+    return [{ from: i - 1, to: i, fromAt: from.at, toAt: n.at, step: from.step, below: from.stemUp, dotted: from.dotted }];
+  });
+  return { notes, rests, ties, bars, totalBeats: start, fifths };
 }
 
 /** Compasso (a partir de 0) em que cai o tempo `beat`. */
