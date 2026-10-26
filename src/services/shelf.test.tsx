@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { FIXED_SONGS } from '../game/notation/songs';
-import { catalogShelf, EMBEDDED_SHELF, embeddedChart, offlineShelf, usePlayableSong, useShelf } from './shelf';
+import { catalogShelf, EMBEDDED_SHELF, embeddedChart, offlineShelf, savedCount, usePlayableSong, useShelf } from './shelf';
 import { createSongCache, memorySongStore, type SavedSong } from './songCache';
 import type { CatalogEntry, SongsClient } from './songs';
 
@@ -106,6 +106,13 @@ describe('estante', () => {
     expect(shelf[0]).toMatchObject({ embedded: true, saved: true, levels: ['easy', 'hard'] });
     expect(shelf[1]).toMatchObject({ embedded: true, saved: false, levels: ['easy'] });
     expect(shelf.at(-1)).toMatchObject({ title: 'Greensleeves', embedded: false, saved: true, levels: ['medium', 'hard'] });
+  });
+
+  it('savedCount: embutida com outro nível guardado continua do app', () => {
+    const onlyEmbedded = offlineShelf([{ sheet: { ...ENTRY, id: FIXED_SONGS[0].id }, levels: ['hard'] }]);
+    expect(onlyEmbedded[0].saved).toBe(true);
+    expect(savedCount(onlyEmbedded)).toBe(0);
+    expect(savedCount(offlineShelf([{ sheet: ENTRY, levels: ['easy'] }]))).toBe(1);
   });
 
   it('catalogShelf marca as baixadas', () => {

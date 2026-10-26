@@ -40,6 +40,12 @@ function embeddedSong(song: Song): ShelfSong {
   };
 }
 
+/**
+ * Quantas baixadas a estante tem além das embutidas. Embutida com outro nível guardado continua "do app": é a regra
+ * do contador da biblioteca e do aviso sem internet em todas as telas.
+ */
+export const savedCount = (songs: readonly ShelfSong[]): number => songs.filter((s) => s.saved && !s.embedded).length;
+
 /** As embutidas, para o primeiro uso e para quando o banco não responde. */
 export const EMBEDDED_SHELF: readonly ShelfSong[] = FIXED_SONGS.map(({ song }) => embeddedSong(song));
 

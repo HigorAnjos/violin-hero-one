@@ -12,7 +12,7 @@ import { SongDetails } from '../components/SongDetails/SongDetails';
 import { levelSettings, type PlayerLevel } from '../game/engine/levels';
 import type { Level } from '../game/notation/song';
 import { loadLocalProfile } from '../services/profile';
-import { EMBEDDED_SHELF, usePlayableSong, useShelf, type ShelfSong } from '../services/shelf';
+import { EMBEDDED_SHELF, savedCount, usePlayableSong, useShelf, type ShelfSong } from '../services/shelf';
 import { isReadyMode, loadingUrl, modeFromSlug, modesUrl, readyMode } from '../shell/choice';
 import type { GameMode } from '../shell/play';
 
@@ -293,7 +293,7 @@ export const SongSelect: React.FC = () => {
         </Tools>
       </Header>
 
-      {shelf.status === 'ready' && shelf.fallback && <OfflineBanner reason={shelf.reason} count={songs.length} saved={songs.some((s) => s.saved)} />}
+      {shelf.status === 'ready' && shelf.fallback && <OfflineBanner reason={shelf.reason} count={songs.length} saved={savedCount(songs) > 0} />}
 
       <Body>
         {shelf.status === 'loading' ? (

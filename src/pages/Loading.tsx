@@ -8,7 +8,7 @@ import { clampLines, Kicker, Screen } from '../components/Screen/Screen';
 import { SongCover } from '../components/SongCover/SongCover';
 import { levelSettings } from '../game/engine/levels';
 import { loadLocalProfile } from '../services/profile';
-import { usePlayableSong, useShelf } from '../services/shelf';
+import { savedCount, usePlayableSong, useShelf } from '../services/shelf';
 import { modesUrl, parseSongChoice, songsUrl, type SongChoice } from '../shell/choice';
 import type { PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
@@ -214,7 +214,7 @@ const Preparing: React.FC<{ choice: SongChoice }> = ({ choice }) => {
   return (
     <Screen $gap="1rem">
       {shelf.status === 'ready' && shelf.fallback && (
-        <OfflineBanner reason={shelf.reason} count={shelf.songs.length} saved={shelf.songs.some((s) => s.saved)} />
+        <OfflineBanner reason={shelf.reason} count={shelf.songs.length} saved={savedCount(shelf.songs) > 0} />
       )}
       <Body>
         <Cover id={choice.songId}>

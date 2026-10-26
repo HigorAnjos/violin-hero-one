@@ -8,7 +8,7 @@ import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Sc
 import { matchesSearch, SearchField } from '../components/SearchField/SearchField';
 import { SongCover } from '../components/SongCover/SongCover';
 import { offlineTag, songMeta } from '../components/SongCover/songFacts';
-import { useShelf, type ShelfSong } from '../services/shelf';
+import { savedCount, useShelf, type ShelfSong } from '../services/shelf';
 import { songsUrl } from '../shell/choice';
 import { ROUTES } from '../shell/routes';
 import { LibraryEmpty } from './LibraryEmpty';
@@ -249,7 +249,7 @@ export const Library: React.FC = () => {
     .filter((s) => (!onlyApp || s.embedded) && matchesSearch(query, s.title, s.composer))
     .sort(SORTS[sort].compare);
   const embedded = songs.filter((s) => s.embedded).length;
-  const saved = songs.filter((s) => s.saved && !s.embedded).length;
+  const saved = savedCount(songs);
   const kicker = [`${songs.length} músicas`, `${embedded} no app`, saved ? `${saved} ${saved === 1 ? 'baixada' : 'baixadas'}` : ''].filter(Boolean).join(' · ');
 
   return (
