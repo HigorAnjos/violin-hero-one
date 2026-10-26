@@ -247,7 +247,8 @@ export const Login: React.FC = () => {
     return kind ? new AccountError(kind).message : null;
   });
 
-  if (session?.status === 'signed-in' && !session.anonymous) return <Navigate to={ROUTES.home} replace />;
+  // Já numa conta: a raiz (ou o nível, se a primeira vez não acabou; a raiz voltaria para cá)
+  if (session?.status === 'signed-in' && !session.anonymous) return <Navigate to={isOnboarded() ? ROUTES.home : ROUTES.level} replace />;
 
   const google = async () => {
     setError(null);

@@ -75,7 +75,11 @@ describe('Login (0)', () => {
     expect(loginWithGoogle).toHaveBeenCalledWith(null, anon, '/');
   });
 
-  it('já numa conta: vai para a tela inicial', () => {
+  it('já numa conta: vai para a tela inicial (ou ao nível, sem a primeira vez feita, sem laço com a raiz)', () => {
+    const { unmount } = open({ session: { status: 'signed-in', userId: 'u1', anonymous: false } });
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/primeira-vez\/nivel$/);
+    unmount();
+    markOnboarded();
     open({ session: { status: 'signed-in', userId: 'u1', anonymous: false } });
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
   });

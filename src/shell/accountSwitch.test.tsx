@@ -80,6 +80,7 @@ describe('adoptUser', () => {
     const client = { rpc: vi.fn().mockResolvedValue({ data: null, error: { message: 'rede' } }) };
     expect(await adoptUser(client, session('conta-1'), fakeDevice().data)).toBe('switched');
     expect(loadLocalProfile()).toEqual({});
+    expect(isOnboarded()).toBe(true);
   });
 });
 

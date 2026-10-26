@@ -32,10 +32,7 @@ async function pullProfile(client: { rpc: SupabaseClient['rpc'] }): Promise<void
   const { data, error } = await client.rpc('ensure_my_profile');
   if (error || !data) return;
   const row = data as ProfileRow;
-  if (row.level) {
-    saveLocalProfile({ level: row.level, nickname: row.nickname, animal: (row.animal as Animal | null) ?? null });
-    markOnboarded();
-  }
+  if (row.level) saveLocalProfile({ level: row.level, nickname: row.nickname, animal: (row.animal as Animal | null) ?? null });
 }
 
 /**
@@ -60,7 +57,11 @@ export async function adoptUser(client: { rpc: SupabaseClient['rpc'] } | null, s
   await data.forget(previous);
   for (const key of PER_USER_KEYS) store?.removeItem(key);
   data.use(session.userId);
-  if (!session.anonymous && client) await pullProfile(client).catch(() => undefined);
+  if (!session.anonymous) {
+    // Conta que já existe já jogou: o aparelho novo vai direto para a tela inicial
+    markOnboarded();
+    if (client) await pullProfile(client).catch(() => undefined);
+  }
   return 'switched';
 }
 
