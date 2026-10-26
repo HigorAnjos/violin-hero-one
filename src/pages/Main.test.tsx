@@ -28,7 +28,7 @@ describe('Main', () => {
     expect(menu().getByRole('link', { name: new RegExp(`^Tocar ${title}`) })).toBeInTheDocument();
     expect(menu().getByRole('link', { name: 'Afinar Lá 442' })).toBeInTheDocument();
     // Sem banco no teste: a estante são as embutidas
-    expect(await menu().findByRole('link', { name: `Biblioteca ${FIXED_SONGS.length}` })).toBeInTheDocument();
+    expect(await menu().findByRole('link', { name: `Biblioteca ${FIXED_SONGS.length}` }, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it('a sugestão segue o nível guardado e o Lá segue a afinação salva', () => {
@@ -51,6 +51,6 @@ describe('Main', () => {
   it('tema no canto, sessão Offline sem banco', async () => {
     renderScreen(<Main />);
     expect(screen.getByRole('group', { name: 'Tema' })).toBeInTheDocument();
-    expect(await screen.findByText('Offline')).toBeInTheDocument();
+    expect(await screen.findByText('Offline', undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 });

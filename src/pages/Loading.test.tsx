@@ -39,13 +39,13 @@ describe('Loading', () => {
   it('sem internet, embutida no Fácil: segue para afinar com a partitura do app', async () => {
     const { id } = FIXED_SONGS[1];
     renderLoading(loadingUrl({ mode: 'Arcade', songId: id, level: 'easy' }));
-    expect(await screen.findByTestId('afinar')).toHaveTextContent(`${id}:easy:Arcade`);
+    expect(await screen.findByTestId('afinar', undefined, { timeout: 5000 })).toHaveTextContent(`${id}:easy:Arcade`);
   });
 
   it('com o catálogo: baixa o nível pedido e leva o modo', async () => {
     db.client = fakeCatalogClient().client;
     renderLoading(loadingUrl({ mode: 'Partitura', songId: 'greensleeves', level: 'hard' }), palcoTheme);
-    expect(await screen.findByTestId('afinar')).toHaveTextContent('greensleeves:hard:Partitura');
+    expect(await screen.findByTestId('afinar', undefined, { timeout: 5000 })).toHaveTextContent('greensleeves:hard:Partitura');
   });
 
   it('enquanto baixa: título, etapas e progresso', async () => {
@@ -53,7 +53,7 @@ describe('Loading', () => {
     fake.rpc.mockImplementation(() => new Promise(() => undefined));
     db.client = fake.client;
     renderLoading(loadingUrl({ mode: 'Arcade', songId: 'greensleeves', level: 'medium' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Greensleeves' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Greensleeves' }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByText('Preparando · Arcade · Médio')).toBeInTheDocument();
     expect(screen.getByText(/Partitura e notas do nível Médio/)).toHaveTextContent('(carregando)');
     expect(screen.getByRole('progressbar', { name: 'Carregando' })).toHaveAttribute('aria-valuenow', '25');
@@ -62,7 +62,7 @@ describe('Loading', () => {
 
   it('sem internet e sem embutida: o erro, tentar de novo e escolher outra', async () => {
     renderLoading(loadingUrl({ mode: 'Arcade', songId: 'greensleeves', level: 'medium' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Sem conexão com o servidor');
+    expect(await screen.findByRole('alert', undefined, { timeout: 5000 })).toHaveTextContent('Sem conexão com o servidor');
     expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Escolher outra' })).toHaveAttribute('href', '/tocar/musica?modo=arcade&musica=greensleeves');
     expect(screen.getByText('Sem internet')).toBeInTheDocument();

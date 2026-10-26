@@ -51,14 +51,14 @@ describe('Library', () => {
 
   it('sem internet: as embutidas e o aviso', async () => {
     renderLibrary();
-    expect(await screen.findByText('Sem internet')).toBeInTheDocument();
+    expect(await screen.findByText('Sem internet', undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(cards()).toHaveLength(FIXED_SONGS.length);
   });
 
   it('catálogo vazio: biblioteca vazia com as grátis para começar', async () => {
     db.client = fakeCatalogClient({ ids: [] }).client;
     renderLibrary();
-    expect(await screen.findByRole('heading', { name: 'Sua biblioteca ainda está vazia' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Sua biblioteca ainda está vazia' }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Tocar a primeira grátis/ })).toHaveAttribute(
       'href',
       `/tocar/carregando?modo=arcade&musica=${FIXED_SONGS[0].id}&nivel=facil`

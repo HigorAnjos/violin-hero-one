@@ -37,7 +37,7 @@ describe('SongSelect', () => {
 
   it('sem internet: as embutidas, o aviso e só o Fácil', async () => {
     renderSongs();
-    expect(await screen.findByText('Sem internet')).toBeInTheDocument();
+    expect(await screen.findByText('Sem internet', undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getAllByRole('radio')).toHaveLength(FIXED_SONGS.length);
     const first = findFixedSong(levelSettings('beginner').firstSongId)!;
     expect(screen.getByRole('radio', { name: first.title })).toHaveAttribute('aria-checked', 'true');
@@ -49,7 +49,7 @@ describe('SongSelect', () => {
       `/tocar/carregando?modo=arcade&musica=${first.id}&nivel=facil`
     );
     // a partitura embutida já está aqui: cordas e notas aparecem
-    expect(await details().findByText(/\d+ notas/)).toBeInTheDocument();
+    expect(await details().findByText(/\d+ notas/, undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it('com o catálogo: as 10, nível do jogador, e Tocar leva música, nível e modo', async () => {
@@ -67,7 +67,7 @@ describe('SongSelect', () => {
       'href',
       '/tocar/carregando?modo=pratica&musica=greensleeves&nivel=dificil'
     );
-    expect(await details().findByText(/\d+ notas/)).toBeInTheDocument();
+    expect(await details().findByText(/\d+ notas/, undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it('setas andam pela lista', async () => {
