@@ -141,6 +141,8 @@ test('convidado joga, cria conta pelo link mágico e outro aparelho entra e vê 
   await two.getByRole('button', { name: 'Entrar mesmo assim' }).click();
   await expect(two.getByRole('status')).toHaveText(LOGIN_LINK_SENT);
   await expect(two.getByRole('alert')).toHaveCount(0);
+  const mails = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${nobody}"`)}`);
+  expect(((await mails.json()) as { messages: unknown[] }).messages).toEqual([]);
   await two.getByLabel('E-mail').fill(email);
   await two.getByRole('button', { name: 'Mandar link' }).click();
   await expect(two.getByRole('alertdialog')).toContainText('(1 música e');
