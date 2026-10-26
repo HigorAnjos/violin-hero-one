@@ -6,6 +6,9 @@ import { AppRouter } from './AppRouter';
 import { markOnboarded } from './services/profile';
 import { createFakeEar } from './shell/fakeEar';
 
+// Sem Supabase de verdade: com o .env.local da máquina, a sessão ia à rede (o Supabase local) e o teste dependia dela
+vi.mock('./services/supabase', () => ({ supabase: null, supabaseUrl: '', supabaseAnonKey: '' }));
+
 // O perfil que o servidor teria para o jogador (os testes não têm Supabase): null é o jogador novo
 const server = vi.hoisted(() => ({ level: null as string | null }));
 vi.mock('./services/profileSync', async (importOriginal) => {
