@@ -29,11 +29,12 @@ describe('AppRouter', () => {
     expect(window.location.pathname).toBe('/primeira-vez/nivel');
   });
 
-  it('depois da primeira vez, a raiz vai para a tela de teste', async () => {
+  it('depois da primeira vez, a raiz é a tela inicial', async () => {
     markOnboarded();
     renderApp('/');
     expect(await screen.findByRole('heading', { name: /Violin/ })).toBeInTheDocument();
-    expect(window.location.pathname).toBe('/teste');
+    expect(screen.getByRole('navigation', { name: 'Menu principal' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/');
   });
 
   it('sair das cordas para o menu fecha o microfone', async () => {

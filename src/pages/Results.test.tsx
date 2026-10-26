@@ -1,11 +1,12 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 import { palcoTheme } from '../assets/styles/themes/palco';
 import { playedResult } from '../components/ResultSummary/testing';
 import { ODE } from '../game/engine/testing';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
-import { Results } from './Results';
+import { practiceHardest, Results } from './Results';
 
 const render = (result = playedResult(), theme = palcoTheme) =>
   renderScreen(<Results />, { path: ROUTES.results, route: ROUTES.results, state: { song: ODE, mode: 'Arcade', result }, theme });
@@ -51,5 +52,36 @@ describe('Results', () => {
     unmount();
     renderScreen(<Results />, { path: ROUTES.results, route: ROUTES.results });
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+  });
+
+  it('recorde: novo, "+X sobre o recorde" ou o recorde a bater', () => {
+    const show = (record: object) => renderScreen(<Results />, { path: ROUTES.results, route: ROUTES.results, state: { song: ODE, mode: 'Arcade', result: { ...playedResult(), score: 5200 }, record } });
+    let view = show({ previous: null, improved: true });
+    expect(screen.getByText('Novo recorde!')).toHaveAttribute('role', 'status');
+    view.unmount();
+    view = show({ previous: 4000, improved: true });
+    expect(screen.getByText('+1.200 sobre o recorde')).toBeInTheDocument();
+    view.unmount();
+    show({ previous: 6000, improved: false });
+    expect(screen.queryByText(/sobre o recorde|Novo recorde/)).not.toBeInTheDocument();
+    expect(screen.getByText('Recorde: 6.000')).toBeInTheDocument();
+  });
+
+  it('partida de prática: avisa que não vale selo nem recorde', () => {
+    render({ ...playedResult(), laps: [], bestLap: null } as ReturnType<typeof playedResult>);
+    expect(screen.getByText('Partida de prática: sem selos e sem recorde.')).toBeInTheDocument();
+  });
+
+  it('com trecho difícil, "Praticar compassos" abre a prática nele, a 70%', async () => {
+    render(playedResult(5, 3));
+    const link = screen.getByRole('link', { name: 'Praticar compassos' });
+    await userEvent.click(link);
+    expect(screen.getByTestId('location')).toHaveTextContent(ROUTES.countdown);
+    expect(practiceHardest({ from: 2, to: 3 })).toEqual({ loop: { startMeasure: 2, endMeasure: 3 }, speed: 0.7 });
+  });
+
+  it('sem trecho difícil, sem "Praticar compassos"', () => {
+    renderScreen(<Results />, { path: ROUTES.results, route: ROUTES.results, state: { song: ODE, mode: 'Partitura', result: playedResult() } });
+    expect(screen.queryByRole('link', { name: 'Praticar compassos' })).not.toBeInTheDocument();
   });
 });

@@ -2,7 +2,7 @@ import React from 'react';
 import styled, { useTheme } from 'styled-components';
 import { rgba } from '../../assets/styles/themes/color';
 import type { StringName } from '../../assets/styles/themes';
-import type { PlayerLevel } from '../../services/profile';
+import type { PlayerLevel } from '../../game/engine/levels';
 
 /** Cor de cada nível: a mesma corda que pinta a ilustração. */
 const LEVEL_STRING: Record<PlayerLevel, StringName> = { never: 'G', beginner: 'A', some_songs: 'D', years: 'E' };

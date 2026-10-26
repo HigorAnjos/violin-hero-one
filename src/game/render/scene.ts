@@ -27,6 +27,8 @@ export interface SceneOptions {
   theme: Theme;
   notes: readonly EngineNote[];
   reducedMotion: boolean;
+  /** Segundos do topo da pista à linha de acerto; padrão LEAD_SECONDS. */
+  leadSeconds?: number;
 }
 
 // Texturas assadas uma vez neste tamanho e escaladas no quadro: o resize não refaz textura.
@@ -84,7 +86,8 @@ export class TrackScene extends Container {
   private readonly glowTextures: Texture[];
   private readonly labelTextures: Map<Judgment, Texture>;
 
-  private l: TrackLayout = trackLayout(1, 1);
+  private readonly lead: number;
+  private l: TrackLayout;
   private readonly laneHitAt = [-Infinity, -Infinity, -Infinity, -Infinity];
   private ringScale = [1, 1];
   private feedbackAt = -Infinity;
@@ -100,6 +103,8 @@ export class TrackScene extends Container {
     const { theme } = options;
     this.palette = trackPalette(theme);
     this.reducedMotion = options.reducedMotion;
+    this.lead = options.leadSeconds ?? LEAD_SECONDS;
+    this.l = trackLayout(1, 1, this.lead);
 
     const p = this.palette;
     const display = theme.fonts.display;
@@ -143,7 +148,7 @@ export class TrackScene extends Container {
   }
 
   layout(width: number, height: number): void {
-    const l = (this.l = trackLayout(width, height));
+    const l = (this.l = trackLayout(width, height, this.lead));
     const p = this.palette;
     const far = l.farDepth * 1.02;
     const half = l.planeWidth / 2;
@@ -209,7 +214,7 @@ export class TrackScene extends Container {
     this.tails = Float64Array.from(notes, (n) => tailSeconds(n.duration));
     this.state = state;
     this.lookBack = MISS_TAIL_SECONDS + this.tails.reduce((a, b) => Math.max(a, b), 0);
-    const poolSize = maxNotesInWindow(this.times, LEAD_SECONDS + this.lookBack + 0.5) + 2;
+    const poolSize = maxNotesInWindow(this.times, this.lead + this.lookBack + 0.5) + 2;
     while (this.chips.length < poolSize) {
       const tail = new Sprite(Texture.WHITE);
       const gem = new Sprite();
@@ -249,7 +254,7 @@ export class TrackScene extends Container {
     const l = this.l;
     const missDepth = l.hitDepth - MISS_TAIL_SECONDS * l.speed;
     const first = lowerBound(this.times, now - this.lookBack);
-    const last = lowerBound(this.times, now + LEAD_SECONDS + 0.05);
+    const last = lowerBound(this.times, now + this.lead + 0.05);
     let used = 0;
 
     for (let i = first; i < last && used < this.chips.length; i++) {

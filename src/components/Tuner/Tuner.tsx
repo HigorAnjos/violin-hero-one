@@ -4,10 +4,13 @@ import { rgba } from '../../assets/styles/themes/color';
 import { midiToFrequency, OPEN_STRING_MIDI, STRING_LETTERS, STRING_SOLFEGE, type StringIndex } from '../../game/notation/violin';
 import { formatCents, formatHz } from '../OpenStringCard/openStringCheck';
 import { Kicker } from '../Screen/Screen';
-import { CLOSE_CENTS, GOOD_CENTS, needlePercent, TUNED_CENTS, tuneHint, tuneWord, type TunerState } from './tuner';
+import { DEFAULT_BANDS, needlePercent, tuneHint, tuneWord, type TunerState, type TuningBands } from './tuner';
 
-/** Faixa de ±cents na régua de −50 a +50 ¢, em % da largura. */
-const band = (cents: number) => ({ left: `${needlePercent(-cents)}%`, width: `${needlePercent(cents) - needlePercent(-cents)}%` });
+/** Faixa de ±cents na régua de ±bands.good, em % da largura. */
+const band = (cents: number, bands: TuningBands) => ({
+  left: `${needlePercent(-cents, bands)}%`,
+  width: `${needlePercent(cents, bands) - needlePercent(-cents, bands)}%`,
+});
 
 export const A4_PRESETS: readonly { hz: number; label: string }[] = [
   { hz: 440, label: '440' },
@@ -325,8 +328,15 @@ const STRINGS: StringIndex[] = [0, 1, 2, 3];
 const OCTAVES = [3, 4, 4, 5];
 
 /** Afinador da tela 4: Lá de referência, agulha e as quatro cordas soltas. */
-export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: TunerState; back?: React.ReactNode }> = ({ a4, onA4, state, back }) => {
+export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: TunerState; back?: React.ReactNode; bands?: TuningBands }> = ({
+  a4,
+  onA4,
+  state,
+  back,
+  bands = DEFAULT_BANDS,
+}) => {
   const theme = useTheme();
+  const { perfect: TUNED_CENTS, great: CLOSE_CENTS, good: GOOD_CENTS } = bands;
   const live = state.live;
   const shown: StringIndex = live?.string ?? (Math.max(0, state.tuned.findIndex((c) => c === null)) as StringIndex);
   const letter = STRING_LETTERS[shown];
@@ -371,24 +381,24 @@ export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: Tu
         <div>
           <Hz>{live ? formatHz(live.hz) : '— Hz'}</Hz>
           <Status $color={live ? statusColor : theme.colors.textMuted} role="status">
-            {live ? `${centsLabel} · ${tuneWord(cents)}` : 'ESPERANDO A CORDA'}
+            {live ? `${centsLabel} · ${tuneWord(cents, bands)}` : 'ESPERANDO A CORDA'}
           </Status>
-          <Hint>{tuneHint(state)}</Hint>
+          <Hint>{tuneHint(state, bands)}</Hint>
         </div>
       </Readout>
 
       <div>
         <Meter role="img" aria-label={`Medidor de afinação: ${live ? centsLabel : 'sem som'}`}>
-          <i style={{ ...band(CLOSE_CENTS), background: theme.colors.info.surface }} />
-          <i style={{ ...band(TUNED_CENTS), background: rgba(theme.colors.text, 0.14) }} />
+          <i style={{ ...band(CLOSE_CENTS, bands), background: theme.colors.info.surface }} />
+          <i style={{ ...band(TUNED_CENTS, bands), background: rgba(theme.colors.text, 0.14) }} />
           <i style={{ left: '50%', width: 1, background: theme.colors.text, opacity: 0.6 }} />
-          {live && <Needle style={{ left: `${needlePercent(cents)}%` }} />}
+          {live && <Needle style={{ left: `${needlePercent(cents, bands)}%` }} />}
         </Meter>
       </div>
       <Scale aria-hidden="true">
         <span style={{ left: 0 }}>−{GOOD_CENTS} ¢</span>
         {[-CLOSE_CENTS, -TUNED_CENTS, 0, TUNED_CENTS, CLOSE_CENTS].map((c) => (
-          <span key={c} data-minor={Math.abs(c) === CLOSE_CENTS || undefined} style={{ left: `${needlePercent(c)}%`, transform: 'translateX(-50%)' }}>
+          <span key={c} data-minor={Math.abs(c) === CLOSE_CENTS || undefined} style={{ left: `${needlePercent(c, bands)}%`, transform: 'translateX(-50%)' }}>
             {c > 0 ? `+${c}` : c < 0 ? `−${-c}` : '0'}
           </span>
         ))}

@@ -10,6 +10,20 @@ export const TUNED_CENTS = Math.round(TUNING_PERFECT * DEFAULT_TOLERANCE_CENTS);
 export const CLOSE_CENTS = Math.round(TUNING_GREAT * DEFAULT_TOLERANCE_CENTS);
 /** Até aqui, Bom: a tolerância do motor. */
 export const GOOD_CENTS = DEFAULT_TOLERANCE_CENTS;
+/** As faixas do motor para uma tolerância: Perfeito, Ótimo e Bom, em cents. */
+export interface TuningBands {
+  perfect: number;
+  great: number;
+  good: number;
+}
+
+/** As faixas da tolerância do nível (LevelSettings.toleranceCents), nas mesmas frações do motor. */
+export function tuningBands(toleranceCents: number = DEFAULT_TOLERANCE_CENTS): TuningBands {
+  return { perfect: Math.round(TUNING_PERFECT * toleranceCents), great: Math.round(TUNING_GREAT * toleranceCents), good: toleranceCents };
+}
+
+export const DEFAULT_BANDS: TuningBands = tuningBands();
+
 /** Afinada por este tempo seguido, a corda ganha o ✓. */
 export const TUNED_HOLD_SECONDS = 1;
 /** Mais longe que isso de uma corda solta é nota com dedo, não corda para afinar. */
@@ -36,12 +50,12 @@ export const initialTuner = (): TunerState => ({ live: null, tuned: [null, null,
 const released = (state: TunerState, live: TunerLive | null): TunerState => ({ ...state, live, holdString: null, holdSum: 0, holdCount: 0 });
 
 /** Avança o afinador com uma leitura do Ouvido, no Lá dado: a corda solta mais perto é a que está sendo afinada. */
-export function advanceTuner(state: TunerState, reading: PitchReading | null, a4: number): TunerState {
+export function advanceTuner(state: TunerState, reading: PitchReading | null, a4: number, bands: TuningBands = DEFAULT_BANDS): TunerState {
   if (!reading || reading.clarity < MIN_CLARITY) return reading ? state : released(state, null);
   const t = tuneString(reading.hz, a4);
   if (!t || Math.abs(t.cents) > MAX_CENTS) return released(state, null);
   const live = { string: t.string, cents: t.cents, hz: reading.hz };
-  if (Math.abs(t.cents) > TUNED_CENTS) return released(state, live);
+  if (Math.abs(t.cents) > bands.perfect) return released(state, live);
   const same = state.holdString === t.string;
   const holdSince = same ? state.holdSince : reading.time;
   const holdSum = (same ? state.holdSum : 0) + t.cents;
@@ -55,24 +69,24 @@ export function advanceTuner(state: TunerState, reading: PitchReading | null, a4
 
 export type TuneWord = 'AFINADO' | 'ALTO' | 'BAIXO';
 
-export function tuneWord(cents: number): TuneWord {
-  if (Math.abs(cents) <= TUNED_CENTS) return 'AFINADO';
+export function tuneWord(cents: number, bands: TuningBands = DEFAULT_BANDS): TuneWord {
+  if (Math.abs(cents) <= bands.perfect) return 'AFINADO';
   return cents > 0 ? 'ALTO' : 'BAIXO';
 }
 
 /** Dica embaixo do valor: para que lado girar, ou a próxima corda. */
-export function tuneHint(state: TunerState): string {
+export function tuneHint(state: TunerState, bands: TuningBands = DEFAULT_BANDS): string {
   const live = state.live;
   if (!live) {
     const next = state.tuned.findIndex((c) => c === null);
     return next < 0 ? 'Quatro cordas afinadas.' : `Toque a corda ${STRING_SOLFEGE[next]} (${STRING_LETTERS[next]}) solta.`;
   }
-  if (Math.abs(live.cents) > TUNED_CENTS) return live.cents > 0 ? 'Afrouxe um pouco o microafinador' : 'Aperte um pouco o microafinador';
+  if (Math.abs(live.cents) > bands.perfect) return live.cents > 0 ? 'Afrouxe um pouco o microafinador' : 'Aperte um pouco o microafinador';
   const next = state.tuned.findIndex((c, i) => c === null && i !== live.string);
   return next < 0 ? 'Pronto. Todas as cordas afinadas.' : `Pronto. Próxima corda: ${STRING_SOLFEGE[next]} (${STRING_LETTERS[next]})`;
 }
 
-/** Posição da agulha (0 a 100) na régua da tolerância do motor (±50 ¢). */
-export function needlePercent(cents: number): number {
-  return 50 + (Math.max(-GOOD_CENTS, Math.min(GOOD_CENTS, cents)) / GOOD_CENTS) * 50;
+/** Posição da agulha (0 a 100) na régua da tolerância (±bands.good). */
+export function needlePercent(cents: number, bands: TuningBands = DEFAULT_BANDS): number {
+  return 50 + (Math.max(-bands.good, Math.min(bands.good, cents)) / bands.good) * 50;
 }

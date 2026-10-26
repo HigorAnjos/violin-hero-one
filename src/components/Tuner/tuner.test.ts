@@ -2,7 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { midiToFrequency } from '../../game/notation/violin';
 import type { PitchReading } from '../../game/audio/types';
 import { judgeCents } from '../../game/engine';
-import { advanceTuner, CLOSE_CENTS, GOOD_CENTS, initialTuner, needlePercent, TUNED_CENTS, tuneHint, tuneWord, type TunerState } from './tuner';
+import { levelSettings } from '../../game/engine';
+import {
+  advanceTuner,
+  CLOSE_CENTS,
+  GOOD_CENTS,
+  initialTuner,
+  needlePercent,
+  TUNED_CENTS,
+  tuneHint,
+  tuneWord,
+  tuningBands,
+  type TunerState,
+} from './tuner';
 
 const at = (midi: number, cents: number, time: number, a4 = 442, clarity = 0.95): PitchReading => ({
   time,
@@ -64,5 +76,22 @@ describe('advanceTuner', () => {
     expect(judgeCents(CLOSE_CENTS)).toBe('great');
     expect(judgeCents(CLOSE_CENTS + 1)).toBe('good');
     expect(tuneWord(18)).toBe('AFINADO');
+  });
+
+  it('as faixas seguem a tolerância do nível: o "nunca toquei" chama de afinado o que o motor dele julga Perfeito', () => {
+    const bands = tuningBands(levelSettings('never').toleranceCents);
+    expect(bands).toEqual({ perfect: 24, great: 42, good: 60 });
+    expect(judgeCents(bands.perfect, 60)).toBe('perfect');
+    expect(tuneWord(23, bands)).toBe('AFINADO');
+    expect(tuneWord(23)).toBe('ALTO');
+    expect(needlePercent(60, bands)).toBe(100);
+    expect(needlePercent(30, bands)).toBe(75);
+  });
+
+  it('com a faixa do nível, a corda segura a 22 ¢ ganha o ✓', () => {
+    const bands = tuningBands(60);
+    let s = initialTuner();
+    for (let t = 0; t <= 1.05; t += 0.01) s = advanceTuner(s, at(55, 22, t), 442, bands);
+    expect(s.tuned[0]).toBe(22);
   });
 });

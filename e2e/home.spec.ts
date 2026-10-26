@@ -1,9 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { skipOnboarding } from './choose';
 import { fontsReady } from './fonts';
-
-test.beforeEach(async ({ page }) => {
-  await page.goto('/teste');
-});
 
 test('primeira vez: a raiz leva ao onboarding', async ({ page }) => {
   await page.goto('/');
@@ -11,28 +8,40 @@ test('primeira vez: a raiz leva ao onboarding', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Quanto você já toca?');
 });
 
-test('tela de teste mostra o título Violin Hero', async ({ page }) => {
-  await expect(page).toHaveTitle('Violin Hero');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Violin\s*Hero/);
-});
+test.describe('depois da primeira vez', () => {
+  test.beforeEach(async ({ page }) => {
+    await skipOnboarding(page);
+    await page.goto('/');
+  });
 
-test('mostra as quatro cordas do violino', async ({ page }) => {
-  await expect(page.getByRole('list', { name: 'Cordas do violino' }).getByRole('listitem')).toHaveCount(4);
-});
+  test('a raiz é a tela inicial, com o título Violin Hero e o menu', async ({ page }) => {
+    await expect(page).toHaveTitle('Violin Hero');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Violin\s*Hero/);
+    const menu = page.getByRole('navigation', { name: 'Menu principal' });
+    await expect(menu.getByRole('link', { name: /^Tocar/ })).toBeVisible();
+    await expect(menu.getByRole('link', { name: 'Biblioteca 3' })).toBeVisible();
+    await expect(menu.getByRole('link', { name: /^Afinar Lá 442/ })).toBeVisible();
+  });
 
-test('sem Supabase a sessão fica Offline', async ({ page }) => {
-  await expect(page.getByRole('status')).toHaveText('Offline');
-});
+  test('a /teste não existe mais: volta para a raiz', async ({ page }) => {
+    await page.goto('/teste');
+    await expect(page).toHaveURL(/\/$/);
+  });
 
-test('trocar para o tema Palco', async ({ page }) => {
-  const palco = page.getByRole('group', { name: 'Tema' }).getByRole('button', { name: 'Palco' });
-  await palco.click();
-  await expect(palco).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'palco');
-});
+  test('sem Supabase a sessão fica Offline', async ({ page }) => {
+    await expect(page.getByRole('status').filter({ hasText: 'Offline' })).toBeVisible();
+  });
 
-test('não rola na horizontal', async ({ page }) => {
-  await fontsReady(page);
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  expect(overflow).toBeLessThanOrEqual(0);
+  test('trocar para o tema Palco', async ({ page }) => {
+    const palco = page.getByRole('group', { name: 'Tema' }).getByRole('button', { name: 'Palco' });
+    await palco.click();
+    await expect(palco).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'palco');
+  });
+
+  test('não rola na horizontal', async ({ page }) => {
+    await fontsReady(page);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
 });

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { simulateGame, type GameResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
 import { blockWebFonts, fallbackFontsReady, fontsReady } from './fonts';
+import { expectFits } from './layout';
 import { openWithState } from './state';
 
 test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } });
@@ -13,35 +14,6 @@ const SONG = { ...ODE, title: LONG_TITLE };
 function bigResult(errors: number, noFail = true): GameResult {
   const result = simulateGame({ song: ODE, startAt: 1, noFail }, { errors, seed: 2 }).result;
   return { ...result, score: 9876543, maxCombo: 12345 };
-}
-
-/**
- * Nada passa da janela: sem rolagem e nenhum elemento visível além da borda direita ou de baixo. O que um ancestral
- * recorta (overflow, como as notas da partitura dentro da SVG) conta só pela parte que aparece.
- */
-async function expectFits(page: Page) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'rolagem horizontal').toBeLessThanOrEqual(0);
-  expect(await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight), 'rolagem vertical').toBeLessThanOrEqual(1);
-  const outside = await page.evaluate(() => {
-    const visible = (el: Element) => {
-      const box = el.getBoundingClientRect();
-      let { right, bottom } = box;
-      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
-        const style = getComputedStyle(p);
-        if (style.overflowX === 'visible' && style.overflowY === 'visible') continue;
-        const clip = p.getBoundingClientRect();
-        right = Math.min(right, clip.right);
-        bottom = Math.min(bottom, clip.bottom);
-      }
-      return { width: box.width, right, bottom };
-    };
-    return [...document.querySelectorAll('main *')]
-      .filter((el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden')
-      .map((el) => ({ el, box: visible(el) }))
-      .filter(({ box }) => box.width > 0 && (box.right > window.innerWidth + 0.5 || box.bottom > window.innerHeight + 0.5))
-      .map(({ el, box }) => `${el.tagName.toLowerCase()} "${(el.textContent ?? '').trim().slice(0, 30)}": ${Math.round(box.right)}×${Math.round(box.bottom)}`);
-  });
-  expect(outside, 'elementos fora da janela').toEqual([]);
 }
 
 /**

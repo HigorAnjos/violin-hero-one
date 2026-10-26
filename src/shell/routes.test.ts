@@ -7,7 +7,7 @@ describe('rotas', () => {
     for (const path of [ROUTES.mic, ROUTES.strings, ROUTES.micTrouble, ROUTES.countdown, `${ROUTES.countdown}/`, ...playing]) {
       expect(needsMicrophone(path)).toBe(true);
     }
-    for (const path of [ROUTES.home, ROUTES.foundation, ROUTES.level, '/biblioteca', '/configuracoes', '/contagem-x']) {
+    for (const path of [ROUTES.home, ROUTES.modes, ROUTES.songs, ROUTES.library, ROUTES.level, '/configuracoes', '/contagem-x']) {
       expect(needsMicrophone(path)).toBe(false);
     }
   });

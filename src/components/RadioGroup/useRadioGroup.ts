@@ -1,5 +1,14 @@
 import React from 'react';
 
+export interface RadioProps {
+  role: 'radio';
+  'aria-checked': boolean;
+  tabIndex: number;
+  ref: (el: HTMLElement | null) => void;
+  onClick: () => void;
+  onKeyDown: (event: React.KeyboardEvent) => void;
+}
+
 const NEXT = new Set(['ArrowRight', 'ArrowDown']);
 const PREVIOUS = new Set(['ArrowLeft', 'ArrowUp']);
 
@@ -11,7 +20,7 @@ export function useRadioGroup<T extends string>(values: readonly T[], value: T |
   const refs = React.useRef(new Map<T, HTMLElement>());
   const focusable = value ?? values[0];
 
-  return (option: T) => ({
+  return (option: T): RadioProps => ({
     role: 'radio' as const,
     'aria-checked': option === value,
     tabIndex: option === focusable ? 0 : -1,

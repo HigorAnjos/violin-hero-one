@@ -1,5 +1,4 @@
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
 import { LEVEL_NAMES } from '../components/CountIn/countIn';
 import { Orchestra } from '../components/Orchestra/Orchestra';
@@ -7,20 +6,15 @@ import { PauseMenu } from '../components/PauseMenu/PauseMenu';
 import { ScoreCard } from '../components/ScoreCard/ScoreCard';
 import { SheetStrip, type SheetStripHandle } from '../components/SheetStrip/SheetStrip';
 import { TuningCard } from '../components/TuningCard/TuningCard';
-import type { GameResult } from '../game/engine';
-import { parseSimulate } from '../game/engine/simulate';
 import { songDurationSeconds } from '../game/notation/song';
-import { findFixedSong } from '../game/notation/songs';
 import { stageBox } from '../game/render/layout';
 import { prefersReducedMotion } from '../game/render/present';
-import { addEarnedBadges } from '../services/badges';
-import { loadA4 } from '../services/playerAudio';
-import { DEV_TOOLS } from '../shell/devTools';
-import { micFailure, useEar } from '../shell/Ear';
-import { readPlayState, type ResultState } from '../shell/play';
-import { micTroubleUrl, ROUTES } from '../shell/routes';
+import { useEar } from '../shell/Ear';
+import { gameRoute } from '../shell/play';
+import { ROUTES } from '../shell/routes';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { useGame, type GameDeps } from '../shell/useGame';
+import { pauseSettings, useEscapePause, usePlayScreen } from '../shell/usePlayScreen';
 
 const Page = styled.main`
   position: relative;
@@ -82,17 +76,8 @@ const box = () => stageBox(window.innerWidth, window.innerHeight);
 export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
   const ear = useEar();
   const theme = useTheme();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const play = React.useMemo(() => {
-    const state = readPlayState(location.state);
-    // ?musica=<id> abre a música direto no /jogo, para o e2e que toca um WAV no lugar do microfone
-    const chosen = DEV_TOOLS ? findFixedSong(new URLSearchParams(location.search).get('musica') ?? '') : undefined;
-    return chosen ? { ...state, song: chosen.song } : state;
-  }, [location.state, location.search]);
+  const { play, a4, performance, level, bands, finish, micError, navigate } = usePlayScreen('Arcade');
   const compact = useMediaQuery(COMPACT_QUERY);
-  const [a4] = React.useState(loadA4);
-  const [performance] = React.useState(() => (DEV_TOOLS ? parseSimulate(location.search) : null));
   const host = React.useRef<HTMLDivElement>(null);
   const sheet = React.useRef<SheetStripHandle>(null);
   const [stage, setStage] = React.useState(box);
@@ -104,25 +89,6 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
     addEventListener('resize', onResize);
     return () => removeEventListener('resize', onResize);
   }, []);
-
-  const finish = React.useCallback(
-    (result: GameResult) => {
-      const state: ResultState = { song: play.song, mode: play.mode, latencyMs: play.latencyMs, noFail: play.noFail, result };
-      if (DEV_TOOLS) (window as Window & { __vhResult?: GameResult }).__vhResult = result;
-      if (result.status === 'failed') return navigate(ROUTES.gameOver, { replace: true, state });
-      addEarnedBadges(result.badges);
-      navigate(result.badges.length ? ROUTES.badge : ROUTES.results, { replace: true, state });
-    },
-    [navigate, play]
-  );
-
-  const micError = React.useCallback(
-    (error: unknown) => {
-      const { problem, cause } = micFailure(error);
-      navigate(micTroubleUrl(problem, ROUTES.calibration, cause), { replace: true, state: play });
-    },
-    [navigate, play]
-  );
 
   const game = useGame({
     ear,
@@ -136,20 +102,13 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
     onBeat: (beat) => sheet.current?.setBeat(beat),
     onFinish: finish,
     onMicError: micError,
+    level,
     deps,
   });
   const { phase, hud, pause, resume } = game;
   const paused = phase === 'paused' || phase === 'counting';
 
-  React.useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      if (phase === 'playing') pause();
-      else if (phase === 'paused') void resume();
-    };
-    addEventListener('keydown', onKey);
-    return () => removeEventListener('keydown', onKey);
-  }, [phase, pause, resume]);
+  useEscapePause(phase, pause, resume);
 
   const target = hud.target ? { midi: hud.target.midi, string: hud.target.string, finger: hud.target.finger } : null;
 
@@ -160,7 +119,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
       </Backdrop>
       <TrackHost ref={host} style={{ left: stage.x, top: stage.y, width: stage.width, height: stage.height }} data-testid="pista" aria-hidden="true" />
       <ScoreCard score={hud.score} multiplier={hud.multiplier} combo={hud.combo} accuracy={hud.accuracy} level={hud.level} />
-      <TuningCard target={target} trace={hud.trace} liveCents={hud.liveCents} a4={a4} explanation={hud.explanation} compact={compact} />
+      <TuningCard target={target} trace={hud.trace} liveCents={hud.liveCents} a4={a4} explanation={hud.explanation} compact={compact} bands={bands} />
       {!paused && (
         <PauseButton type="button" aria-label="Pausar" onClick={pause} disabled={phase !== 'playing'}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
@@ -188,11 +147,12 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
           volume={game.volume}
           onVolume={game.changeVolume}
           onContinue={() => void resume()}
-          onRestart={() => navigate(ROUTES.countdown, { replace: true, state: { ...play, next: ROUTES.game } })}
+          onRestart={() => navigate(ROUTES.countdown, { replace: true, state: { ...play, next: gameRoute(play.mode) } })}
           onRetune={() => navigate(ROUTES.calibration, { state: play })}
           onExit={() => navigate(ROUTES.home)}
           counting={game.counting}
           micClosed={game.micClosed}
+          {...pauseSettings(game)}
         />
       )}
       {phase === 'broken' && <p role="alert">Não deu para começar o áudio. Volte e tente de novo.</p>}

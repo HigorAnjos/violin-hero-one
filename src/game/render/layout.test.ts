@@ -36,6 +36,16 @@ const boxes = [
   [800, 600],
 ] as const;
 
+describe('trackLayout com a descida do nível', () => {
+  it('a nota leva `lead` segundos do topo à linha', () => {
+    for (const lead of [1.75, 3]) {
+      const l = trackLayout(640, 550, lead);
+      expect(noteDepth(l, lead, 0)).toBeCloseTo(l.enterDepth, 6);
+    }
+    expect(trackLayout(640, 550).lead).toBe(LEAD_SECONDS);
+  });
+});
+
 describe.each(boxes)('trackLayout %ix%i', (w, h) => {
   const l = trackLayout(w, h);
 

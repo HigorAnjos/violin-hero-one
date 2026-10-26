@@ -123,12 +123,14 @@ export const Countdown: React.FC = () => {
   // Vindo do onboarding, sem música escolhida: a primeira das músicas fixas
   const song = state.song ?? FIXED_SONGS[0].song;
   const next = safeInternalPath(state.next ?? null, ROUTES.game);
-  const { mode, latencyMs, noFail } = state;
+  const { mode, latencyMs, noFail, practice } = state;
   const start = React.useCallback(
-    () => navigate(next, { replace: true, state: { song, mode, latencyMs, noFail } satisfies PlayState }),
-    [navigate, next, song, mode, latencyMs, noFail]
+    () => navigate(next, { replace: true, state: { song, mode, latencyMs, noFail, practice } satisfies PlayState }),
+    [navigate, next, song, mode, latencyMs, noFail, practice]
   );
-  const view = useCountIn(song, start);
+  // Na prática, a entrada já vem na velocidade escolhida
+  const counted = React.useMemo(() => (practice ? { ...song, bpm: song.bpm * practice.speed } : song), [song, practice]);
+  const view = useCountIn(counted, start);
   // O compasso de entrada dá tempo de baixar a tela de jogo antes de precisar dela
   React.useEffect(() => void loadGameScreens().catch(() => undefined), []);
   const note = firstNote(song);

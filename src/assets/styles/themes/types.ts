@@ -74,6 +74,7 @@ export interface Theme {
     judgments: Record<Judgment, string>;
     orchestra: Record<OrchestraSection, string>;
   };
+  art: ArtColors;
   /** `music`: clave e acidentes da partitura (Noto Music, servida pelo app). */
   fonts: { display: string; ui: string; music: string };
   spacing: { xxs: string; xs: string; sm: string; md: string; lg: string; xl: string };
@@ -102,4 +103,12 @@ export interface Palette {
   hitLine: string;
   strings: Record<StringName, string>;
   judgments: Record<Judgment, string>;
+  art: ArtColors;
+}
+
+/** Ilustrações (o violino da tela inicial): madeira do corpo, ébano do espelho e o halo atrás dele. */
+export interface ArtColors {
+  wood: string;
+  ebony: string;
+  halo: string;
 }
