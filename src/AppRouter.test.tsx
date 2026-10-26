@@ -23,8 +23,11 @@ const renderApp = (path = '/') => {
 describe('AppRouter', () => {
   afterEach(() => window.localStorage.clear());
 
-  it('primeira vez: a raiz leva ao nível', async () => {
+  it('primeira vez: a raiz leva às boas-vindas, e "Começar a tocar" ao nível, sem cadastro', async () => {
     renderApp('/');
+    expect(await screen.findByRole('heading', { name: 'Como você quer começar?' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/entrar');
+    await userEvent.click(screen.getByRole('link', { name: /Começar a tocar/ }));
     expect(await screen.findByRole('heading', { name: 'Quanto você já toca?' })).toBeInTheDocument();
     expect(window.location.pathname).toBe('/primeira-vez/nivel');
   });
@@ -47,11 +50,11 @@ describe('AppRouter', () => {
 
   it('caminho desconhecido volta para a raiz', async () => {
     renderApp('/nao-existe');
-    expect(await screen.findByRole('heading', { name: 'Quanto você já toca?' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Como você quer começar?' })).toBeInTheDocument();
   });
 
   it('o fluxo da primeira vez é navegável de ponta a ponta', async () => {
-    renderApp('/');
+    renderApp('/primeira-vez/nivel');
     await userEvent.click(await screen.findByRole('button', { name: /Continuar/ }));
     expect(screen.getByRole('heading', { name: 'Precisamos ouvir seu violino' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /Permitir microfone/ }));
