@@ -3,7 +3,12 @@ import { FIXED_SONGS } from '../notation/songs';
 import { keySignature, staffLayout } from './staff';
 import {
   barOffsets,
+  BEAT_SPACES,
+  beatWarp,
   clefFade,
+  IDENTITY_WARP,
+  MIN_GAP_BEATS,
+  MIN_GAP_SPACES,
   beatAt,
   beatWindows,
   beatX,
@@ -116,6 +121,55 @@ describe('relógio de tempos', () => {
     const first = out[0];
     beatWindows(segments, 2, 1, 1, out);
     expect(out[0]).toBe(first);
+  });
+});
+
+describe('vão mínimo entre ataques (BeatWarp)', () => {
+  // Semínima, duas semicolcheias, colcheia, pausa de colcheia, semínima
+  const warp = beatWarp([0, 1, 1.25, 1.5, 2, 2.5, 3, 1]);
+
+  it('vão de colcheia ou maior fica como está; o curto cresce até o mínimo', () => {
+    expect(MIN_GAP_BEATS).toBeCloseTo(MIN_GAP_SPACES / BEAT_SPACES);
+    expect(MIN_GAP_BEATS).toBeGreaterThan(0.25);
+    expect(MIN_GAP_BEATS).toBeLessThanOrEqual(0.55);
+    const at = [0, 1, 1.25, 1.5, 2, 2.5, 3].map(warp.forward);
+    const gaps = at.slice(1).map((x, i) => x - at[i]);
+    expect(gaps[0]).toBeCloseTo(1);
+    expect(gaps[1]).toBeCloseTo(MIN_GAP_BEATS);
+    expect(gaps[2]).toBeCloseTo(MIN_GAP_BEATS);
+    expect(gaps.every((g) => g >= MIN_GAP_BEATS - 1e-9)).toBe(true);
+    // Antes e depois das notas, inclinação 1 (a entrada e o fim)
+    expect(warp.forward(-2)).toBeCloseTo(-2);
+    expect(warp.forward(5) - warp.forward(3)).toBeCloseTo(2);
+    expect(warp.forward(Infinity)).toBe(Infinity);
+  });
+
+  it('crescente, contínua e com inversa', () => {
+    let last = -Infinity;
+    for (let b = -1; b <= 4; b += 0.01) {
+      const x = warp.forward(b);
+      expect(x).toBeGreaterThan(last);
+      expect(warp.inverse(x)).toBeCloseTo(b, 9);
+      last = x;
+    }
+    expect(beatWarp([2])).toBe(IDENTITY_WARP);
+  });
+
+  it('os pedaços medem a distância em tempos de faixa: a nota passa na agulha na hora dela', () => {
+    const out: BeatWindow[] = [];
+    const segments = steadyClock(0, 60).segments(10);
+    // 1,25 s: a 2ª semicolcheia sob a agulha
+    beatWindows(segments, 1.25, 2, 4, out, warp);
+    expect(warp.forward(1.25) + out[0].shift).toBeCloseTo(0);
+    expect(warp.forward(1.5) + out[0].shift).toBeCloseTo(MIN_GAP_BEATS);
+    // O fim do pedaço é o tempo da música a `ahead` tempos de faixa
+    expect(warp.forward(out[0].toBeat) + out[0].shift).toBeCloseTo(4);
+    // Laço de 0 a 3 em volta: o começo de A vem colado no fim de B, também em tempos de faixa
+    const loop = [seg(0, 0, 1, 3, 3), seg(3, 0, 1, 6, 3)];
+    const count = beatWindows(loop, 2.5, 1, 4, out, warp);
+    expect(count).toBe(2);
+    expect(warp.forward(3) + out[0].shift).toBeCloseTo(warp.forward(3) - warp.forward(2.5));
+    expect(warp.forward(0) + out[1].shift).toBeCloseTo(warp.forward(3) - warp.forward(2.5));
   });
 });
 

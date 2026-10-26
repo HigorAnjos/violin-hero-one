@@ -13,6 +13,7 @@ import {
   beatX,
   BOTTOM_STEP,
   barOffsets,
+  beatWarp,
   clefFade,
   markApplies,
   noteAlpha,
@@ -24,6 +25,7 @@ import {
   TOP_STEP,
   windowTime,
   type BeatSegment,
+  type BeatWarp,
   type BeatWindow,
   type SheetClock,
   type SheetLayout,
@@ -142,6 +144,15 @@ export class SheetScene extends Container {
   /** A nota de ataque de cada nota (a ligada aponta para a que ela continua) e a duração somada das ligadas. */
   private readonly attackOf: Int32Array;
   private readonly holdBeats: Float64Array;
+  /** O espaço na faixa (BeatWarp): onde cada nota, pausa, barra e ponta de ligadura fica, e quanto a nota ocupa. */
+  private readonly warp: BeatWarp;
+  private readonly spacedAt: Float64Array;
+  private readonly spacedBeats: Float64Array;
+  private readonly spacedHold: Float64Array;
+  private readonly spacedRest: Float64Array;
+  private readonly spacedBars: Float64Array;
+  private readonly spacedTieFrom: Float64Array;
+  private readonly spacedTieTo: Float64Array;
   private readonly markAt: Float64Array;
   private readonly markState: Uint8Array;
   private readonly markTexture: (Texture | null)[];
@@ -209,9 +220,9 @@ export class SheetScene extends Container {
     this.bars = staff.bars;
     this.rests = staff.rests;
     this.ties = staff.ties;
-    // A barra foge da pausa como foge da nota
     const starts = [...this.notes, ...this.rests].map((x) => x.at).sort((a, b) => a - b);
-    this.barOffsets = barOffsets(this.bars, starts);
+    const warp = (this.warp = beatWarp(starts));
+    const spaced = (beats: ArrayLike<number>) => Float64Array.from(beats, (b) => warp.forward(b));
     this.fifths = staff.fifths;
     this.at = Float64Array.from(this.notes, (n) => n.at);
     this.restAt = Float64Array.from(this.rests, (r) => r.at);
@@ -223,6 +234,15 @@ export class SheetScene extends Container {
       this.attackOf[i] = attack;
       if (attack !== i) this.holdBeats[attack] += this.notes[i].beats;
     }
+    this.spacedAt = spaced(this.at);
+    this.spacedBeats = Float64Array.from(this.notes, (n, i) => warp.forward(n.at + n.beats) - this.spacedAt[i]);
+    this.spacedHold = Float64Array.from(this.notes, (n, i) => warp.forward(n.at + this.holdBeats[i]) - this.spacedAt[i]);
+    this.spacedRest = spaced(this.restAt);
+    this.spacedBars = spaced(this.bars);
+    this.spacedTieFrom = spaced(this.ties.map((t) => t.fromAt));
+    this.spacedTieTo = spaced(this.tieTo);
+    // A barra foge da pausa como foge da nota
+    this.barOffsets = barOffsets(this.spacedBars, spaced(starts));
     this.markAt = new Float64Array(this.notes.length).fill(NaN);
     this.markState = new Uint8Array(this.notes.length);
     this.markTexture = new Array(this.notes.length).fill(null);
@@ -382,7 +402,7 @@ export class SheetScene extends Container {
       this.until = horizon + 2;
       this.fetchedAt = now;
     }
-    const count = beatWindows(this.segments, now, l.behind, l.ahead, this.windows);
+    const count = beatWindows(this.segments, now, l.behind, l.ahead, this.windows, this.warp);
 
     let used = 0;
     let bars = 0;
@@ -395,27 +415,27 @@ export class SheetScene extends Container {
       for (let i = lowerBound(this.at, win.fromBeat); i < this.at.length && this.at[i] < win.toBeat && used < this.slots.length; i++) {
         const slot = this.slots[used++];
         if (slot.note !== i) this.fill(slot, i);
-        const distance = this.at[i] + win.shift;
+        const distance = this.spacedAt[i] + win.shift;
         const attack = this.attackOf[i];
         const markOn = markApplies(windowTime(win, this.at[attack]), this.markAt[attack]);
         const state = markOn ? this.markState[attack] : 0;
         slot.root.visible = true;
         slot.root.x = beatX(l, distance);
-        slot.root.alpha = noteAlpha(distance, this.notes[i].beats, state === HIT) * clefFade(l, slot.root.x);
+        slot.root.alpha = noteAlpha(distance, this.spacedBeats[i], state === HIT) * clefFade(l, slot.root.x);
         const mark = markOn && attack === i ? this.markTexture[attack] : null;
         slot.mark.visible = mark !== null;
         if (mark) {
           slot.mark.texture = mark;
           slot.mark.scale.set((l.space / REF) * feedbackScale(now - this.markAt[attack], this.reducedMotion));
         }
-        if (attack === i && distance <= 0 && distance + this.holdBeats[i] > 0) {
+        if (attack === i && distance <= 0 && distance + this.spacedHold[i] > 0) {
           holding = i;
           holdX = slot.root.x;
         }
       }
       for (let m = lowerBound(this.bars, Math.max(win.fromBeat, 1e-9)); m < this.bars.length && this.bars[m] < win.toBeat && bars < this.barSlots.length; m++) {
         const bar = this.barSlots[bars++];
-        const x = beatX(l, this.bars[m] + win.shift - this.barOffsets[m]);
+        const x = beatX(l, this.spacedBars[m] + win.shift - this.barOffsets[m]);
         bar.line.visible = bar.number.visible = true;
         bar.line.x = x;
         bar.number.x = x + l.space * 0.35;
@@ -425,7 +445,7 @@ export class SheetScene extends Container {
         const slot = this.restSlots[rests++];
         if (slot.rest !== r) this.fillRest(slot, r);
         slot.root.visible = true;
-        slot.root.x = beatX(l, this.restAt[r] + win.shift);
+        slot.root.x = beatX(l, this.spacedRest[r] + win.shift);
         slot.root.alpha = clefFade(l, slot.root.x);
       }
       // O arco entra pela nota que continua, mas aparece enquanto qualquer parte dele estiver no pedaço
@@ -435,12 +455,12 @@ export class SheetScene extends Container {
         if (!tieShows(win, previous, tie.fromAt, tie.toAt)) continue;
         const slot = this.tieSlots[ties++];
         if (slot.tie !== t) this.fillTie(slot, t);
-        const distance = tie.toAt + win.shift;
+        const distance = this.spacedTieTo[t] + win.shift;
         const attack = this.attackOf[tie.to];
         const hit = markApplies(windowTime(win, this.at[attack]), this.markAt[attack]) && this.markState[attack] === HIT;
         slot.arc.visible = true;
-        slot.arc.x = beatX(l, tie.fromAt + win.shift);
-        slot.arc.alpha = noteAlpha(distance, this.notes[tie.to].beats, hit) * clefFade(l, beatX(l, distance));
+        slot.arc.x = beatX(l, this.spacedTieFrom[t] + win.shift);
+        slot.arc.alpha = noteAlpha(distance, this.spacedBeats[tie.to], hit) * clefFade(l, beatX(l, distance));
       }
     }
     for (let i = used; i < this.usedSlots; i++) this.slots[i].root.visible = false;
@@ -461,7 +481,7 @@ export class SheetScene extends Container {
       this.holdBg.alpha = HOLD_BG_ALPHA;
       this.holdFill.alpha = HOLD_FILL_ALPHA;
       this.holdBg.position.set(holdX, y);
-      this.holdBg.setSize(this.holdBeats[holding] * l.pxPerBeat, l.holdHeight);
+      this.holdBg.setSize(this.spacedHold[holding] * l.pxPerBeat, l.holdHeight);
       this.holdFill.position.set(holdX, y);
       this.holdFill.setSize(Math.max(0, l.needleX - holdX), l.holdHeight);
     }
@@ -479,6 +499,11 @@ export class SheetScene extends Container {
       .map((s) => ({ alpha: s.root.alpha, x: s.root.x, marked: s.mark.visible }));
   }
 
+  /** x de cada nota visível à frente da clave; para testes. */
+  notesX(): number[] {
+    return this.slots.filter((s) => s.root.visible && s.root.x > this.l.clefWidth).map((s) => s.root.x);
+  }
+
   /** Pausas na faixa agora: índice em staffLayout(song).rests e x; para testes. */
   restView(): { rest: number; x: number }[] {
     return this.restSlots.filter((s) => s.root.visible).map((s) => ({ rest: s.rest, x: s.root.x }));
@@ -490,9 +515,14 @@ export class SheetScene extends Container {
       .filter((s) => s.arc.visible)
       .map((s) => {
         const tie = this.ties[s.tie];
-        const arc = tieArc(this.l, s.arc.x, s.arc.x + (tie.toAt - tie.fromAt) * this.l.pxPerBeat, tie, { x: 0, y: 0, width: 0, height: 0 });
+        const arc = tieArc(this.l, s.arc.x, s.arc.x + this.tieLength(s.tie) * this.l.pxPerBeat, tie, { x: 0, y: 0, width: 0, height: 0 });
         return { tie: s.tie, from: arc.x, to: arc.x + arc.width, alpha: s.arc.alpha };
       });
+  }
+
+  /** Da cabeça que a ligadura `t` sai à que ela chega, em tempos de faixa. */
+  private tieLength(t: number): number {
+    return this.spacedTieTo[t] - this.spacedTieFrom[t];
   }
 
   holdVisible(): boolean {
@@ -642,7 +672,7 @@ export class SheetScene extends Container {
     const l = this.l;
     const tie = this.ties[t];
     slot.tie = t;
-    const { x, y, width, height } = tieArc(l, 0, (tie.toAt - tie.fromAt) * l.pxPerBeat, tie, this.arc);
+    const { x, y, width, height } = tieArc(l, 0, this.tieLength(t) * l.pxPerBeat, tie, this.arc);
     const inner = height - Math.sign(height) * l.space * TIE_THICKNESS;
     slot.arc
       .clear()

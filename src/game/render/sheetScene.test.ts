@@ -6,7 +6,7 @@ import { n, ODE } from '../engine/testing';
 import type { Issue, Judgment } from '../engine/types';
 import type { Song } from '../notation/song';
 import type { TextureBaker, JudgmentEvent } from './scene';
-import { PASSED_ALPHA, sheetLayout, steadyClock, type BeatSegment, type SheetClock } from './sheetLayout';
+import { MIN_GAP_SPACES, PASSED_ALPHA, sheetLayout, steadyClock, type BeatSegment, type SheetClock } from './sheetLayout';
 import { SheetScene } from './sheetScene';
 
 function fakeBaker() {
@@ -251,5 +251,34 @@ describe('SheetScene', () => {
   it('ignora julgamento de nota que não existe', () => {
     const { s } = scene();
     expect(() => s.judge(judgment(9999, 'perfect'))).not.toThrow();
+  });
+
+  it.each([
+    ['tela 5b', W, H],
+    ['celular deitado (844×390)', 810, 184],
+    ['compacta', 810, 112],
+  ])('%s: semicolcheia e pausa curta não colam na vizinha, e cada nota passa na agulha na hora dela', (_name, width, height) => {
+    // Fá♯5 e Sol5 a uma semicolcheia; semínima pontuada e pausa de semicolcheia; colcheia e pausa de colcheia
+    const tight: Song = {
+      ...ODE,
+      id: 'apertada',
+      measures: [
+        { beats: 4, notes: [n(0, 1, 76, 3, 0), n(1.75, 0.25, 78, 3, 1), n(2, 1, 79, 3, 2), n(3, 0.75, 81, 3, 3)] },
+        { beats: 4, notes: [n(0, 0.5, 76, 3, 0), n(1, 3, 74, 2, 3)] },
+      ],
+    };
+    const { baker } = fakeBaker();
+    const s = new SheetScene(baker, { theme: cadernoTheme, song: tight, clock: steadyClock(START, 100), reducedMotion: false });
+    s.layout(width, height);
+    const l = sheetLayout(width, height, 2);
+    s.update(START);
+    const xs = [...s.notesX(), ...s.restView().map((r) => r.x)].sort((a, b) => a - b);
+    expect(xs.length).toBeGreaterThan(5);
+    const gaps = xs.slice(1).map((x, i) => x - xs[i]);
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(MIN_GAP_SPACES * l.space - 1e-6);
+    tight.measures[0].notes.forEach((note, i) => {
+      s.update(START + note.beat * SPB);
+      expect(s.noteView(i)[0].x).toBeCloseTo(l.needleX);
+    });
   });
 });
