@@ -6,7 +6,7 @@ import { STRING_LETTERS } from '../notation/violin';
 import { formatFps, type FpsReport } from './fps';
 import { lowerBound, maxNotesInWindow } from './layout';
 import { sheetPalette, type SheetPalette } from './palette';
-import { feedbackScale } from './present';
+import { feedbackScale, playedString } from './present';
 import type { JudgmentEvent, TextureBaker } from './scene';
 import {
   beatWindows,
@@ -34,7 +34,7 @@ import {
   type SheetLayout,
   type TieArc,
 } from './sheetLayout';
-import { keySignature, ledgerSteps, staffLayout, type Accidental, type RestValue, type StaffNote, type StaffRest, type StaffTie } from './staff';
+import { diatonicStep, keySignature, ledgerSteps, staffLayout, type Accidental, type RestValue, type StaffNote, type StaffRest, type StaffTie } from './staff';
 
 export interface SheetSceneOptions {
   theme: Theme;
@@ -85,6 +85,10 @@ const ISSUE_GLYPH: Record<Issue, string> = {
   'not-played': '×',
 };
 const MISS_GLYPH = '×';
+/** Um acerto adiantado chega antes da hora da nota: a cópia dela ainda vale até este tanto depois do julgamento. */
+const MARK_EARLY_SECONDS = 0.3;
+/** Nota sem altura tocada a mostrar (não foi nota errada). */
+const NO_STEP = -1;
 const CLOCK_REFRESH_SECONDS = 0.25;
 
 interface NoteSlot {
@@ -100,6 +104,8 @@ interface NoteSlot {
   letter: Sprite;
   name: Sprite;
   mark: Sprite;
+  /** Cabeça vazada da nota tocada no lugar (nota errada). */
+  ghost: Sprite;
   /** Nota da timeline que este slot mostra, ou −1 depois de um layout. */
   note: number;
 }
@@ -167,7 +173,9 @@ export class SheetScene extends Container {
   private readonly spacedBars: Float64Array;
   private readonly spacedTieFrom: Float64Array;
   private readonly spacedTieTo: Float64Array;
+  /** Hora da cópia da nota que o julgamento marcou (no laço, a volta certa) e hora em que a marca apareceu. */
   private readonly markAt: Float64Array;
+  private readonly markShownAt: Float64Array;
   private readonly markState: Uint8Array;
   private readonly markTexture: (Texture | null)[];
   private readonly windows: BeatWindow[] = [];
@@ -233,6 +241,12 @@ export class SheetScene extends Container {
   private readonly labelTexture: Texture;
   private readonly clefTexture: Texture;
   private readonly glyphTextures: Texture[];
+  // Nota errada: cabeça vazada na altura tocada e "VOCÊ E" no lugar do nome (o dedo e a letra embaixo são o alvo)
+  private readonly ghostTexture: Texture;
+  private readonly youTextures: Texture[];
+  private readonly playedStep: Int16Array;
+  private readonly playedString: Uint8Array;
+  private readonly nameTexture: Texture[];
   private readonly glyphFor: (judgment: Judgment, issue: Issue | null) => Texture | null;
 
   private l: SheetLayout;
@@ -284,6 +298,7 @@ export class SheetScene extends Container {
     // A barra foge da pausa como foge da nota; uma a mais no fim da música, para o B do laço no último compasso
     this.barOffsets = barOffsets([...this.spacedBars, warp.forward(this.totalBeats)], spaced(starts));
     this.markAt = new Float64Array(this.notes.length).fill(NaN);
+    this.markShownAt = new Float64Array(this.notes.length).fill(NaN);
     this.markState = new Uint8Array(this.notes.length);
     this.markTexture = new Array(this.notes.length).fill(null);
 
@@ -319,6 +334,11 @@ export class SheetScene extends Container {
     glyphFor('miss', 'not-played');
     this.glyphTextures = [...glyphs.values()];
     this.glyphFor = glyphFor;
+    this.nameTexture = this.notes.map((n) => this.nameTextures.get(n.name)!);
+    this.ghostTexture = this.bakeHead(p.paper, p.judgments.miss);
+    this.youTextures = STRING_LETTERS.map((letter) => this.bakeText(`VOCÊ ${letter}`, { fontFamily: ui, fontWeight: '700', fontSize: REF * 0.72, fill: p.judgments.miss }));
+    this.playedStep = new Int16Array(this.notes.length).fill(NO_STEP);
+    this.playedString = new Uint8Array(this.notes.length);
 
     this.paper.tint = p.paper;
     for (let k = 0; k < STAFF_LINES.length; k++) {
@@ -480,9 +500,26 @@ export class SheetScene extends Container {
   judge(event: JudgmentEvent, at: number = this.lastNow): void {
     const i = event.noteIndex;
     if (!(i >= 0 && i < this.notes.length)) return;
-    this.markAt[i] = at;
+    // A nota sem acerto só é julgada quando a janela dela fecha (~0,6 s mais a latência depois da hora): a marca vai
+    // para a cópia que tocou por último até ali, não para a que estiver mais perto da hora do julgamento
+    this.markAt[i] = this.copyTimeBefore(this.at[i], at);
+    this.markShownAt[i] = at;
     this.markState[i] = event.judgment === 'miss' ? MISSED : HIT;
     this.markTexture[i] = this.glyphFor(event.judgment, event.issue);
+    const played = event.issue === 'wrong-note' ? event.playedMidi : null;
+    this.playedStep[i] = played === null ? NO_STEP : diatonicStep(played, this.fifths);
+    this.playedString[i] = played === null ? 0 : playedString(played, this.notes[i].string);
+  }
+
+  /** Hora da última cópia do tempo `beat` que tocou até `at` (com folga de um ataque adiantado); `at` se não achar. */
+  private copyTimeBefore(beat: number, at: number): number {
+    let best = NaN;
+    for (const s of this.clock.segments(at + 1)) {
+      if (beat < s.beat || beat >= s.endBeat) continue;
+      const t = s.time + (beat - s.beat) * s.spb;
+      if (t <= at + MARK_EARLY_SECONDS && !(t <= best)) best = t;
+    }
+    return Number.isNaN(best) ? at : best;
   }
 
   showFps(report: FpsReport | null): void {
@@ -531,8 +568,12 @@ export class SheetScene extends Container {
         slot.mark.visible = mark !== null;
         if (mark) {
           slot.mark.texture = mark;
-          slot.mark.scale.set((l.space / REF) * feedbackScale(now - this.markAt[attack], this.reducedMotion));
+          slot.mark.scale.set((l.space / REF) * feedbackScale(now - this.markShownAt[attack], this.reducedMotion));
         }
+        const step = mark ? this.playedStep[i] : NO_STEP;
+        slot.ghost.visible = step !== NO_STEP;
+        if (step !== NO_STEP) slot.ghost.position.set(0, stepY(l, step));
+        slot.name.texture = step !== NO_STEP ? this.youTextures[this.playedString[i]] : this.nameTexture[i];
         if (attack === i && distance <= 0 && distance + this.spacedHold[i] > 0) {
           holding = i;
           holdX = slot.root.x;
@@ -725,6 +766,13 @@ export class SheetScene extends Container {
       .map((s) => ({ alpha: s.root.alpha, x: s.root.x, marked: s.mark.visible }));
   }
 
+  /** Nota errada à mostra: y da cabeça da nota tocada e se o nome virou "VOCÊ <corda>"; para testes. */
+  wrongView(note: number): { ghostY: number | null; you: boolean }[] {
+    return this.slots
+      .filter((s) => s.root.visible && s.note === note)
+      .map((s) => ({ ghostY: s.ghost.visible ? s.ghost.y : null, you: this.youTextures.includes(s.name.texture) }));
+  }
+
   /** x de cada nota visível à frente da clave; para testes. */
   notesX(): number[] {
     return this.slots.filter((s) => s.root.visible && s.root.x > this.l.clefWidth).map((s) => s.root.x);
@@ -770,6 +818,8 @@ export class SheetScene extends Container {
       this.labelTexture,
       this.clefTexture,
       ...this.glyphTextures,
+      this.ghostTexture,
+      ...this.youTextures,
     ];
   }
 
@@ -817,6 +867,7 @@ export class SheetScene extends Container {
     slot.head.texture = n.hollow ? this.hollowTextures[n.string] : this.headTextures[n.string];
     slot.head.scale.set(k);
     slot.head.position.set(0, y);
+    slot.ghost.scale.set(k);
 
     slot.stem.visible = n.stem;
     const stemX = n.stemUp ? l.head.rx * 0.9 : -l.head.rx * 0.9;
@@ -856,7 +907,7 @@ export class SheetScene extends Container {
       slot.letter.texture = this.letterTextures[n.string];
       slot.letter.scale.set(label);
       slot.letter.position.set(l.fingerSize * 0.5, l.fingerY);
-      slot.name.texture = this.nameTextures.get(n.name)!;
+      slot.name.texture = this.nameTexture[i];
       slot.name.scale.set(k);
       slot.name.position.set(0, l.nameY);
     }
@@ -887,11 +938,14 @@ export class SheetScene extends Container {
     const name = sprite();
     const mark = sprite();
     mark.visible = false;
+    const ghost = sprite(this.ghostTexture);
+    ghost.rotation = HEAD_ANGLE;
+    ghost.visible = false;
     const root = new Container();
     root.visible = false;
-    root.addChild(...ledgers, stem, head, ...flags, dot, accidental, finger, letter, name, mark);
+    root.addChild(...ledgers, stem, head, ghost, ...flags, dot, accidental, finger, letter, name, mark);
     this.noteLayer.addChild(root);
-    return { root, ledgers, stem, head, flags, dot, accidental, finger, letter, name, mark, note: -1 };
+    return { root, ledgers, stem, head, flags, dot, accidental, finger, letter, name, mark, ghost, note: -1 };
   }
 
   /** Monta o slot para a pausa `r`: glifo da figura na altura dela e o ponto no espaço acima da linha do meio. */

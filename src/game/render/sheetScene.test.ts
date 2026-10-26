@@ -299,6 +299,39 @@ describe('SheetScene', () => {
     s.destroy();
   });
 
+  it('nota errada: cabeça vazada na altura tocada e "VOCÊ" no nome; a não tocada só leva o ×', () => {
+    const { s } = scene();
+    const at = START + 0.2;
+    // Ode começa em Fá♯5 (78) na corda Mi; tocou Lá5 (81), dois graus acima
+    s.judge({ ...judgment(0, 'miss', 'wrong-note'), playedMidi: 81 }, at);
+    s.judge(judgment(1, 'miss', 'not-played'), START + SPB + 0.2);
+    s.update(START + SPB + 0.2);
+    const l = sheetLayout(W, H, 2);
+    const [wrong] = s.wrongView(0);
+    expect(wrong.you).toBe(true);
+    expect(wrong.ghostY).toBeLessThan(l.middleY);
+    expect(s.wrongView(1)).toEqual([{ ghostY: null, you: false }]);
+    expect(s.noteView(1)[0].marked).toBe(true);
+  });
+
+  it('a nota errada julgada só quando a janela fecha (0,9 s depois) ainda leva a marca, também no laço', () => {
+    const { s } = scene();
+    s.judge({ ...judgment(0, 'miss', 'wrong-note'), playedMidi: 81 }, START + 0.9);
+    s.update(START + 0.9);
+    expect(s.noteView(0)[0].marked).toBe(true);
+    expect(s.wrongView(0)[0].ghostY).not.toBeNull();
+
+    // Laço de um compasso (2,4 s): a volta seguinte da mesma nota não herda a marca
+    const lap = 4 * SPB;
+    const segments: BeatSegment[] = Array.from({ length: 4 }, (_, k) => ({ time: START + k * lap, beat: 0, spb: SPB, endTime: START + (k + 1) * lap, endBeat: 4 }));
+    const looped = scene({ segments: () => segments }).s;
+    looped.judge(judgment(1, 'miss', 'not-played'), START + lap + SPB + 0.9);
+    looped.update(START + lap + SPB + 0.9);
+    const copies = looped.noteView(1);
+    expect(copies.filter((c) => c.marked)).toHaveLength(1);
+    expect(copies.find((c) => c.marked)!.x).toBeLessThan(needleX);
+  });
+
   it('sem laço no relógio (a partida comum), nada de A e B', () => {
     const { s } = scene();
     s.update(START + 3);
