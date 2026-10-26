@@ -169,7 +169,7 @@ const Badge = styled.span`
   background-color: ${({ theme }) => theme.colors.info.main};
   color: ${({ theme }) => theme.colors.surface};
   font-weight: 700;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   line-height: 1;
   letter-spacing: 0.14em;
   text-transform: uppercase;

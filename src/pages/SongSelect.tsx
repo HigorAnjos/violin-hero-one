@@ -181,7 +181,7 @@ const Tag = styled.span`
   border: 1px solid ${({ theme }) => theme.colors.info.main};
   border-radius: ${({ theme }) => theme.borderRadius.pill};
   font-weight: 700;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   white-space: nowrap;

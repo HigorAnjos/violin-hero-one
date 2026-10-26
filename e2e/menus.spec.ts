@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { chooseSong, skipOnboarding } from './choose';
 import { blockWebFonts, fallbackFontsReady, fontsReady } from './fonts';
-import { expectFits, expectVisibleFocus, tooSmallTargets } from './layout';
+import { expectFits, expectVisibleFocus, tinyText, tooSmallTargets } from './layout';
 
 // Sem SUPABASE_* no build do e2e: a estante são as 3 músicas do app e as telas mostram o aviso de sem internet
 const SCREENS = [
@@ -40,6 +40,7 @@ for (const tema of ['caderno', 'palco'] as const) {
           await expect(page.locator('html')).toHaveAttribute('data-theme', tema);
           await expectFits(page);
           expect(await tooSmallTargets(page)).toEqual([]);
+          expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);
         });
       }
     });
@@ -75,6 +76,24 @@ test('a biblioteca abre a seleção com a música escolhida', async ({ page }) =
   await page.getByRole('list', { name: 'Músicas' }).getByRole('link', { name: /Ode/ }).click();
   await expect(page).toHaveURL(/\/tocar\/musica\?modo=arcade&musica=ode-a-alegria$/);
   await expect(page.getByRole('radio', { name: /Ode/ })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('da tela inicial à partida em Partitura', async ({ page }) => {
+  await page.goto('/?ouvido=simulado');
+  await chooseSong(page, /Escala/, 'Partitura');
+  await page.getByRole('button', { name: /Começar/ }).click();
+  await page.getByRole('button', { name: /Pular contagem/ }).click();
+  await expect(page).toHaveURL(/\/jogo\/partitura$/);
+  await expect(page.getByTestId('partitura')).toBeAttached();
+});
+
+test('Praticar trecho chega à prática', async ({ page }) => {
+  await page.goto('/tocar/musica?modo=arcade&musica=escala-re-maior&ouvido=simulado');
+  await page.getByRole('complementary', { name: 'Detalhes da música' }).getByRole('link', { name: 'Praticar trecho' }).click();
+  await expect(page).toHaveURL(/\/afinar$/);
+  await page.getByRole('button', { name: /Começar/ }).click();
+  await page.getByRole('button', { name: /Pular contagem/ }).click();
+  await expect(page).toHaveURL(/\/pratica$/);
 });
 
 test('da tela inicial à partida em Arcade', async ({ page }) => {

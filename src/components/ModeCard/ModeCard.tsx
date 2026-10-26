@@ -69,7 +69,7 @@ const Tag = styled.span<{ $muted: boolean }>`
   padding: 0.25rem 0.625rem;
   border-radius: ${({ theme }) => theme.borderRadius.pill};
   font-weight: 700;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   background-color: ${({ theme, $muted }) => ($muted ? theme.colors.textMuted : theme.colors.primary.main)};

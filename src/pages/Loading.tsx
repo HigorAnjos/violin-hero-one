@@ -50,7 +50,7 @@ const Badge = styled.span`
   background-color: ${({ theme }) => theme.colors.info.main};
   color: ${({ theme }) => theme.colors.surface};
   font-weight: 700;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 `;
