@@ -4,7 +4,7 @@ import { ODE } from '../game/engine/testing';
 import { createPlaySync, memoryPlayQueueStore } from '../services/playQueue';
 import type { SessionState } from '../services/session';
 import { songKeys } from '../services/songs';
-import { playedChart, reconnect } from './deviceSync';
+import { forgetUserQueries, playedChart, reconnect } from './deviceSync';
 
 const SIGNED_IN: SessionState = { status: 'signed-in', userId: 'u1', anonymous: true };
 
@@ -57,6 +57,17 @@ describe('reconnect', () => {
     expect(t.queryClient.getQueryData(['songs', 'catalog'])).toEqual(['ok']);
     expect(t.queryClient.getQueryState(songKeys.song('greensleeves', 'easy'))?.isInvalidated).toBe(true);
     expect(t.queryClient.getQueryState(songKeys.song('canon', 'easy'))?.isInvalidated).toBe(false);
+  });
+});
+
+describe('forgetUserQueries', () => {
+  it('a troca de usuário tira da memória as baixadas, as músicas abertas, o progresso e o perfil; o catálogo fica', () => {
+    const queryClient = new QueryClient();
+    for (const key of [songKeys.saved, songKeys.song('canon', 'easy'), ['progress', 'records'], ['profile', 'remote'], songKeys.catalog]) {
+      queryClient.setQueryData(key, 'x');
+    }
+    forgetUserQueries(queryClient);
+    expect(queryClient.getQueryCache().getAll().map((q) => q.queryKey)).toEqual([songKeys.catalog]);
   });
 });
 

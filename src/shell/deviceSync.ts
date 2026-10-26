@@ -3,6 +3,8 @@ import { onlineManager, useQueryClient, type QueryClient } from '@tanstack/react
 import { setDeviceData } from '../services/deviceData';
 import type { PlaySync } from '../services/playQueue';
 import { PROFILE_QUERY_KEY } from '../services/profileSync';
+import { progressKeys } from '../services/progress';
+import { songStore } from '../services/songCache';
 import { ensureSession, type SessionState } from '../services/session';
 import { songKeys, type LoadedSong } from '../services/songs';
 import { supabase } from '../services/supabase';
@@ -36,6 +38,14 @@ export async function reconnect(queryClient: QueryClient, sync: PlaySync = playS
   await sync.flush().catch(() => undefined);
 }
 
+/** Troca de usuário: o que a memória do app guardava do anterior (baixadas, músicas abertas, progresso, perfil) sai. */
+export function forgetUserQueries(queryClient: QueryClient): void {
+  queryClient.removeQueries({ queryKey: songKeys.saved });
+  queryClient.removeQueries({ queryKey: ['songs', 'song'] });
+  queryClient.removeQueries({ queryKey: progressKeys.all });
+  queryClient.removeQueries({ queryKey: PROFILE_QUERY_KEY });
+}
+
 /**
  * Liga a sincronização na shell: registra o DeviceData para a troca de conta, aponta a fila para a sessão do app e
  * sobe as partidas pendentes na abertura, ao voltar a rede, no foco e no recuo da fila.
@@ -44,7 +54,7 @@ export function useDeviceSync(sync: PlaySync = playSync): void {
   const queryClient = useQueryClient();
   React.useEffect(() => {
     setSessionSource(sessionQuery(queryClient));
-    setDeviceData(createDeviceData(sync));
+    setDeviceData(createDeviceData(sync, songStore, () => forgetUserQueries(queryClient)));
     let alive = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const schedule = () => {

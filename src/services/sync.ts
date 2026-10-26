@@ -30,7 +30,7 @@ export const playSync: PlaySync = createPlaySync({
 });
 
 /** O que o aparelho guarda de cada usuário, para a troca de conta (contrato em deviceData.ts). */
-export function createDeviceData(sync: PlaySync = playSync, songs = songStore): DeviceData {
+export function createDeviceData(sync: PlaySync = playSync, songs = songStore, onUse: (userId: string) => void = () => {}): DeviceData {
   return {
     flush: (userId) => sync.flush(userId, { strict: true }),
     async forget(userId) {
@@ -38,6 +38,7 @@ export function createDeviceData(sync: PlaySync = playSync, songs = songStore): 
     },
     use(userId) {
       rememberUser(userId);
+      onUse(userId);
       void sync.flush().catch(() => undefined);
     },
     pending: (userId) => sync.pending(userId),
