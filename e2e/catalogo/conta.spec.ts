@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect as baseExpect, test, type Page } from '@playwright/test';
 import { songDurationSeconds } from '../../src/game/notation/song';
+import { LINK_EMAIL_SENT, LOGIN_LINK_SENT } from '../../src/services/account';
 import { DEVICE_DB_NAME, PLAYS_STORE } from '../../src/services/deviceDb';
 import { chooseSong } from '../choose';
 import { CATALOG } from './catalogo';
@@ -115,7 +116,7 @@ test('convidado joga, cria conta pelo link mágico e outro aparelho entra e vê 
   await prompt.getByRole('button', { name: 'Usar e-mail' }).click();
   await prompt.getByLabel('E-mail').fill(email);
   await prompt.getByRole('button', { name: 'Mandar link' }).click();
-  await expect(prompt.getByRole('status')).toContainText(`Mandamos um link para ${email}`);
+  await expect(prompt.getByRole('status')).toHaveText(LINK_EMAIL_SENT);
 
   // O link confirma o e-mail no MESMO usuário e volta para as Configurações › Conta
   await one.goto(await linkFromMail(email, 1));
@@ -133,13 +134,20 @@ test('convidado joga, cria conta pelo link mágico e outro aparelho entra e vê 
   await playShortest(two);
   await two.goto('/entrar');
   await two.getByRole('button', { name: 'Entrar com e-mail' }).click();
+  // E-mail sem conta: o GoTrue de verdade recusa, a tela diz o mesmo que diria com conta (e nenhum e-mail sai)
+  const nobody = `ninguem-${randomUUID().slice(0, 8)}@t.test`;
+  await two.getByLabel('E-mail').fill(nobody);
+  await two.getByRole('button', { name: 'Mandar link' }).click();
+  await two.getByRole('button', { name: 'Entrar mesmo assim' }).click();
+  await expect(two.getByRole('status')).toHaveText(LOGIN_LINK_SENT);
+  await expect(two.getByRole('alert')).toHaveCount(0);
   await two.getByLabel('E-mail').fill(email);
   await two.getByRole('button', { name: 'Mandar link' }).click();
   await expect(two.getByRole('alertdialog')).toContainText('(1 música e');
   await two.getByRole('button', { name: 'Ficar' }).click();
   await two.getByRole('button', { name: 'Mandar link' }).click();
   await two.getByRole('button', { name: 'Entrar mesmo assim' }).click();
-  await expect(two.getByRole('status')).toContainText('Mandamos um link');
+  await expect(two.getByRole('status')).toHaveText(LOGIN_LINK_SENT);
   await two.goto(await linkFromMail(email, 2));
   await expect(two.getByRole('navigation', { name: 'Menu principal' })).toBeVisible();
   expect((await storedSession(two)).user.id).toBe(guest.user.id);
