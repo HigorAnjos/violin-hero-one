@@ -5,7 +5,7 @@ import { Button } from '../components/Button/Button';
 import { EmailLinkForm } from '../components/EmailLinkForm/EmailLinkForm';
 import { useSwitchConfirm } from '../components/SwitchConfirm/useSwitchConfirm';
 import { ViolinArt } from '../components/ViolinArt/ViolinArt';
-import { AccountError, authErrorFromUrl, loginWithGoogle, sendLoginLink } from '../services/account';
+import { AccountError, authErrorFromUrl, LOGIN_LINK_SENT, loginWithGoogle, sendLoginLink } from '../services/account';
 import { isOnboarded } from '../services/profile';
 import { supabase } from '../services/supabase';
 import { ROUTES } from '../shell/routes';
@@ -325,6 +325,7 @@ export const Login: React.FC = () => {
           <EmailLinkForm
             autoFocus
             submitLabel="Mandar link"
+            sentText={LOGIN_LINK_SENT}
             confirm={switching.ask}
             send={(email) => sendLoginLink(supabase, session ?? { status: 'offline' }, email, ROUTES.home)}
           />

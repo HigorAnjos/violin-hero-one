@@ -6,7 +6,7 @@ import { Button } from '../components/Button/Button';
 import { EmailLinkForm } from '../components/EmailLinkForm/EmailLinkForm';
 import { useSwitchConfirm } from '../components/SwitchConfirm/useSwitchConfirm';
 import { Kicker } from '../components/Screen/Screen';
-import { AccountError, authErrorFromUrl, linkEmail, linkGoogle, sendLoginLink } from '../services/account';
+import { AccountError, authErrorFromUrl, LINK_EMAIL_SENT, linkEmail, linkGoogle, LOGIN_LINK_SENT, sendLoginLink } from '../services/account';
 import { supabase } from '../services/supabase';
 import { useProgress } from '../shell/progress';
 import { parseAccountUrl, type AccountReason } from '../shell/routes';
@@ -184,7 +184,8 @@ export const GuestPrompt: React.FC = () => {
   const providers = useAuthProviders();
   const progress = useProgress();
   const [emailOpen, setEmailOpen] = React.useState(false);
-  const [takenEmail, setTakenEmail] = React.useState<string | null>(null);
+  // O e-mail do último link pedido: "Já tenho conta" aparece sempre, para não contar se o e-mail tem conta
+  const [sentEmail, setSentEmail] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<{ text: string; error: boolean } | null>(() => {
     const kind = authErrorFromUrl(window.location.href);
     return kind ? { text: new AccountError(kind).message, error: true } : null;
@@ -212,14 +213,14 @@ export const GuestPrompt: React.FC = () => {
     }
   };
 
-  const enterTaken = async () => {
-    if (!takenEmail || !session) return;
+  const enterExisting = async () => {
+    if (!sentEmail || !session) return;
     setNotice(null);
     // Entrar na conta que já tem o e-mail troca o usuário: o que é deste convidado não vai junto
     if (!(await switching.ask())) return;
     try {
-      await sendLoginLink(supabase, session, takenEmail, next);
-      setNotice({ text: `Mandamos um link para ${takenEmail}. Abra o e-mail neste aparelho e toque no link.`, error: false });
+      await sendLoginLink(supabase, session, sentEmail, next);
+      setNotice({ text: LOGIN_LINK_SENT, error: false });
     } catch (cause) {
       setNotice({ text: errorMessage(cause), error: true });
     }
@@ -286,16 +287,17 @@ export const GuestPrompt: React.FC = () => {
               <EmailLinkForm
                 autoFocus
                 submitLabel="Mandar link"
+                sentText={LINK_EMAIL_SENT}
                 send={(email) => {
-                  setTakenEmail(null);
+                  setSentEmail(null);
                   return linkEmail(supabase, email, next);
                 }}
-                onError={(error, email) => setTakenEmail(error.kind === 'taken' ? email : null)}
+                onSent={setSentEmail}
               />
             )}
-            {takenEmail && (
-              <Button type="button" $variant="ghost" onClick={enterTaken}>
-                Entrar nessa conta
+            {sentEmail && (
+              <Button type="button" $variant="ghost" onClick={enterExisting}>
+                Já tenho conta com esse e-mail
               </Button>
             )}
             {switching.dialog}

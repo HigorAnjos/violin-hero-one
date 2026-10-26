@@ -64,9 +64,16 @@ describe('criar conta no anônimo (mesmo user id)', () => {
     expect(auth.signInWithOAuth).not.toHaveBeenCalled();
   });
 
-  it('e-mail de outra conta, e-mail inválido e sem cliente viram mensagens próprias', async () => {
-    const { client } = fakeAuth({ updateUser: vi.fn().mockResolvedValue({ data: {}, error: { code: 'email_exists', status: 422 } }) });
-    await rejectsAs(linkEmail(client, 'lia@t.test', '/'), 'taken');
+  it('e-mail de outra conta responde igual a e-mail livre: não revela quem tem conta', async () => {
+    for (const code of ['email_exists', 'user_already_exists']) {
+      const { client } = fakeAuth({ updateUser: vi.fn().mockResolvedValue({ data: {}, error: { code, status: 422 } }) });
+      await expect(linkEmail(client, 'lia@t.test', '/')).resolves.toBeUndefined();
+    }
+  });
+
+  it('e-mail inválido, limite de envios e sem cliente viram mensagens próprias', async () => {
+    const { client } = fakeAuth({ updateUser: vi.fn().mockResolvedValue({ data: {}, error: { code: 'over_email_send_rate_limit', status: 429 } }) });
+    await rejectsAs(linkEmail(client, 'lia@t.test', '/'), 'wait');
     await rejectsAs(linkEmail(fakeAuth().client, 'lia', '/'), 'invalid-email');
     await rejectsAs(linkEmail(null, 'lia@t.test', '/'), 'offline');
   });
@@ -93,9 +100,11 @@ describe('entrar numa conta que já existe', () => {
     expect(auth.signInWithOAuth).not.toHaveBeenCalled();
   });
 
-  it('e-mail sem conta avisa em vez de criar', async () => {
-    const { client } = fakeAuth({ signInWithOtp: vi.fn().mockResolvedValue({ data: {}, error: { code: 'otp_disabled', status: 422 } }) });
-    await rejectsAs(sendLoginLink(client, anon, 'nova@t.test', '/', fakeDevice().data), 'no-account');
+  it('e-mail sem conta responde igual a e-mail com conta (e não cria conta): não revela quem tem conta', async () => {
+    for (const code of ['otp_disabled', 'user_not_found']) {
+      const { client } = fakeAuth({ signInWithOtp: vi.fn().mockResolvedValue({ data: {}, error: { code, status: 422 } }) });
+      await expect(sendLoginLink(client, anon, 'nova@t.test', '/', fakeDevice().data)).resolves.toBeUndefined();
+    }
   });
 
   it('Google: sobe a fila e vai pelo signInWithOAuth', async () => {

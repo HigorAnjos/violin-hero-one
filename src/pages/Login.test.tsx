@@ -2,7 +2,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AccountError, loginWithGoogle, sendLoginLink } from '../services/account';
+import { AccountError, LOGIN_LINK_SENT, loginWithGoogle, sendLoginLink } from '../services/account';
 import { markOnboarded } from '../services/profile';
 import type { SessionState } from '../services/session';
 import { renderScreen } from '../shell/testing';
@@ -56,7 +56,7 @@ describe('Login (0)', () => {
     await userEvent.type(screen.getByLabelText('E-mail'), 'lia@t.test');
     await userEvent.click(screen.getByRole('button', { name: 'Mandar link' }));
     expect(sendLoginLink).toHaveBeenCalledWith(null, anon, 'lia@t.test', '/');
-    expect(await screen.findByRole('status')).toHaveTextContent('Mandamos um link');
+    expect(await screen.findByRole('status')).toHaveTextContent(LOGIN_LINK_SENT);
   });
 
   it('convidado com progresso: avisa que ele não vai para a conta; Ficar não manda o link', async () => {

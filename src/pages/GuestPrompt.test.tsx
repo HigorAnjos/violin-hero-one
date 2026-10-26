@@ -2,7 +2,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AccountError, linkEmail, linkGoogle, sendLoginLink } from '../services/account';
+import { LINK_EMAIL_SENT, linkEmail, linkGoogle, LOGIN_LINK_SENT, sendLoginLink } from '../services/account';
 import { saveLocalProfile } from '../services/profile';
 import type { SessionState } from '../services/session';
 import { accountUrl } from '../shell/routes';
@@ -61,7 +61,7 @@ describe('GuestPrompt (0d)', () => {
     await userEvent.type(screen.getByLabelText('E-mail'), 'lia@t.test');
     await userEvent.click(screen.getByRole('button', { name: 'Mandar link' }));
     expect(linkEmail).toHaveBeenCalledWith(null, 'lia@t.test', '/ranking');
-    expect(await screen.findByRole('status')).toHaveTextContent('Mandamos um link para lia@t.test');
+    expect(await screen.findByRole('status')).toHaveTextContent(LINK_EMAIL_SENT);
   });
 
   it('Google: linkIdentity no mesmo usuário', async () => {
@@ -76,20 +76,22 @@ describe('GuestPrompt (0d)', () => {
     expect(screen.queryByText('O que já é seu e vai junto')).not.toBeInTheDocument();
   });
 
-  it('e-mail que já tem conta: oferece entrar nela, avisando que o progresso do convidado não vai junto', async () => {
-    vi.mocked(linkEmail).mockRejectedValue(new AccountError('taken'));
+  it('depois do link, "Já tenho conta com esse e-mail" entra nela, avisando que o progresso do convidado não vai junto', async () => {
+    vi.mocked(linkEmail).mockResolvedValue();
     vi.mocked(sendLoginLink).mockResolvedValue();
     localStorage.setItem('vh:badges', JSON.stringify(['primeira-musica']));
     open();
     await userEvent.click(screen.getByRole('button', { name: 'Usar e-mail' }));
     await userEvent.type(screen.getByLabelText('E-mail'), 'lia@t.test');
     await userEvent.click(screen.getByRole('button', { name: 'Mandar link' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Esse e-mail já tem uma conta');
-    await userEvent.click(screen.getByRole('button', { name: 'Entrar nessa conta' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(LINK_EMAIL_SENT);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Já tenho conta com esse e-mail' }));
     expect(await screen.findByRole('alertdialog')).toHaveTextContent('(1 selo) não vai para essa conta');
     expect(sendLoginLink).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: 'Entrar mesmo assim' }));
     expect(sendLoginLink).toHaveBeenCalledWith(null, anon, 'lia@t.test', '/ranking');
+    expect(await screen.findByText(LOGIN_LINK_SENT)).toBeInTheDocument();
   });
 
   it('"Agora não" volta para onde estava; Esc também', async () => {

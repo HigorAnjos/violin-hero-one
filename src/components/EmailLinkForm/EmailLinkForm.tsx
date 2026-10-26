@@ -60,17 +60,18 @@ export type EmailLinkState = { status: 'idle' } | { status: 'sending' } | { stat
 
 /**
  * E-mail para o link mágico. `send` manda o link (criar conta ou entrar); o resultado aparece embaixo, no
- * status (enviado) ou no alerta (erro). `onError` deixa a tela oferecer o próximo passo (ex.: entrar na conta que
- * já tem esse e-mail).
+ * status (`sentText`, o mesmo tenha o e-mail conta ou não) ou no alerta (erro). `onSent` deixa a tela oferecer o
+ * próximo passo (ex.: "Já tenho conta com esse e-mail").
  */
 export const EmailLinkForm: React.FC<{
   send: (email: string) => Promise<void>;
   submitLabel: string;
-  onError?: (error: AccountError, email: string) => void;
+  sentText: string;
+  onSent?: (email: string) => void;
   /** Pergunta antes de mandar (ex.: o progresso do convidado não vai para a conta); false cancela. */
   confirm?: () => Promise<boolean>;
   autoFocus?: boolean;
-}> = ({ send, submitLabel, onError, confirm, autoFocus }) => {
+}> = ({ send, submitLabel, sentText, onSent, confirm, autoFocus }) => {
   const [email, setEmail] = React.useState('');
   const [state, setState] = React.useState<EmailLinkState>({ status: 'idle' });
 
@@ -84,10 +85,9 @@ export const EmailLinkForm: React.FC<{
     try {
       await send(email);
       setState({ status: 'sent', email: email.trim() });
+      onSent?.(email.trim());
     } catch (cause) {
-      const error = cause instanceof AccountError ? cause : new AccountError('server', cause);
-      setState({ status: 'error', error });
-      onError?.(error, email);
+      setState({ status: 'error', error: cause instanceof AccountError ? cause : new AccountError('server', cause) });
     }
   };
 
@@ -104,11 +104,7 @@ export const EmailLinkForm: React.FC<{
         </Button>
       </Row>
       <div role="status">
-        {state.status === 'sent' && (
-          <Note $tone="success">
-            Mandamos um link para {state.email}. Abra o e-mail neste aparelho e toque no link.
-          </Note>
-        )}
+        {state.status === 'sent' && <Note $tone="success">{sentText}</Note>}
       </div>
       {state.status === 'error' && (
         <Note role="alert" $tone="danger">
