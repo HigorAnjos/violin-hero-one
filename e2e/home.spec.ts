@@ -2,8 +2,10 @@ import { expect, test } from '@playwright/test';
 import { skipOnboarding } from './choose';
 import { fontsReady } from './fonts';
 
-test('primeira vez: a raiz leva ao onboarding', async ({ page }) => {
+test('primeira vez: a raiz leva às boas-vindas e "Começar a tocar" ao onboarding, sem cadastro', async ({ page }) => {
   await page.goto('/');
+  await expect(page).toHaveURL(/\/entrar$/);
+  await page.getByRole('link', { name: /Começar a tocar/ }).click();
   await expect(page).toHaveURL(/\/primeira-vez\/nivel$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Quanto você já toca?');
 });
