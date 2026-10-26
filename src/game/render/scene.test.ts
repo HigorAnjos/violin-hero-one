@@ -92,6 +92,18 @@ describe('TrackScene', () => {
     expect(s.feedbackVisible()).toBe(false);
   });
 
+  it('o rótulo central segue a fila: cada julgamento fica ao menos 250 ms, na ordem, mesmo vindo juntos', () => {
+    const { s } = scene();
+    s.judge(judgment(notes[0], 'perfect'), START);
+    s.judge(judgment(notes[1], 'miss', 'not-played'), START + 0.02);
+    s.judge(judgment(notes[2], 'good', 'late'), START + 0.04);
+    const at = (t: number) => {
+      s.update(START + t);
+      return s.feedbackShown();
+    };
+    expect([at(0.05), at(0.24), at(0.26), at(0.49), at(0.51), at(0.9), at(2)]).toEqual(['perfect', 'perfect', 'miss', 'miss', 'good', 'good', null]);
+  });
+
   it('setNotes: a volta seguinte entra na pista, e as notas que ficam guardam o acerto', () => {
     const { s } = scene();
     const now = notes[0].time + 0.02;

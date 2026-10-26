@@ -17,7 +17,24 @@ import {
   type TrackLayout,
 } from './layout';
 import { trackPalette, type TrackPalette } from './palette';
-import { feedbackLabel, feedbackAlpha, feedbackScale, glowRing, judgmentDetail, JUDGMENTS } from './present';
+import {
+  FEEDBACK_FADE_SECONDS,
+  FEEDBACK_HOLD_SECONDS,
+  feedbackLabel,
+  feedbackAlpha,
+  feedbackScale,
+  glowRing,
+  judgmentDetail,
+  JUDGMENTS,
+} from './present';
+import { createShowQueue } from './showQueue';
+
+/** O que o rótulo central mostra de um julgamento. */
+interface Called {
+  judgment: Judgment;
+  detail: string;
+  fill: number;
+}
 
 export type JudgmentEvent = Extract<EngineEvent, { type: 'judgment' }>;
 
@@ -90,7 +107,10 @@ export class TrackScene extends Container {
   private l: TrackLayout;
   private readonly laneHitAt = [-Infinity, -Infinity, -Infinity, -Infinity];
   private ringScale = [1, 1];
-  private feedbackAt = -Infinity;
+  // Mesma fila do texto da shell: cada julgamento fica ao menos 250 ms no rótulo, mesmo numa sequência rápida
+  private readonly called = createShowQueue<Called>(FEEDBACK_HOLD_SECONDS + FEEDBACK_FADE_SECONDS);
+  private calledSerial = 0;
+  private calledJudgment: Judgment | null = null;
   private feedbackBase = 1;
   private usedChips = 0;
   private lastNow = 0;
@@ -237,10 +257,8 @@ export class TrackScene extends Container {
     const miss = event.judgment === 'miss';
     this.state[event.index] = miss ? MISSED : HIT;
     if (!miss) this.laneHitAt[note.string] = at;
-    this.feedbackAt = at;
-    this.feedbackLabel.texture = this.labelTextures.get(event.judgment) ?? Texture.EMPTY;
-    this.feedbackDetail.text = judgmentDetail(event);
-    this.feedbackDetail.style.fill = event.issue ? this.palette.judgments[event.judgment] : this.palette.muted;
+    const fill = event.issue ? this.palette.judgments[event.judgment] : this.palette.muted;
+    this.called.push({ judgment: event.judgment, detail: judgmentDetail(event), fill }, at);
   }
 
   showFps(report: FpsReport | null): void {
@@ -319,7 +337,15 @@ export class TrackScene extends Container {
       this.glows[i].scale.set(this.ringScale[0] * 1.3 * ring.scale, this.ringScale[1] * 1.3 * ring.scale);
     }
 
-    const age = now - this.feedbackAt;
+    const shown = this.called.current(now);
+    if (shown && shown.serial !== this.calledSerial) {
+      this.calledSerial = shown.serial;
+      this.calledJudgment = shown.item.judgment;
+      this.feedbackLabel.texture = this.labelTextures.get(shown.item.judgment) ?? Texture.EMPTY;
+      this.feedbackDetail.text = shown.item.detail;
+      this.feedbackDetail.style.fill = shown.item.fill;
+    }
+    const age = shown ? now - shown.at : Infinity;
     const alpha = feedbackAlpha(age);
     this.feedbackLabel.visible = this.feedbackDetail.visible = alpha > 0;
     if (alpha > 0) {
@@ -346,6 +372,11 @@ export class TrackScene extends Container {
 
   feedbackVisible(): boolean {
     return this.feedbackLabel.visible;
+  }
+
+  /** Julgamento no rótulo central agora (null se escondido); para testes. */
+  feedbackShown(): Judgment | null {
+    return this.feedbackLabel.visible ? this.calledJudgment : null;
   }
 
   /** Texturas que esta cena assou; destruídas junto com ela. */

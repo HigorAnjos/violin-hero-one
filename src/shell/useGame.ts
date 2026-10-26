@@ -15,7 +15,7 @@ import type { Ear, EarAudio } from './Ear';
 import { createGameSession, type GameSession, type GameSessionOptions, type PracticeClock, type PracticeStart, type SessionEvent } from './gameSession';
 import { loadOrchestra, type OrchestraFactory } from './orchestra';
 import { loadMetronome, saveMetronome } from './metronome';
-import { createShowQueue } from './showQueue';
+import { createShowQueue } from '../game/render/showQueue';
 import { isRehearsalEar } from './simulatedEar';
 
 export type TrackLoader = (host: HTMLElement, options: TrackOptions) => Promise<Track>;
