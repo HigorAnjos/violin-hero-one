@@ -64,7 +64,7 @@ jobs:
         if: steps.supabase-images.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/supabase-images
-          docker save -o ~/supabase-images/images.tar $(docker ps -a --format '{{.Image}}' | sort -u)
+          docker ps -a --format '{{.Image}}' | sort -u | xargs docker save -o ~/supabase-images/images.tar
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e:catalogo
       - uses: actions/upload-artifact@v4
