@@ -1,4 +1,3 @@
-import { PerspectiveCamera, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
 import { stageBox, strings3dBox } from './layout';
 import {
@@ -16,6 +15,7 @@ import {
   NUMBER_HEIGHT,
   NUMBER_Z,
   project,
+  projectInto,
   STRING_HEIGHTS,
   strings3dLayout,
 } from './strings3dLayout';
@@ -87,6 +87,16 @@ describe('posição da nota no tempo', () => {
     expect(at.y).toBe(STRING_HEIGHTS[2]);
   });
 
+  it('em 1280×550 bate com o design (5c): corda G em y 278, chão de 228 a 1108 na linha das cordas', () => {
+    expect(Math.abs(project(l, 0, STRING_HEIGHTS[0], 0).y - 278)).toBeLessThan(5);
+    expect(Math.abs(project(l, 0, STRING_HEIGHTS[3], 0).y - 464)).toBeLessThan(15);
+    const left = project(l, l.left, 0, 0).x;
+    const right = project(l, l.right, 0, 0).x;
+    expect(right - left).toBeGreaterThan(800);
+    expect(right - left).toBeLessThan(900);
+    expect(Math.abs(project(l, 0, 0, -FLOOR_LENGTH).y - 169)).toBeLessThan(10);
+  });
+
   it('mais distante na tela é mais alto e menor', () => {
     const near = project(l, 0, 0, 0);
     const far = project(l, 0, 0, -FLOOR_LENGTH);
@@ -100,20 +110,15 @@ describe.each(VIEWPORTS)('layout por proporção em %i×%i', (viewportWidth, vie
   const l = strings3dLayout(width, height);
   const p = (x: number, y: number, z: number) => project(l, x, y, z);
 
-  it('a projeção é a da PerspectiveCamera do three', () => {
-    const camera = new PerspectiveCamera(l.camera.fov, l.camera.aspect, 0.1, 200);
-    camera.position.set(l.camera.x, l.camera.y, l.camera.z);
-    camera.rotation.x = -l.camera.pitch;
-    camera.updateMatrixWorld();
+  it('projectInto escreve o mesmo ponto que project, sem alocar', () => {
+    const out = { x: 0, y: 0, scale: 0 };
     for (const [x, y, z] of [
       [l.left, 0, 0],
       [l.right, STRING_HEIGHTS[0], 0],
       [0, 1, -FLOOR_LENGTH / 3],
     ] as const) {
-      const ndc = new Vector3(x, y, z).project(camera);
-      const ours = p(x, y, z);
-      expect(ours.x).toBeCloseTo(((ndc.x + 1) / 2) * width, 3);
-      expect(ours.y).toBeCloseTo(((1 - ndc.y) / 2) * height, 3);
+      expect(projectInto(l, x, y, z, out)).toBe(out);
+      expect(out).toEqual(p(x, y, z));
     }
   });
 

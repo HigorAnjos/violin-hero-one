@@ -1,14 +1,14 @@
-import { Texture } from 'three';
+import { Container, Text, Texture, TextureSource } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import { cadernoTheme } from '../../assets/styles/themes';
 import { palcoTheme } from '../../assets/styles/themes/palco';
 import { scheduleNotes } from '../engine';
 import type { EngineNote, Judgment } from '../engine/types';
 import { FIXED_SONGS } from '../notation/songs';
-import type { JudgmentEvent } from './scene';
+import type { JudgmentEvent, TextureBaker } from './scene';
 import { steadyClock } from './sheetLayout';
 import { FLOOR_LENGTH, LEAD_SECONDS_3D, STRING_HEIGHTS, casaOf, strings3dLayout } from './strings3dLayout';
-import { Strings3DScene, type LabelBaker } from './strings3dScene';
+import { Strings3DScene } from './strings3dScene';
 
 const START = 10;
 const song = FIXED_SONGS[0].song;
@@ -16,15 +16,16 @@ const song = FIXED_SONGS[0].song;
 const notes: EngineNote[] = scheduleNotes(song, START).map((n) => ({ ...n, duration: 0.3 }));
 const hex = (theme: typeof cadernoTheme, letter: 'G' | 'D' | 'A' | 'E') => parseInt(theme.game.strings[letter].main.slice(1), 16);
 
+/** Baker falso do Pixi: guarda o texto de cada Text assado (e os de dentro de um contêiner, como o atlas). */
 function fakeBaker() {
-  const baked = () => ({ texture: new Texture(), aspect: 1.5 });
-  const baker = {
-    text: vi.fn<LabelBaker['text']>(baked),
-    boxes: vi.fn<LabelBaker['boxes']>(baked),
-    frame: vi.fn(baked),
-  } satisfies LabelBaker;
-  const calls = () => baker.text.mock.calls.length + baker.boxes.mock.calls.length + baker.frame.mock.calls.length;
-  return { baker, calls };
+  const baked: string[][] = [];
+  const generateTexture = vi.fn(({ target }: { target: Container }) => {
+    const texts = target instanceof Text ? [target.text] : target.children.filter((c): c is Text => c instanceof Text).map((t) => t.text);
+    baked.push(texts);
+    return new Texture({ source: new TextureSource({ width: 400, height: 320 }) });
+  });
+  const baker = { resolution: 1, generateTexture } as unknown as TextureBaker;
+  return { baker, baked, calls: () => generateTexture.mock.calls.length };
 }
 
 function judgment(note: EngineNote, judgment: Judgment, issue: JudgmentEvent['issue'] = null): JudgmentEvent {
@@ -46,10 +47,10 @@ function judgment(note: EngineNote, judgment: Judgment, issue: JudgmentEvent['is
 }
 
 function make(options: Partial<ConstructorParameters<typeof Strings3DScene>[1]> = {}) {
-  const { baker, calls } = fakeBaker();
+  const { baker, baked, calls } = fakeBaker();
   const s = new Strings3DScene(baker, { theme: cadernoTheme, notes, reducedMotion: false, ...options });
   s.layout(1280, 550);
-  return { s, baker, calls };
+  return { s, baked, calls };
 }
 
 describe('Strings3DScene', () => {
@@ -57,10 +58,9 @@ describe('Strings3DScene', () => {
     ['Caderno', cadernoTheme],
     ['Palco', palcoTheme],
   ])('%s: cada corda com a cor do tema e a própria letra', (_name, theme) => {
-    const { s, baker } = make({ theme });
+    const { s, baked } = make({ theme });
     expect(s.stringLooks().map((l) => l.color)).toEqual([hex(theme, 'G'), hex(theme, 'D'), hex(theme, 'A'), hex(theme, 'E')]);
-    const letters = baker.text.mock.calls.map(([text]) => text);
-    expect(letters.slice(0, 4)).toEqual(['G', 'D', 'A', 'E']);
+    expect(baked.slice(1, 5).map(([text]) => text)).toEqual(['G', 'D', 'A', 'E']);
     expect(new Set(s.stringLooks().map((l) => l.letter)).size).toBe(4);
   });
 
@@ -75,16 +75,9 @@ describe('Strings3DScene', () => {
     expect(calls()).toBe(baked);
   });
 
-  it('caixas num atlas só: uma célula por corda × dedo, na cor da corda', () => {
-    const { baker } = make();
-    expect(baker.boxes).toHaveBeenCalledTimes(1);
-    const [cells, columns] = baker.boxes.mock.calls[0];
-    expect(columns).toBe(5);
-    expect(cells).toHaveLength(20);
-    expect(cells.slice(0, 5).map((c) => c.text)).toEqual(['0', '1', '2', '3', '4']);
-    expect(cells[0].fill).toBe(hex(cadernoTheme, 'G'));
-    expect(cells[15].fill).toBe(hex(cadernoTheme, 'E'));
-    expect(cells[15].color).toBe(parseInt(cadernoTheme.game.strings.E.text.slice(1), 16));
+  it('caixas num atlas só: os dedos 0 a 4 de cada corda, G D A E', () => {
+    const { baked } = make();
+    expect(baked[0]).toEqual(Array.from({ length: 4 }, () => ['0', '1', '2', '3', '4']).flat());
   });
 
   it('cada caixa aponta para o dedo e a corda da nota no atlas; a haste tem a cor da corda', () => {
@@ -96,13 +89,11 @@ describe('Strings3DScene', () => {
     expect(s.stemColors()[0]).toBe(hex(cadernoTheme, (['G', 'D', 'A', 'E'] as const)[notes[0].string]));
   });
 
-  it('as peças das notas são desenhos instanciados: o número de desenhos não cresce com as notas', () => {
+  it('todas as caixas vêm do mesmo atlas: o Pixi desenha as notas num lote só', () => {
     const { s } = make();
-    const dense = Array.from({ length: 120 }, (_, i) => ({ ...notes[0], index: i, time: START + i * 0.01 }));
-    s.setNotes(dense);
-    s.update(START);
-    expect(s.visibleNotes()).toBeGreaterThan(60);
-    expect(s.noteDrawCalls()).toBe(5);
+    s.update(notes[3].time - 0.5);
+    expect(s.visibleNotes()).toBeGreaterThan(1);
+    expect(s.boxesShareAtlas()).toBe(true);
   });
 
   it('nada no chão antes de a primeira nota chegar ao fundo', () => {
@@ -241,8 +232,7 @@ describe('Strings3DScene', () => {
   it('destroy libera as texturas assadas', () => {
     const { s } = make();
     const baked = s.bakedTextures();
-    const disposed = baked.map((t) => vi.spyOn(t, 'dispose'));
     s.destroy();
-    expect(disposed.every((spy) => spy.mock.calls.length === 1)).toBe(true);
+    expect(baked.every((t) => t.destroyed)).toBe(true);
   });
 });

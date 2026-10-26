@@ -191,16 +191,26 @@ export interface ScreenPoint {
   scale: number;
 }
 
-/** Onde um ponto do mundo cai na caixa, em px (a mesma conta da PerspectiveCamera). */
+/** Onde um ponto do mundo cai na caixa, em px (a conta de uma câmera em perspectiva com o fov vertical do layout). */
 export function project(l: Strings3DLayout, x: number, y: number, z: number): ScreenPoint {
+  return projectInto(l, x, y, z, { x: 0, y: 0, scale: 0 });
+}
+
+/** O mesmo que project, escrevendo em `out`: o quadro projeta sem alocar. */
+export function projectInto(l: Strings3DLayout, x: number, y: number, z: number, out: ScreenPoint): ScreenPoint {
   const c = l.camera;
-  const { tx, ty, depth } = toCamera(c, x, y, z);
+  const sin = Math.sin(c.pitch);
+  const cos = Math.cos(c.pitch);
+  const dx = x - c.x;
+  const dy = y - c.y;
+  const dz = z - c.z;
+  const depth = -dy * sin - dz * cos;
+  const up = dy * cos - dz * sin;
   const half = l.height / 2;
-  return {
-    x: l.width / 2 + (tx / (c.tanHalf * c.aspect)) * (l.width / 2),
-    y: half - (ty / c.tanHalf) * half,
-    scale: half / (depth * c.tanHalf),
-  };
+  out.x = l.width / 2 + (dx / depth / (c.tanHalf * c.aspect)) * (l.width / 2);
+  out.y = half - (up / depth / c.tanHalf) * half;
+  out.scale = half / (depth * c.tanHalf);
+  return out;
 }
 
 /** z da nota da hora `time` quando o relógio marca `now`: chega à corda (0) na hora e não passa dela. */

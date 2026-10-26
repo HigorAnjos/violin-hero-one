@@ -1,14 +1,13 @@
-// Cordas 3D num pedaço próprio: só a tela 5c importa este módulo (com import()), então o three fica fora do download
-// inicial e do pedaço da pista. Não exporte nada daqui pelo index do render.
-import { CanvasTexture, SRGBColorSpace, WebGLRenderer } from 'three';
+// Cordas 3D: só a tela 5c importa este módulo (com import()). É Pixi, como a pista e a partitura, então divide com
+// elas o pedaço do Pixi e só a cena própria vem a mais.
+import { Application } from 'pixi.js';
 import type { Theme } from '../../assets/styles/themes';
 import type { EngineNote } from '../engine/types';
 import { FpsMeter, type FpsReport } from './fps';
 import { prefersReducedMotion } from './present';
 import type { JudgmentEvent } from './scene';
 import type { SheetClock } from './sheetLayout';
-import { BOX } from './strings3dLayout';
-import { Strings3DScene, type Baked, type LabelBaker } from './strings3dScene';
+import { Strings3DScene } from './strings3dScene';
 
 export interface Strings3DOptions {
   /** Fixo durante a música: trocar de tema é destruir as cordas e criar outras. */
@@ -40,81 +39,13 @@ export interface Strings3D {
   destroy(): void;
 }
 
-/** Menos que a pista (2): o 3D enche a tela toda e a meta é 60 fps no celular médio. */
+/** Menos que a pista (2): as cordas enchem a tela toda e a meta é 60 fps no celular médio. */
 const MAX_RESOLUTION = 1.5;
-/** Rótulos assados neste tamanho de fonte (px do canvas) e reduzidos na placa: nítidos até o dobro da densidade. */
-const LABEL_PX = 96;
 
 async function loadFonts(theme: Theme): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts) return;
-  await Promise.allSettled([document.fonts.load(`800 64px ${theme.fonts.display}`), document.fonts.load(`700 16px ${theme.fonts.ui}`)]);
+  await Promise.allSettled([document.fonts.load(`800 64px ${theme.fonts.display}`), document.fonts.load(`800 16px ${theme.fonts.ui}`)]);
 }
-
-const css = (color: number) => `#${color.toString(16).padStart(6, '0')}`;
-
-function texture(canvas: HTMLCanvasElement): Baked {
-  const t = new CanvasTexture(canvas);
-  t.colorSpace = SRGBColorSpace;
-  return { texture: t, aspect: canvas.width / canvas.height };
-}
-
-function context(width: number, height: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(width);
-  canvas.height = Math.ceil(height);
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas 2d indisponível');
-  return [canvas, ctx];
-}
-
-let measurer: CanvasRenderingContext2D | null = null;
-
-/** Rótulos em canvas 2D, assados uma vez por cena. */
-export const canvasBaker: LabelBaker = {
-  text(text, font) {
-    const style = `800 ${LABEL_PX}px ${font}`;
-    const ruler = (measurer ??= context(1, 1)[1]);
-    ruler.font = style;
-    const [canvas, ctx] = context(ruler.measureText(text).width + LABEL_PX * 0.2, LABEL_PX * 1.2);
-    ctx.font = style;
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2 + LABEL_PX * 0.06);
-    return texture(canvas);
-  },
-  boxes(cells, columns, font) {
-    const h = LABEL_PX * 1.25;
-    const w = Math.ceil((h * BOX.width) / BOX.height);
-    const rows = Math.ceil(cells.length / columns);
-    const [canvas, ctx] = context(w * columns, h * rows);
-    ctx.font = `800 ${LABEL_PX}px ${font}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    // Folga de 1 px entre células: a filtragem da textura não puxa a cor da vizinha para a borda
-    cells.forEach((cell, i) => {
-      const x = (i % columns) * w;
-      const y = Math.floor(i / columns) * h;
-      ctx.fillStyle = css(cell.fill);
-      ctx.beginPath();
-      ctx.roundRect(x + 1, y + 1, w - 2, h - 2, h * 0.16);
-      ctx.fill();
-      ctx.fillStyle = css(cell.color);
-      ctx.fillText(cell.text, x + w / 2, y + h / 2 + LABEL_PX * 0.06);
-    });
-    return { ...texture(canvas), aspect: w / h };
-  },
-  frame() {
-    const [canvas, ctx] = context(LABEL_PX * 2.8, LABEL_PX * 2);
-    const line = LABEL_PX * 0.08;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = line;
-    ctx.beginPath();
-    ctx.roundRect(line, line, canvas.width - 2 * line, canvas.height - 2 * line, LABEL_PX * 0.3);
-    ctx.stroke();
-    return texture(canvas);
-  },
-};
 
 /**
  * Monta as Cordas 3D num canvas existente ou num contêiner (cria o canvas dentro dele). Como a pista, não tem laço
@@ -122,22 +53,27 @@ export const canvasBaker: LabelBaker = {
  */
 export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, options: Strings3DOptions): Promise<Strings3D> {
   const { theme, onFps } = options;
+  // As texturas de texto são assadas uma vez: a fonte do tema precisa estar carregada antes
   await loadFonts(theme);
 
   const density = globalThis.devicePixelRatio || 1;
-  const renderer = new WebGLRenderer({
+  const app = new Application();
+  await app.init({
     canvas: host instanceof HTMLCanvasElement ? host : undefined,
+    width: options.width,
+    height: options.height,
+    backgroundAlpha: 0,
     // Com tela densa (dpr ≥ 2) o serrilhado quase não aparece e o MSAA custa caro no celular
     antialias: density < 2,
-    alpha: true,
-    powerPreference: 'high-performance',
+    autoDensity: true,
+    resolution: Math.min(density, MAX_RESOLUTION),
+    autoStart: false,
+    sharedTicker: false,
+    preference: 'webgl',
   });
-  renderer.setPixelRatio(Math.min(density, MAX_RESOLUTION));
-  renderer.setClearColor(0x000000, 0);
-  renderer.setSize(options.width, options.height);
-  if (!(host instanceof HTMLCanvasElement)) host.appendChild(renderer.domElement);
+  if (!(host instanceof HTMLCanvasElement)) host.appendChild(app.canvas);
 
-  const scene = new Strings3DScene(canvasBaker, {
+  const scene = new Strings3DScene(app.renderer, {
     theme,
     notes: options.notes,
     clock: options.clock,
@@ -145,15 +81,15 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
     reducedMotion: options.reducedMotion ?? prefersReducedMotion(),
     leadSeconds: options.leadSeconds,
   });
+  app.stage.addChild(scene);
   scene.layout(options.width, options.height);
 
   const meter = new FpsMeter(1000);
   let lastFrame = -1;
   let destroyed = false;
-  const draw = () => renderer.render(scene.scene, scene.camera);
 
   return {
-    canvas: renderer.domElement,
+    canvas: app.canvas,
     update(now) {
       if (destroyed) return;
       const t = performance.now();
@@ -163,7 +99,7 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
       }
       lastFrame = t;
       scene.update(now);
-      draw();
+      app.render();
     },
     onJudgment(event) {
       if (!destroyed) scene.judge(event);
@@ -173,18 +109,15 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
     },
     resize(width, height) {
       if (destroyed) return;
-      renderer.setSize(width, height);
+      app.renderer.resize(width, height);
       scene.layout(width, height);
-      draw();
+      app.render();
     },
     destroy() {
       if (destroyed) return;
       destroyed = true;
       scene.destroy();
-      renderer.dispose();
-      // Libera o contexto WebGL já: entrar e sair da tela várias vezes não esgota o limite do navegador
-      renderer.forceContextLoss();
-      if (!(host instanceof HTMLCanvasElement)) renderer.domElement.remove();
+      app.destroy({ removeView: !(host instanceof HTMLCanvasElement) }, { children: true });
     },
   };
 }

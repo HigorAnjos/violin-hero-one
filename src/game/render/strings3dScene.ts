@@ -1,33 +1,10 @@
-import {
-  BufferAttribute,
-  BufferGeometry,
-  CircleGeometry,
-  Color,
-  DoubleSide,
-  InstancedBufferAttribute,
-  InstancedMesh,
-  LineBasicMaterial,
-  LineSegments,
-  Matrix4,
-  Mesh,
-  MeshBasicMaterial,
-  PerspectiveCamera,
-  PlaneGeometry,
-  Quaternion,
-  Scene,
-  ShaderMaterial,
-  Sprite,
-  SpriteMaterial,
-  Vector3,
-  type Material,
-  type Texture,
-} from 'three';
+import { Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import type { Theme } from '../../assets/styles/themes';
 import type { EngineNote } from '../engine/types';
 import { lowerBound, maxNotesInWindow, tailSeconds } from './layout';
 import { strings3dPalette, type Strings3DPalette } from './palette';
 import { feedbackAlpha, glowRing } from './present';
-import type { JudgmentEvent } from './scene';
+import type { JudgmentEvent, TextureBaker } from './scene';
 import { beatWindows, windowTime, type BeatWindow, type SheetClock } from './sheetLayout';
 import {
   BOX,
@@ -43,37 +20,13 @@ import {
   noteZ,
   NUMBER_HEIGHT,
   NUMBER_Z,
+  projectInto,
   STRING_HEIGHTS,
   STRING_OVERHANG,
   strings3dLayout,
+  type ScreenPoint,
   type Strings3DLayout,
 } from './strings3dLayout';
-
-/** Textura assada uma vez e a proporção dela (largura / altura), para a placa não deformar. */
-export interface Baked {
-  texture: Texture;
-  aspect: number;
-}
-
-/** Uma caixa de nota: fundo na cor da corda, dedo escrito na cor do texto da corda. */
-export interface BoxCell {
-  text: string;
-  fill: number;
-  color: number;
-}
-
-/** Quem desenha os rótulos em textura (canvas no navegador; falso nos testes). */
-export interface LabelBaker {
-  /** Texto branco numa linha, fundo transparente: a cor vem do material (letra, casa, compasso). */
-  text(text: string, font: string): Baked;
-  /**
-   * Atlas das caixas das notas, `columns` por linha, de cima para baixo: uma textura só para todas, e as caixas
-   * vão num único desenho instanciado. `aspect` é o de uma célula.
-   */
-  boxes(cells: readonly BoxCell[], columns: number, font: string): Baked;
-  /** Contorno arredondado branco, do tamanho da caixa (acerto). */
-  frame(): Baked;
-}
 
 export interface Strings3DSceneOptions {
   theme: Theme;
@@ -108,180 +61,57 @@ const MAX_BAR_LABELS = 6;
 const FINGERS = 5;
 /** Tempos à frente procurados no relógio: o laço curto ou o andamento lento cabem com folga. */
 const GRID_AHEAD_BEATS = 64;
-/** Ergue as camadas do chão um fio, sem briga de profundidade. */
-const LIFT = 0.002;
 
-// Ordem de desenho (sem teste de profundidade, de trás para a frente dentro de cada camada)
-const ORDER = { floor: 0, overlay: 1, grid: 2, tail: 3, shadow: 4, string: 5, stem: 6, label: 7, box: 8, frame: 9 } as const;
+// Texturas assadas uma vez neste tamanho e escaladas no quadro: o resize não refaz textura
+const LABEL_PX = 64;
+const CELL_H = 80;
+const CELL_W = Math.round((CELL_H * BOX.width) / BOX.height);
+const DOT_R = 32;
+const FRAME_W = 186;
+const FRAME_H = 120;
 
-const basic = (color: number, opacity = 1) =>
-  new MeshBasicMaterial({ color, transparent: true, opacity, depthTest: false, depthWrite: false, side: DoubleSide });
-
-const sprite = (map: Texture | null, color = 0xffffff) =>
-  new Sprite(new SpriteMaterial({ map, color, transparent: true, depthTest: false, depthWrite: false }));
-
-function flat(mesh: Mesh): Mesh {
-  mesh.rotation.x = -Math.PI / 2;
-  return mesh;
+interface Chip {
+  tail: Sprite;
+  shadow: Sprite;
+  stem: Sprite;
+  box: Sprite;
+  holdBack: Sprite;
+  holdFill: Sprite;
 }
 
-// Placa instanciada: cor e transparência por instância (tint) e, com textura, o pedaço do atlas (rect)
-const QUAD_VERTEX = /* glsl */ `
-attribute vec4 tint;
-attribute vec4 rect;
-varying vec4 vTint;
-varying vec2 vUv;
-void main() {
-  vTint = tint;
-  vUv = rect.xy + uv * rect.zw;
-  gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
-}`;
-
-const QUAD_FRAGMENT = /* glsl */ `
-uniform sampler2D map;
-uniform bool useMap;
-varying vec4 vTint;
-varying vec2 vUv;
-void main() {
-  vec4 color = vTint;
-  if (useMap) color *= texture2D(map, vUv);
-  if (color.a <= 0.0) discard;
-  gl_FragColor = color;
-  #include <colorspace_fragment>
-}`;
-
-const UP_RIGHT = new Quaternion();
-const FLAT = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
-
-/**
- * Um tipo de peça das notas (caixa, haste, sombra, cauda, barra do segure) num único desenho: o quadro só escreve as
- * matrizes e as cores das instâncias usadas, sem alocar.
- */
-class Quads {
-  mesh: InstancedMesh;
-  count = 0;
-  private readonly material: ShaderMaterial;
-  private tint: InstancedBufferAttribute;
-  private rect: InstancedBufferAttribute;
-  private readonly matrix = new Matrix4();
-  private readonly position = new Vector3();
-  private readonly scale = new Vector3();
-  private readonly color = new Color();
-
-  constructor(
-    private readonly scene: Scene,
-    readonly geometry: BufferGeometry,
-    map: Texture | null,
-    private readonly order: number,
-    capacity: number,
-  ) {
-    this.material = new ShaderMaterial({
-      vertexShader: QUAD_VERTEX,
-      fragmentShader: QUAD_FRAGMENT,
-      uniforms: { map: { value: map }, useMap: { value: map !== null } },
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      side: DoubleSide,
-    });
-    [this.mesh, this.tint, this.rect] = this.build(capacity);
-  }
-
-  get capacity(): number {
-    return this.tint.count;
-  }
-
-  /** Cresce o número de instâncias (setNotes com mais notas na janela); fora do quadro. */
-  ensure(capacity: number): void {
-    if (capacity <= this.capacity) return;
-    this.scene.remove(this.mesh);
-    this.mesh.geometry.dispose();
-    this.mesh.dispose();
-    [this.mesh, this.tint, this.rect] = this.build(capacity);
-  }
-
-  begin(): void {
-    this.count = 0;
-  }
-
-  /** Mais uma instância; devolve o índice dela. Cor em hex do tema. */
-  push(x: number, y: number, z: number, sx: number, sy: number, rotation: Quaternion, color: number, alpha: number): number {
-    const i = this.count++;
-    this.position.set(x, y, z);
-    this.scale.set(sx, sy, 1);
-    this.mesh.setMatrixAt(i, this.matrix.compose(this.position, rotation, this.scale));
-    this.color.setHex(color);
-    this.tint.setXYZW(i, this.color.r, this.color.g, this.color.b, alpha);
-    return i;
-  }
-
-  /** Pedaço do atlas da instância `i` (u, v, largura, altura). */
-  setRect(i: number, u: number, v: number, w: number, h: number): void {
-    this.rect.setXYZW(i, u, v, w, h);
-  }
-
-  end(): void {
-    this.mesh.count = this.count;
-    this.mesh.instanceMatrix.needsUpdate = true;
-    this.tint.needsUpdate = true;
-    this.rect.needsUpdate = true;
-  }
-
-  /** Posição, escala, transparência e pedaço do atlas de cada instância usada; para testes. */
-  read(): { x: number; y: number; z: number; sx: number; alpha: number; rect: [number, number] }[] {
-    const out = [];
-    const q = new Quaternion();
-    for (let i = 0; i < this.count; i++) {
-      this.mesh.getMatrixAt(i, this.matrix);
-      this.matrix.decompose(this.position, q, this.scale);
-      out.push({ x: this.position.x, y: this.position.y, z: this.position.z, sx: this.scale.x, alpha: this.tint.getW(i), rect: [this.rect.getX(i), this.rect.getY(i)] as [number, number] });
-    }
-    return out;
-  }
-
-  /** Cor (hex do tema) da instância `i`; para testes. */
-  colorAt(i: number): number {
-    return this.color.setRGB(this.tint.getX(i), this.tint.getY(i), this.tint.getZ(i)).getHex();
-  }
-
-  dispose(): void {
-    this.mesh.geometry.dispose();
-    this.mesh.dispose();
-    this.material.dispose();
-    this.geometry.dispose();
-  }
-
-  private build(capacity: number): [InstancedMesh, InstancedBufferAttribute, InstancedBufferAttribute] {
-    const tint = new InstancedBufferAttribute(new Float32Array(capacity * 4), 4);
-    const rect = new InstancedBufferAttribute(new Float32Array(capacity * 4).fill(1), 4);
-    const geometry = this.geometry.clone();
-    geometry.setAttribute('tint', tint);
-    geometry.setAttribute('rect', rect);
-    const mesh = new InstancedMesh(geometry, this.material, capacity);
-    mesh.count = 0;
-    mesh.renderOrder = this.order;
-    mesh.frustumCulled = false;
-    this.scene.add(mesh);
-    return [mesh, tint, rect];
-  }
+/** O que cada caixa visível mostra, em unidades do mundo; para testes. */
+interface BoxInfo {
+  x: number;
+  y: number;
+  z: number;
+  opacity: number;
+  finger: number;
+  string: number;
 }
 
+const white = (anchorX = 0.5, anchorY = 0.5) => {
+  const s = new Sprite(Texture.WHITE);
+  s.anchor.set(anchorX, anchorY);
+  s.visible = false;
+  return s;
+};
+
 /**
- * As Cordas 3D: chão do braço com uma coluna por casa, as quatro cordas G D A E na frente, cada uma com a cor e a letra,
- * e as notas vindo do fundo no relógio do AudioContext. Nada é alocado em update(); o tema é fixo na vida da cena.
+ * As Cordas 3D desenhadas em 2,5D: a câmera do design é só uma conta (strings3dLayout.project) e tudo é sprite do
+ * Pixi, em lote. Chão do braço com uma coluna por casa, as quatro cordas G D A E na frente com a cor e a letra, e as
+ * notas vindo do fundo no relógio do AudioContext. Nada é alocado em update(); o tema é fixo na vida da cena.
  */
-export class Strings3DScene {
-  readonly scene = new Scene();
-  readonly camera = new PerspectiveCamera(40, 1, 0.1, 200);
+export class Strings3DScene extends Container {
   private readonly palette: Strings3DPalette;
   private readonly reducedMotion: boolean;
   private readonly lead: number;
   private readonly clock: SheetClock | null;
   private readonly bars: readonly number[];
   private readonly columns: number;
+  private readonly uiFont: string;
   private l: Strings3DLayout;
-  /** As caixas ficam de frente para a câmera: a mesma inclinação dela. */
-  private readonly facing = new Quaternion();
+  private readonly pa: ScreenPoint = { x: 0, y: 0, scale: 0 };
+  private readonly pb: ScreenPoint = { x: 0, y: 0, scale: 0 };
 
   private notes: readonly EngineNote[] = [];
   private times = new Float64Array(0);
@@ -291,39 +121,53 @@ export class Strings3DScene {
   private lookBack = MISS_FADE_SECONDS;
   private lastNow = 0;
 
-  private readonly boxAtlas: Baked;
-  private readonly letterTextures: Baked[];
-  private readonly numberTextures: Baked[];
-  private readonly casaTexture: Baked;
-  private readonly frameTexture: Baked;
-  private readonly barTextures = new Map<number, Baked>();
+  private readonly atlas: Texture;
+  /** Caixa de cada corda × dedo: pedaços do mesmo atlas (um lote só para todas). */
+  private readonly boxTextures: Texture[][];
+  private readonly letterTextures: Texture[];
+  private readonly numberTextures: Texture[];
+  private readonly casaTexture: Texture;
+  private readonly frameTexture: Texture;
+  private readonly dotTexture: Texture;
+  private readonly barTextures = new Map<number, Texture>();
 
-  private readonly boxes: Quads;
-  private readonly stems: Quads;
-  private readonly shadows: Quads;
-  private readonly tailQuads: Quads;
-  private readonly holdBars: Quads;
-
-  private readonly highlight: Mesh;
+  private readonly bg = new Graphics();
+  private readonly highlights: Graphics[] = [];
+  private readonly gridLayer = new Container();
+  private readonly beatLines: Sprite[] = [];
+  private readonly barLines: Sprite[] = [];
+  private readonly barLabels: Sprite[] = [];
+  private readonly tailLayer = new Container();
+  private readonly shadowLayer = new Container();
+  private readonly strings: Graphics[] = [];
+  private readonly stemLayer = new Container();
+  private readonly labelLayer = new Container();
+  private readonly letters: Sprite[] = [];
   private readonly numbers: Sprite[] = [];
-  private readonly strings: Mesh[] = [];
+  private readonly casa: Sprite;
+  private readonly boxLayer = new Container();
+  private readonly frameLayer = new Container();
+  private readonly frames: Sprite[] = [];
+  private readonly glows: Sprite[] = [];
+  private readonly chips: Chip[] = [];
+  private readonly info: BoxInfo[] = [];
+  private usedChips = 0;
+  private held = 0;
+  private highlighted = -1;
+
   private readonly vibrating = [false, false, false, false];
   private readonly holding = [false, false, false, false];
   private readonly laneHitAt = [-Infinity, -Infinity, -Infinity, -Infinity];
   private readonly laneHitX = [0, 0, 0, 0];
-  private readonly frames: Sprite[] = [];
-  private readonly glows: Sprite[] = [];
-  private readonly beatLines: LineSegments;
-  private readonly barLines: LineSegments;
-  private readonly barLabels: Sprite[] = [];
   private readonly windows: BeatWindow[] = [];
-  private readonly geometries: BufferGeometry[] = [];
-  private readonly materials: Material[] = [];
+  private beatsShown = 0;
+  private barsShown = 0;
 
   constructor(
-    private readonly baker: LabelBaker,
+    private readonly baker: TextureBaker,
     options: Strings3DSceneOptions,
   ) {
+    super();
     const { theme } = options;
     const p = (this.palette = strings3dPalette(theme));
     this.reducedMotion = options.reducedMotion;
@@ -332,99 +176,138 @@ export class Strings3DScene {
     this.bars = options.bars ?? [];
     this.columns = columnsFor(options.notes);
     this.l = strings3dLayout(1, 1, this.columns, this.lead);
-    const l = this.l;
     const { display, ui } = theme.fonts;
+    this.uiFont = ui;
 
-    const cells = p.strings.flatMap((s) => Array.from({ length: FINGERS }, (_, finger) => ({ text: String(finger), fill: s.main, color: s.onNote })));
-    this.boxAtlas = baker.boxes(cells, FINGERS, display);
-    this.letterTextures = p.strings.map((s) => baker.text(s.letter, display));
-    this.numberTextures = Array.from({ length: this.columns }, (_, i) => baker.text(String(i), ui));
-    this.casaTexture = baker.text('CASA', ui);
-    this.frameTexture = baker.frame();
+    this.atlas = this.bakeAtlas(display);
+    this.boxTextures = p.strings.map((_, s) =>
+      Array.from(
+        { length: FINGERS },
+        (_, finger) => new Texture({ source: this.atlas.source, frame: new Rectangle(finger * CELL_W, s * CELL_H, CELL_W, CELL_H) }),
+      ),
+    );
+    this.letterTextures = p.strings.map((s) => this.bakeText(s.letter, display));
+    this.numberTextures = Array.from({ length: this.columns }, (_, i) => this.bakeText(String(i), ui));
+    this.casaTexture = this.bakeText('CASA', ui);
+    this.frameTexture = this.bake(
+      new Graphics().roundRect(4, 4, FRAME_W - 8, FRAME_H - 8, 22).stroke({ color: 0xffffff, width: 6 }),
+    );
+    this.dotTexture = this.bake(new Graphics().circle(DOT_R, DOT_R, DOT_R).fill(0xffffff));
 
-    // Chão, contorno e divisas das casas
-    const width = l.right - l.left;
-    const floor = flat(this.mesh(new PlaneGeometry(width, FLOOR_LENGTH), basic(p.floor), ORDER.floor));
-    floor.position.set(0, 0, -FLOOR_LENGTH / 2);
-    for (const [w, d, x, z] of [
-      [BORDER_WIDTH, FLOOR_LENGTH, l.left, -FLOOR_LENGTH / 2],
-      [BORDER_WIDTH, FLOOR_LENGTH, l.right, -FLOOR_LENGTH / 2],
-      [width + BORDER_WIDTH, BORDER_WIDTH, 0, -FLOOR_LENGTH],
-    ]) {
-      const edge = flat(this.mesh(new PlaneGeometry(w, d), basic(p.border), ORDER.overlay));
-      edge.position.set(x, LIFT * 2, z);
+    for (let c = 0; c < this.columns; c++) {
+      const g = new Graphics();
+      g.alpha = HIGHLIGHT_ALPHA;
+      g.visible = false;
+      this.highlights.push(g);
     }
-    this.highlight = flat(this.mesh(new PlaneGeometry(1, FLOOR_LENGTH), basic(p.strings[0].main, HIGHLIGHT_ALPHA), ORDER.overlay));
-    this.highlight.position.set(0, LIFT, -FLOOR_LENGTH / 2);
-    this.highlight.visible = false;
-
-    const dividers = new Float32Array((this.columns - 1) * 6);
-    for (let k = 1; k < this.columns; k++) dividers.set([l.left + k, LIFT, 0, l.left + k, LIFT, -FLOOR_LENGTH], (k - 1) * 6);
-    this.lines(dividers, p.grid, 1, ORDER.grid);
-    this.beatLines = this.lines(new Float32Array(MAX_GRID_LINES * 6), p.grid, 1, ORDER.grid);
-    this.barLines = this.lines(new Float32Array(MAX_BAR_LABELS * 6), p.muted, 0.6, ORDER.grid);
+    for (let i = 0; i < MAX_GRID_LINES; i++) {
+      const line = white(0, 0.5);
+      line.tint = p.grid;
+      this.beatLines.push(line);
+      this.gridLayer.addChild(line);
+    }
     for (let i = 0; i < MAX_BAR_LABELS; i++) {
-      // Placas com textura desde o começo: trocar o map de nulo para textura pediria outro shader no meio da música
-      const label = this.add(sprite(this.numberTextures[0].texture, p.muted), ORDER.label);
+      const line = white(0, 0.5);
+      line.tint = p.muted;
+      line.alpha = 0.6;
+      const label = new Sprite(this.numberTextures[0]);
+      label.anchor.set(0, 0.5);
+      label.tint = p.muted;
       label.visible = false;
+      this.barLines.push(line);
       this.barLabels.push(label);
+      this.gridLayer.addChild(line, label);
     }
-
-    // As cordas, com a letra à esquerda, e os números das casas embaixo
-    const length = width + STRING_OVERHANG;
     for (let s = 0; s < 4; s++) {
-      const string = this.mesh(new PlaneGeometry(length, STRING_THICKNESS, STRING_SEGMENTS, 1), basic(p.strings[s].main), ORDER.string);
-      string.position.set(l.right - length / 2, STRING_HEIGHTS[s], 0);
-      this.strings.push(string);
-      const letter = this.add(sprite(this.letterTextures[s].texture, p.strings[s].main), ORDER.label);
-      letter.position.set(l.left - LETTER_OFFSET, STRING_HEIGHTS[s], 0);
-      letter.scale.set(LETTER_HEIGHT * this.letterTextures[s].aspect, LETTER_HEIGHT, 1);
+      this.strings.push(new Graphics());
+      const letter = new Sprite(this.letterTextures[s]);
+      letter.anchor.set(0.5);
+      letter.tint = p.strings[s].main;
+      this.letters.push(letter);
+      this.labelLayer.addChild(letter);
     }
     for (let i = 0; i < this.columns; i++) {
-      const number = this.add(sprite(this.numberTextures[i].texture, p.muted), ORDER.label);
-      number.position.set(l.columnX[i], 0, NUMBER_Z);
-      number.scale.set(NUMBER_HEIGHT * this.numberTextures[i].aspect, NUMBER_HEIGHT, 1);
+      const number = new Sprite(this.numberTextures[i]);
+      number.anchor.set(0.5);
+      number.tint = p.muted;
       this.numbers.push(number);
+      this.labelLayer.addChild(number);
     }
-    const casa = this.add(sprite(this.casaTexture.texture, p.muted), ORDER.label);
-    const casaHeight = NUMBER_HEIGHT * 0.7;
-    casa.center.set(0, 0.5);
-    casa.position.set(l.right + CASA_OFFSET - 0.25, 0, NUMBER_Z);
-    casa.scale.set(casaHeight * this.casaTexture.aspect, casaHeight, 1);
-
-    // Acerto: contorno de tinta e halo da corda em volta da caixa
+    this.casa = new Sprite(this.casaTexture);
+    this.casa.anchor.set(0, 0.5);
+    this.casa.tint = p.muted;
+    this.labelLayer.addChild(this.casa);
     for (let s = 0; s < 4; s++) {
-      const glow = this.add(sprite(this.frameTexture.texture, p.strings[s].glow.color), ORDER.frame);
-      const frame = this.add(sprite(this.frameTexture.texture, p.ink), ORDER.frame);
+      const glow = new Sprite(this.frameTexture);
+      const frame = new Sprite(this.frameTexture);
+      glow.anchor.set(0.5);
+      frame.anchor.set(0.5);
+      glow.tint = p.strings[s].glow.color;
+      frame.tint = p.ink;
       glow.visible = frame.visible = false;
       this.glows.push(glow);
       this.frames.push(frame);
+      this.frameLayer.addChild(glow, frame);
     }
 
-    // As peças das notas: um desenho instanciado por tipo
-    const stem = new PlaneGeometry(STEM_WIDTH, 1);
-    stem.translate(0, 0.5, 0);
-    const bar = new PlaneGeometry(1, 1);
-    bar.translate(0.5, 0, 0);
-    this.tailQuads = new Quads(this.scene, new PlaneGeometry(1, 1), null, ORDER.tail, 1);
-    this.shadows = new Quads(this.scene, new CircleGeometry(0.5, 20), null, ORDER.shadow, 1);
-    this.stems = new Quads(this.scene, stem, null, ORDER.stem, 1);
-    this.boxes = new Quads(this.scene, new PlaneGeometry(1, 1), this.boxAtlas.texture, ORDER.box, 1);
-    this.holdBars = new Quads(this.scene, bar, null, ORDER.box, 1);
-
     this.setNotes(options.notes);
+
+    for (const layer of [this.gridLayer, this.tailLayer, this.shadowLayer, this.stemLayer, this.labelLayer, this.boxLayer, this.frameLayer]) layer.eventMode = 'none';
+    this.eventMode = 'none';
+    this.addChild(this.bg, ...this.highlights, this.gridLayer, this.tailLayer, this.shadowLayer, ...this.strings, this.stemLayer, this.labelLayer, this.boxLayer, this.frameLayer);
   }
 
   layout(width: number, height: number): void {
     const l = (this.l = strings3dLayout(width, height, this.columns, this.lead));
-    const c = l.camera;
-    this.camera.fov = c.fov;
-    this.camera.aspect = c.aspect;
-    this.camera.position.set(c.x, c.y, c.z);
-    this.camera.rotation.set(-c.pitch, 0, 0);
-    this.camera.updateProjectionMatrix();
-    this.camera.updateMatrixWorld();
-    this.facing.setFromAxisAngle(new Vector3(1, 0, 0), -c.pitch);
+    const p = this.palette;
+    const a = this.pa;
+    const b = this.pb;
+    const pt = (x: number, y: number, z: number, out = a) => projectInto(l, x, y, z, out);
+    const corners = (x0: number, x1: number, near: number, far: number) => {
+      const out: number[] = [];
+      for (const [x, z] of [
+        [x0, near],
+        [x1, near],
+        [x1, far],
+        [x0, far],
+      ]) {
+        pt(x, 0, z);
+        out.push(a.x, a.y);
+      }
+      return out;
+    };
+    const segment = (x0: number, z0: number, x1: number, z1: number, color: number, w: number, alpha = 1) => {
+      pt(x0, 0, z0, a);
+      pt(x1, 0, z1, b);
+      this.bg.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ color, width: w, alpha });
+    };
+
+    this.bg.clear();
+    this.bg.poly(corners(l.left, l.right, 0, -FLOOR_LENGTH)).fill(p.floor);
+    for (let k = 1; k < this.columns; k++) segment(l.left + k, 0, l.left + k, -FLOOR_LENGTH, p.grid, 1);
+    const border = Math.max(2, BORDER_WIDTH * pt(0, 0, 0).scale * 0.6);
+    segment(l.left, 0, l.left, -FLOOR_LENGTH, p.border, border);
+    segment(l.right, 0, l.right, -FLOOR_LENGTH, p.border, border);
+    segment(l.left, -FLOOR_LENGTH, l.right, -FLOOR_LENGTH, p.border, Math.max(1, border / 3));
+
+    this.highlights.forEach((g, c) => g.clear().poly(corners(l.columnX[c] - 0.5, l.columnX[c] + 0.5, 0, -FLOOR_LENGTH)).fill(0xffffff));
+
+    for (let s = 0; s < 4; s++) {
+      this.drawString(s, 0);
+      const letter = this.letters[s];
+      pt(l.left - LETTER_OFFSET, STRING_HEIGHTS[s], 0);
+      letter.position.set(a.x, a.y);
+      letter.scale.set((LETTER_HEIGHT * a.scale) / this.letterTextures[s].height);
+    }
+    for (let i = 0; i < this.columns; i++) {
+      pt(l.columnX[i], 0, NUMBER_Z);
+      this.numbers[i].position.set(a.x, a.y);
+      this.numbers[i].scale.set((NUMBER_HEIGHT * a.scale) / this.numberTextures[i].height);
+    }
+    pt(l.right + CASA_OFFSET - 0.25, 0, NUMBER_Z);
+    this.casa.position.set(a.x, a.y);
+    this.casa.scale.set((NUMBER_HEIGHT * 0.7 * a.scale) / this.casaTexture.height);
+
     this.update(this.lastNow);
   }
 
@@ -445,8 +328,22 @@ export class Strings3DScene {
     this.judgedAt = judgedAt;
     this.lookBack = MISS_FADE_SECONDS + this.tails.reduce((a, b) => Math.max(a, b), 0);
     const pool = maxNotesInWindow(this.times, this.lead + this.lookBack + 0.5) + 2;
-    for (const q of [this.tailQuads, this.shadows, this.stems, this.boxes]) q.ensure(pool);
-    this.holdBars.ensure(pool * 2);
+    while (this.chips.length < pool) {
+      const box = new Sprite(this.boxTextures[0][0]);
+      box.anchor.set(0.5);
+      box.visible = false;
+      const shadow = new Sprite(this.dotTexture);
+      shadow.anchor.set(0.5);
+      shadow.visible = false;
+      const chip: Chip = { tail: white(0.5, 1), shadow, stem: white(0.5, 1), box, holdBack: white(0, 0.5), holdFill: white(0, 0.5) };
+      chip.holdBack.tint = this.palette.grid;
+      this.tailLayer.addChild(chip.tail);
+      this.shadowLayer.addChild(chip.shadow);
+      this.stemLayer.addChild(chip.stem);
+      this.boxLayer.addChild(chip.box, chip.holdBack, chip.holdFill);
+      this.chips.push(chip);
+      this.info.push({ x: 0, y: 0, z: 0, opacity: 0, finger: 0, string: 0 });
+    }
   }
 
   /** Registra o julgamento do motor; `at` é a hora do relógio em que o feedback começa. */
@@ -461,90 +358,142 @@ export class Strings3DScene {
     this.laneHitX[note.string] = this.l.columnX[Math.min(this.columns - 1, casaOf(note))];
   }
 
-  /** Monta o quadro da hora `now` do AudioContext (quem desenha é o WebGLRenderer). */
+  /** Desenha o quadro da hora `now` do AudioContext. */
   update(now: number): void {
     this.lastNow = now;
     const l = this.l;
     const p = this.palette;
+    const a = this.pa;
+    const b = this.pb;
     const first = lowerBound(this.times, now - this.lookBack);
     const last = lowerBound(this.times, now + this.lead + 0.05);
-    const capacity = this.boxes.capacity;
-    let next = -1;
     const holding = this.holding.fill(false);
-    for (const q of [this.tailQuads, this.shadows, this.stems, this.boxes, this.holdBars]) q.begin();
-    for (const n of this.numbers) n.material.color.setHex(p.muted);
+    let next = -1;
+    let used = 0;
+    let held = 0;
+    for (const n of this.numbers) n.tint = p.muted;
 
-    for (let i = first; i < last && this.boxes.count < capacity && this.tailQuads.count < capacity; i++) {
+    // Do fundo para a frente: a nota mais perto fica por cima da de trás
+    for (let i = last - 1; i >= first && used < this.chips.length; i--) {
       const s = this.state[i];
       const time = this.times[i];
       const tail = this.tails[i];
       const note = this.notes[i];
-      const held = s !== MISSED && tail > 0 && now >= time && now < time + tail;
+      const isHeld = s !== MISSED && tail > 0 && now >= time && now < time + tail;
       const missFade = s === MISSED ? 1 - (now - Math.max(time, this.judgedAt[i])) / MISS_FADE_SECONDS : 1;
-      const showBox = (s === 0 || held || (s === MISSED && missFade > 0)) && time - now <= this.lead;
+      const showBox = (s === 0 || isHeld || (s === MISSED && missFade > 0)) && time - now <= this.lead;
       const tailEnd = Math.max(-FLOOR_LENGTH, noteZ(l, time + tail, now));
       const z = noteZ(l, time, now);
       const showTail = tail > 0 && s !== MISSED && tailEnd < z;
       if (!showBox && !showTail) continue;
-      if (s === 0 && next < 0) next = i;
+      if (s === 0) next = i;
 
+      const chip = this.chips[used];
+      const info = this.info[used++];
       const lane = p.strings[note.string];
       const column = Math.min(this.columns - 1, casaOf(note));
       const x = l.columnX[column];
       const y = STRING_HEIGHTS[note.string];
       const fade = s === MISSED ? MISSED_ALPHA * missFade : entryAlpha3d(z);
 
-      if (showTail) this.tailQuads.push(x, LIFT * 3, (z + tailEnd) / 2, TAIL_WIDTH, z - tailEnd, FLAT, lane.main, TAIL_ALPHA * entryAlpha3d(tailEnd));
+      chip.tail.visible = showTail;
+      if (showTail) {
+        projectInto(l, x, 0, z, a);
+        projectInto(l, x, 0, tailEnd, b);
+        this.segment(chip.tail, a, b, TAIL_WIDTH * (a.scale + b.scale) * 0.5);
+        chip.tail.tint = lane.main;
+        chip.tail.alpha = TAIL_ALPHA * entryAlpha3d(tailEnd);
+      }
 
+      chip.box.visible = chip.shadow.visible = showBox;
+      chip.stem.visible = false;
       if (showBox) {
         const k = boxScale(z);
         const w = BOX.width * k;
         const h = BOX.height * k;
-        const b = this.boxes.push(x, y, z, w, h, this.facing, 0xffffff, fade);
-        this.boxes.setRect(b, note.finger / FINGERS, 1 - (note.string + 1) / 4, 1 / FINGERS, 1 / 4);
+        projectInto(l, x, y, z, a);
+        chip.box.texture = this.boxTextures[note.string][note.finger];
+        chip.box.position.set(a.x, a.y);
+        chip.box.scale.set((w * a.scale) / CELL_W, (h * a.scale) / CELL_H);
+        chip.box.alpha = fade;
+        Object.assign(info, { x, y, z, opacity: fade, finger: note.finger, string: note.string });
+
         const stemTop = y - h / 2;
-        if (stemTop > 0) this.stems.push(x, 0, z, k, stemTop, UP_RIGHT, lane.main, fade);
-        this.shadows.push(x, LIFT * 4, z, w * 0.9, w * 0.9, FLAT, lane.main, SHADOW_ALPHA * fade);
+        if (stemTop > 0) {
+          projectInto(l, x, 0, z, a);
+          projectInto(l, x, stemTop, z, b);
+          chip.stem.visible = true;
+          this.segment(chip.stem, a, b, Math.max(1, STEM_WIDTH * k * a.scale));
+          chip.stem.tint = lane.main;
+          chip.stem.alpha = fade;
+        }
+        // Sombra deitada no chão: a altura é a da profundidade dela na tela
+        const r = w * 0.45;
+        projectInto(l, x, 0, z - r, b);
+        const top = b.y;
+        projectInto(l, x, 0, z + r, b);
+        projectInto(l, x, 0, z, a);
+        chip.shadow.position.set(a.x, a.y);
+        chip.shadow.scale.set((2 * r * a.scale) / (2 * DOT_R), Math.max(1, b.y - top) / (2 * DOT_R));
+        chip.shadow.tint = lane.main;
+        chip.shadow.alpha = SHADOW_ALPHA * fade;
+      } else {
+        info.opacity = 0;
       }
 
-      if (held) {
+      chip.holdBack.visible = chip.holdFill.visible = isHeld;
+      if (isHeld) {
+        held++;
         holding[note.string] = true;
-        this.numbers[column].material.color.setHex(lane.main);
-        const left = x - BOX.width / 2;
-        const barY = y - BOX.height / 2 - 0.08;
-        this.holdBars.push(left, barY, 0, BOX.width, HOLD_BAR_HEIGHT, this.facing, p.grid, 1);
-        this.holdBars.push(left, barY, 0.001, BOX.width * Math.min(1, (now - time) / tail), HOLD_BAR_HEIGHT, this.facing, lane.main, 1);
+        this.numbers[column].tint = lane.main;
+        projectInto(l, x - BOX.width / 2, y - BOX.height / 2 - 0.08, 0, a);
+        const barW = BOX.width * a.scale;
+        const barH = Math.max(2, HOLD_BAR_HEIGHT * a.scale);
+        chip.holdBack.position.set(a.x, a.y);
+        chip.holdBack.width = barW;
+        chip.holdBack.height = barH;
+        chip.holdFill.position.set(a.x, a.y);
+        chip.holdFill.width = barW * Math.min(1, (now - time) / tail);
+        chip.holdFill.height = barH;
+        chip.holdFill.tint = lane.main;
       }
     }
-    for (const q of [this.tailQuads, this.shadows, this.stems, this.boxes, this.holdBars]) q.end();
+    for (let i = used; i < this.usedChips; i++) {
+      const chip = this.chips[i];
+      chip.tail.visible = chip.shadow.visible = chip.stem.visible = chip.box.visible = chip.holdBack.visible = chip.holdFill.visible = false;
+    }
+    this.usedChips = used;
+    this.held = held;
 
     // A coluna da próxima nota acende na cor da corda dela, como o número da casa
-    this.highlight.visible = next >= 0;
-    if (next >= 0) {
-      const note = this.notes[next];
-      const column = Math.min(this.columns - 1, casaOf(note));
-      this.highlight.position.x = l.columnX[column];
-      (this.highlight.material as MeshBasicMaterial).color.setHex(p.strings[note.string].main);
-      this.numbers[column].material.color.setHex(p.strings[note.string].main);
+    const column = next >= 0 ? Math.min(this.columns - 1, casaOf(this.notes[next])) : -1;
+    if (this.highlighted >= 0 && this.highlighted !== column) this.highlights[this.highlighted].visible = false;
+    this.highlighted = column;
+    if (column >= 0) {
+      const color = p.strings[this.notes[next].string].main;
+      this.highlights[column].visible = true;
+      this.highlights[column].tint = color;
+      this.numbers[column].tint = color;
     }
 
     for (let s = 0; s < 4; s++) {
       const age = now - this.laneHitAt[s];
       const flash = feedbackAlpha(age);
       const frame = this.frames[s];
-      frame.visible = flash > 0;
-      if (frame.visible) {
-        frame.position.set(this.laneHitX[s], STRING_HEIGHTS[s], 0);
-        frame.scale.set(BOX.width * 1.24, BOX.height * 1.4, 1);
-        frame.material.opacity = flash;
-      }
-      const ring = glowRing(age, this.reducedMotion);
       const glow = this.glows[s];
+      const ring = glowRing(age, this.reducedMotion);
+      frame.visible = flash > 0;
       glow.visible = ring.alpha > 0;
-      if (glow.visible) {
-        glow.position.set(this.laneHitX[s], STRING_HEIGHTS[s], 0);
-        glow.scale.set(BOX.width * 1.5 * ring.scale, BOX.height * 1.9 * ring.scale, 1);
-        glow.material.opacity = ring.alpha;
+      if (frame.visible || glow.visible) {
+        projectInto(l, this.laneHitX[s], STRING_HEIGHTS[s], 0, a);
+        const fw = (BOX.width * a.scale) / FRAME_W;
+        const fh = (BOX.height * a.scale) / FRAME_H;
+        frame.position.set(a.x, a.y);
+        frame.scale.set(fw * 1.24 * (FRAME_W / (FRAME_W - 8)), fh * 1.4);
+        frame.alpha = flash;
+        glow.position.set(a.x, a.y);
+        glow.scale.set(fw * 1.5 * ring.scale, fh * 1.9 * ring.scale);
+        glow.alpha = ring.alpha;
       }
       this.vibrate(s, !this.reducedMotion && (holding[s] || (age >= 0 && age < VIBRATE_SECONDS)), now);
     }
@@ -554,50 +503,49 @@ export class Strings3DScene {
 
   /** Notas com a caixa visível agora; para testes. */
   visibleNotes(): number {
-    return this.boxes.count;
+    return this.chips.reduce((n, c) => n + (c.box.visible ? 1 : 0), 0);
   }
 
   /** Notas no "segure" (na corda, com a barra); para testes. */
   heldNotes(): number {
-    return this.holdBars.count / 2;
+    return this.held;
   }
 
-  /** Onde estão as caixas visíveis (x, y, z), quão acesas e qual dedo / corda do atlas; para testes. */
-  visibleBoxes(): { x: number; y: number; z: number; opacity: number; finger: number; string: number }[] {
-    return this.boxes.read().map((b) => ({
-      x: b.x,
-      y: b.y,
-      z: b.z,
-      opacity: b.alpha,
-      finger: Math.round(b.rect[0] * FINGERS),
-      string: Math.round((1 - b.rect[1]) * 4) - 1,
-    }));
+  /** Caixas visíveis, da mais perto para a mais longe: onde estão no mundo, quão acesas e qual dedo / corda; para testes. */
+  visibleBoxes(): BoxInfo[] {
+    return this.chips
+      .map((c, i) => (c.box.visible ? { ...this.info[i] } : null))
+      .filter((b): b is BoxInfo => b !== null)
+      .reverse();
   }
 
-  /** Cor das hastes visíveis (a da corda da nota); para testes. */
+  /** Cor das hastes visíveis (a da corda da nota), da caixa mais perto para a mais longe; para testes. */
   stemColors(): number[] {
-    return Array.from({ length: this.stems.count }, (_, i) => this.stems.colorAt(i));
+    return this.chips
+      .filter((c) => c.stem.visible)
+      .map((c) => c.stem.tint)
+      .reverse();
   }
 
-  /** Desenhos por quadro das peças das notas (um por tipo, qualquer que seja o número de notas); para testes. */
-  noteDrawCalls(): number {
-    return [this.tailQuads, this.shadows, this.stems, this.boxes, this.holdBars].length;
+  /** As caixas visíveis usam pedaços do atlas (mesma fonte de textura, um lote); para testes. */
+  boxesShareAtlas(): boolean {
+    return this.chips.every((c) => !c.box.visible || c.box.texture.source === this.atlas.source);
   }
 
   /** Coluna acesa (a da próxima nota) e a cor dela, ou null; para testes. */
   highlightedColumn(): { x: number; color: number } | null {
-    if (!this.highlight.visible) return null;
-    return { x: this.highlight.position.x, color: (this.highlight.material as MeshBasicMaterial).color.getHex() };
+    if (this.highlighted < 0) return null;
+    return { x: this.l.columnX[this.highlighted], color: this.highlights[this.highlighted].tint };
   }
 
   /** Cor de cada corda e textura da letra dela, G D A E; para testes. */
   stringLooks(): { color: number; letter: Texture }[] {
-    return this.strings.map((s, i) => ({ color: (s.material as MeshBasicMaterial).color.getHex(), letter: this.letterTextures[i].texture }));
+    return this.letters.map((letter, s) => ({ color: this.palette.strings[s].main, letter: letter.texture }));
   }
 
   /** Linhas de tempo e de compasso desenhadas agora; para testes. */
   gridLines(): { beats: number; bars: number } {
-    return { beats: this.beatLines.geometry.drawRange.count / 2, bars: this.barLines.geometry.drawRange.count / 2 };
+    return { beats: this.beatsShown, bars: this.barsShown };
   }
 
   /** O contorno do acerto da corda está aceso? Para testes. */
@@ -605,53 +553,53 @@ export class Strings3DScene {
     return { frame: this.frames[string].visible, glow: this.glows[string].visible };
   }
 
-  /** Texturas assadas por esta cena; destruídas junto com ela. */
+  /** Texturas que esta cena assou; destruídas junto com ela. */
   bakedTextures(): Texture[] {
-    return [this.boxAtlas, ...this.letterTextures, ...this.numberTextures, this.casaTexture, this.frameTexture, ...this.barTextures.values()].map((b) => b.texture);
+    return [this.atlas, ...this.letterTextures, ...this.numberTextures, this.casaTexture, this.frameTexture, this.dotTexture, ...this.barTextures.values()];
   }
 
-  destroy(): void {
-    for (const t of this.bakedTextures()) t.dispose();
-    for (const g of new Set(this.geometries)) g.dispose();
-    for (const m of this.materials) m.dispose();
-    for (const q of [this.tailQuads, this.shadows, this.stems, this.boxes, this.holdBars]) q.dispose();
-    this.scene.clear();
+  override destroy(): void {
+    const baked = this.bakedTextures();
+    const frames = this.boxTextures.flat();
+    super.destroy({ children: true });
+    for (const t of frames) t.destroy(false);
+    for (const t of baked) t.destroy(true);
   }
 
-  private add<T extends Mesh | Sprite | LineSegments>(object: T, order: number): T {
-    object.renderOrder = order;
-    object.frustumCulled = false;
-    this.materials.push(object.material as Material);
-    this.scene.add(object);
-    return object;
+  /** Sprite branco esticado de `from` até `to` (âncora no pé): cauda e haste. */
+  private segment(sprite: Sprite, from: ScreenPoint, to: ScreenPoint, width: number): void {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    sprite.position.set(from.x, from.y);
+    sprite.rotation = Math.atan2(dx, -dy);
+    sprite.width = width;
+    sprite.height = Math.hypot(dx, dy);
   }
 
-  private mesh(geometry: BufferGeometry, material: MeshBasicMaterial, order: number): Mesh {
-    this.geometries.push(geometry);
-    return this.add(new Mesh(geometry, material), order);
-  }
-
-  private lines(positions: Float32Array, color: number, opacity: number, order: number): LineSegments {
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new BufferAttribute(positions, 3));
-    this.geometries.push(geometry);
-    const material = new LineBasicMaterial({ color, transparent: true, opacity, depthTest: false, depthWrite: false });
-    return this.add(new LineSegments(geometry, material), order);
+  /** A corda, reta ou vibrando (a onda vem de `wave` = hora do relógio; 0 é reta). */
+  private drawString(s: number, wave: number): void {
+    const l = this.l;
+    const a = this.pa;
+    const g = this.strings[s];
+    const x0 = l.left - STRING_OVERHANG;
+    projectInto(l, x0, STRING_HEIGHTS[s], 0, a);
+    const scale = a.scale;
+    g.clear().moveTo(a.x, a.y);
+    const steps = wave ? STRING_SEGMENTS : 1;
+    for (let k = 1; k <= steps; k++) {
+      const u = k / steps;
+      const offset = wave ? VIBRATE_AMPLITUDE * Math.sin(Math.PI * u) * Math.sin(u * 37 + wave * 90) : 0;
+      projectInto(l, x0 + (l.right - x0) * u, STRING_HEIGHTS[s] + offset, 0, a);
+      g.lineTo(a.x, a.y);
+    }
+    g.stroke({ color: this.palette.strings[s].main, width: Math.max(2, STRING_THICKNESS * scale) });
   }
 
   /** A corda tocada vibra; parada, volta a ser reta. */
   private vibrate(string: number, on: boolean, now: number): void {
     if (!on && !this.vibrating[string]) return;
     this.vibrating[string] = on;
-    const position = this.strings[string].geometry.getAttribute('position') as BufferAttribute;
-    const half = STRING_THICKNESS / 2;
-    for (let v = 0; v < position.count; v++) {
-      const u = (v % (STRING_SEGMENTS + 1)) / STRING_SEGMENTS;
-      const top = v <= STRING_SEGMENTS;
-      const wave = on ? VIBRATE_AMPLITUDE * Math.sin(Math.PI * u) * Math.sin(u * 37 + now * 90) : 0;
-      position.setY(v, (top ? half : -half) + wave);
-    }
-    position.needsUpdate = true;
+    this.drawString(string, on ? now || 1e-6 : 0);
   }
 
   /** Linhas dos tempos e barras de compasso no chão, pelo relógio da música (segue o laço e o andamento da prática). */
@@ -660,35 +608,38 @@ export class Strings3DScene {
     let bars = 0;
     if (this.clock) {
       const l = this.l;
+      const a = this.pa;
+      const b = this.pb;
       const segments = this.clock.segments(now + this.lead + 1);
       const count = beatWindows(segments, now, 0, GRID_AHEAD_BEATS, this.windows);
-      const beatPos = this.beatLines.geometry.getAttribute('position') as BufferAttribute;
-      const barPos = this.barLines.geometry.getAttribute('position') as BufferAttribute;
       for (let w = 0; w < count; w++) {
         const win = this.windows[w];
-        for (let b = Math.max(0, Math.ceil(win.fromBeat)); b < win.toBeat; b++) {
-          const time = windowTime(win, b);
+        for (let beat = Math.max(0, Math.ceil(win.fromBeat)); beat < win.toBeat; beat++) {
+          const time = windowTime(win, beat);
           if (time > now + this.lead) break;
           if (time < now) continue;
           const z = (now - time) * l.speed;
-          const bar = this.barIndex(b);
-          if (bar >= 0 && bars < MAX_BAR_LABELS) {
-            barPos.setXYZ(bars * 2, l.left, LIFT, z);
-            barPos.setXYZ(bars * 2 + 1, l.right, LIFT, z);
+          const bar = this.barIndex(beat);
+          const isBar = bar >= 0 && bars < MAX_BAR_LABELS;
+          if (!isBar && beats >= MAX_GRID_LINES) continue;
+          projectInto(l, l.left, 0, z, a);
+          projectInto(l, l.right, 0, z, b);
+          const line = isBar ? this.barLines[bars] : this.beatLines[beats];
+          line.visible = true;
+          line.position.set(a.x, a.y);
+          line.width = b.x - a.x;
+          line.height = isBar ? 1.5 : 1;
+          if (isBar) {
             this.showBarLabel(bars, bar + 1, z);
             bars++;
-          } else if (beats < MAX_GRID_LINES) {
-            beatPos.setXYZ(beats * 2, l.left, LIFT, z);
-            beatPos.setXYZ(beats * 2 + 1, l.right, LIFT, z);
-            beats++;
-          }
+          } else beats++;
         }
       }
-      beatPos.needsUpdate = barPos.needsUpdate = true;
     }
-    this.beatLines.geometry.setDrawRange(0, beats * 2);
-    this.barLines.geometry.setDrawRange(0, bars * 2);
-    for (let i = bars; i < MAX_BAR_LABELS; i++) this.barLabels[i].visible = false;
+    for (let i = beats; i < this.beatsShown; i++) this.beatLines[i].visible = false;
+    for (let i = bars; i < this.barsShown; i++) this.barLines[i].visible = this.barLabels[i].visible = false;
+    this.beatsShown = beats;
+    this.barsShown = bars;
   }
 
   /** Índice do compasso que começa no tempo `beat`, ou −1. */
@@ -698,15 +649,47 @@ export class Strings3DScene {
   }
 
   private showBarLabel(slot: number, measure: number, z: number): void {
-    let baked = this.barTextures.get(measure);
+    let texture = this.barTextures.get(measure);
     // Assado na primeira vez que o compasso aparece; a música tem um número limitado deles
-    if (!baked) this.barTextures.set(measure, (baked = this.baker.text(String(measure), 'monospace')));
+    if (!texture) this.barTextures.set(measure, (texture = this.bakeText(String(measure), this.uiFont)));
     const label = this.barLabels[slot];
     const h = NUMBER_HEIGHT * (1 + 2 * Math.min(1, -z / FLOOR_LENGTH));
+    projectInto(this.l, this.l.right + 0.15, h / 2, z, this.pa);
     label.visible = true;
-    label.material.map = baked.texture;
-    label.center.set(0, 0.5);
-    label.position.set(this.l.right + 0.15, h / 2, z);
-    label.scale.set(h * baked.aspect, h, 1);
+    label.texture = texture;
+    label.position.set(this.pa.x, this.pa.y);
+    label.scale.set((h * this.pa.scale) / texture.height);
+  }
+
+  private bake(target: Container): Texture {
+    const texture = this.baker.generateTexture({ target, resolution: this.baker.resolution, antialias: true });
+    target.destroy();
+    return texture;
+  }
+
+  private bakeText(text: string, fontFamily: string): Texture {
+    return this.bake(new Text({ text, style: { fill: 0xffffff, fontFamily, fontWeight: '800', fontSize: LABEL_PX } }));
+  }
+
+  /** Caixas das notas, uma linha por corda (G D A E) e uma coluna por dedo (0 a 4), num atlas só. */
+  private bakeAtlas(font: string): Texture {
+    const atlas = new Container();
+    const g = new Graphics();
+    atlas.addChild(g);
+    this.palette.strings.forEach((lane, s) => {
+      for (let finger = 0; finger < FINGERS; finger++) {
+        const x = finger * CELL_W;
+        const y = s * CELL_H;
+        // Folga de 1 px entre células: a filtragem da textura não puxa a cor da vizinha para a borda
+        g.roundRect(x + 1, y + 1, CELL_W - 2, CELL_H - 2, CELL_H * 0.16).fill(lane.main);
+        const digit = new Text({ text: String(finger), style: { fill: lane.onNote, fontFamily: font, fontWeight: '800', fontSize: CELL_H * 0.7 } });
+        digit.anchor.set(0.5);
+        digit.position.set(x + CELL_W / 2, y + CELL_H / 2 + CELL_H * 0.04);
+        atlas.addChild(digit);
+      }
+    });
+    // Moldura invisível do tamanho exato: a textura começa em (0, 0) e as células caem nos frames certos
+    g.rect(0, 0, CELL_W * FINGERS, CELL_H * 4).fill({ color: 0, alpha: 0 });
+    return this.bake(atlas);
   }
 }
