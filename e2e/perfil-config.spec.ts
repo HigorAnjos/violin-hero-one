@@ -81,6 +81,10 @@ test('8-Bits pelo seletor: fonte pixel e cantos retos na hora', async ({ page })
   await expect(page.locator('html')).toHaveAttribute('data-theme', '8-bits');
   const heading = page.getByRole('heading', { name: 'Configurações' });
   await expect(heading).toHaveCSS('font-family', /Pixelify Sans/);
+  // Sem ligadura: o "fi" da Pixelify vira um glifo que parece "A"
+  await expect(heading).toHaveCSS('font-variant-ligatures', 'none');
+  // Texto corrido continua na Nunito (na Pixelify pequena o 5 se lê como S)
+  await expect(page.getByText(/Mudam mais que a cor/)).toHaveCSS('font-family', /^Nunito/);
   await expect(page.getByRole('region', { name: 'Visual' })).toHaveCSS('border-radius', '0px');
 });
 

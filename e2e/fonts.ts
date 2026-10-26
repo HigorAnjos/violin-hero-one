@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
-/** Famílias do tema: o 8-Bits usa a Pixelify Sans no título e no texto; os outros, Baloo 2 e Nunito. */
-const familiesOf = (theme?: string): [string, string] => (theme === '8-bits' ? ['Pixelify Sans', 'Pixelify Sans'] : ['Baloo 2', 'Nunito']);
+/** Famílias do tema: título e texto. O 8-Bits troca só o título pela Pixelify Sans. */
+const familiesOf = (theme?: string): [string, string] => (theme === '8-bits' ? ['Pixelify Sans', 'Nunito'] : ['Baloo 2', 'Nunito']);
 
 /**
  * Espera as fontes do tema (servidas pelo app) antes de medir o layout: com a fonte reserva as linhas mudam de

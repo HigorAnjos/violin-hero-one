@@ -66,8 +66,8 @@ export const pixelTheme = special(
   'pixel',
   { noteShape: 'square' },
   {
-    // Partitura continua em Noto Music: clave pixelada não se lê
-    fonts: { display: pixelFont, ui: pixelFont, music: base.fonts.music },
+    // Pixel só nos títulos: no texto corrido de 12–13 px o 5 vira S e o "fi" vira A. Partitura continua em Noto Music
+    fonts: { display: pixelFont, ui: base.fonts.ui, music: base.fonts.music },
     borderRadius: { sm: '0', md: '0', lg: '0', pill: '0' },
     shadows: { card: '0.25rem 0.25rem 0 #000000' },
   },
