@@ -956,7 +956,7 @@ export class SheetScene extends Container {
       slot.letter.scale.set(label);
       slot.letter.position.set(l.fingerSize * 0.5, l.fingerY);
       slot.name.texture = this.nameTexture[i];
-      slot.name.scale.set(k);
+      slot.name.scale.set(l.nameSize / (REF * 0.72));
       slot.name.position.set(0, l.nameY);
     }
     slot.mark.position.set(l.head.rx + l.space * 0.8, l.fingerY - l.space * 0.05);

@@ -213,6 +213,9 @@ export const MIDDLE_STEP = 34;
 export const BOTTOM_STEP = MIDDLE_STEP - 4;
 export const TOP_STEP = MIDDLE_STEP + 4;
 
+/** Menor texto da interface, também no canvas. */
+export const MIN_TEXT_PX = 12;
+
 /** Abaixo desta altura a faixa é a compacta (SheetStrip.dc, celular deitado): sem o nome da nota. */
 export const COMPACT_HEIGHT = 180;
 const MAX_SPACE = 18;
@@ -280,18 +283,18 @@ export function sheetLayout(width: number, height: number, keyAccidentals: numbe
     line: Math.max(1, space * 0.09),
     ledgerHalf: space * 1.2,
     fingerY,
-    fingerSize: compact ? space * 1.3 : space,
+    fingerSize: Math.max(MIN_TEXT_PX, compact ? space * 1.3 : space),
     nameY: fingerY + space * 1.15,
-    nameSize: space * 0.72,
+    nameSize: Math.max(MIN_TEXT_PX, space * 0.72),
     numberY: middleY - space * 3,
-    numberSize: Math.max(10, space * 0.78),
+    numberSize: Math.max(MIN_TEXT_PX, space * 0.78),
     needle: {
       top: compact ? space * 0.6 : middleY - space * 4.9,
       bottom: compact ? height - space * 0.6 : middleY + space * 4.8,
       width: Math.max(2, space * 0.17),
       zone: space * 2.67,
       labelY: compact ? space * 0.2 : middleY - space * 5.3,
-      labelSize: Math.max(9, space * 0.61),
+      labelSize: Math.max(MIN_TEXT_PX, space * 0.61),
     },
     clef: { x: space * 0.8, y: middleY + space * 0.35, size: space * 5.8 },
     keyX,
@@ -381,9 +384,6 @@ export const PASSED_ALPHA = 0.35;
 export function noteAlpha(distance: number, beats: number, hit: boolean): number {
   return hit || distance + beats > 0 ? 1 : PASSED_ALPHA;
 }
-
-/** Menor texto da interface, também no canvas. */
-export const MIN_TEXT_PX = 12;
 
 /** Marcadores do laço A–B (Practice.dc): bandeirinha "A · 18" no alto, linha até embaixo e arco tracejado de B a A. */
 export interface LoopMarks {

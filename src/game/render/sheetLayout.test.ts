@@ -127,6 +127,18 @@ describe('relógio de tempos', () => {
   });
 });
 
+describe('texto da faixa', () => {
+  it.each([
+    ['cheia (1280×720)', 1198, 280],
+    ['celular deitado (844×390)', 810, 184],
+    ['compacta', 810, 112],
+  ])('%s: número de compasso, AGORA, dedo e nome da nota com 12 px ou mais, e o nome dentro da faixa', (_name, w, h) => {
+    const l = sheetLayout(w, h, 2);
+    for (const size of [l.numberSize, l.needle.labelSize, l.fingerSize, l.nameSize]) expect(size).toBeGreaterThanOrEqual(MIN_TEXT_PX);
+    if (!l.compact) expect(l.nameY + l.nameSize / 2).toBeLessThanOrEqual(h);
+  });
+});
+
 describe('marcadores do laço', () => {
   it('bandeirinha com texto de 12 px ou mais; o arco fica acima da pauta e some na faixa compacta', () => {
     for (const [w, h] of [
