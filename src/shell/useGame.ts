@@ -13,6 +13,7 @@ import { loadEarnedBadges } from '../services/badges';
 import type { Ear, EarAudio } from './Ear';
 import { createGameSession, type GameSession, type GameSessionOptions, type PracticeClock, type PracticeStart, type SessionEvent } from './gameSession';
 import { loadOrchestra, type OrchestraFactory } from './orchestra';
+import { loadMetronome, saveMetronome } from './metronome';
 import { createShowQueue } from './showQueue';
 import { isRehearsalEar } from './simulatedEar';
 
@@ -158,6 +159,8 @@ export function useGame(options: GameOptions) {
   const [counting, setCounting] = React.useState<number | null>(null);
   const [micClosed, setMicClosed] = React.useState(false);
   const [volume, setVolume] = React.useState(() => loadOrchestraSettings().volume);
+  const [metronome, setMetronome] = React.useState(loadMetronome);
+  const [practiced, setPracticed] = React.useState(false);
   const [latencyMs, setLatencyMs] = React.useState<number | null>(null);
   const live = React.useRef<{ session: GameSession | null; latency: number; paused: boolean; closes: number }>({
     session: null,
@@ -271,6 +274,7 @@ export function useGame(options: GameOptions) {
         toleranceCents: player?.toleranceCents,
         windows: player?.windows,
         leadSeconds: player?.trackLeadSeconds,
+        metronome: loadMetronome(),
         onEvent,
       });
       shared.session = session;
@@ -396,6 +400,12 @@ export function useGame(options: GameOptions) {
     saveOrchestraSettings({ ...loadOrchestraSettings(), volume: next });
   }, []);
 
+  const changeMetronome = React.useCallback((next: number) => {
+    setMetronome(next);
+    live.current.session?.setMetronome(next);
+    saveMetronome(next);
+  }, []);
+
   const practice = React.useMemo<PracticeApi>(
     () => ({
       setSpeed: (speed) => void live.current.session?.practice?.setSpeed(speed),
@@ -405,8 +415,32 @@ export function useGame(options: GameOptions) {
     [],
   );
 
+  /** A partida comum vira prática no próximo compasso, nesta velocidade (Pausa). Devolve se virou. */
+  const toPractice = React.useCallback((speed: number) => {
+    const at = live.current.session?.toPractice(speed) ?? null;
+    if (at !== null) setPracticed(true);
+    return at !== null;
+  }, []);
+
   /** O relógio de tempos da partida, para a faixa de partitura: vazio até a partida começar. */
   const clock = React.useMemo<PracticeClock>(() => ({ segments: (until) => live.current.session?.clock.segments(until) ?? [] }), []);
 
-  return { phase, hud, counting, micClosed, volume, latencyMs, pause, resume, changeVolume, practice, clock };
+  return {
+    phase,
+    hud,
+    counting,
+    micClosed,
+    volume,
+    latencyMs,
+    pause,
+    resume,
+    changeVolume,
+    metronome,
+    changeMetronome,
+    practice,
+    /** A partida comum já virou prática (sem selos e sem recorde). */
+    practiced,
+    toPractice,
+    clock,
+  };
 }
