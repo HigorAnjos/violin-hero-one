@@ -4,7 +4,7 @@ import { centsBetween } from '../game/audio/tuning';
 import { scheduleClicks } from '../game/audio/latency/click';
 import type { EngineNote, GameResult, Judgment, LapSummary, LevelSettings, PerformanceOptions } from '../game/engine';
 import { secondsPerBeat, type Song } from '../game/notation/song';
-import type { Track, TrackOptions } from '../game/render';
+import type { Sheet, SheetOptions, Track, TrackOptions } from '../game/render';
 import { levelFor, loadOrchestraSettings, saveOrchestraSettings, type LoopRange, type OrchestraLevel } from '../game/synth';
 import { explainJudgment, type Explanation } from '../components/JudgmentHint/explain';
 import type { TracePoint } from '../components/TuningCard/TuningCard';
@@ -17,17 +17,24 @@ import { createShowQueue } from './showQueue';
 import { isRehearsalEar } from './simulatedEar';
 
 export type TrackLoader = (host: HTMLElement, options: TrackOptions) => Promise<Track>;
+export type SheetLoader = (host: HTMLElement, options: SheetOptions) => Promise<Sheet>;
 
 /** A pista vem sob demanda: o Pixi não entra no download inicial. */
 export const loadTrack: TrackLoader = (host, options) => import('../game/render').then((m) => m.createTrack(host, options));
+/** A faixa de partitura, do mesmo pedaço da pista. */
+export const loadSheet: SheetLoader = (host, options) => import('../game/render').then((m) => m.createSheet(host, options));
 
 export interface GameDeps {
   loadTrack: TrackLoader;
+  loadSheet: SheetLoader;
   orchestra: OrchestraFactory | null;
   clicks: GameSessionOptions['clicks'];
 }
 
-export const GAME_DEPS: GameDeps = { loadTrack, orchestra: loadOrchestra, clicks: scheduleClicks };
+export const GAME_DEPS: GameDeps = { loadTrack, loadSheet, orchestra: loadOrchestra, clicks: scheduleClicks };
+
+/** Pista em perspectiva (Arcade) ou faixa de partitura (5b, prática). */
+export type GameView = 'track' | 'sheet';
 
 export type GamePhase = 'starting' | 'playing' | 'paused' | 'counting' | 'over' | 'broken';
 
@@ -89,6 +96,8 @@ export interface GameOptions {
   /** ?simular (só DEV/e2e). */
   performance: PerformanceOptions | null;
   host: React.RefObject<HTMLElement | null>;
+  /** Padrão: a pista. Lido na montagem. */
+  view?: GameView;
   trackOptions: Omit<TrackOptions, 'notes' | 'width' | 'height'>;
   box: () => { x: number; y: number; width: number; height: number };
   onBeat?: (beat: number) => void;
@@ -165,7 +174,7 @@ export function useGame(options: GameOptions) {
     const shared = live.current;
     let alive = true;
     let raf = 0;
-    let track: Track | null = null;
+    let track: Track | Sheet | null = null;
     let frames = 0;
     let level: OrchestraLevel = 3;
     const explained = createShowQueue<Explanation>(EXPLAIN_SECONDS);
@@ -286,14 +295,18 @@ export function useGame(options: GameOptions) {
       const host = opts.current.host.current;
       if (!host) return;
       const box = opts.current.box();
-      deps
-        .loadTrack(host, {
-          ...opts.current.trackOptions,
-          leadSeconds: player?.trackLeadSeconds,
-          notes: session.engine.notes,
-          width: box.width,
-          height: box.height,
-        })
+      const { theme, reducedMotion, showFps, onFps } = opts.current.trackOptions;
+      const surface: Promise<Track | Sheet> =
+        opts.current.view === 'sheet'
+          ? deps.loadSheet(host, { theme, reducedMotion, showFps, onFps, song, clock: session.clock, width: box.width, height: box.height })
+          : deps.loadTrack(host, {
+              ...opts.current.trackOptions,
+              leadSeconds: player?.trackLeadSeconds,
+              notes: session.engine.notes,
+              width: box.width,
+              height: box.height,
+            });
+      surface
         .then((created) => {
           if (!alive) return created.destroy();
           track = created;
