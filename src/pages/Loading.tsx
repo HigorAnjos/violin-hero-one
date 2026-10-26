@@ -193,7 +193,7 @@ const Preparing: React.FC<{ choice: SongChoice }> = ({ choice }) => {
   const playable = usePlayableSong(choice.songId, choice.level);
   const [settings] = React.useState(() => levelSettings(loadLocalProfile().level ?? 'beginner'));
   const sheet = shelf.status === 'ready' ? shelf.songs.find((s) => s.id === choice.songId) : undefined;
-  const title = playable.status === 'ready' ? playable.song.title : (sheet?.title ?? '…');
+  const title = playable.status === 'ready' ? playable.song.title : (sheet?.title ?? (playable.status === 'error' ? 'Música indisponível' : '…'));
   const level = LEVEL_NAMES[choice.level];
   const back = songsUrl(choice.mode === 'Prática' ? 'Arcade' : choice.mode, choice.songId);
 

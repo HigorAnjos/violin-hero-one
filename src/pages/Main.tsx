@@ -105,6 +105,14 @@ const Controls = styled.div`
   }
 `;
 
+// Celular deitado: menor e ancorado embaixo, para a voluta não ficar sob o seletor de tema
+const Art = styled(ViolinArt)`
+  @media (max-height: 500px) {
+    transform: scale(0.8);
+    transform-origin: 100% 100%;
+  }
+`;
+
 const DEFAULT_LEVEL = 'beginner' as const;
 
 /** 1 · Tela inicial: tocar, biblioteca e afinar, com a música sugerida para o nível do jogador. */
@@ -119,7 +127,7 @@ export const Main: React.FC = () => {
 
   return (
     <Page>
-      <ViolinArt />
+      <Art />
       <Brand>
         <Title>
           Violin <span>Hero</span>

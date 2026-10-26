@@ -67,6 +67,7 @@ describe('Loading', () => {
     expect(screen.getByRole('link', { name: 'Escolher outra' })).toHaveAttribute('href', '/tocar/musica?modo=arcade&musica=greensleeves');
     expect(screen.getByText('Sem internet')).toBeInTheDocument();
     expect(screen.queryByText(/\(carregando\)/)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Música indisponível');
   });
 
   it('tentar de novo pede a partitura outra vez', async () => {

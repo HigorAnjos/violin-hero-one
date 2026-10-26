@@ -31,11 +31,11 @@ const NOTES: { x: number; y: number; string: StringName; flag?: boolean }[] = [
 ];
 
 /** Cena da tela inicial (1): pauta, violino com as quatro cordas, arco e notas. Cobre o fundo, ancorada à direita. */
-export const ViolinArt: React.FC = () => {
+export const ViolinArt: React.FC<{ className?: string }> = ({ className }) => {
   const { colors, game, art } = useTheme();
   const ink = colors.text;
   return (
-    <Svg viewBox="0 0 1280 720" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" data-testid="violin-art">
+    <Svg className={className} viewBox="0 0 1280 720" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" data-testid="violin-art">
       <g stroke={colors.surfaceBorder} strokeWidth="2">
         {[...STAFF_TOP, ...STAFF_BOTTOM].map((y) => (
           <line key={y} x1="0" y1={y} x2="1280" y2={y} />
