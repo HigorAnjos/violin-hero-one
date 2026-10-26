@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
 import { EmailLinkForm } from '../components/EmailLinkForm/EmailLinkForm';
+import { useSwitchConfirm } from '../components/SwitchConfirm/useSwitchConfirm';
 import { ViolinArt } from '../components/ViolinArt/ViolinArt';
 import { AccountError, authErrorFromUrl, loginWithGoogle, sendLoginLink } from '../services/account';
 import { isOnboarded } from '../services/profile';
@@ -246,12 +247,14 @@ export const Login: React.FC = () => {
     const kind = authErrorFromUrl(window.location.href);
     return kind ? new AccountError(kind).message : null;
   });
+  const switching = useSwitchConfirm();
 
   // Já numa conta: a raiz (ou o nível, se a primeira vez não acabou; a raiz voltaria para cá)
   if (session?.status === 'signed-in' && !session.anonymous) return <Navigate to={isOnboarded() ? ROUTES.home : ROUTES.level} replace />;
 
   const google = async () => {
     setError(null);
+    if (!(await switching.ask())) return;
     try {
       await loginWithGoogle(supabase, session ?? { status: 'offline' }, ROUTES.home);
     } catch (cause) {
@@ -308,8 +311,14 @@ export const Login: React.FC = () => {
           </Button>
         </Choices>
         {emailOpen && (
-          <EmailLinkForm autoFocus submitLabel="Mandar link" send={(email) => sendLoginLink(supabase, session ?? { status: 'offline' }, email, ROUTES.home)} />
+          <EmailLinkForm
+            autoFocus
+            submitLabel="Mandar link"
+            confirm={switching.ask}
+            send={(email) => sendLoginLink(supabase, session ?? { status: 'offline' }, email, ROUTES.home)}
+          />
         )}
+        {switching.dialog}
         {error && <Alert role="alert">{error}</Alert>}
 
         <Note>A conta só é pedida quando faz falta: para entrar no ranking, desafiar amigos ou usar em outro aparelho. Tudo que você já tocou vai junto.</Note>

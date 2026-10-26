@@ -67,14 +67,20 @@ export const EmailLinkForm: React.FC<{
   send: (email: string) => Promise<void>;
   submitLabel: string;
   onError?: (error: AccountError, email: string) => void;
+  /** Pergunta antes de mandar (ex.: o progresso do convidado não vai para a conta); false cancela. */
+  confirm?: () => Promise<boolean>;
   autoFocus?: boolean;
-}> = ({ send, submitLabel, onError, autoFocus }) => {
+}> = ({ send, submitLabel, onError, confirm, autoFocus }) => {
   const [email, setEmail] = React.useState('');
   const [state, setState] = React.useState<EmailLinkState>({ status: 'idle' });
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setState({ status: 'sending' });
+    if (confirm && !(await confirm())) {
+      setState({ status: 'idle' });
+      return;
+    }
     try {
       await send(email);
       setState({ status: 'sent', email: email.trim() });

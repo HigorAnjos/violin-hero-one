@@ -71,15 +71,24 @@ describe('GuestPrompt (0d)', () => {
     expect(linkGoogle).toHaveBeenCalledWith(null, '/ranking');
   });
 
-  it('e-mail que já tem conta: oferece entrar nela (a fila do convidado sobe antes)', async () => {
+  it('quem ainda não jogou não vê o bloco com zeros', () => {
+    open();
+    expect(screen.queryByText('O que já é seu e vai junto')).not.toBeInTheDocument();
+  });
+
+  it('e-mail que já tem conta: oferece entrar nela, avisando que o progresso do convidado não vai junto', async () => {
     vi.mocked(linkEmail).mockRejectedValue(new AccountError('taken'));
     vi.mocked(sendLoginLink).mockResolvedValue();
+    localStorage.setItem('vh:badges', JSON.stringify(['primeira-musica']));
     open();
     await userEvent.click(screen.getByRole('button', { name: 'Usar e-mail' }));
     await userEvent.type(screen.getByLabelText('E-mail'), 'lia@t.test');
     await userEvent.click(screen.getByRole('button', { name: 'Mandar link' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Esse e-mail já tem uma conta');
     await userEvent.click(screen.getByRole('button', { name: 'Entrar nessa conta' }));
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent('(1 selo) não vai para essa conta');
+    expect(sendLoginLink).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar mesmo assim' }));
     expect(sendLoginLink).toHaveBeenCalledWith(null, anon, 'lia@t.test', '/ranking');
   });
 

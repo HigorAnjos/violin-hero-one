@@ -59,6 +59,22 @@ describe('Login (0)', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Mandamos um link');
   });
 
+  it('convidado com progresso: avisa que ele não vai para a conta; Ficar não manda o link', async () => {
+    vi.mocked(sendLoginLink).mockResolvedValue();
+    localStorage.setItem('vh:recordes', JSON.stringify({ 'brilha:easy': 900 }));
+    localStorage.setItem('vh:badges', JSON.stringify(['primeira-musica', 'combo-25']));
+    open();
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar com e-mail' }));
+    await userEvent.type(screen.getByLabelText('E-mail'), 'lia@t.test');
+    await userEvent.click(screen.getByRole('button', { name: 'Mandar link' }));
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent('(1 música e 2 selos) não vai para essa conta');
+    await userEvent.click(screen.getByRole('button', { name: 'Ficar' }));
+    expect(sendLoginLink).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Mandar link' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Entrar mesmo assim' }));
+    expect(sendLoginLink).toHaveBeenCalledWith(null, anon, 'lia@t.test', '/');
+  });
+
   it('fila do convidado sem subir: não troca e explica', async () => {
     vi.mocked(sendLoginLink).mockRejectedValue(new AccountError('pending'));
     open();

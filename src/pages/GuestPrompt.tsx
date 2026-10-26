@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { ANIMAL_LOOK } from '../components/AvatarPicker/AvatarPicker';
 import { Button } from '../components/Button/Button';
 import { EmailLinkForm } from '../components/EmailLinkForm/EmailLinkForm';
+import { useSwitchConfirm } from '../components/SwitchConfirm/useSwitchConfirm';
 import { Kicker } from '../components/Screen/Screen';
 import { AccountError, authErrorFromUrl, linkEmail, linkGoogle, sendLoginLink } from '../services/account';
 import { supabase } from '../services/supabase';
@@ -189,6 +190,7 @@ export const GuestPrompt: React.FC = () => {
     return kind ? { text: new AccountError(kind).message, error: true } : null;
   });
   const titleId = React.useId();
+  const switching = useSwitchConfirm();
 
   React.useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -213,6 +215,8 @@ export const GuestPrompt: React.FC = () => {
   const enterTaken = async () => {
     if (!takenEmail || !session) return;
     setNotice(null);
+    // Entrar na conta que já tem o e-mail troca o usuário: o que é deste convidado não vai junto
+    if (!(await switching.ask())) return;
     try {
       await sendLoginLink(supabase, session, takenEmail, next);
       setNotice({ text: `Mandamos um link para ${takenEmail}. Abra o e-mail neste aparelho e toque no link.`, error: false });
@@ -235,25 +239,32 @@ export const GuestPrompt: React.FC = () => {
           </div>
         </Head>
 
-        <Owned>
-          <Kicker>O que já é seu e vai junto</Kicker>
-          <dl>
-            <div>
-              <dt>{songs === 1 ? 'música tocada' : 'músicas tocadas'}</dt>
-              <dd>{songs}</dd>
-            </div>
-            <div>
-              <dt>{progress.badges.length === 1 ? 'selo' : 'selos'}</dt>
-              <dd>{progress.badges.length}</dd>
-            </div>
-            {progress.streakDays !== null && (
-              <div>
-                <dt>de sequência</dt>
-                <dd>{progress.streakDays === 1 ? '1 dia' : `${progress.streakDays} dias`}</dd>
-              </div>
-            )}
-          </dl>
-        </Owned>
+        {/* Só o que existe: nada de "0 selos" para quem ainda não jogou */}
+        {(songs > 0 || progress.badges.length > 0 || !!progress.streakDays) && (
+          <Owned>
+            <Kicker>O que já é seu e vai junto</Kicker>
+            <dl>
+              {songs > 0 && (
+                <div>
+                  <dt>{songs === 1 ? 'música tocada' : 'músicas tocadas'}</dt>
+                  <dd>{songs}</dd>
+                </div>
+              )}
+              {progress.badges.length > 0 && (
+                <div>
+                  <dt>{progress.badges.length === 1 ? 'selo' : 'selos'}</dt>
+                  <dd>{progress.badges.length}</dd>
+                </div>
+              )}
+              {!!progress.streakDays && (
+                <div>
+                  <dt>de sequência</dt>
+                  <dd>{progress.streakDays === 1 ? '1 dia' : `${progress.streakDays} dias`}</dd>
+                </div>
+              )}
+            </dl>
+          </Owned>
+        )}
 
         {offline ? (
           <Notice role="alert" $error>
@@ -287,6 +298,7 @@ export const GuestPrompt: React.FC = () => {
                 Entrar nessa conta
               </Button>
             )}
+            {switching.dialog}
             {notice && (
               <Notice role={notice.error ? 'alert' : 'status'} $error={notice.error}>
                 {notice.text}
