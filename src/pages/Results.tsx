@@ -25,6 +25,7 @@ import type { PracticeStart } from '../shell/gameSession';
 import { gameRoute, readResultState } from '../shell/play';
 import type { RecordCheck } from '../shell/records';
 import { ROUTES } from '../shell/routes';
+import { usePlayOutcome } from '../services/sync';
 
 const STAR = 'M17 2l4.5 9.4 10.3 1.2-7.6 7 2.1 10.2L17 24.7l-9.3 5.1 2.1-10.2-7.6-7 10.3-1.2z';
 /** Régua da afinação por corda: ±20 ¢. */
@@ -417,14 +418,19 @@ export function recordText(record: RecordCheck, score: number): string {
 export const Results: React.FC = () => {
   const theme = useTheme();
   const state = readResultState(useLocation().state);
+  // Quando o servidor responde, vale o que ele confirmou; sem servidor (ou no reenvio, que não traz o anterior), o local
+  const outcome = usePlayOutcome(state?.clientId);
   if (!state) return <Navigate to={ROUTES.home} replace />;
-  const { song, result, mode, record } = state;
+  const confirmed = outcome && !outcome.duplicate ? outcome : undefined;
+  const { song, result, mode } = state;
+  const record = confirmed ? (confirmed.record ?? undefined) : state.record;
+  const earned = confirmed ? confirmed.badges : result.badges;
   const practiced = 'laps' in result;
   const total = result.judgments.length;
   const starCount = stars(result.accuracy);
   const perMeasure = measureAccuracy(result);
   const hard = hardestStretch(perMeasure);
-  const firstBadge = featuredBadges(result.badges).featured;
+  const firstBadge = featuredBadges(earned).featured;
   const judgmentColor = (j: (typeof JUDGMENTS)[number]) => theme.game.judgments[j];
 
   return (

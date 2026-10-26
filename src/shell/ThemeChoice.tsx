@@ -1,8 +1,9 @@
 import React from 'react';
 import { ThemeProvider } from 'styled-components';
 import { getTheme, THEME_STORAGE_KEY, type Theme } from '../assets/styles/themes';
+import { markProfilePending } from '../services/profilePending';
 
-type ThemeChoice = { theme: Theme; setThemeId: (id: string) => void };
+type ThemeChoice = { theme: Theme; setThemeId: (id: string, origin?: 'device' | 'server') => void };
 
 const ThemeChoiceContext = React.createContext<ThemeChoice | null>(null);
 
@@ -25,7 +26,7 @@ function applyToDocument(theme: Theme) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.colors.surface);
 }
 
-/** Tema pessoal e local: troca na hora, sem salvar nem recarregar. Com conta, vai junto no perfil (ciclo 3). */
+/** Tema pessoal: troca na hora, sem recarregar, e vai junto no perfil (ProfileSync). */
 export const ThemeChoiceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = React.useState<Theme>(() => getTheme(readStoredId()));
 
@@ -34,9 +35,11 @@ export const ThemeChoiceProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const value = React.useMemo<ThemeChoice>(
     () => ({
       theme,
-      setThemeId: (id) => {
+      setThemeId: (id, origin = 'device') => {
         const next = getTheme(id);
         setTheme(next);
+        // Escolha no aparelho sobe para o perfil; a que veio do servidor só é aplicada
+        if (origin === 'device') markProfilePending({ theme_id: next.id });
         try {
           window.localStorage.setItem(THEME_STORAGE_KEY, next.id);
         } catch {

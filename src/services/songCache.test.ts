@@ -46,10 +46,10 @@ describe.each([
     const store = makeStore();
     const cache = createSongCache(store, { now: clock() });
     await cache.remember(loaded('greensleeves', 'easy'), 'easy');
-    const first = await store.get('greensleeves', 'easy');
+    const first = await store.get('', 'greensleeves', 'easy');
     const put = vi.spyOn(store, 'put');
     expect(await cache.remember(loaded('greensleeves', 'easy'), 'easy')).toBe('unchanged');
-    const again = await store.get('greensleeves', 'easy');
+    const again = await store.get('', 'greensleeves', 'easy');
     expect(again?.savedAt).toBe(first?.savedAt);
     expect(again?.openedAt).toBeGreaterThan(first!.openedAt);
     expect(put).toHaveBeenCalledWith({ ...first, openedAt: again?.openedAt });
@@ -101,6 +101,21 @@ describe.each([
     const old = loaded('greensleeves', 'easy');
     await cache.remember({ ...old, song: { ...old.song, formatVersion: 0 } as unknown as typeof old.song }, 'easy');
     expect(await cache.find('greensleeves', 'easy')).toBeUndefined();
-    expect(await store.all()).toEqual([]);
+    expect(await store.all('')).toEqual([]);
+  });
+
+  it('cada usuário vê só as músicas dele; apagar um não mexe no outro', async () => {
+    const store = makeStore();
+    let user = 'ana';
+    const cache = createSongCache(store, { user: () => user });
+    await cache.remember(loaded('greensleeves', 'easy'), 'easy');
+    user = 'bia';
+    expect(await cache.find('greensleeves', 'easy')).toBeUndefined();
+    expect(await cache.list()).toEqual([]);
+    await cache.remember(loaded('canon', 'easy'), 'easy');
+    await store.clear('bia');
+    expect(await cache.list()).toEqual([]);
+    user = 'ana';
+    expect((await cache.list()).map((s) => s.sheet.id)).toEqual(['greensleeves']);
   });
 });
