@@ -102,6 +102,17 @@ describe('toPractice', () => {
     expect(events.filter((e) => e.type === 'done')).toHaveLength(1);
   });
 
+  it('?simular na prática: ligar o laço depois de B não faz o violinista sintético errar', () => {
+    const { session, events, run } = rig({ practice: { loop: null, speed: 1 } });
+    run(session.startAt + 5.3 * 4 * SPB);
+    session.practice!.setLoop({ startMeasure: 2, endMeasure: 3 });
+    run(session.startAt + 30);
+    session.practice!.stop();
+    const judged = events.filter((e) => e.type === 'judgment');
+    expect(judged.length).toBeGreaterThan(30);
+    expect(judged.filter((e) => e.type === 'judgment' && e.judgment === 'miss')).toEqual([]);
+  });
+
   it('a prática de começo não vira de novo', () => {
     const { session } = rig({ practice: { loop: null, speed: 0.7 } });
     expect(session.toPractice(0.5)).toBeNull();

@@ -191,4 +191,22 @@ describe('prática na partida', () => {
     expect(events.at(-1)?.type).toBe('done');
     expect(judgments()).toHaveLength(16);
   });
+
+  it('ligar o laço com a música já depois de B: o compasso em curso termina inteiro e o salto vai para A', async () => {
+    const { session, judgments, run } = await rig({ loop: null, speed: 1 });
+    let switched = false;
+    run(session.startAt + 30, (t) => {
+      if (!switched && t >= session.startAt + 5.3 * 4 * SPB) {
+        switched = true;
+        session.practice!.setLoop(LOOP);
+      }
+    });
+    session.practice!.stop();
+    const js = judgments();
+    expect(js.filter((j) => j.judgment !== 'perfect')).toEqual([]);
+    const lap0 = js.filter((j) => j.lap === 0).map((j) => j.noteIndex);
+    // Escala de 3 voltas, 4 notas por compasso: até o fim do compasso 6 (índice 5), sem buraco
+    expect(lap0).toEqual(Array.from({ length: 24 }, (_, i) => i));
+    expect(js.filter((j) => j.lap === 1).map((j) => j.noteIndex)).toEqual([8, 9, 10, 11, 12, 13, 14, 15]);
+  });
 });
