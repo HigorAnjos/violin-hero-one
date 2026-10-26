@@ -26,7 +26,7 @@ export type Strings3DLoader = (host: HTMLElement, options: Strings3DOptions) => 
 export const loadTrack: TrackLoader = (host, options) => import('../game/render').then((m) => m.createTrack(host, options));
 /** A faixa de partitura, do mesmo pedaço da pista. */
 export const loadSheet: SheetLoader = (host, options) => import('../game/render').then((m) => m.createSheet(host, options));
-/** As Cordas 3D num pedaço só delas: o three não entra no download inicial nem no pedaço da pista. */
+/** As Cordas 3D (2,5D no Pixi) sob demanda: a cena vem num pedaço pequeno e divide o do Pixi com a pista. */
 export const loadStrings3D: Strings3DLoader = (host, options) => import('../game/render/strings3d').then((m) => m.createStrings3D(host, options));
 
 export interface GameDeps {
