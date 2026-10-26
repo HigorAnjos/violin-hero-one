@@ -131,9 +131,16 @@ test('convidado joga, cria conta pelo link mágico e outro aparelho entra e vê 
   await two.goto('/');
   await expect(two).toHaveURL(/\/entrar$/);
   const otherGuest = await storedSession(two);
+  // O convidado deste aparelho também jogou: entrar na conta avisa que isso não vai junto, e Ficar não troca
+  await playPerfectly(otherGuest.access_token);
+  await two.reload();
   await two.getByRole('button', { name: 'Entrar com e-mail' }).click();
   await two.getByLabel('E-mail').fill(email);
   await two.getByRole('button', { name: 'Mandar link' }).click();
+  await expect(two.getByRole('alertdialog')).toContainText('(1 música e');
+  await two.getByRole('button', { name: 'Ficar' }).click();
+  await two.getByRole('button', { name: 'Mandar link' }).click();
+  await two.getByRole('button', { name: 'Entrar mesmo assim' }).click();
   await expect(two.getByRole('status')).toContainText('Mandamos um link');
   await two.goto(await linkFromMail(email, 2));
   await expect(two.getByRole('navigation', { name: 'Menu principal' })).toBeVisible();
