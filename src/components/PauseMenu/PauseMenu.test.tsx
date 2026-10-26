@@ -48,4 +48,39 @@ describe('PauseMenu', () => {
     renderScreen(<PauseMenu {...props({ counting: 3 })} />);
     expect(screen.getByRole('timer')).toHaveTextContent('3');
   });
+
+  it('sem onSpeed nem onMetronome, sem esses controles', () => {
+    renderScreen(<PauseMenu {...props()} />);
+    expect(screen.queryByRole('group', { name: 'Velocidade da música' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: /metrônomo/ })).not.toBeInTheDocument();
+  });
+
+  it('na partida comum, mudar a velocidade avisa que vira prática; Cancelar não muda nada', async () => {
+    const onSpeed = vi.fn();
+    renderScreen(<PauseMenu {...props({ speed: 1, onSpeed, speedNeedsConfirm: true })} />);
+    expect(screen.getByRole('button', { name: '100%' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(screen.getByRole('button', { name: '70%' }));
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('A partir daqui, esta partida conta como prática: sem selos e sem recorde.');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(onSpeed).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: '70%' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    expect(onSpeed).toHaveBeenCalledWith(0.7);
+  });
+
+  it('já em prática, a velocidade muda direto', async () => {
+    const onSpeed = vi.fn();
+    renderScreen(<PauseMenu {...props({ speed: 0.7, onSpeed })} />);
+    await userEvent.click(screen.getByRole('button', { name: '100%' }));
+    expect(onSpeed).toHaveBeenCalledWith(1);
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('volume do metrônomo; 0 é desligado', () => {
+    const onMetronome = vi.fn();
+    renderScreen(<PauseMenu {...props({ metronome: 0, onMetronome })} />);
+    expect(screen.getByText('desligado')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('slider', { name: /Volume do metrônomo/ }), { target: { value: '40' } });
+    expect(onMetronome).toHaveBeenCalledWith(0.4);
+  });
 });

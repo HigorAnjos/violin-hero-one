@@ -46,6 +46,14 @@ describe('explainJudgment', () => {
     expect(e.ruler?.label).toBe('Tempo: 84 milissegundos atrasado');
   });
 
+  it('as réguas usam as folgas do nível do jogador', () => {
+    const late = explainJudgment(judgment({ issue: 'late', offsetMs: 84 }), RE5_ON_A, 0, { windows: { perfect: 100, great: 170, good: 280 } })!;
+    expect(late.ruler?.at).toBeCloseTo(50 + (84 / 280) * 50, 5);
+    expect(late.ruler?.perfect).toEqual([50 - (100 / 280) * 50, (100 / 280) * 100]);
+    const sharp = explainJudgment(judgment({ issue: 'sharp', cents: 30 }), RE5_ON_A, 0, { toleranceCents: 60 })!;
+    expect(sharp.ruler?.at).toBeCloseTo(75, 5);
+  });
+
   it('desafinada: para onde mexer o dedo; corda solta pede afinar', () => {
     const sharp = explainJudgment(judgment({ issue: 'sharp', cents: 38 }), RE5_ON_A)!;
     expect(text(sharp.hint)).toBe('Nota e tempo certos, mas 38 ¢ alta. Recue o 3º dedo um pouco, em direção à voluta.');

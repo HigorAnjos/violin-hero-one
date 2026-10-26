@@ -17,6 +17,8 @@ import { ThemeChoiceProvider } from './shell/ThemeChoice';
 
 const Calibration = lazyGameScreen('Calibration');
 const Gameplay = lazyGameScreen('Gameplay');
+const GameplaySheet = lazyGameScreen('GameplaySheet');
+const Practice = lazyGameScreen('Practice');
 const GameOver = lazyGameScreen('GameOver');
 const BadgeEarned = lazyGameScreen('BadgeEarned');
 const Results = lazyGameScreen('Results');
@@ -44,6 +46,8 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
             <Route path={ROUTES.countdown} element={<Countdown />} />
             <Route path={ROUTES.calibration} element={<Calibration />} />
             <Route path={ROUTES.game} element={<Gameplay />} />
+            <Route path={ROUTES.sheet} element={<GameplaySheet />} />
+            <Route path={ROUTES.practice} element={<Practice />} />
             <Route path={ROUTES.gameOver} element={<GameOver />} />
             <Route path={ROUTES.badge} element={<BadgeEarned />} />
             <Route path={ROUTES.results} element={<Results />} />
