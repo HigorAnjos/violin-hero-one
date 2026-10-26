@@ -77,7 +77,7 @@ for (let lap = 0, time = startAt; lap < (loop ? 200 : 1); lap++) {
   segments.push({ time, beat: startBeat, spb, endTime: loop ? time + length : Infinity, endBeat: loop ? endBeat : Infinity });
   time += length;
 }
-const clock: SheetClock = { segments: () => segments };
+const clock: SheetClock = { segments: () => segments, currentLoop: () => (loop ? { startMeasure: from, endMeasure: to - 1 } : null) };
 const lapLength = (endBeat - startBeat) * spb;
 
 document.documentElement.style.backgroundColor = theme.colors.background;

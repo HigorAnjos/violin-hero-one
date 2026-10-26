@@ -35,6 +35,12 @@ export const PLAN_EVERY_SECONDS = 0.25;
 export const TEMPO_CHANGE_MARGIN_SECONDS = 0.3;
 /** O metrônomo agenda os cliques este tanto à frente; uma troca de andamento ou de laço refaz o que já foi agendado. */
 export const METRONOME_AHEAD_SECONDS = 0.5;
+/**
+ * Quadro que chega este tanto depois do anterior veio de uma travada da thread principal: as leituras do Ouvido de
+ * durante a travada ainda estão na fila (o requestAnimationFrame pode vir antes delas), então o quadro não expira notas.
+ * Bem acima de um quadro a 10 fps.
+ */
+export const STALL_SECONDS = 0.2;
 
 /** O que a pista precisa da partida (src/game/render), sem carregar o Pixi aqui. */
 export interface GameTrack {
@@ -88,6 +94,8 @@ export interface GameSessionOptions {
 export interface PracticeClock {
   /** Desde o começo da partida; copia a lista a cada chamada (guarde e peça de novo quando `until` passar). */
   segments(until: number): TempoSegment[];
+  /** O laço A–B ligado agora (a faixa marca A e B); null fora da prática ou sem laço. */
+  currentLoop?(): LoopRange | null;
 }
 
 export interface PracticeControls extends PracticeClock {
@@ -326,6 +334,10 @@ export function createGameSession(options: GameSessionOptions): GameSession {
   plan(now());
   if (!practice) simulate(base.notes);
 
+  // Hora do último quadro e até onde o motor já expirou notas (frame)
+  let lastFrame = now();
+  let expiredTo = lastFrame;
+
   const stopClicks = clicks(audio.context, countInTimes(song, startAt, audio.context.currentTime + 0.05, song.bpm * speed));
 
   let metronome = options.metronome ?? 0;
@@ -431,7 +443,7 @@ export function createGameSession(options: GameSessionOptions): GameSession {
     get practice() {
       return controls;
     },
-    clock: { segments: (until) => (line ? line.segments(until) : steady.map((s) => ({ ...s }))) },
+    clock: { segments: (until) => (line ? line.segments(until) : steady.map((s) => ({ ...s }))), currentLoop: () => line?.loop ?? null },
     get handoffAt() {
       return handoffAt;
     },
@@ -451,7 +463,11 @@ export function createGameSession(options: GameSessionOptions): GameSession {
         lastSimulated = simulated[nextSimulated].time;
         engine.push(simulated[nextSimulated++].reading);
       }
-      engine.advance(t);
+      // Depois da travada a expiração fica parada e alcança a hora no dobro da velocidade, já com as leituras da fila
+      const step = t - lastFrame;
+      lastFrame = t;
+      if (step <= STALL_SECONDS) expiredTo = Math.min(t, expiredTo + 2 * Math.max(step, 0));
+      engine.advance(expiredTo);
       track?.update(t);
       return t;
     },
