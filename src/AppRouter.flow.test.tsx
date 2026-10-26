@@ -18,7 +18,7 @@ vi.mock('./services/supabase', () => ({
   },
 }));
 
-const FLOW_TIMEOUT_MS = 20000;
+const FLOW_TIMEOUT_MS = 40000;
 
 function renderApp() {
   markOnboarded();
@@ -32,11 +32,13 @@ function renderApp() {
 
 /** Da tela inicial até afinar: Tocar → Arcade → a música → Tocar → carregando → afinar. */
 async function playFromHome(title: string) {
-  await userEvent.click(within(await screen.findByRole('navigation', { name: 'Menu principal' })).getByRole('link', { name: /^Tocar/ }));
-  await userEvent.click(await screen.findByRole('button', { name: /Continuar com Arcade/ }));
-  await userEvent.click(await screen.findByRole('radio', { name: title }));
+  // Folga larga: com a suíte toda em paralelo, a primeira carga da Calibration (import() preguiçoso) passa de 5 s
+  const wait = { timeout: 10000 };
+  await userEvent.click(within(await screen.findByRole('navigation', { name: 'Menu principal' }, wait)).getByRole('link', { name: /^Tocar/ }));
+  await userEvent.click(await screen.findByRole('button', { name: /Continuar com Arcade/ }, wait));
+  await userEvent.click(await screen.findByRole('radio', { name: title }, wait));
   await userEvent.click(within(screen.getByRole('complementary', { name: 'Detalhes da música' })).getByRole('link', { name: /Tocar/ }));
-  return screen.findByRole('heading', { name: 'Afine antes de tocar' }, { timeout: 5000 });
+  return screen.findByRole('heading', { name: 'Afine antes de tocar' }, wait);
 }
 
 describe('modos que a escolha oferece', () => {

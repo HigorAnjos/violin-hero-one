@@ -44,13 +44,13 @@ describe('Loading', () => {
 
   it('com o catálogo: baixa o nível pedido e leva o modo', async () => {
     db.client = fakeCatalogClient().client;
-    renderLoading(loadingUrl({ mode: 'Arcade', songId: 'greensleeves', level: 'hard' }), palcoTheme);
-    expect(await screen.findByTestId('afinar', undefined, { timeout: 5000 })).toHaveTextContent('greensleeves:hard:Arcade');
+    renderLoading(loadingUrl({ mode: 'Partitura', songId: 'greensleeves', level: 'hard' }), palcoTheme);
+    expect(await screen.findByTestId('afinar', undefined, { timeout: 5000 })).toHaveTextContent('greensleeves:hard:Partitura');
   });
 
-  it('modo sem tela na URL segue como Arcade, nunca para uma rota que não existe', async () => {
-    renderLoading(loadingUrl({ mode: 'Partitura', songId: FIXED_SONGS[0].id, level: 'easy' }));
-    expect(await screen.findByTestId('afinar', undefined, { timeout: 5000 })).toHaveTextContent(`${FIXED_SONGS[0].id}:easy:Arcade`);
+  it('Praticar trecho leva o modo Prática até afinar', async () => {
+    renderLoading(loadingUrl({ mode: 'Prática', songId: FIXED_SONGS[0].id, level: 'easy' }));
+    expect(await screen.findByTestId('afinar', undefined, { timeout: 5000 })).toHaveTextContent(`${FIXED_SONGS[0].id}:easy:Prática`);
   });
 
   it('enquanto baixa: título, etapas e progresso', async () => {

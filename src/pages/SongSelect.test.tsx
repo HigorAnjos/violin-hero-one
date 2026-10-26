@@ -55,16 +55,18 @@ describe('SongSelect', () => {
   it('com o catálogo: as 10, nível do jogador, e Tocar leva música, nível e modo', async () => {
     db.client = fakeCatalogClient().client;
     window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify({ level: 'some_songs' }));
-    renderSongs(`${ROUTES.songs}?modo=arcade`, palcoTheme);
+    renderSongs(`${ROUTES.songs}?modo=partitura`, palcoTheme);
     await waitFor(() => expect(screen.getAllByRole('radio')).toHaveLength(CATALOG_ORDER.length));
     expect(screen.queryByText('Sem internet')).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('radio', { name: 'Greensleeves' }));
     expect(screen.getByTestId('location')).toHaveTextContent('musica=greensleeves');
     expect(details().getByRole('button', { name: 'Médio' })).toHaveAttribute('aria-pressed', 'true');
     await userEvent.click(details().getByRole('button', { name: 'Difícil' }));
-    expect(details().getByRole('link', { name: /Tocar/ })).toHaveAttribute('href', '/tocar/carregando?modo=arcade&musica=greensleeves&nivel=dificil');
-    // Prática ainda sem tela (floor ciclo2-telas-jogo)
-    expect(details().getByRole('button', { name: 'Praticar trecho, em breve' })).toBeDisabled();
+    expect(details().getByRole('link', { name: /Tocar/ })).toHaveAttribute('href', '/tocar/carregando?modo=partitura&musica=greensleeves&nivel=dificil');
+    expect(details().getByRole('link', { name: 'Praticar trecho' })).toHaveAttribute(
+      'href',
+      '/tocar/carregando?modo=pratica&musica=greensleeves&nivel=dificil'
+    );
     expect(await details().findByText(/\d+ notas/, undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 
@@ -89,14 +91,14 @@ describe('SongSelect', () => {
   });
 
   it('Voltar devolve à escolha de modo com o modo atual', async () => {
-    renderSongs(`${ROUTES.songs}?modo=arcade`);
-    expect(screen.getByText('Passo 2 de 3 · Modo Arcade')).toBeInTheDocument();
+    renderSongs(`${ROUTES.songs}?modo=partitura`);
+    expect(screen.getByText('Passo 2 de 3 · Modo Partitura')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('link', { name: /Voltar/ }));
-    expect(screen.getByTestId('location')).toHaveTextContent('/tocar?modo=arcade');
+    expect(screen.getByTestId('location')).toHaveTextContent('/tocar?modo=partitura');
   });
 
-  it('modo sem tela pedido pela URL vira Arcade', () => {
-    renderSongs(`${ROUTES.songs}?modo=partitura`);
+  it('modo desconhecido pela URL vira Arcade', () => {
+    renderSongs(`${ROUTES.songs}?modo=guitarra`);
     expect(screen.getByText('Passo 2 de 3 · Modo Arcade')).toBeInTheDocument();
   });
 });

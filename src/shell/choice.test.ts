@@ -13,10 +13,10 @@ describe('escolha na URL', () => {
     expect(loadingUrl({ mode: 'Partitura', songId: 'a', level: 'easy' })).toBe('/tocar/carregando?modo=partitura&musica=a&nivel=facil');
   });
 
-  it('modo sem tela registrada vira Arcade', () => {
-    for (const mode of GAME_MODES.filter((m) => !isReadyMode(m))) {
-      expect(readyMode(mode)).toBe('Arcade');
-      expect(parseSongChoice(search(loadingUrl({ mode, songId: 'a', level: 'easy' })))?.mode).toBe('Arcade');
+  it('os três modos têm tela e passam pela URL; sem modo, Arcade', () => {
+    for (const mode of GAME_MODES) {
+      expect(isReadyMode(mode)).toBe(true);
+      expect(parseSongChoice(search(loadingUrl({ mode, songId: 'a', level: 'easy' })))?.mode).toBe(mode);
     }
     expect(readyMode(null)).toBe('Arcade');
   });

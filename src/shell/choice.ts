@@ -6,11 +6,8 @@ import { ROUTES } from './routes';
 const MODE_SLUG: Record<GameMode, string> = { Arcade: 'arcade', Partitura: 'partitura', Prática: 'pratica' };
 const LEVEL_SLUG: Record<Level, string> = { easy: 'facil', medium: 'medio', hard: 'dificil' };
 
-/**
- * Modos com tela registrada no AppRouter. Partitura e Prática entram quando o floor ciclo2-telas-jogo trouxer as
- * rotas (o teste do AppRouter confere que toda rota daqui existe).
- */
-export const READY_MODES: readonly GameMode[] = ['Arcade'];
+/** Modos com tela registrada no AppRouter: o teste do AppRouter confere que toda rota daqui existe. */
+export const READY_MODES: readonly GameMode[] = ['Arcade', 'Partitura', 'Prática'];
 
 export const isReadyMode = (mode: GameMode) => READY_MODES.includes(mode);
 
