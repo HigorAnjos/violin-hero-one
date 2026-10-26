@@ -15,7 +15,7 @@ import { meterFraction } from '../game/audio';
 import { clampA4, loadA4, useSaveCalibration } from '../services/playerAudio';
 import { micFailure, useEar, type EarAudio } from '../shell/Ear';
 import { loadOrchestraSettings, saveOrchestraSettings } from '../game/synth';
-import { readPlayState } from '../shell/play';
+import { gameRoute, readPlayState } from '../shell/play';
 import { micTroubleUrl, ROUTES } from '../shell/routes';
 
 const Header = styled.header`
@@ -183,7 +183,14 @@ export const Calibration: React.FC = () => {
   const begin = () => {
     saveCalibration.mutate({ a4 });
     navigate(ROUTES.countdown, {
-      state: { song: play.song, mode: play.mode, noFail: play.noFail, latencyMs: latencyToMs(calibration.seconds), next: ROUTES.game },
+      state: {
+        song: play.song,
+        mode: play.mode,
+        noFail: play.noFail,
+        practice: play.practice,
+        latencyMs: latencyToMs(calibration.seconds),
+        next: gameRoute(play.mode),
+      },
     });
   };
 
