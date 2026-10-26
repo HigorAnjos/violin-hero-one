@@ -6,7 +6,7 @@ import { Orchestra } from '../components/Orchestra/Orchestra';
 import { stringName } from '../components/ResultSummary/summary';
 import { formatPercent, formatPoints } from '../components/ScoreCard/ScoreCard';
 import { clampLines, Kicker } from '../components/Screen/Screen';
-import { readResultState, type PlayState } from '../shell/play';
+import { gameRoute, readResultState, type PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 
 const Page = styled.main`
@@ -190,7 +190,7 @@ export const GameOver: React.FC = () => {
   const state = readResultState(useLocation().state);
   if (!state) return <Navigate to={ROUTES.home} replace />;
   const { song, result } = state;
-  const again: PlayState & { next: string } = { song, mode: state.mode, latencyMs: state.latencyMs, next: ROUTES.game };
+  const again: PlayState & { next: string } = { song, mode: state.mode, latencyMs: state.latencyMs, next: gameRoute(state.mode) };
   const reached = Math.max(1, result.reachedMeasure + 1);
 
   return (

@@ -10,6 +10,7 @@ import { songDurationSeconds } from '../game/notation/song';
 import { stageBox } from '../game/render/layout';
 import { prefersReducedMotion } from '../game/render/present';
 import { useEar } from '../shell/Ear';
+import { gameRoute } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { useGame, type GameDeps } from '../shell/useGame';
@@ -146,7 +147,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
           volume={game.volume}
           onVolume={game.changeVolume}
           onContinue={() => void resume()}
-          onRestart={() => navigate(ROUTES.countdown, { replace: true, state: { ...play, next: ROUTES.game } })}
+          onRestart={() => navigate(ROUTES.countdown, { replace: true, state: { ...play, next: gameRoute(play.mode) } })}
           onRetune={() => navigate(ROUTES.calibration, { state: play })}
           onExit={() => navigate(ROUTES.home)}
           counting={game.counting}
