@@ -9,13 +9,14 @@ import { useLatencyCalibration } from '../components/LatencyPanel/useLatencyCali
 import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
 import { SegmentMeter } from '../components/SegmentMeter/SegmentMeter';
 import { noiseView, useSoundMeters } from '../components/SoundMeters/meterLevels';
-import { advanceTuner, initialTuner } from '../components/Tuner/tuner';
+import { advanceTuner, initialTuner, tuningBands } from '../components/Tuner/tuner';
 import { Tuner } from '../components/Tuner/Tuner';
 import { meterFraction } from '../game/audio';
 import { clampA4, loadA4, useSaveCalibration } from '../services/playerAudio';
 import { micFailure, useEar, type EarAudio } from '../shell/Ear';
 import { loadOrchestraSettings, saveOrchestraSettings } from '../game/synth';
 import { gameRoute, readPlayState } from '../shell/play';
+import { playerLevelSettings } from '../shell/playerLevel';
 import { micTroubleUrl, ROUTES } from '../shell/routes';
 
 const Header = styled.header`
@@ -138,6 +139,7 @@ export const Calibration: React.FC = () => {
   const [closed, setClosed] = React.useState(false);
   const [headphones, setHeadphones] = React.useState(() => loadOrchestraSettings().headphones);
   const [tuner, setTuner] = React.useState(initialTuner);
+  const [bands] = React.useState(() => tuningBands(playerLevelSettings().toleranceCents));
   const saveCalibration = useSaveCalibration();
   const meters = useSoundMeters(ear);
   const a4Ref = React.useRef(a4);
@@ -165,7 +167,7 @@ export const Calibration: React.FC = () => {
     return offClosed;
   }, [ear, open]);
 
-  React.useEffect(() => ear.onPitch((r) => setTuner((s) => advanceTuner(s, r, a4Ref.current))), [ear]);
+  React.useEffect(() => ear.onPitch((r) => setTuner((s) => advanceTuner(s, r, a4Ref.current, bands))), [ear, bands]);
 
   const calibration = useLatencyCalibration(audio, a4, (seconds) => saveCalibration.mutate({ a4: a4Ref.current, latencySeconds: seconds }));
 
@@ -232,6 +234,7 @@ export const Calibration: React.FC = () => {
           a4={a4}
           onA4={changeA4}
           state={tuner}
+          bands={bands}
           back={
             <BackIcon as={Link} to={ROUTES.home} aria-label="Voltar" $variant="ghost">
               <span aria-hidden="true">◂</span>

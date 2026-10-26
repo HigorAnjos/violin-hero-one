@@ -15,7 +15,9 @@ import { stageBox } from '../game/render/layout';
 import { prefersReducedMotion } from '../game/render/present';
 import { addEarnedBadges } from '../services/badges';
 import { loadA4 } from '../services/playerAudio';
+import { tuningBands } from '../components/Tuner/tuner';
 import { DEV_TOOLS } from '../shell/devTools';
+import { playerLevelSettings } from '../shell/playerLevel';
 import { micFailure, useEar } from '../shell/Ear';
 import { readPlayState, type ResultState } from '../shell/play';
 import { micTroubleUrl, ROUTES } from '../shell/routes';
@@ -98,6 +100,8 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
   const [stage, setStage] = React.useState(box);
   const total = React.useMemo(() => songDurationSeconds(play.song), [play.song]);
   const [trackOptions] = React.useState(() => ({ theme, reducedMotion: prefersReducedMotion() }));
+  const [level] = React.useState(playerLevelSettings);
+  const bands = React.useMemo(() => tuningBands(level.toleranceCents), [level]);
 
   React.useEffect(() => {
     const onResize = () => setStage(box());
@@ -136,6 +140,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
     onBeat: (beat) => sheet.current?.setBeat(beat),
     onFinish: finish,
     onMicError: micError,
+    level,
     deps,
   });
   const { phase, hud, pause, resume } = game;
@@ -160,7 +165,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
       </Backdrop>
       <TrackHost ref={host} style={{ left: stage.x, top: stage.y, width: stage.width, height: stage.height }} data-testid="pista" aria-hidden="true" />
       <ScoreCard score={hud.score} multiplier={hud.multiplier} combo={hud.combo} accuracy={hud.accuracy} level={hud.level} />
-      <TuningCard target={target} trace={hud.trace} liveCents={hud.liveCents} a4={a4} explanation={hud.explanation} compact={compact} />
+      <TuningCard target={target} trace={hud.trace} liveCents={hud.liveCents} a4={a4} explanation={hud.explanation} compact={compact} bands={bands} />
       {!paused && (
         <PauseButton type="button" aria-label="Pausar" onClick={pause} disabled={phase !== 'playing'}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
