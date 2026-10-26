@@ -11,7 +11,7 @@ import { micFailure } from './Ear';
 import { readPlayState, type GameMode, type ResultState } from './play';
 import { playerLevelSettings } from './playerLevel';
 import { micTroubleUrl, ROUTES } from './routes';
-import type { GamePhase } from './useGame';
+import type { GamePhase, useGame } from './useGame';
 
 /**
  * O que as telas de partida (Arcade, Partitura, Prática) têm em comum: o estado da navegação, o Lá, o nível, o
@@ -52,6 +52,23 @@ export function usePlayScreen(mode: GameMode) {
   );
 
   return { play, a4, performance, level, bands, finish, micError, navigate };
+}
+
+type Game = Pick<ReturnType<typeof useGame>, 'hud' | 'practiced' | 'practice' | 'toPractice' | 'metronome' | 'changeMetronome'>;
+
+/**
+ * Velocidade e metrônomo da pausa. Na partida comum, mudar a velocidade avisa e, confirmado, a partida vira prática no
+ * próximo compasso; já em prática, muda direto (vale no próximo compasso).
+ */
+export function pauseSettings(game: Game) {
+  const inPractice = game.hud.practice !== null || game.practiced;
+  return {
+    speed: game.hud.practice?.speed ?? 1,
+    speedNeedsConfirm: !inPractice,
+    onSpeed: (speed: number) => (inPractice ? game.practice.setSpeed(speed) : void game.toPractice(speed)),
+    metronome: game.metronome,
+    onMetronome: game.changeMetronome,
+  };
 }
 
 /** ESC pausa e, na pausa, continua. */

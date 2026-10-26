@@ -17,7 +17,7 @@ import { useEar } from '../shell/Ear';
 import { gameRoute } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 import { useGame, type GameDeps } from '../shell/useGame';
-import { useEscapePause, usePlayScreen } from '../shell/usePlayScreen';
+import { pauseSettings, useEscapePause, usePlayScreen } from '../shell/usePlayScreen';
 
 const Page = styled.main`
   position: relative;
@@ -290,6 +290,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
           onExit={() => navigate(ROUTES.home)}
           counting={game.counting}
           micClosed={game.micClosed}
+          {...pauseSettings(game)}
         />
       )}
       {phase === 'broken' && <Alert role="alert">Não deu para começar o áudio. Volte e tente de novo.</Alert>}
