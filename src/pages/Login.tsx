@@ -29,6 +29,17 @@ const Art = styled.div`
   }
 `;
 
+/** A cena começa abaixo do título: a voluta não passa por cima do subtítulo. */
+const Scene = styled(ViolinArt)`
+  top: 8.5rem;
+  height: calc(100% - 8.5rem);
+
+  @media (max-height: 500px) {
+    top: 5rem;
+    height: calc(100% - 5rem);
+  }
+`;
+
 const Brand = styled.div`
   position: absolute;
   left: 3.5rem;
@@ -265,7 +276,7 @@ export const Login: React.FC = () => {
   return (
     <Page>
       <Art>
-        <ViolinArt />
+        <Scene />
         <Brand>
           <h1>
             Violin <span>Hero</span>
