@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { THEMES, SPECIAL_THEMES, getTheme, DEFAULT_THEME } from './index';
 import { base } from './base';
 import { CADERNO } from './caderno';
+import { OMARCHY_PALETTES } from './omarchy';
 import { contrast, deltaE, over } from './color';
 import type { StringName } from './types';
 
@@ -23,15 +24,24 @@ describe('catálogo de temas', () => {
   it('Caderno é o padrão e vem primeiro; ids únicos', () => {
     expect(DEFAULT_THEME.id).toBe('caderno');
     expect(THEMES[0]).toBe(DEFAULT_THEME);
-    expect(THEMES.map((t) => t.id)).toEqual(['caderno', 'palco']);
+    expect(THEMES.slice(0, 2).map((t) => t.id)).toEqual(['caderno', 'palco']);
     expect(new Set([...THEMES, ...SPECIAL_THEMES].map((t) => t.id)).size).toBe(THEMES.length + SPECIAL_THEMES.length);
+  });
+
+  it('paletas do Omarchy entram no catálogo, claras antes das escuras', () => {
+    expect(THEMES.length).toBe(2 + OMARCHY_PALETTES.length);
+    expect(OMARCHY_PALETTES.length).toBeGreaterThanOrEqual(10);
+    const modes = THEMES.slice(2).map((t) => t.mode);
+    expect(modes).toEqual([...modes].sort((a, b) => (a === b ? 0 : a === 'light' ? -1 : 1)));
   });
 
   it('id inválido ou vazio cai no Caderno', () => {
     expect(getTheme('nao-existe')).toBe(DEFAULT_THEME);
     expect(getTheme(null)).toBe(DEFAULT_THEME);
     expect(getTheme('')).toBe(DEFAULT_THEME);
+    expect(getTheme('__proto__')).toBe(DEFAULT_THEME);
     expect(getTheme('palco').name).toBe('Palco');
+    expect(getTheme('8-bits').special).toBe('pixel');
   });
 
   it('cores das cordas no Caderno são as do produto, sem ajuste', () => {
@@ -47,18 +57,38 @@ describe('catálogo de temas', () => {
     }
     expect(THEMES.every((t) => !t.special)).toBe(true);
   });
+
+  it('8-Bits: fonte pixel, cantos retos e notas quadradas; o resto do catálogo não', () => {
+    const pixel = getTheme('8-bits');
+    expect(pixel.fonts.display).toMatch(/^'Pixelify Sans'/);
+    expect(pixel.fonts.ui).toMatch(/^'Pixelify Sans'/);
+    expect(pixel.fonts.music).toBe(base.fonts.music);
+    expect(Object.values(pixel.borderRadius).every((r) => r === '0')).toBe(true);
+    expect(pixel.game.noteShape).toBe('square');
+    expect(THEMES.every((t) => t.game.noteShape === 'round')).toBe(true);
+  });
+
+  it('Neon: brilho nas notas e na pista; o resto do catálogo sem brilho extra', () => {
+    const neon = getTheme('neon');
+    expect(neon.special).toBe('neon');
+    expect(neon.game.glow).toBeGreaterThan(0);
+    expect(neon.game.noteShape).toBe('round');
+    expect(THEMES.every((t) => t.game.glow === 0)).toBe(true);
+  });
 });
 
-describe.each(THEMES.map((t) => [t.id, t] as const))('tema %s', (_id, theme) => {
-  const c = theme.colors;
-  const g = theme.game;
-
-  it('estrutura idêntica: só a cor muda', () => {
+describe.each(THEMES.map((t) => [t.id, t] as const))('estrutura do tema %s', (_id, theme) => {
+  it('idêntica: só a cor muda', () => {
     expect(theme.fonts).toEqual(base.fonts);
     expect(theme.fonts.music).toMatch(/^'Noto Music'/);
     expect(theme.spacing).toEqual(base.spacing);
     expect(theme.borderRadius).toEqual(base.borderRadius);
   });
+});
+
+describe.each([...THEMES, ...SPECIAL_THEMES].map((t) => [t.id, t] as const))('tema %s', (_id, theme) => {
+  const c = theme.colors;
+  const g = theme.game;
 
   it('cores base em #rrggbb (há código que concatena transparência no fim)', () => {
     const solid = [c.background, c.surface, c.surfaceHover, c.surfaceBorder, c.text, c.textMuted, c.primary.main, g.track, g.hitLine];
