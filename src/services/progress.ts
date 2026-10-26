@@ -53,15 +53,18 @@ export interface PlayInput {
 /** Duas casas, dentro dos ±100 ¢ que o servidor aceita (a média do som sustentado pode escapar um pouco). */
 const cents = (value: number | null) => (value === null ? null : Math.round(Math.max(-100, Math.min(100, value)) * 100) / 100);
 
-/** A partida no formato do servidor. Na prática, a velocidade é o menor fator das voltas. */
+/**
+ * A partida no formato do servidor. A partida comum que virou prática (resultado com voltas) vai como prática: sem
+ * recorde, selo nem ranking. Na prática, a velocidade é o menor fator das voltas.
+ */
 export function playPayload({ song, mode, result, noFail = false, looped = false, durationMs, clientId, playedAt }: PlayInput): PlayPayload {
   const factors = 'laps' in result ? result.laps.flatMap((lap) => lap.factors) : [];
-  const practice = mode === 'practice';
+  const practice = mode === 'practice' || 'laps' in result;
   return {
     client_id: clientId ?? crypto.randomUUID(),
     song_id: song.id,
     level: song.level,
-    mode,
+    mode: practice ? 'practice' : mode,
     finished: result.status === 'finished',
     no_fail: noFail,
     looped: practice && (looped || ('laps' in result && result.laps.length > 1)),
@@ -201,8 +204,13 @@ export async function getMyStreak(client: ProgressClient | null, session: Sessio
   return data ? toStreak(data as { current_days: number; best_days: number; last_day: string }) : null;
 }
 
+/** O dia de hoje (aaaa-mm-dd) no fuso que o servidor usa para a sequência, não no do aparelho. */
+export function todayInBrazil(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(now);
+}
+
 /** Dias seguidos que valem hoje: a sequência cai para 0 se o último dia ficou antes de ontem. */
-export function currentStreak(streak: StreakInfo | null, today: string): number {
+export function currentStreak(streak: StreakInfo | null, today: string = todayInBrazil()): number {
   if (!streak) return 0;
   const gap = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${streak.lastDay}T00:00:00Z`)) / 86_400_000;
   return gap <= 1 ? streak.currentDays : 0;

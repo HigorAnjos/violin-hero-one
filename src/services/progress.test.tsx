@@ -13,6 +13,7 @@ import {
   PLAY_MODE_OF,
   ProgressError,
   submitPlay,
+  todayInBrazil,
   useMyBadges,
   useSubmitPlay,
   type ProgressClient,
@@ -102,7 +103,14 @@ describe('playPayload', () => {
     const practice: PracticeResult = { ...RESULT, laps: [{ ...lap, factors: [0.7, 0.8] }, { ...lap, lap: 1, factors: [0.6] }], bestLap: 0 };
     expect(playPayload({ song: SONG, mode: 'practice', result: practice, durationMs: 1 })).toMatchObject({ looped: true, speed: 0.6 });
     // Fora da prática o servidor recusa laço e velocidade: nunca saem
-    expect(playPayload({ song: SONG, mode: 'arcade', result: practice, durationMs: 1, looped: true })).toMatchObject({ looped: false, speed: 1 });
+    expect(playPayload({ song: SONG, mode: 'arcade', result: RESULT, durationMs: 1, looped: true })).toMatchObject({ looped: false, speed: 1 });
+  });
+
+  it('partida comum que virou prática a 0,7 vai como prática, sem laço, na menor velocidade', () => {
+    const lap = { lap: 0, from: 2, to: 4, notes: 3, counts: RESULT.counts, accuracy: 0, score: 0, complete: true, factors: [0.7] };
+    const converted: PracticeResult = { ...RESULT, laps: [lap], bestLap: 0 };
+    expect(playPayload({ song: SONG, mode: 'arcade', result: converted, durationMs: 1 })).toMatchObject({ mode: 'practice', looped: false, speed: 0.7 });
+    expect(playPayload({ song: SONG, mode: 'strings3d', result: converted, durationMs: 1 }).mode).toBe('practice');
   });
 
   it('afinação fora de ±100 ¢ chega presa no limite que o servidor aceita', () => {
@@ -183,6 +191,11 @@ describe('leituras do próprio progresso', () => {
     expect(currentStreak(streak, '2026-10-26')).toBe(4);
     expect(currentStreak(streak, '2026-10-27')).toBe(0);
     expect(currentStreak(null, '2026-10-26')).toBe(0);
+  });
+
+  it('hoje é o dia de Brasília: 23h30 de domingo lá já é segunda em UTC', () => {
+    expect(todayInBrazil(new Date('2026-10-27T02:30:00Z'))).toBe('2026-10-26');
+    expect(todayInBrazil(new Date('2026-10-27T03:00:00Z'))).toBe('2026-10-27');
   });
 });
 
