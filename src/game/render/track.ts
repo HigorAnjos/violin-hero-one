@@ -31,6 +31,8 @@ export interface Track {
   onJudgment(event: JudgmentEvent): void;
   /** Troca as notas (a prática: volta nova, troca de andamento); o índice de onJudgment é o desta lista. */
   setNotes(notes: readonly EngineNote[]): void;
+  /** Modo daltônico e nome das notas, mudados na Pausa: valem já no quadro seguinte. */
+  setLook(options: LookOptions): void;
   resize(width: number, height: number): void;
   destroy(): void;
 }
@@ -102,6 +104,11 @@ export async function createTrack(host: HTMLCanvasElement | HTMLElement, options
     },
     setNotes(notes) {
       if (!destroyed) scene.setNotes(notes);
+    },
+    setLook(look) {
+      if (destroyed) return;
+      scene.setLook(look);
+      app.render();
     },
     resize(width, height) {
       if (destroyed) return;

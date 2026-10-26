@@ -129,9 +129,10 @@ export class Strings3DScene extends Container {
   private lookBack = MISS_FADE_SECONDS;
   private lastNow = 0;
 
-  private readonly atlas: Texture;
+  private atlas: Texture;
   /** Caixa de cada corda × dedo: pedaços do mesmo atlas (um lote só para todas). */
-  private readonly boxTextures: Texture[][];
+  private boxTextures: Texture[][];
+  private readonly displayFont: string;
   private readonly letterTextures: Texture[];
   private readonly numberTextures: Texture[];
   private readonly casaTexture: Texture;
@@ -163,7 +164,7 @@ export class Strings3DScene extends Container {
   private held = 0;
   private highlighted = -1;
 
-  private readonly look: NoteLook;
+  private look: NoteLook;
   private readonly vibrating = [false, false, false, false];
   private readonly holding = [false, false, false, false];
   private readonly laneHitAt = [-Infinity, -Infinity, -Infinity, -Infinity];
@@ -188,14 +189,9 @@ export class Strings3DScene extends Container {
     this.l = strings3dLayout(1, 1, this.columns, this.lead);
     const { display, ui } = theme.fonts;
     this.uiFont = ui;
+    this.displayFont = display;
 
-    this.atlas = this.bakeAtlas(display);
-    this.boxTextures = p.strings.map((_, s) =>
-      Array.from(
-        { length: FINGERS },
-        (_, finger) => new Texture({ source: this.atlas.source, frame: new Rectangle(finger * CELL_W, s * CELL_H, CELL_W, CELL_H) }),
-      ),
-    );
+    [this.atlas, this.boxTextures] = this.bakeBoxes();
     this.letterTextures = p.strings.map((s) => this.bakeText(s.letter, display));
     this.numberTextures = Array.from({ length: this.columns }, (_, i) => this.bakeText(String(i), ui));
     this.casaTexture = this.bakeText('CASA', ui);
@@ -585,6 +581,17 @@ export class Strings3DScene extends Container {
     return [this.atlas, ...this.letterTextures, ...this.numberTextures, this.casaTexture, this.frameTexture, this.dotTexture, ...this.barTextures.values()];
   }
 
+  /** Liga ou desliga o modo daltônico (a Pausa muda na hora): reassa só o atlas das caixas. */
+  setPatterns(patterns: boolean): void {
+    if (patterns === this.look.patterns) return;
+    this.look = { ...this.look, patterns };
+    const [atlas, frames] = [this.atlas, this.boxTextures.flat()];
+    [this.atlas, this.boxTextures] = this.bakeBoxes();
+    this.update(this.lastNow);
+    for (const t of frames) t.destroy(false);
+    atlas.destroy(true);
+  }
+
   override destroy(): void {
     const baked = this.bakedTextures();
     const frames = this.boxTextures.flat();
@@ -700,6 +707,15 @@ export class Strings3DScene extends Container {
 
   private bakeText(text: string, fontFamily: string): Texture {
     return this.bake(new Text({ text, style: { fill: 0xffffff, fontFamily, fontWeight: '800', fontSize: LABEL_PX } }));
+  }
+
+  /** O atlas e os pedaços dele, um por corda × dedo. */
+  private bakeBoxes(): [Texture, Texture[][]] {
+    const atlas = this.bakeAtlas(this.displayFont);
+    const boxes = this.palette.strings.map((_, s) =>
+      Array.from({ length: FINGERS }, (_, finger) => new Texture({ source: atlas.source, frame: new Rectangle(finger * CELL_W, s * CELL_H, CELL_W, CELL_H) })),
+    );
+    return [atlas, boxes];
   }
 
   /**

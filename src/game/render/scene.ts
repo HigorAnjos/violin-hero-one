@@ -63,7 +63,7 @@ interface Chip {
  */
 export class TrackScene extends Container {
   private readonly palette: TrackPalette;
-  private readonly look: NoteLook;
+  private look: NoteLook;
   private readonly reducedMotion: boolean;
   private readonly uiFont: string;
   private notes: readonly EngineNote[] = [];
@@ -246,11 +246,29 @@ export class TrackScene extends Container {
       this.nameLayer.addChild(name);
       this.chips.push({ tail, gem, letter, name });
     }
-    if (this.look.noteNames) {
-      for (const n of notes) {
-        const label = noteLabel(n.midi);
-        if (!this.nameTextures.has(label)) this.nameTextures.set(label, this.bakeText(label, NAME_PX, this.palette.hitLine, this.uiFont));
-      }
+    this.bakeNames();
+  }
+
+  /**
+   * Liga ou desliga o modo daltônico e o nome das notas (a Pausa muda na hora): reassa só as 4 notas e os nomes que
+   * faltam. A forma e o brilho continuam os do tema.
+   */
+  setLook(options: LookOptions): void {
+    const patterns = options.patterns ?? false;
+    const noteNames = options.noteNames ?? false;
+    if (patterns === this.look.patterns && noteNames === this.look.noteNames) return;
+    this.look = { ...this.look, patterns, noteNames };
+    const old = this.gemTextures.splice(0, 4, ...this.palette.lanes.map((lane, i) => this.bakeGem(lane.main, lane.onNote, STRING_PATTERNS[i])));
+    this.bakeNames();
+    this.update(this.lastNow);
+    for (const t of old) t.destroy(true);
+  }
+
+  private bakeNames(): void {
+    if (!this.look.noteNames) return;
+    for (const n of this.notes) {
+      const label = noteLabel(n.midi);
+      if (!this.nameTextures.has(label)) this.nameTextures.set(label, this.bakeText(label, NAME_PX, this.palette.hitLine, this.uiFont));
     }
   }
 

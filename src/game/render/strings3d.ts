@@ -37,6 +37,8 @@ export interface Strings3D {
   onJudgment(event: JudgmentEvent): void;
   /** Troca as notas (a prática: volta nova, troca de andamento), como na pista. */
   setNotes(notes: readonly EngineNote[]): void;
+  /** Modo daltônico, mudado na Pausa (o nome das notas é só da pista). */
+  setLook(options: { patterns?: boolean }): void;
   resize(width: number, height: number): void;
   destroy(): void;
 }
@@ -109,6 +111,11 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
     },
     setNotes(notes) {
       if (!destroyed) scene.setNotes(notes);
+    },
+    setLook({ patterns }) {
+      if (destroyed) return;
+      scene.setPatterns(patterns ?? false);
+      app.render();
     },
     resize(width, height) {
       if (destroyed) return;

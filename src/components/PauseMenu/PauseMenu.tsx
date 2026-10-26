@@ -5,7 +5,40 @@ import { volumeLabel } from '../../game/synth';
 import { Button } from '../Button/Button';
 import { Kicker, SongKicker } from '../Screen/Screen';
 import { clock } from '../../game/render/staff';
+import type { PlayPrefs } from '../../shell/playPrefs';
 import { SpeedPicker, speedLabel } from '../SpeedPicker/SpeedPicker';
+
+/** Caixa de marcar do design (.vh-chk): 18 px de caixa, a linha inteira com 44 px de toque. */
+const Check = styled.label`
+  && {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 2.75rem;
+    cursor: pointer;
+  }
+
+  && input {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    accent-color: ${({ theme }) => theme.colors.info.main};
+  }
+
+  @media (max-height: 500px) {
+    && {
+      font-size: 0.75rem;
+      line-height: 1rem;
+    }
+  }
+`;
+
+const CHECKS: { key: keyof PlayPrefs; label: string }[] = [
+  { key: 'tuningLine', label: 'Mostrar linha de afinação' },
+  { key: 'noteNames', label: 'Mostrar nome das notas' },
+  { key: 'colorblind', label: 'Padrões para daltonismo' },
+];
 
 const Veil = styled.div`
   position: absolute;
@@ -243,6 +276,9 @@ export interface PauseMenuProps {
   /** Volume do metrônomo, 0 a 1; 0 = desligado. */
   metronome?: number;
   onMetronome?: (volume: number) => void;
+  /** Linha de afinação, nome das notas e modo daltônico; sem onPrefs, sem as caixas. */
+  prefs?: PlayPrefs;
+  onPrefs?: (change: Partial<PlayPrefs>) => void;
 }
 
 export const PRACTICE_WARNING = 'A partir daqui, esta partida conta como prática: sem selos e sem recorde.';
@@ -265,6 +301,8 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
   speedNeedsConfirm = false,
   metronome = 0,
   onMetronome,
+  prefs,
+  onPrefs,
 }) => {
   const first = React.useRef<HTMLButtonElement>(null);
   const [pendingSpeed, setPendingSpeed] = React.useState<number | null>(null);
@@ -362,6 +400,14 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
             <input type="range" min={0} max={100} step={5} value={Math.round(metronome * 100)} onChange={(e) => onMetronome(Number(e.target.value) / 100)} />
           </label>
         )}
+        {prefs &&
+          onPrefs &&
+          CHECKS.map(({ key, label }) => (
+            <Check key={key}>
+              <input type="checkbox" checked={prefs[key]} onChange={(e) => onPrefs({ [key]: e.target.checked })} />
+              {label}
+            </Check>
+          ))}
         <p>
           <kbd>ESC</kbd>
           <span>continuar</span>

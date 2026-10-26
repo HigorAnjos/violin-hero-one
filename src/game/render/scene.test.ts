@@ -194,6 +194,22 @@ describe('TrackScene: especiais e acessibilidade', () => {
     expect(off.visibleNames()).toBe(0);
   });
 
+  it('setLook (Pausa): reassa só as 4 notas e os nomes, e libera as notas antigas', () => {
+    const { baker, generateTexture } = fakeBaker();
+    const s = new TrackScene(baker, { theme: cadernoTheme, notes, reducedMotion: false });
+    s.layout(640, 550);
+    const before = s.bakedTextures();
+    const calls = generateTexture.mock.calls.length;
+    s.setLook({ patterns: true, noteNames: true });
+    const names = new Set(notes.map((n) => noteLabel(n.midi))).size;
+    expect(generateTexture.mock.calls.length).toBe(calls + 4 + names);
+    expect(before.slice(0, 4).every((t) => t.destroyed)).toBe(true);
+    s.update(START + 0.5);
+    expect(s.visibleNames()).toBe(s.visibleNotes());
+    s.setLook({ patterns: true, noteNames: true });
+    expect(generateTexture.mock.calls.length).toBe(calls + 4 + names);
+  });
+
   it('nomes assados uma vez por nome e liberados no destroy', () => {
     const { baker } = fakeBaker();
     const s = new TrackScene(baker, { theme: cadernoTheme, notes, reducedMotion: false, noteNames: true });
