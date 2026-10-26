@@ -35,12 +35,12 @@ const PUBLIC_ENV = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SCHEMA'] as c
 /**
  * Instalável e jogável sem internet depois da primeira visita. O service worker (Workbox, gerado no build) guarda
  * o app inteiro: casca, pedaços sob demanda (pista, partitura, orquestra, telas de jogo), os worklets do microfone
- * e as fontes. Versão nova espera o jogador sair da partida (shell/serviceWorker.ts); fora do build não há SW.
+ * e as fontes. Versão nova espera o jogador sair da partida (shell/appUpdate.ts e shell/UpdatePrompt.tsx); fora do build não há SW.
  */
 function offlineApp() {
   return VitePWA({
     registerType: 'prompt',
-    // O registro é do main.tsx (shell/serviceWorker.ts), que decide quando trocar de versão
+    // O registro é do main.tsx (createAppUpdate em shell/appUpdate.ts); o UpdatePrompt decide quando trocar de versão
     injectRegister: false,
     includeAssets: ['icons/apple-touch-icon.png'],
     manifest: {
