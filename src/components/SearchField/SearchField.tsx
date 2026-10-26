@@ -5,7 +5,6 @@ const Field = styled.label`
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  min-height: 2.75rem;
   min-width: 0;
   padding: 0 0.875rem;
   background-color: ${({ theme }) => theme.colors.surfaceHover};
@@ -20,6 +19,7 @@ const Field = styled.label`
 
   input {
     flex: 1;
+    min-height: 2.75rem;
     min-width: 0;
     background: transparent;
     border: 0;
