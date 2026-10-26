@@ -2,8 +2,9 @@ import { Texture, TextureSource } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import { cadernoTheme } from '../../assets/styles/themes';
 import { palcoTheme } from '../../assets/styles/themes/palco';
-import { ODE } from '../engine/testing';
+import { n, ODE } from '../engine/testing';
 import type { Issue, Judgment } from '../engine/types';
+import type { Song } from '../notation/song';
 import type { TextureBaker, JudgmentEvent } from './scene';
 import { PASSED_ALPHA, sheetLayout, steadyClock, type BeatSegment, type SheetClock } from './sheetLayout';
 import { SheetScene } from './sheetScene';
@@ -37,14 +38,29 @@ function judgment(noteIndex: number, judgment: Judgment, issue: Issue | null = n
   };
 }
 
-function scene(clock: SheetClock = steadyClock(START, 100), theme = cadernoTheme) {
+/**
+ * Três compassos com pausa e ligaduras: semínima de pausa no tempo 1, Si ligado por cima da barra (tempos 2 → 4), Ré
+ * ligado dentro do compasso (5 → 6), Mi ligado por cima da barra (7 → 8) e mínima de pausa no tempo 10.
+ */
+const TIED: Song = {
+  ...ODE,
+  id: 'ligaduras',
+  measures: [
+    { beats: 4, notes: [n(0, 1, 69, 2, 0), n(2, 2, 71, 2, 1)] },
+    { beats: 4, notes: [n(0, 1, 71, 2, 1, true), n(1, 1, 74, 2, 3), n(2, 1, 74, 2, 3, true), n(3, 1, 76, 3, 0)] },
+    { beats: 4, notes: [n(0, 1, 76, 3, 0, true), n(1, 1, 74, 2, 3)] },
+  ],
+};
+
+function scene(clock: SheetClock = steadyClock(START, 100), theme = cadernoTheme, song: Song = ODE) {
   const { baker, generateTexture } = fakeBaker();
-  const s = new SheetScene(baker, { theme, song: ODE, clock, reducedMotion: false });
+  const s = new SheetScene(baker, { theme, song, clock, reducedMotion: false });
   s.layout(W, H);
   return { s, generateTexture };
 }
 
 const needleX = sheetLayout(W, H, 2).needleX;
+const pxPerBeat = sheetLayout(W, H, 2).pxPerBeat;
 
 describe('SheetScene', () => {
   it.each([
@@ -150,6 +166,86 @@ describe('SheetScene', () => {
     segments.mockClear();
     for (let f = 0; f < 60; f++) s.update(START + f / 60);
     expect(segments.mock.calls.length).toBeLessThanOrEqual(5);
+  });
+
+  it('pausa no vão, no seu tempo, passando pela agulha como a nota', () => {
+    const { s } = scene(steadyClock(START, 100), cadernoTheme, TIED);
+    s.update(START + SPB);
+    const rest = s.restView().find((r) => r.rest === 0);
+    expect(rest?.x).toBeCloseTo(needleX);
+    s.update(START + 2 * SPB);
+    expect(s.restView().find((r) => r.rest === 0)?.x).toBeCloseTo(needleX - pxPerBeat);
+  });
+
+  it('arco entre as cabeças ligadas, dentro do compasso e atravessando a barra', () => {
+    const { s } = scene(steadyClock(START, 100), cadernoTheme, TIED);
+    s.update(START + 4 * SPB);
+    const ties = s.tieView().sort((a, b) => a.tie - b.tie);
+    expect(ties.map((t) => t.tie)).toEqual([0, 1, 2]);
+    // ligadura 0: do Si do tempo 2 (duas cabeças atrás da agulha) ao do tempo 4 (na agulha), por cima da barra
+    expect(ties[0].from).toBeGreaterThan(needleX - 2 * pxPerBeat);
+    expect(ties[0].to).toBeLessThan(needleX);
+    expect(ties[1].from).toBeGreaterThan(needleX + pxPerBeat);
+    expect(ties[1].to).toBeLessThan(needleX + 2 * pxPerBeat);
+  });
+
+  it('laço A–B: a última nota de B não se liga à primeira de A, nem A ao que vem antes dele', () => {
+    // laço no compasso 1 (tempos 4 a 8): salto no tempo 8
+    const jump = START + 8 * SPB;
+    const segments: BeatSegment[] = [{ time: START, beat: 0, spb: SPB, endTime: jump, endBeat: 8 }];
+    for (let lap = 0; lap < 4; lap++) {
+      const time = jump + lap * 4 * SPB;
+      segments.push({ time, beat: 4, spb: SPB, endTime: time + 4 * SPB, endBeat: 8 });
+    }
+    const looped = scene({ segments: () => segments }, cadernoTheme, TIED).s;
+    const straight = scene(steadyClock(START, 100), cadernoTheme, TIED).s;
+    for (const now of [START + 7 * SPB, jump + 0.1, jump + 3.5 * SPB]) {
+      looped.update(now);
+      expect(looped.tieView().map((t) => t.tie)).not.toContain(2);
+      expect(looped.tieView().map((t) => t.tie)).not.toContain(0);
+    }
+    // sem laço, a mesma ligadura 2 (do tempo 7 ao 8) aparece
+    straight.update(START + 7 * SPB);
+    expect(straight.tieView().map((t) => t.tie)).toContain(2);
+    // no laço, a ligadura de dentro de A aparece em cada cópia: a volta que passou e as duas que vêm na faixa
+    looped.update(START + 7 * SPB);
+    expect(looped.tieView().filter((t) => t.tie === 1)).toHaveLength(3);
+  });
+
+  it.each([
+    ['partida comum', () => steadyClock(START, 100)],
+    [
+      'laço com troca de andamento',
+      (): SheetClock => {
+        const jump = START + 8 * SPB;
+        const segments: BeatSegment[] = [
+          { time: START, beat: 0, spb: SPB, endTime: jump, endBeat: 8 },
+          { time: jump, beat: 4, spb: SPB * 1.5, endTime: jump + 6 * SPB, endBeat: 8 },
+          { time: jump + 6 * SPB, beat: 4, spb: SPB * 1.5, endTime: Infinity, endBeat: Infinity },
+        ];
+        return { segments: () => segments };
+      },
+    ],
+  ])('%s: a 60 e a 120 fps, no mesmo instante a faixa está na mesma posição', (_name, clock) => {
+    const frames = (fps: number) => {
+      const { s } = scene(clock(), cadernoTheme, TIED);
+      const seen: string[] = [];
+      // 8 s de música, da entrada à segunda volta; foto a cada 1/60 s
+      for (let f = 0; f <= 8 * fps; f++) {
+        s.update(START - 1 + f / fps);
+        if (f % (fps / 60) !== 0) continue;
+        const notes = s.visibleNotes().flatMap((i) => s.noteView(i).map((v) => `${i}:${v.x.toFixed(3)}:${v.alpha.toFixed(3)}`));
+        const rests = s.restView().map((r) => `${r.rest}:${r.x.toFixed(3)}`);
+        const ties = s.tieView().map((t) => `${t.tie}:${t.from.toFixed(3)}:${t.to.toFixed(3)}`);
+        seen.push([...new Set(notes)].sort().join(' ') + ' | ' + rests.sort().join(' ') + ' | ' + ties.sort().join(' '));
+      }
+      return seen;
+    };
+    const at60 = frames(60);
+    const at120 = frames(120);
+    expect(at60).toHaveLength(8 * 60 + 1);
+    expect(at60.filter((f) => f.includes('|  |'))).not.toHaveLength(at60.length);
+    expect(at120).toEqual(at60);
   });
 
   it('ignora julgamento de nota que não existe', () => {

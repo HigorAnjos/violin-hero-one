@@ -16,16 +16,20 @@ import {
   clefFade,
   markApplies,
   noteAlpha,
+  MIDDLE_STEP,
   sheetLayout,
   stepY,
+  tieArc,
+  tieShows,
   TOP_STEP,
   windowTime,
   type BeatSegment,
   type BeatWindow,
   type SheetClock,
   type SheetLayout,
+  type TieArc,
 } from './sheetLayout';
-import { keySignature, ledgerSteps, staffLayout, type Accidental, type StaffNote } from './staff';
+import { keySignature, ledgerSteps, staffLayout, type Accidental, type RestValue, type StaffNote, type StaffRest, type StaffTie } from './staff';
 
 export interface SheetSceneOptions {
   theme: Theme;
@@ -48,6 +52,23 @@ const STAFF_ALPHA = 0.7;
 /** Ajuste ótico dos glifos da Noto Music: centro da caixa de texto acima do ponto da pauta, em espaços. */
 const CLEF_LIFT = -0.25;
 const ACCIDENTAL_LIFT = 0.05;
+/**
+ * Pausas da Noto Music, do mesmo tamanho dos acidentes: glifo e quanto o centro da caixa de texto fica abaixo da linha
+ * do meio, em espaços, para a semibreve pender da 4ª linha, a mínima sentar na 3ª e as outras centrarem na pauta.
+ */
+const REST_SIZE = REF * 1.78;
+const REST_GLYPHS: Record<RestValue, { glyph: string; drop: number }> = {
+  4: { glyph: '𝄻', drop: 0 },
+  2: { glyph: '𝄼', drop: 0 },
+  1: { glyph: '𝄽', drop: 0 },
+  0.5: { glyph: '𝄾', drop: 0 },
+  0.25: { glyph: '𝄿', drop: 0 },
+};
+const REST_VALUES = [4, 2, 1, 0.5, 0.25] as const;
+/** Ponto da pausa pontuada: à direita do centro do glifo, em espaços. */
+const REST_DOT_X = 1;
+/** Espessura do arco da ligadura no meio, em espaços (nas pontas ele afina até quase nada). */
+const TIE_THICKNESS = 0.16;
 
 const ISSUE_GLYPH: Record<Issue, string> = {
   early: '◂',
@@ -82,6 +103,20 @@ interface BarSlot {
   number: Sprite;
 }
 
+interface RestSlot {
+  root: Container;
+  glyph: Sprite;
+  dot: Sprite;
+  /** Pausa que este slot mostra, ou −1 depois de um layout. */
+  rest: number;
+}
+
+interface TieSlot {
+  /** Redesenhado só quando muda a ligadura do slot: a forma depende do layout, não do quadro. */
+  arc: Graphics;
+  tie: number;
+}
+
 const HIT = 1;
 const MISSED = 2;
 
@@ -95,6 +130,11 @@ export class SheetScene extends Container {
   private readonly clock: SheetClock;
   private readonly notes: readonly StaffNote[];
   private readonly at: Float64Array;
+  private readonly rests: readonly StaffRest[];
+  private readonly restAt: Float64Array;
+  private readonly ties: readonly StaffTie[];
+  private readonly tieTo: Float64Array;
+  private readonly arc: TieArc = { x: 0, y: 0, width: 0, height: 0 };
   private readonly bars: readonly number[];
   private readonly barOffsets: Float64Array;
   private readonly fifths: number;
@@ -112,6 +152,8 @@ export class SheetScene extends Container {
   private readonly holdBg = new Sprite(Texture.WHITE);
   private readonly holdFill = new Sprite(Texture.WHITE);
   private readonly barLayer = new Container();
+  private readonly restLayer = new Container();
+  private readonly tieLayer = new Container();
   private readonly noteLayer = new Container();
   private readonly needle = new Sprite(Texture.WHITE);
   private readonly needleLabel: Sprite;
@@ -124,12 +166,15 @@ export class SheetScene extends Container {
   private readonly fpsText: Text;
   private readonly slots: NoteSlot[] = [];
   private readonly barSlots: BarSlot[] = [];
+  private readonly restSlots: RestSlot[] = [];
+  private readonly tieSlots: TieSlot[] = [];
 
   private readonly headTextures: Texture[];
   private readonly hollowTextures: Texture[];
   private readonly flagTexture: Texture;
   private readonly dotTexture: Texture;
   private readonly accidentalTextures: Map<Accidental, Texture>;
+  private readonly restTextures: Map<RestValue, Texture>;
   private readonly fingerTextures: Texture[][];
   private readonly letterTextures: Texture[];
   private readonly nameTextures: Map<string, Texture>;
@@ -146,6 +191,8 @@ export class SheetScene extends Container {
   private segments: readonly BeatSegment[] = [];
   private usedSlots = 0;
   private usedBars = 0;
+  private usedRests = 0;
+  private usedTies = 0;
 
   constructor(
     private readonly baker: TextureBaker,
@@ -159,9 +206,15 @@ export class SheetScene extends Container {
     const staff = staffLayout(song);
     this.notes = staff.notes;
     this.bars = staff.bars;
-    this.barOffsets = barOffsets(this.bars, this.notes.map((n) => n.at));
+    this.rests = staff.rests;
+    this.ties = staff.ties;
+    // A barra foge da pausa como foge da nota
+    const starts = [...this.notes, ...this.rests].map((x) => x.at).sort((a, b) => a - b);
+    this.barOffsets = barOffsets(this.bars, starts);
     this.fifths = staff.fifths;
     this.at = Float64Array.from(this.notes, (n) => n.at);
+    this.restAt = Float64Array.from(this.rests, (r) => r.at);
+    this.tieTo = Float64Array.from(this.ties, (t) => t.toAt);
     this.attackOf = new Int32Array(this.notes.length);
     this.holdBeats = Float64Array.from(this.notes, (n) => n.beats);
     for (let i = 0; i < this.notes.length; i++) {
@@ -181,6 +234,9 @@ export class SheetScene extends Container {
     this.flagTexture = this.bakeFlag(p.ink);
     this.dotTexture = this.bake(new Graphics().circle(REF * 0.16, REF * 0.16, REF * 0.16).fill(p.ink));
     this.accidentalTextures = new Map((['♯', '♭', '♮'] as const).map((a) => [a, this.bakeText(a, { fontFamily: theme.fonts.music, fontSize: REF * 1.78, fill: p.ink })]));
+    // Só as figuras de pausa que a música usa
+    const restValues = REST_VALUES.filter((v) => this.rests.some((r) => r.value === v));
+    this.restTextures = new Map(restValues.map((v) => [v, this.bakeText(REST_GLYPHS[v].glyph, { fontFamily: theme.fonts.music, fontSize: REST_SIZE, fill: p.ink })]));
     this.fingerTextures = p.strings.map((c) => [0, 1, 2, 3, 4].map((f) => this.bakeText(String(f), { fontFamily: ui, fontWeight: '700', fontSize: REF, fill: c })));
     this.letterTextures = p.strings.map((c, i) => this.bakeText(STRING_LETTERS[i], { fontFamily: display, fontWeight: '800', fontSize: REF * 1.05, fill: c }));
     const names = [...new Set(this.notes.map((n) => n.name))];
@@ -238,7 +294,7 @@ export class SheetScene extends Container {
 
     this.l = sheetLayout(1, 1, this.keySprites.length);
     this.eventMode = 'none';
-    this.addChild(this.paper, ...this.staff, this.zone, this.holdBg, this.holdFill, this.barLayer, this.noteLayer, this.needle, this.needleLabel, this.cover, this.fpsText);
+    this.addChild(this.paper, ...this.staff, this.zone, this.holdBg, this.holdFill, this.barLayer, this.restLayer, this.tieLayer, this.noteLayer, this.needle, this.needleLabel, this.cover, this.fpsText);
   }
 
   layout(width: number, height: number): void {
@@ -286,6 +342,13 @@ export class SheetScene extends Container {
       bar.number.scale.set(l.numberSize / (REF * 0.78));
       bar.number.position.y = l.numberY;
     }
+    const rests = 2 * maxNotesInWindow(this.restAt, span) + 2;
+    while (this.restSlots.length < rests) this.restSlots.push(this.makeRest());
+    for (const slot of this.restSlots) slot.rest = -1;
+    const longestTie = this.ties.reduce((most, t) => Math.max(most, t.toAt - t.fromAt), 0);
+    const ties = 2 * maxNotesInWindow(this.tieTo, span + longestTie) + 2;
+    while (this.tieSlots.length < ties) this.tieSlots.push(this.makeTie());
+    for (const slot of this.tieSlots) slot.tie = -1;
     this.until = -Infinity;
     this.fetchedAt = -Infinity;
     this.update(this.lastNow);
@@ -322,6 +385,8 @@ export class SheetScene extends Container {
 
     let used = 0;
     let bars = 0;
+    let rests = 0;
+    let ties = 0;
     let holding = -1;
     let holdX = 0;
     for (let w = 0; w < count; w++) {
@@ -355,11 +420,36 @@ export class SheetScene extends Container {
         bar.number.x = x + l.space * 0.35;
         bar.number.texture = this.numberTextures[m];
       }
+      for (let r = lowerBound(this.restAt, win.fromBeat); r < this.restAt.length && this.restAt[r] < win.toBeat && rests < this.restSlots.length; r++) {
+        const slot = this.restSlots[rests++];
+        if (slot.rest !== r) this.fillRest(slot, r);
+        slot.root.visible = true;
+        slot.root.x = beatX(l, this.restAt[r] + win.shift);
+        slot.root.alpha = clefFade(l, slot.root.x);
+      }
+      // O arco entra pela nota que continua, mas aparece enquanto qualquer parte dele estiver no pedaço
+      const previous = w > 0 ? this.windows[w - 1] : undefined;
+      for (let t = lowerBound(this.tieTo, win.fromBeat); t < this.ties.length && this.ties[t].fromAt < win.toBeat && ties < this.tieSlots.length; t++) {
+        const tie = this.ties[t];
+        if (!tieShows(win, previous, tie.fromAt, tie.toAt)) continue;
+        const slot = this.tieSlots[ties++];
+        if (slot.tie !== t) this.fillTie(slot, t);
+        const distance = tie.toAt + win.shift;
+        const attack = this.attackOf[tie.to];
+        const hit = markApplies(windowTime(win, this.at[attack]), this.markAt[attack]) && this.markState[attack] === HIT;
+        slot.arc.visible = true;
+        slot.arc.x = beatX(l, tie.fromAt + win.shift);
+        slot.arc.alpha = noteAlpha(distance, this.notes[tie.to].beats, hit) * clefFade(l, beatX(l, distance));
+      }
     }
     for (let i = used; i < this.usedSlots; i++) this.slots[i].root.visible = false;
     for (let i = bars; i < this.usedBars; i++) this.barSlots[i].line.visible = this.barSlots[i].number.visible = false;
+    for (let i = rests; i < this.usedRests; i++) this.restSlots[i].root.visible = false;
+    for (let i = ties; i < this.usedTies; i++) this.tieSlots[i].arc.visible = false;
     this.usedSlots = used;
     this.usedBars = bars;
+    this.usedRests = rests;
+    this.usedTies = ties;
 
     this.holdBg.visible = this.holdFill.visible = holding >= 0;
     if (holding >= 0) {
@@ -388,6 +478,22 @@ export class SheetScene extends Container {
       .map((s) => ({ alpha: s.root.alpha, x: s.root.x, marked: s.mark.visible }));
   }
 
+  /** Pausas na faixa agora: índice em staffLayout(song).rests e x; para testes. */
+  restView(): { rest: number; x: number }[] {
+    return this.restSlots.filter((s) => s.root.visible).map((s) => ({ rest: s.rest, x: s.root.x }));
+  }
+
+  /** Arcos na faixa agora: índice em staffLayout(song).ties e as pontas do arco; para testes. */
+  tieView(): { tie: number; from: number; to: number; alpha: number }[] {
+    return this.tieSlots
+      .filter((s) => s.arc.visible)
+      .map((s) => {
+        const tie = this.ties[s.tie];
+        const arc = tieArc(this.l, s.arc.x, s.arc.x + (tie.toAt - tie.fromAt) * this.l.pxPerBeat, tie, { x: 0, y: 0, width: 0, height: 0 });
+        return { tie: s.tie, from: arc.x, to: arc.x + arc.width, alpha: s.arc.alpha };
+      });
+  }
+
   holdVisible(): boolean {
     return this.holdBg.visible;
   }
@@ -399,6 +505,7 @@ export class SheetScene extends Container {
       this.flagTexture,
       this.dotTexture,
       ...this.accidentalTextures.values(),
+      ...this.restTextures.values(),
       ...this.fingerTextures.flat(),
       ...this.letterTextures,
       ...this.nameTextures.values(),
@@ -509,6 +616,56 @@ export class SheetScene extends Container {
     root.addChild(...ledgers, stem, head, ...flags, dot, accidental, finger, letter, name, mark);
     this.noteLayer.addChild(root);
     return { root, ledgers, stem, head, flags, dot, accidental, finger, letter, name, mark, note: -1 };
+  }
+
+  /** Monta o slot para a pausa `r`: glifo da figura na altura dela e o ponto no espaço acima da linha do meio. */
+  private fillRest(slot: RestSlot, r: number): void {
+    const l = this.l;
+    const rest = this.rests[r];
+    const k = l.space / REF;
+    slot.rest = r;
+    slot.glyph.texture = this.restTextures.get(rest.value)!;
+    slot.glyph.scale.set(k);
+    slot.glyph.position.set(0, stepY(l, MIDDLE_STEP) + REST_GLYPHS[rest.value].drop * l.space);
+    slot.dot.visible = rest.dotted;
+    if (rest.dotted) {
+      slot.dot.scale.set(k);
+      slot.dot.position.set(l.space * REST_DOT_X, stepY(l, MIDDLE_STEP + 1));
+    }
+  }
+
+  /** Redesenha o arco do slot para a ligadura `t`, com a ponta esquerda em x = 0. */
+  private fillTie(slot: TieSlot, t: number): void {
+    const l = this.l;
+    const tie = this.ties[t];
+    slot.tie = t;
+    const { x, y, width, height } = tieArc(l, 0, (tie.toAt - tie.fromAt) * l.pxPerBeat, tie, this.arc);
+    const inner = height - Math.sign(height) * l.space * TIE_THICKNESS;
+    slot.arc
+      .clear()
+      .moveTo(x, y)
+      .quadraticCurveTo(x + width / 2, y + 2 * height, x + width, y)
+      .quadraticCurveTo(x + width / 2, y + 2 * inner, x, y)
+      .fill(this.palette.ink);
+  }
+
+  private makeRest(): RestSlot {
+    const glyph = new Sprite();
+    glyph.anchor.set(0.5);
+    const dot = new Sprite(this.dotTexture);
+    dot.anchor.set(0.5);
+    const root = new Container();
+    root.visible = false;
+    root.addChild(glyph, dot);
+    this.restLayer.addChild(root);
+    return { root, glyph, dot, rest: -1 };
+  }
+
+  private makeTie(): TieSlot {
+    const arc = new Graphics();
+    arc.visible = false;
+    this.tieLayer.addChild(arc);
+    return { arc, tie: -1 };
   }
 
   private makeBar(): BarSlot {
