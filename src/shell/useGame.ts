@@ -2,7 +2,7 @@ import React from 'react';
 import { audioDeviceKey, latencySeconds, latencyToMs } from '../game/audio';
 import { centsBetween } from '../game/audio/tuning';
 import { scheduleClicks } from '../game/audio/latency/click';
-import type { EngineNote, GameResult, LapSummary, LevelSettings, PerformanceOptions } from '../game/engine';
+import type { EngineNote, GameResult, Judgment, LapSummary, LevelSettings, PerformanceOptions } from '../game/engine';
 import { secondsPerBeat, type Song } from '../game/notation/song';
 import type { Track, TrackOptions } from '../game/render';
 import { levelFor, loadOrchestraSettings, saveOrchestraSettings, type LoopRange, type OrchestraLevel } from '../game/synth';
@@ -13,6 +13,7 @@ import { loadEarnedBadges } from '../services/badges';
 import type { Ear, EarAudio } from './Ear';
 import { createGameSession, type GameSession, type GameSessionOptions, type PracticeClock, type PracticeStart, type SessionEvent } from './gameSession';
 import { loadOrchestra, type OrchestraFactory } from './orchestra';
+import { createShowQueue } from './showQueue';
 import { isRehearsalEar } from './simulatedEar';
 
 export type TrackLoader = (host: HTMLElement, options: TrackOptions) => Promise<Track>;
@@ -41,6 +42,8 @@ export interface GameHud {
   liveCents: number | null;
   trace: TracePoint[];
   explanation: Explanation | null;
+  /** O último julgamento em fila (cada um fica ao menos 250 ms); null depois que some. */
+  callout: Callout | null;
   /** Segundos desde o primeiro tempo (negativo antes). */
   elapsed: number;
   measure: number;
@@ -98,21 +101,17 @@ export interface GameOptions {
   deps?: Partial<GameDeps>;
 }
 
-/** O erro fica à vista este tempo depois do julgamento. */
+/** O erro fica à vista este tempo depois do julgamento, se nada vier depois. */
 const EXPLAIN_SECONDS = 2.5;
+/** O julgamento grande (5b) fica à vista este tempo, se nada vier depois. */
+export const CALLOUT_SECONDS = 0.9;
 
-type Explained = { at: number; explanation: Explanation };
-
-/**
- * A dica que fica na tela depois de um julgamento. Um acerto limpo não apaga a anterior, e um erro ainda na tela não
- * cede a um tropeço menor: a nota não tocada expira junto do acerto da seguinte, no mesmo quadro, e a dica dela
- * sumiria antes de aparecer.
- */
-export function nextExplained(current: Explained | null, explanation: Explanation | null, now: number): Explained | null {
-  if (!explanation) return current;
-  const fresh = current && now - current.at < EXPLAIN_SECONDS ? current : null;
-  if (fresh?.explanation.judgment === 'miss' && explanation.judgment !== 'miss') return fresh;
-  return { at: now, explanation };
+/** O julgamento grande da tela, com o combo de depois dele. */
+export interface Callout {
+  judgment: Judgment;
+  combo: number;
+  /** Muda a cada julgamento mostrado, para a animação recomeçar. */
+  serial: number;
 }
 const HUD_EVERY_FRAMES = 4;
 /** Dá tempo de ver o último julgamento antes de trocar de tela. */
@@ -128,6 +127,7 @@ const EMPTY_HUD: GameHud = {
   liveCents: null,
   trace: [],
   explanation: null,
+  callout: null,
   elapsed: 0,
   measure: 0,
   judged: 0,
@@ -168,7 +168,8 @@ export function useGame(options: GameOptions) {
     let track: Track | null = null;
     let frames = 0;
     let level: OrchestraLevel = 3;
-    let explained: Explained | null = null;
+    const explained = createShowQueue<Explanation>(EXPLAIN_SECONDS);
+    const called = createShowQueue<Omit<Callout, 'serial'>>(CALLOUT_SECONDS);
     const trace: { time: number; cents: number }[] = [];
     let liveCents: number | null = null;
     let session: GameSession | null = null;
@@ -183,6 +184,7 @@ export function useGame(options: GameOptions) {
       while (trace.length && now - trace[0].time > TRACE_SECONDS) trace.shift();
       const elapsed = now - session.startAt;
       const t = target();
+      const call = called.current(now);
       setHud({
         score: s.score,
         combo: s.combo,
@@ -192,7 +194,8 @@ export function useGame(options: GameOptions) {
         target: t,
         liveCents,
         trace: trace.map((p) => ({ age: now - p.time, cents: p.cents })),
-        explanation: explained && now - explained.at < EXPLAIN_SECONDS ? explained.explanation : null,
+        explanation: explained.current(now)?.item ?? null,
+        callout: call && { ...call.item, serial: call.serial },
         elapsed,
         measure: t ? t.measure : song.measures.length - 1,
         judged: t ? t.noteIndex : Number.MAX_SAFE_INTEGER,
@@ -216,8 +219,10 @@ export function useGame(options: GameOptions) {
       if (event.type === 'judgment') {
         level = levelFor(event.state, level);
         const note = session.engine.notes[event.index];
-        const explanation = explainJudgment(event, note, latencyToMs(live.current.latency));
-        explained = nextExplained(explained, explanation, session.now());
+        const explanation = explainJudgment(event, note, latencyToMs(live.current.latency), player);
+        const now = session.now();
+        if (explanation) explained.push(explanation, now);
+        called.push({ judgment: event.judgment, combo: event.state.combo }, now);
         return;
       }
       if (event.type === 'gameover') level = 0;
