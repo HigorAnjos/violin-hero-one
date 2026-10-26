@@ -5,6 +5,7 @@ import { volumeLabel } from '../../game/synth';
 import { Button } from '../Button/Button';
 import { Kicker, SongKicker } from '../Screen/Screen';
 import { clock } from '../../game/render/staff';
+import { SpeedPicker, speedLabel } from '../SpeedPicker/SpeedPicker';
 
 const Veil = styled.div`
   position: absolute;
@@ -104,7 +105,8 @@ const Settings = styled(Panel)`
   align-self: stretch;
   margin: 2.5rem 0;
 
-  label {
+  label,
+  > div[role='group'] {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -153,6 +155,32 @@ const Settings = styled(Panel)`
     > p {
       display: none;
     }
+  }
+`;
+
+const Warning = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border: 1.5px solid ${({ theme }) => theme.colors.warning.main};
+  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  background-color: ${({ theme }) => theme.colors.warning.surface};
+
+  p {
+    font-size: 0.8125rem;
+    line-height: 1.125rem;
+    color: ${({ theme }) => theme.colors.text};
+  }
+
+  div {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  div > * {
+    flex: 1;
+    padding: 0 0.5rem;
   }
 `;
 
@@ -206,12 +234,51 @@ export interface PauseMenuProps {
   counting: number | null;
   /** A aba saiu de vista e o microfone fechou: continuar reabre. */
   micClosed?: boolean;
+  /** Fator de 0,5 a 1 sobre o andamento da música. */
+  speed?: number;
+  /** Sem ele, sem controle de velocidade. */
+  onSpeed?: (speed: number) => void;
+  /** A partida ainda é comum: mudar a velocidade pede confirmação (vira prática). */
+  speedNeedsConfirm?: boolean;
+  /** Volume do metrônomo, 0 a 1; 0 = desligado. */
+  metronome?: number;
+  onMetronome?: (volume: number) => void;
 }
 
+export const PRACTICE_WARNING = 'A partir daqui, esta partida conta como prática: sem selos e sem recorde.';
+
 /** 6 · Pausa: o jogo e a orquestra param juntos; ao continuar, conta um compasso. */
-export const PauseMenu: React.FC<PauseMenuProps> = ({ subtitle, elapsed, total, volume, onVolume, onContinue, onRestart, onRetune, onExit, counting, micClosed = false }) => {
+export const PauseMenu: React.FC<PauseMenuProps> = ({
+  subtitle,
+  elapsed,
+  total,
+  volume,
+  onVolume,
+  onContinue,
+  onRestart,
+  onRetune,
+  onExit,
+  counting,
+  micClosed = false,
+  speed = 1,
+  onSpeed,
+  speedNeedsConfirm = false,
+  metronome = 0,
+  onMetronome,
+}) => {
   const first = React.useRef<HTMLButtonElement>(null);
+  const [pendingSpeed, setPendingSpeed] = React.useState<number | null>(null);
   React.useEffect(() => first.current?.focus(), []);
+
+  const chooseSpeed = (next: number) => {
+    if (Math.abs(next - speed) < 0.001) return;
+    if (speedNeedsConfirm) setPendingSpeed(next);
+    else onSpeed?.(next);
+  };
+  const confirmSpeed = () => {
+    if (pendingSpeed !== null) onSpeed?.(pendingSpeed);
+    setPendingSpeed(null);
+  };
 
   if (counting !== null) {
     return (
@@ -259,12 +326,42 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({ subtitle, elapsed, total, 
       </Menu>
       <Settings aria-label="Ajustes rápidos">
         <Kicker>Ajustes rápidos</Kicker>
+        {onSpeed && (
+          <div role="group" aria-labelledby="pausa-velocidade">
+            <span id="pausa-velocidade">
+              Velocidade da música<b>{speedLabel(pendingSpeed ?? speed)}</b>
+            </span>
+            {pendingSpeed === null ? (
+              <SpeedPicker speed={speed} onSpeed={chooseSpeed} label="Velocidade da música" />
+            ) : (
+              <Warning role="alertdialog" aria-labelledby="pausa-aviso">
+                <p id="pausa-aviso">{PRACTICE_WARNING}</p>
+                <div>
+                  <Button type="button" onClick={confirmSpeed}>
+                    Confirmar
+                  </Button>
+                  <Button type="button" $variant="ghost" onClick={() => setPendingSpeed(null)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </Warning>
+            )}
+          </div>
+        )}
         <label>
           <span>
             Volume da orquestra<b>{volumeLabel(volume)}</b>
           </span>
           <input type="range" min={0} max={100} value={Math.round(volume * 100)} onChange={(e) => onVolume(Number(e.target.value) / 100)} />
         </label>
+        {onMetronome && (
+          <label>
+            <span>
+              Volume do metrônomo<b>{metronome > 0 ? volumeLabel(metronome) : 'desligado'}</b>
+            </span>
+            <input type="range" min={0} max={100} step={5} value={Math.round(metronome * 100)} onChange={(e) => onMetronome(Number(e.target.value) / 100)} />
+          </label>
+        )}
         <p>
           <kbd>ESC</kbd>
           <span>continuar</span>
