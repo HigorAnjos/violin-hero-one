@@ -4,6 +4,7 @@ import { GlobalStyles } from './assets/styles/global';
 import { Countdown } from './pages/Countdown';
 import { lazyGameScreen } from './pages/loadGameScreens';
 import { Main } from './pages/Main';
+import { ModeSelect } from './pages/ModeSelect';
 import { MicTrouble } from './pages/MicTrouble';
 import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
@@ -36,6 +37,7 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
           <React.Suspense fallback={null}>
             <Routes>
             <Route path={ROUTES.home} element={<Home />} />
+            <Route path={ROUTES.modes} element={<ModeSelect />} />
             <Route path={ROUTES.level} element={<OnboardLevel />} />
             <Route path={ROUTES.mic} element={<OnboardMic />} />
             <Route path={ROUTES.strings} element={<OnboardTest />} />
