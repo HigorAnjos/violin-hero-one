@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { palcoTheme } from '../assets/styles/themes/palco';
 import { CATALOG_ORDER } from '../game/notation/catalog';
 import { FIXED_SONGS } from '../game/notation/songs';
-import { fakeCatalogClient } from '../services/testing';
+import { createSongCache, memorySongStore } from '../services/songCache';
+import { fakeCatalogClient, fakeChart } from '../services/testing';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
 import { Library } from './Library';
@@ -16,12 +17,32 @@ vi.mock('../services/supabase', () => ({
   },
 }));
 
+const saved = vi.hoisted(() => ({ cache: null as unknown }));
+vi.mock('../services/songCache', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/songCache')>()),
+  get songCache() {
+    return saved.cache;
+  },
+}));
+
+const SHEET = {
+  id: 'greensleeves',
+  title: 'Greensleeves',
+  composer: 'Tradicional',
+  bpm: 90,
+  timeSignature: { beats: 3, unit: 4 },
+  key: 'A minor',
+  durationSeconds: 70,
+  origin: 'catalog',
+} as const;
+
 const renderLibrary = (theme?: typeof palcoTheme) => renderScreen(<Library />, { path: ROUTES.library, route: ROUTES.library, theme });
 const cards = () => within(screen.getByRole('list', { name: 'Músicas' })).getAllByRole('link');
 
 describe('Library', () => {
   afterEach(() => {
     db.client = null;
+    saved.cache = null;
   });
 
   it('com o catálogo: as 10 na ordem da estante, com níveis e as do app marcadas', async () => {
@@ -53,6 +74,27 @@ describe('Library', () => {
     renderLibrary();
     expect(await screen.findByText('Sem internet', undefined, { timeout: 5000 })).toBeInTheDocument();
     expect(cards()).toHaveLength(FIXED_SONGS.length);
+  });
+
+  it('as baixadas aparecem com o selo, com e sem internet', async () => {
+    const cache = createSongCache(memorySongStore());
+    await cache.remember({ sheet: SHEET, song: fakeChart('greensleeves', 'medium'), hash: 'a'.repeat(64) }, 'medium');
+    saved.cache = cache;
+
+    db.client = fakeCatalogClient().client;
+    const online = renderLibrary();
+    await waitFor(() => expect(screen.getByText(`${CATALOG_ORDER.length} músicas · ${FIXED_SONGS.length} no app · 1 baixada`)).toBeInTheDocument());
+    expect(cards().find((c) => c.textContent?.includes('Greensleeves'))).toHaveTextContent('Baixada');
+    online.unmount();
+
+    db.client = null;
+    renderLibrary();
+    expect(await screen.findByText('Sem internet', undefined, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('do app e as baixadas');
+    expect(cards()).toHaveLength(FIXED_SONGS.length + 1);
+    expect(cards().at(-1)).toHaveTextContent('Baixada');
+    expect(cards().at(-1)).toHaveTextContent('Greensleeves');
+    expect(cards().at(-1)).toHaveTextContent('Médio');
   });
 
   it('catálogo vazio: biblioteca vazia com as grátis para começar', async () => {

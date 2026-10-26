@@ -13,11 +13,13 @@ import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
 import { OnboardTest } from './pages/OnboardTest';
 import { isOnboarded } from './services/profile';
+import type { AppUpdate } from './shell/appUpdate';
 import { EarProvider, type Ear } from './shell/Ear';
 import { MicGuard } from './shell/MicGuard';
 import { createMicrophoneEar } from './shell/microphoneEar';
 import { ROUTES } from './shell/routes';
 import { ThemeChoiceProvider } from './shell/ThemeChoice';
+import { UpdatePrompt } from './shell/UpdatePrompt';
 
 const Calibration = lazyGameScreen('Calibration');
 const Gameplay = lazyGameScreen('Gameplay');
@@ -30,7 +32,7 @@ const Results = lazyGameScreen('Results');
 /** Primeira vez no aparelho: onboarding. Depois, a tela inicial. */
 const Home: React.FC = () => (isOnboarded() ? <Main /> : <Navigate to={ROUTES.level} replace />);
 
-export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
+export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, update }) => {
   // Sem Ouvido de conferência (main.tsx, ?ouvido=simulado), o microfone de verdade
   const [chosen] = React.useState(() => ear ?? createMicrophoneEar());
   return (
@@ -61,6 +63,8 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           </React.Suspense>
+          {/* Depois das telas: é o último no Tab e não tira o foco de nada */}
+          <UpdatePrompt update={update} />
         </BrowserRouter>
       </EarProvider>
     </ThemeChoiceProvider>

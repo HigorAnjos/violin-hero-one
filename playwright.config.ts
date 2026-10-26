@@ -19,6 +19,8 @@ export default defineConfig({
     // Print e trace de toda falha (não só da repetição): a CI publica os dois como artefato do job e2e
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
+    // O page.route não vê o que o service worker responde (fontes, áudio): só o offline.spec liga o SW
+    serviceWorkers: 'block',
   },
   projects: [
     {

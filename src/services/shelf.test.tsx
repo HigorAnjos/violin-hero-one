@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { FIXED_SONGS } from '../game/notation/songs';
-import { catalogShelf, EMBEDDED_SHELF, embeddedChart, usePlayableSong, useShelf } from './shelf';
+import { catalogShelf, EMBEDDED_SHELF, embeddedChart, offlineShelf, savedCount, usePlayableSong, useShelf } from './shelf';
+import { createSongCache, memorySongStore, type SavedSong } from './songCache';
 import type { CatalogEntry, SongsClient } from './songs';
 
 const ENTRY: CatalogEntry = {
@@ -93,6 +94,44 @@ describe('estante', () => {
     const missing = renderHook(() => usePlayableSong('greensleeves', 'medium', null), { wrapper: wrapper() });
     await waitFor(() => expect(missing.result.current.status).toBe('error'));
     expect(missing.result.current).toMatchObject({ error: { kind: 'offline', message: expect.stringMatching(/Sem conexão/) } });
+  });
+
+  it('offlineShelf: as embutidas, com os níveis já baixados, e depois as baixadas', () => {
+    const saved: SavedSong[] = [
+      { sheet: ENTRY, levels: ['medium', 'hard'] },
+      { sheet: { ...ENTRY, id: FIXED_SONGS[0].id, title: FIXED_SONGS[0].song.title }, levels: ['hard'] },
+    ];
+    const shelf = offlineShelf(saved);
+    expect(shelf.map((s) => s.id)).toEqual([...FIXED_SONGS.map((s) => s.id), 'greensleeves']);
+    expect(shelf[0]).toMatchObject({ embedded: true, saved: true, levels: ['easy', 'hard'] });
+    expect(shelf[1]).toMatchObject({ embedded: true, saved: false, levels: ['easy'] });
+    expect(shelf.at(-1)).toMatchObject({ title: 'Greensleeves', embedded: false, saved: true, levels: ['medium', 'hard'] });
+  });
+
+  it('savedCount: embutida com outro nível guardado continua do app', () => {
+    const onlyEmbedded = offlineShelf([{ sheet: { ...ENTRY, id: FIXED_SONGS[0].id }, levels: ['hard'] }]);
+    expect(onlyEmbedded[0].saved).toBe(true);
+    expect(savedCount(onlyEmbedded)).toBe(0);
+    expect(savedCount(offlineShelf([{ sheet: ENTRY, levels: ['easy'] }]))).toBe(1);
+  });
+
+  it('catalogShelf marca as baixadas', () => {
+    const shelf = catalogShelf([ENTRY, { ...ENTRY, id: 'jingle-bells' }], [{ sheet: ENTRY, levels: ['easy'] }]);
+    expect(shelf.map((s) => s.saved)).toEqual([true, false]);
+  });
+
+  it('sem rede: a estante traz as baixadas e a baixada toca no nível guardado', async () => {
+    const cache = createSongCache(memorySongStore());
+    const chart = { ...FIXED_SONGS[0].song, id: 'greensleeves', level: 'medium' as const };
+    await cache.remember({ sheet: ENTRY, song: chart, hash: 'a'.repeat(64) }, 'medium');
+
+    const shelf = renderHook(() => useShelf(null, cache), { wrapper: wrapper() });
+    await waitFor(() => expect(shelf.result.current.status).toBe('ready'));
+    expect(shelf.result.current).toMatchObject({ fallback: true, songs: expect.arrayContaining([expect.objectContaining({ id: 'greensleeves', saved: true, levels: ['medium'] })]) });
+
+    const playable = renderHook(() => usePlayableSong('greensleeves', 'medium', null, cache), { wrapper: wrapper() });
+    await waitFor(() => expect(playable.result.current.status).toBe('ready'));
+    expect(playable.result.current).toMatchObject({ embedded: false, song: { id: 'greensleeves', level: 'medium' } });
   });
 
   it('usePlayableSong: com banco, a partitura do get_song', async () => {

@@ -22,6 +22,8 @@ const Panel = styled.aside`
   @media (max-height: 500px) {
     gap: ${({ theme }) => theme.spacing.xs};
     padding: ${({ theme }) => theme.spacing.sm};
+    /* Sem altura sobrando (aviso de versão nova embaixo), rola por dentro como a lista ao lado em vez de vazar */
+    overflow-y: auto;
   }
 `;
 
