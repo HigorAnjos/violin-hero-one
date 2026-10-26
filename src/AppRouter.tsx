@@ -13,6 +13,7 @@ import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
 import { OnboardTest } from './pages/OnboardTest';
 import { Profile } from './pages/Profile';
+import { Reminder } from './pages/Reminder';
 import { Settings } from './pages/Settings';
 import { isOnboarded } from './services/profile';
 import type { AppUpdate } from './shell/appUpdate';
@@ -22,6 +23,7 @@ import { createMicrophoneEar } from './shell/microphoneEar';
 import { ROUTES } from './shell/routes';
 import { ThemeChoiceProvider } from './shell/ThemeChoice';
 import { UpdatePrompt } from './shell/UpdatePrompt';
+import { useReminderTimer } from './shell/useReminderTimer';
 
 const Calibration = lazyGameScreen('Calibration');
 const Gameplay = lazyGameScreen('Gameplay');
@@ -38,6 +40,7 @@ const Home: React.FC = () => (isOnboarded() ? <Main /> : <Navigate to={ROUTES.le
 export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, update }) => {
   // Sem Ouvido de conferência (main.tsx, ?ouvido=simulado), o microfone de verdade
   const [chosen] = React.useState(() => ear ?? createMicrophoneEar());
+  useReminderTimer();
   return (
     <ThemeChoiceProvider>
       <GlobalStyles />
@@ -66,6 +69,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.results} element={<Results />} />
             <Route path={ROUTES.settings} element={<Settings />} />
             <Route path={ROUTES.profile} element={<Profile />} />
+            <Route path={ROUTES.reminder} element={<Reminder />} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           </React.Suspense>
