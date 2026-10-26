@@ -23,6 +23,7 @@ export const CADERNO: Palette = {
   hitLine: '#1f2a44',
   strings: { G: '#6b4bd8', D: '#d63a8a', A: '#0b8fa8', E: '#b87800' },
   judgments: { perfect: '#1f2a44', great: '#0b8fa8', good: '#b87800', miss: '#d93636' },
+  art: { wood: '#d98a4e', ebony: '#2b2438', halo: '#fde7c8' },
 };
 
 export const cadernoTheme = buildTheme(CADERNO);

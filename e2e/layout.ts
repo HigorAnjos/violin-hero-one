@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test';
 
 /**
  * Nada passa da janela: sem rolagem e nenhum elemento visível além da borda direita ou de baixo. O que um ancestral
- * recorta (overflow, como as notas da partitura dentro da SVG) conta só pela parte que aparece.
+ * recorta (overflow: as notas da partitura dentro da SVG, listas que rolam por dentro) conta só pela parte que aparece.
  */
 export async function expectFits(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'rolagem horizontal').toBeLessThanOrEqual(0);
@@ -29,15 +29,28 @@ export async function expectFits(page: Page) {
   expect(outside, 'elementos fora da janela').toEqual([]);
 }
 
-/** Botões, links e campos visíveis abaixo de 44 px de toque. */
+/** Botões, links, campos e opções visíveis abaixo de 44 px de toque. */
 export async function tooSmallTargets(page: Page) {
   return page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('button, a[href], input, [role="radio"]')]
-      .filter((el) => el.offsetParent !== null)
+    [...document.querySelectorAll<HTMLElement>('button, a[href], input, select, [role="radio"]')]
+      .filter((el) => el.offsetParent !== null && getComputedStyle(el).visibility !== 'hidden')
       .map((el) => ({ el, box: el.getBoundingClientRect() }))
       .filter(({ box }) => box.height < 43.5 || box.width < 43.5)
       .map(({ el, box }) => `${el.textContent?.trim() || el.getAttribute('aria-label')}: ${Math.round(box.width)}×${Math.round(box.height)}`)
   );
+}
+
+/** Tab até o primeiro controle: o foco aparece (contorno sólido ou anel de foco do campo). */
+export async function expectVisibleFocus(page: Page) {
+  await page.keyboard.press('Tab');
+  const ring = await page.evaluate(() => {
+    const el = document.activeElement as HTMLElement | null;
+    if (!el || el === document.body) return 'sem foco';
+    const own = getComputedStyle(el).outlineStyle;
+    const field = el.closest('label') ? getComputedStyle(el.closest('label')!).outlineStyle : 'none';
+    return own === 'solid' || field === 'solid' ? 'solid' : `${own}/${field}`;
+  });
+  expect(ring, 'contorno de foco').toBe('solid');
 }
 
 /** Texto visível menor que `min` px (rótulos que encolheram no celular). */

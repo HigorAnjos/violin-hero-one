@@ -83,6 +83,7 @@ export function buildTheme(p: Palette): Theme {
         percussion: strings.G.main,
       },
     },
+    art: p.art,
     ...base,
     shadows: {
       card: dark ? `0 0.25rem 0.5rem ${shadow}` : `0 0.1875rem 0 ${p.surfaceBorder}`,

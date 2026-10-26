@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import { palcoTheme } from '../../assets/styles/themes/palco';
-import { PLAYER_LEVELS } from '../../services/profile';
+import { PLAYER_LEVELS } from '../../game/engine/levels';
 import { renderScreen } from '../../shell/testing';
 import { LevelCard } from './LevelCard';
 

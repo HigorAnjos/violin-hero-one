@@ -1,0 +1,109 @@
+import { expect, test, type Page } from '@playwright/test';
+import { chooseSong, skipOnboarding } from './choose';
+import { blockWebFonts, fallbackFontsReady, fontsReady } from './fonts';
+import { expectFits, expectVisibleFocus, tinyText, tooSmallTargets } from './layout';
+
+// Sem SUPABASE_* no build do e2e: a estante são as 3 músicas do app e as telas mostram o aviso de sem internet
+const SCREENS = [
+  { name: 'inicial', path: '/', ready: (p: Page) => expect(p.getByRole('navigation', { name: 'Menu principal' })).toBeVisible() },
+  { name: 'modo', path: '/tocar', ready: (p: Page) => expect(p.getByRole('heading', { level: 1 })).toHaveText('Escolha o modo') },
+  {
+    name: 'música',
+    path: '/tocar/musica?modo=arcade',
+    ready: (p: Page) => expect(p.getByRole('complementary', { name: 'Detalhes da música' }).getByText(/\d+ notas/)).toBeVisible(),
+  },
+  { name: 'biblioteca', path: '/biblioteca', ready: (p: Page) => expect(p.getByRole('list', { name: 'Músicas' }).getByRole('link')).toHaveCount(3) },
+  {
+    name: 'carregando sem internet',
+    path: '/tocar/carregando?modo=arcade&musica=greensleeves&nivel=medio',
+    ready: (p: Page) => expect(p.getByRole('alert')).toContainText('Sem conexão'),
+  },
+];
+
+test.beforeEach(async ({ page }) => {
+  await skipOnboarding(page);
+});
+
+for (const tema of ['caderno', 'palco'] as const) {
+  for (const fonte of ['real', 'reserva'] as const) {
+    test.describe(`${tema}, fonte ${fonte}`, () => {
+      test.beforeEach(async ({ page }) => {
+        await page.addInitScript((id) => localStorage.setItem('vh:theme', id), tema);
+        if (fonte === 'reserva') await blockWebFonts(page);
+      });
+
+      for (const screen of SCREENS) {
+        test(`${screen.name} cabe na tela, com toque de 44 px`, async ({ page }) => {
+          await page.goto(screen.path);
+          await screen.ready(page);
+          await (fonte === 'real' ? fontsReady(page) : fallbackFontsReady(page));
+          await expect(page.locator('html')).toHaveAttribute('data-theme', tema);
+          await expectFits(page);
+          expect(await tooSmallTargets(page)).toEqual([]);
+          expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);
+        });
+      }
+    });
+  }
+}
+
+for (const screen of SCREENS) {
+  test(`${screen.name}: foco visível no teclado`, async ({ page }) => {
+    await page.goto(screen.path);
+    await screen.ready(page);
+    await expectVisibleFocus(page);
+  });
+}
+
+test('sem banco: a estante são as 3 do app, com o aviso', async ({ page }) => {
+  await page.goto('/tocar/musica?modo=arcade');
+  await expect(page.getByRole('status').filter({ hasText: 'Sem internet' })).toBeVisible();
+  await expect(page.getByRole('radiogroup', { name: 'Músicas' }).getByRole('radio')).toHaveCount(3);
+});
+
+test('Cordas 3D aparece como em breve e não entra na escolha', async ({ page }) => {
+  await page.goto('/tocar');
+  const soon = page.getByRole('radio', { name: 'Cordas 3D, em breve' });
+  await expect(soon).toHaveAttribute('aria-disabled', 'true');
+  await page.getByRole('radio', { name: 'Arcade' }).focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('radio', { name: 'Arcade' })).toBeFocused();
+});
+
+test('a biblioteca abre a seleção com a música escolhida', async ({ page }) => {
+  await page.goto('/biblioteca');
+  await page.getByRole('list', { name: 'Músicas' }).getByRole('link', { name: /Ode/ }).click();
+  await expect(page).toHaveURL(/\/tocar\/musica\?modo=arcade&musica=ode-a-alegria$/);
+  await expect(page.getByRole('radio', { name: /Ode/ })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('da tela inicial à partida em Partitura', async ({ page }) => {
+  await page.goto('/?ouvido=simulado');
+  await chooseSong(page, /Escala/, 'Partitura');
+  await page.getByRole('button', { name: /Começar/ }).click();
+  await page.getByRole('button', { name: /Pular contagem/ }).click();
+  await expect(page).toHaveURL(/\/jogo\/partitura$/);
+  await expect(page.getByTestId('partitura')).toBeAttached();
+});
+
+test('Praticar trecho chega à prática', async ({ page }) => {
+  await page.goto('/tocar/musica?modo=arcade&musica=escala-re-maior&ouvido=simulado');
+  await page.getByRole('complementary', { name: 'Detalhes da música' }).getByRole('link', { name: 'Praticar trecho' }).click();
+  await expect(page).toHaveURL(/\/afinar$/);
+  await page.getByRole('button', { name: /Começar/ }).click();
+  await page.getByRole('button', { name: /Pular contagem/ }).click();
+  await expect(page).toHaveURL(/\/pratica$/);
+});
+
+test('da tela inicial à partida em Arcade', async ({ page }) => {
+  await page.goto('/?ouvido=simulado');
+  await chooseSong(page, /Ode/);
+  // No celular a Calibration esconde esse rótulo; basta estar na tela com a música e o nível certos
+  await expect(page.getByText(/Antes de tocar · .*Ode.* · Fácil/)).toBeAttached();
+  await page.getByRole('button', { name: /Começar/ }).click();
+  await expect(page).toHaveURL(/\/contagem$/);
+  await page.getByRole('button', { name: /Pular contagem/ }).click();
+  await expect(page).toHaveURL(/\/jogo$/);
+  await expect(page.getByTestId('pista')).toBeAttached();
+});

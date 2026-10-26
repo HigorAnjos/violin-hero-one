@@ -4,7 +4,10 @@ import { TROUBLE_SCREEN, type MicProblem } from './Ear';
 /** Endereços das telas. Os nomes seguem o português da interface. */
 export const ROUTES = {
   home: '/',
-  foundation: '/teste',
+  modes: '/tocar',
+  songs: '/tocar/musica',
+  loading: '/tocar/carregando',
+  library: '/biblioteca',
   level: '/primeira-vez/nivel',
   mic: '/primeira-vez/microfone',
   strings: '/primeira-vez/cordas',

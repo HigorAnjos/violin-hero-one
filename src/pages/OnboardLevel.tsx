@@ -10,13 +10,11 @@ import {
   loadLocalProfile,
   NICKNAME_MAX,
   normalizeNickname,
-  PLAYER_LEVELS,
   useSaveStartProfile,
   type Animal,
-  type PlayerLevel,
 } from '../services/profile';
-import { DEFAULT_TOLERANCE_CENTS } from '../game/engine/score';
-import { FIXED_SONGS } from '../game/notation/songs';
+import { levelSummary, PLAYER_LEVELS, type PlayerLevel } from '../game/engine/levels';
+import { findFixedSong } from '../game/notation/songs';
 import { ROUTES } from '../shell/routes';
 
 export const LEVEL_INFO: Record<PlayerLevel, { title: string; description: string }> = {
@@ -26,8 +24,7 @@ export const LEVEL_INFO: Record<PlayerLevel, { title: string; description: strin
   years: { title: 'Toco há anos', description: 'Posições altas, vibrato e músicas rápidas.' },
 };
 
-// Só o que o jogo faz hoje, igual para todo nível; a tabela nível→ajustes fica para o ciclo 2 (Decisões)
-const FIRST_SONG = FIXED_SONGS[0].song;
+const songTitle = (id: string) => findFixedSong(id)?.title;
 
 const DEFAULT_LEVEL: PlayerLevel = 'beginner';
 
@@ -257,18 +254,12 @@ export const OnboardLevel: React.FC = () => {
       <Extras>
         <Summary aria-label="Como vai ficar">
           <Kicker>Você vai começar com</Kicker>
-          <Fact>
-            <b>{FIRST_SONG.title}</b>
-            <span>primeira música</span>
-          </Fact>
-          <Fact>
-            <b>{FIRST_SONG.bpm} BPM</b>
-            <span>andamento</span>
-          </Fact>
-          <Fact>
-            <b>Afinação ±{DEFAULT_TOLERANCE_CENTS} ¢</b>
-            <span>bem tolerante</span>
-          </Fact>
+          {levelSummary(level, songTitle).map(({ label, value }) => (
+            <Fact key={label}>
+              <b>{value}</b>
+              <span>{label}</span>
+            </Fact>
+          ))}
         </Summary>
         <NamePanel aria-label="Seu apelido">
           <NameLabel htmlFor="apelido">Como te chamamos? (opcional)</NameLabel>
