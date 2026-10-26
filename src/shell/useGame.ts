@@ -5,6 +5,7 @@ import { scheduleClicks } from '../game/audio/latency/click';
 import type { EngineNote, GameResult, Judgment, LapSummary, LevelSettings, PerformanceOptions } from '../game/engine';
 import { secondsPerBeat, type Song } from '../game/notation/song';
 import type { Sheet, SheetOptions, Track, TrackOptions } from '../game/render';
+import type { Strings3D, Strings3DOptions } from '../game/render/strings3d';
 import { levelFor, loadOrchestraSettings, saveOrchestraSettings, type LoopRange, type OrchestraLevel } from '../game/synth';
 import { explainJudgment, type Explanation } from '../components/JudgmentHint/explain';
 import type { TracePoint } from '../components/TuningCard/TuningCard';
@@ -19,23 +20,38 @@ import { isRehearsalEar } from './simulatedEar';
 
 export type TrackLoader = (host: HTMLElement, options: TrackOptions) => Promise<Track>;
 export type SheetLoader = (host: HTMLElement, options: SheetOptions) => Promise<Sheet>;
+export type Strings3DLoader = (host: HTMLElement, options: Strings3DOptions) => Promise<Strings3D>;
 
 /** A pista vem sob demanda: o Pixi não entra no download inicial. */
 export const loadTrack: TrackLoader = (host, options) => import('../game/render').then((m) => m.createTrack(host, options));
 /** A faixa de partitura, do mesmo pedaço da pista. */
 export const loadSheet: SheetLoader = (host, options) => import('../game/render').then((m) => m.createSheet(host, options));
+/** As Cordas 3D num pedaço só delas: o three não entra no download inicial nem no pedaço da pista. */
+export const loadStrings3D: Strings3DLoader = (host, options) => import('../game/render/strings3d').then((m) => m.createStrings3D(host, options));
 
 export interface GameDeps {
   loadTrack: TrackLoader;
   loadSheet: SheetLoader;
+  loadStrings3D: Strings3DLoader;
   orchestra: OrchestraFactory | null;
   clicks: GameSessionOptions['clicks'];
 }
 
-export const GAME_DEPS: GameDeps = { loadTrack, loadSheet, orchestra: loadOrchestra, clicks: scheduleClicks };
+export const GAME_DEPS: GameDeps = { loadTrack, loadSheet, loadStrings3D, orchestra: loadOrchestra, clicks: scheduleClicks };
 
-/** Pista em perspectiva (Arcade) ou faixa de partitura (5b, prática). */
-export type GameView = 'track' | 'sheet';
+/** Pista em perspectiva (Arcade), faixa de partitura (5b, prática) ou Cordas 3D (5c). */
+export type GameView = 'track' | 'sheet' | '3d';
+
+/** Tempo, desde o começo da música, em que cada compasso começa: as barras do chão das Cordas 3D. */
+export function measureStarts(song: Song): number[] {
+  const starts: number[] = [];
+  let beat = 0;
+  for (const m of song.measures) {
+    starts.push(beat);
+    beat += m.beats;
+  }
+  return starts;
+}
 
 export type GamePhase = 'starting' | 'playing' | 'paused' | 'counting' | 'over' | 'broken';
 
@@ -180,7 +196,7 @@ export function useGame(options: GameOptions) {
     const shared = live.current;
     let alive = true;
     let raf = 0;
-    let track: Track | Sheet | null = null;
+    let track: Track | Sheet | Strings3D | null = null;
     let frames = 0;
     let level: OrchestraLevel = 3;
     const explained = createShowQueue<Explanation>(EXPLAIN_SECONDS);
@@ -305,10 +321,23 @@ export function useGame(options: GameOptions) {
       if (!host) return;
       const box = opts.current.box();
       const { theme, reducedMotion, showFps, onFps } = opts.current.trackOptions;
-      const surface: Promise<Track | Sheet> =
-        opts.current.view === 'sheet'
+      const view = opts.current.view;
+      const surface: Promise<Track | Sheet | Strings3D> =
+        view === 'sheet'
           ? deps.loadSheet(host, { theme, reducedMotion, showFps, onFps, song, clock: session.clock, width: box.width, height: box.height })
-          : deps.loadTrack(host, {
+          : view === '3d'
+            ? deps.loadStrings3D(host, {
+                theme,
+                reducedMotion,
+                onFps,
+                notes: session.engine.notes,
+                clock: session.clock,
+                bars: measureStarts(song),
+                leadSeconds: player?.trackLeadSeconds,
+                width: box.width,
+                height: box.height,
+              })
+            : deps.loadTrack(host, {
               ...opts.current.trackOptions,
               leadSeconds: player?.trackLeadSeconds,
               notes: session.engine.notes,
