@@ -16,9 +16,12 @@ concurrency:
 env:
   NODE_VERSION: '26'
 
+# Todo job repete o mesmo `if`: o PR de uma branch de ciclo já roda pelo push dela no mesmo SHA, então no
+# pull_request dela os jobs ficam "skipped" (1 run por SHA). O `if` de job não lê `env`, por isso a repetição.
 jobs:
   app:
     name: lint, typecheck, test, build
+    if: github.event_name == 'push' || !startsWith(github.head_ref, 'task/ciclo-')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,8 +35,10 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  db:
-    name: banco (supabase local + test:db)
+  # Um Supabase local só para os dois: test:db (no db:local) e o e2e do catálogo contra o banco semeado
+  catalogo:
+    name: banco e e2e do catálogo (supabase local)
+    if: github.event_name == 'push' || !startsWith(github.head_ref, 'task/ciclo-')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,10 +47,38 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - run: npm run db:local -- --stop
+      # O registro das imagens limita downloads anônimos (o job já caiu 1× nisso): as imagens ficam no cache do
+      # Actions, pela versão do CLI (package-lock) e pelos serviços ligados (config.toml)
+      - name: imagens do Supabase (cache)
+        id: supabase-images
+        uses: actions/cache@v4
+        with:
+          path: ~/supabase-images
+          key: supabase-images-${{ runner.os }}-${{ hashFiles('package-lock.json', 'supabase/config.toml') }}
+      - name: carrega as imagens do cache
+        if: steps.supabase-images.outputs.cache-hit == 'true'
+        run: docker load -i ~/supabase-images/images.tar
+      # Sobe o Supabase, migra, semeia o catálogo e roda o test:db; os containers ficam de pé para o e2e
+      - run: npm run db:local
+      - name: guarda as imagens para o próximo run
+        if: steps.supabase-images.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/supabase-images
+          docker save -o ~/supabase-images/images.tar $(docker ps -a --format '{{.Image}}' | sort -u)
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:catalogo
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-catalogo
+          path: |
+            playwright-report-catalogo
+            test-results-catalogo
+          retention-days: 7
 
   e2e:
     name: e2e (playwright)
+    if: github.event_name == 'push' || !startsWith(github.head_ref, 'task/ciclo-')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
