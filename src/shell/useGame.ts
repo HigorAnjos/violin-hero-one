@@ -2,7 +2,7 @@ import React from 'react';
 import { audioDeviceKey, latencySeconds, latencyToMs } from '../game/audio';
 import { centsBetween } from '../game/audio/tuning';
 import { scheduleClicks } from '../game/audio/latency/click';
-import type { EngineNote, GameResult, LapSummary, PerformanceOptions } from '../game/engine';
+import type { EngineNote, GameResult, LapSummary, LevelSettings, PerformanceOptions } from '../game/engine';
 import { secondsPerBeat, type Song } from '../game/notation/song';
 import type { Track, TrackOptions } from '../game/render';
 import { levelFor, loadOrchestraSettings, saveOrchestraSettings, type LoopRange, type OrchestraLevel } from '../game/synth';
@@ -93,6 +93,8 @@ export interface GameOptions {
   onMicError: (error: unknown) => void;
   /** A prática dentro da partida (lida na montagem): trecho, laço A–B e velocidade. Sempre sem falha. */
   practice?: PracticeStart | null;
+  /** Folgas e descida da pista do nível do jogador (lido na montagem); padrão: as do motor. */
+  level?: Pick<LevelSettings, 'toleranceCents' | 'windows' | 'trackLeadSeconds'>;
   deps?: Partial<GameDeps>;
 }
 
@@ -159,6 +161,7 @@ export function useGame(options: GameOptions) {
 
   React.useEffect(() => {
     const deps = { ...GAME_DEPS, ...opts.current.deps };
+    const player = opts.current.level;
     const shared = live.current;
     let alive = true;
     let raf = 0;
@@ -247,6 +250,9 @@ export function useGame(options: GameOptions) {
         orchestraPrefs: loadOrchestraSettings(),
         clicks: deps.clicks,
         practice: opts.current.practice,
+        toleranceCents: player?.toleranceCents,
+        windows: player?.windows,
+        leadSeconds: player?.trackLeadSeconds,
         onEvent,
       });
       shared.session = session;
@@ -276,7 +282,13 @@ export function useGame(options: GameOptions) {
       if (!host) return;
       const box = opts.current.box();
       deps
-        .loadTrack(host, { ...opts.current.trackOptions, notes: session.engine.notes, width: box.width, height: box.height })
+        .loadTrack(host, {
+          ...opts.current.trackOptions,
+          leadSeconds: player?.trackLeadSeconds,
+          notes: session.engine.notes,
+          width: box.width,
+          height: box.height,
+        })
         .then((created) => {
           if (!alive) return created.destroy();
           track = created;

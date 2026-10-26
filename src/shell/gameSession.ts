@@ -13,13 +13,14 @@ import {
   type Practice,
   type PracticeEvent,
   type TimedReading,
+  type TimingWindows,
 } from '../game/engine';
 import type { Song } from '../game/notation/song';
 import { LOOKAHEAD_SECONDS, countIn, createTimeline, type LoopRange, type TempoSegment, type Timeline } from '../game/synth';
 import type { EarAudio } from './Ear';
 import type { GameOrchestra, OrchestraFactory, OrchestraPrefs } from './orchestra';
 
-/** Uma nota leva 2 s do topo da pista à linha: a música começa depois disso. */
+/** Sem nível, uma nota leva 2 s do topo da pista à linha: a música começa depois disso. */
 export const LEAD_SECONDS = 2;
 /** A prática cria o motor de cada volta e de cada trecho de andamento este tanto antes, para a pista já mostrar as notas. */
 export const PLAN_AHEAD_SECONDS = 3;
@@ -61,6 +62,11 @@ export interface GameSessionOptions {
   clicks?: (context: BaseAudioContext, times: readonly number[]) => () => void;
   /** Liga a prática: velocidade e laço A–B, sempre sem falha. */
   practice?: PracticeStart | null;
+  /** Do nível do jogador (levelSettings): folga de afinação e de tempo, e a descida da pista. */
+  toleranceCents?: number;
+  windows?: TimingWindows;
+  /** Segundos do topo da pista à linha; padrão LEAD_SECONDS. */
+  leadSeconds?: number;
   onEvent?: (event: SessionEvent) => void;
 }
 
@@ -136,7 +142,8 @@ export function createGameSession(options: GameSessionOptions): GameSession {
   let reopened = false;
 
   const now = () => (pausedAt ?? audio.context.currentTime + offset);
-  const startAt = audio.context.currentTime + LEAD_SECONDS;
+  const startAt = audio.context.currentTime + (options.leadSeconds ?? LEAD_SECONDS);
+  const { toleranceCents, windows } = options;
   const spb = 60 / song.bpm;
   const setup = options.practice ?? null;
   const from = setup ? (setup.from ?? setup.loop?.startMeasure ?? 0) : 0;
@@ -175,7 +182,7 @@ export function createGameSession(options: GameSessionOptions): GameSession {
   // Com fone a orquestra não vaza no microfone: não há o que descartar
   const sounding = options.orchestraPrefs?.headphones ? undefined : (t: number) => orchestra?.soundingAt(t - offset) ?? [];
   const practice = setup
-    ? createPractice({ song, from, startAt, a4, latencySeconds, sounding, onEvent })
+    ? createPractice({ song, from, startAt, a4, latencySeconds, toleranceCents, windows, sounding, onEvent })
     : null;
   const engine: Engine =
     practice ??
@@ -184,6 +191,8 @@ export function createGameSession(options: GameSessionOptions): GameSession {
       startAt,
       a4,
       latencySeconds,
+      toleranceCents,
+      windows,
       noFail: options.noFail,
       earnedBadges: options.earnedBadges,
       sounding,
