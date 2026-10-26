@@ -5,6 +5,7 @@ import { Countdown } from './pages/Countdown';
 import { lazyGameScreen } from './pages/loadGameScreens';
 import { Main } from './pages/Main';
 import { ModeSelect } from './pages/ModeSelect';
+import { SongSelect } from './pages/SongSelect';
 import { MicTrouble } from './pages/MicTrouble';
 import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
@@ -38,6 +39,7 @@ export const AppRouter: React.FC<{ ear?: Ear }> = ({ ear }) => {
             <Routes>
             <Route path={ROUTES.home} element={<Home />} />
             <Route path={ROUTES.modes} element={<ModeSelect />} />
+            <Route path={ROUTES.songs} element={<SongSelect />} />
             <Route path={ROUTES.level} element={<OnboardLevel />} />
             <Route path={ROUTES.mic} element={<OnboardMic />} />
             <Route path={ROUTES.strings} element={<OnboardTest />} />
