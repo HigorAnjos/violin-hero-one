@@ -85,6 +85,12 @@ const ISSUE_GLYPH: Record<Issue, string> = {
   'not-played': '×',
 };
 const MISS_GLYPH = '×';
+/** A cor `top` sobre `base` com transparência `alpha`, já misturada (0xRRGGBB). */
+function mix(base: number, top: number, alpha: number): number {
+  const channel = (shift: number) => Math.round(((base >> shift) & 255) * (1 - alpha) + ((top >> shift) & 255) * alpha);
+  return (channel(16) << 16) | (channel(8) << 8) | channel(0);
+}
+
 /** Um acerto adiantado chega antes da hora da nota: a cópia dela ainda vale até este tanto depois do julgamento. */
 const MARK_EARLY_SECONDS = 0.3;
 /** Nota sem altura tocada a mostrar (não foi nota errada). */
@@ -192,6 +198,8 @@ export class SheetScene extends Container {
   private loopOffB = 0;
   private flagTextures: Texture[] = [];
   private readonly bandLayer = new Container();
+  private readonly paperLayer = new Container();
+  private readonly paperPieces: Sprite[] = [];
   private readonly loopLayer = new Container();
   private readonly bands: Sprite[] = [];
   private readonly aMarks: LoopMark[] = [];
@@ -341,6 +349,8 @@ export class SheetScene extends Container {
     this.playedString = new Uint8Array(this.notes.length);
 
     this.paper.tint = p.paper;
+    this.paperPieces.push(this.paper);
+    this.paperLayer.addChild(this.paper);
     for (let k = 0; k < STAFF_LINES.length; k++) {
       const line = new Sprite(Texture.WHITE);
       line.tint = p.line;
@@ -376,7 +386,7 @@ export class SheetScene extends Container {
     this.l = sheetLayout(1, 1, this.keySprites.length);
     this.eventMode = 'none';
     this.addChild(
-      this.paper,
+      this.paperLayer,
       this.bandLayer,
       ...this.staff,
       this.zone,
@@ -400,6 +410,7 @@ export class SheetScene extends Container {
     const k = l.space / REF;
     this.paper.position.set(0, 0);
     this.paper.setSize(width, height);
+    for (const piece of this.paperPieces) piece.height = height;
     STAFF_LINES.forEach((step, i) => {
       const y = stepY(l, step) - l.line / 2;
       this.staff[i].position.set(0, y);
@@ -487,13 +498,16 @@ export class SheetScene extends Container {
     const from = -l.space * 0.22;
     const to = -width + l.space * 0.9;
     const span = from - to;
-    for (const piece of dashedCubic([from, baseY, from - 0.21 * span, topY, to + 0.22 * span, topY, to, baseY], dash, gap)) this.arcContext.poly(piece, false);
+    // Cada traço vira um segmento reto (o traço é curto): o Pixi refaz os vértices dos Graphics a cada quadro na CPU
+    for (const piece of dashedCubic([from, baseY, from - 0.21 * span, topY, to + 0.22 * span, topY, to, baseY], dash, gap)) {
+      this.arcContext.moveTo(piece[0], piece[1]).lineTo(piece[piece.length - 2], piece[piece.length - 1]);
+    }
     this.arcContext
       .moveTo(to, baseY)
       .lineTo(to + l.space * 0.55, baseY - l.space * 0.5)
       .moveTo(to, baseY)
       .lineTo(to + l.space * 0.72, baseY + l.space * 0.17)
-      .stroke({ color: this.palette.loop, width: m.arc.width, alpha: LOOP_ARC_ALPHA, cap: 'round' });
+      .stroke({ color: this.palette.loop, width: m.arc.width, alpha: LOOP_ARC_ALPHA });
   }
 
   /** Marca o julgamento do motor na própria nota; `at` é a hora do relógio do julgamento. */
@@ -710,12 +724,46 @@ export class SheetScene extends Container {
     u.a = c.a;
     u.b = c.b;
     u.arcs = c.arcs;
+    this.layoutPaper();
+  }
+
+  /**
+   * O papel cobre só o que as bandas do laço não cobrem: a banda é opaca, com a cor já misturada, e nenhum pixel é
+   * pintado duas vezes (no celular com GPU fraca, o preenchimento é o que pesa).
+   */
+  private layoutPaper(): void {
+    const width = this.l.width;
+    let pieces = 0;
+    let cursor = 0;
+    const put = (to: number) => {
+      if (to <= cursor) return;
+      const piece = this.paperPieces[pieces] ?? this.makePaperPiece();
+      pieces++;
+      piece.visible = true;
+      piece.x = cursor;
+      piece.width = to - cursor;
+    };
+    for (let i = 0; i < this.loopCount.bands; i++) {
+      const band = this.bands[i];
+      put(Math.min(width, band.x));
+      cursor = Math.max(cursor, band.x + band.width);
+    }
+    put(width);
+    for (let i = pieces; i < this.paperPieces.length; i++) this.paperPieces[i].visible = false;
+  }
+
+  private makePaperPiece(): Sprite {
+    const piece = new Sprite(Texture.WHITE);
+    piece.tint = this.palette.paper;
+    piece.height = this.l.height;
+    this.paperPieces.push(piece);
+    this.paperLayer.addChild(piece);
+    return piece;
   }
 
   private makeBand(): Sprite {
     const band = new Sprite(Texture.WHITE);
-    band.tint = this.palette.loop;
-    band.alpha = LOOP_BAND_ALPHA;
+    band.tint = mix(this.palette.paper, this.palette.loop, LOOP_BAND_ALPHA);
     band.height = this.l.height;
     this.bands.push(band);
     this.bandLayer.addChild(band);
