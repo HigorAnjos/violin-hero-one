@@ -824,6 +824,12 @@ export class SheetScene extends Container {
       .map((s) => ({ ghostY: s.ghost.visible ? s.ghost.y : null, you: this.youTextures.includes(s.name.texture) }));
   }
 
+  /** Inclinação da cabeça da nota e da cabeça vazada da nota errada, em radianos; para testes. */
+  headRotations(): { head: number; ghost: number } {
+    const slot = this.slots[0];
+    return { head: slot.head.rotation, ghost: slot.ghost.rotation };
+  }
+
   /** x de cada nota visível à frente da clave; para testes. */
   notesX(): number[] {
     return this.slots.filter((s) => s.root.visible && s.root.x > this.l.clefWidth).map((s) => s.root.x);

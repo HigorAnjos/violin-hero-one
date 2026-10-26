@@ -387,6 +387,20 @@ describe('SheetScene: especiais', () => {
     expect(square.height / square.width).toBeGreaterThan(0.85);
   });
 
+  it('8-Bits: a cabeça vazada da nota errada fica reta como a cabeça; no Caderno, inclinada como ela', () => {
+    for (const [theme, straight] of [
+      [getTheme('8-bits'), true],
+      [cadernoTheme, false],
+    ] as const) {
+      const { baker } = fakeBaker();
+      const s = new SheetScene(baker, { theme, song: ODE, clock: steadyClock(START, 100), reducedMotion: false });
+      s.layout(W, H);
+      const { head, ghost } = s.headRotations();
+      expect(ghost).toBe(head);
+      expect(ghost === 0).toBe(straight);
+    }
+  });
+
   it('Neon: halo em volta da cabeça', () => {
     expect(head(getTheme('neon')).width).toBeGreaterThan(head(cadernoTheme).width * 1.3);
   });

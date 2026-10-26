@@ -32,6 +32,48 @@ import {
 } from './present';
 import { createShowQueue } from './showQueue';
 
+/** Traço dos alvos, o mesmo dos anéis das cordas. */
+const targetStroke = () => (RING_R * 0.04) / 0.28;
+
+/**
+ * O alvo tracejado da corda certa na nota errada (ALVO), centrado em (RING_R, RING_R): no 8-Bits, quadrado como os
+ * alvos dele, com três traços por lado a partir dos cantos.
+ */
+export function dashedTarget(color: number, square: boolean): Graphics {
+  const r = RING_R - targetStroke() / 2;
+  const g = new Graphics();
+  if (square) {
+    const dash = (2 * r) / 5;
+    const sides: [number, number, number, number][] = [
+      [-1, -1, 1, 0],
+      [1, -1, 0, 1],
+      [1, 1, -1, 0],
+      [-1, 1, 0, -1],
+    ];
+    for (const [sx, sy, dx, dy] of sides) {
+      for (let k = 0; k < 3; k++) {
+        const x = RING_R + sx * r + dx * k * 2 * dash;
+        const y = RING_R + sy * r + dy * k * 2 * dash;
+        g.moveTo(x, y).lineTo(x + dx * dash, y + dy * dash);
+      }
+    }
+  } else {
+    const step = (Math.PI * 2) / DASHES;
+    for (let k = 0; k < DASHES; k++) {
+      const from = k * step;
+      g.moveTo(RING_R + r * Math.cos(from), RING_R + r * Math.sin(from)).arc(RING_R, RING_R, r, from, from + step * 0.55);
+    }
+  }
+  return g.stroke({ color, width: targetStroke() });
+}
+
+/** O anel da corda tocada na nota errada (VOCÊ); no 8-Bits, quadrado. */
+export function playedTarget(color: number, square: boolean): Graphics {
+  const r = RING_R - targetStroke() / 2;
+  const g = square ? new Graphics().rect(RING_R - r, RING_R - r, 2 * r, 2 * r) : new Graphics().circle(RING_R, RING_R, r);
+  return g.stroke({ color, width: targetStroke() });
+}
+
 /** O que o rótulo central mostra de um julgamento. */
 interface Called {
   judgment: Judgment;
@@ -173,10 +215,7 @@ export class TrackScene extends Container {
     const miss = p.judgments.miss;
     this.missMarkTexture = this.bakeText('×', LETTER_PX, miss, theme.fonts.ui);
     this.aimRingTextures = p.lanes.map((lane) => this.bakeDashedRing(lane.main));
-    const youWidth = (RING_R * 0.04) / 0.28;
-    const youR = RING_R - youWidth / 2;
-    const youShape = this.look.square ? new Graphics().rect(RING_R - youR, RING_R - youR, 2 * youR, 2 * youR) : new Graphics().circle(RING_R, RING_R, youR);
-    this.youRingTexture = this.bake(youShape.stroke({ color: miss, width: youWidth }));
+    this.youRingTexture = this.bake(playedTarget(miss, this.look.square));
     this.aimTagTextures = p.lanes.map((lane) => this.bakeText('ALVO', TAG_PX, lane.main, theme.fonts.ui));
     this.youTagTexture = this.bakeText('VOCÊ', TAG_PX, miss, theme.fonts.ui);
 
@@ -599,37 +638,8 @@ export class TrackScene extends Container {
 
   /** O alvo tracejado da corda certa na nota errada; no 8-Bits, quadrado como os alvos dele. */
   private bakeDashedRing(color: number): Texture {
-    const width = (RING_R * 0.04) / 0.28;
-    const r = RING_R - width / 2;
-    const g = new Graphics();
-    if (this.look.square) {
-      // Três traços por lado, em volta do quadrado
-      const side = 2 * r;
-      const dash = side / 5;
-      const corners: [number, number, number, number][] = [
-        [-1, -1, 1, 0],
-        [1, -1, 0, 1],
-        [1, 1, -1, 0],
-        [-1, 1, 0, -1],
-      ];
-      for (const [sx, sy, dx, dy] of corners) {
-        for (let k = 0; k < 3; k++) {
-          const x = RING_R + sx * r + dx * k * 2 * dash;
-          const y = RING_R + sy * r + dy * k * 2 * dash;
-          g.moveTo(x, y).lineTo(x + dx * dash, y + dy * dash);
-        }
-      }
-    } else {
-      const step = (Math.PI * 2) / DASHES;
-      for (let k = 0; k < DASHES; k++) {
-        const from = k * step;
-        g.moveTo(RING_R + r * Math.cos(from), RING_R + r * Math.sin(from)).arc(RING_R, RING_R, r, from, from + step * 0.55);
-      }
-    }
-    g.stroke({ color, width });
     // Mantém a textura do tamanho do anel inteiro, como as outras
-    g.rect(0, 0, RING_R * 2, RING_R * 2).fill({ color, alpha: 0 });
-    return this.bake(g);
+    return this.bake(dashedTarget(color, this.look.square).rect(0, 0, RING_R * 2, RING_R * 2).fill({ color, alpha: 0 }));
   }
 
   private bakeCircle(fill: number, stroke?: number, alpha = 1): Texture {

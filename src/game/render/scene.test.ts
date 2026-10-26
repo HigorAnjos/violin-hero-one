@@ -8,7 +8,24 @@ import type { EngineNote, Judgment } from '../engine/types';
 import { FIXED_SONGS } from '../notation/songs';
 import { LEAD_SECONDS } from './layout';
 import { playedString } from './present';
-import { TrackScene, type JudgmentEvent, type TextureBaker } from './scene';
+import { dashedTarget, playedTarget, TrackScene, type JudgmentEvent, type TextureBaker } from './scene';
+
+describe('alvos da nota errada', () => {
+  // Centro e raio da arte (RING_R = 64): perto do canto só o quadrado tem traço; no meio de um lado, os dois
+  const corner = { x: 64 + 0.95 * 64 - 4, y: 64 + 0.95 * 64 - 4 };
+  const side = { x: 64, y: 4 };
+
+  it.each([
+    ['ALVO (tracejado)', dashedTarget],
+    ['VOCÊ', playedTarget],
+  ])('%s: quadrado no 8-Bits, redondo nos outros temas', (_name, shape) => {
+    const square = shape(0xff0000, true);
+    const round = shape(0xff0000, false);
+    expect(square.containsPoint(corner)).toBe(true);
+    expect(round.containsPoint(corner)).toBe(false);
+    expect(square.containsPoint(side) && round.containsPoint(side)).toBe(true);
+  });
+});
 
 function fakeBaker() {
   const generateTexture = vi.fn(() => new Texture({ source: new TextureSource({ width: 8, height: 8 }) }));
