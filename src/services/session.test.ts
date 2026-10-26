@@ -20,6 +20,11 @@ describe('ensureSession', () => {
     expect(spies.signInAnonymously).not.toHaveBeenCalled();
   });
 
+  it('conta com e-mail: o e-mail vem junto para o próprio jogador ver', async () => {
+    const { auth } = fakeClient({ session: { user: { id: 'u1', is_anonymous: false, email: 'lia@t.test' } } });
+    expect(await ensureSession({ auth })).toEqual({ status: 'signed-in', userId: 'u1', anonymous: false, email: 'lia@t.test' });
+  });
+
   it('primeiro toque: entra como anônimo, sem cadastro', async () => {
     const { auth, spies } = fakeClient({ signIn: { data: { user: { id: 'anon', is_anonymous: true } }, error: null } });
     expect(await ensureSession({ auth })).toEqual({ status: 'signed-in', userId: 'anon', anonymous: true });
