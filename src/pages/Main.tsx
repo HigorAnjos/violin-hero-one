@@ -2,7 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { MenuLink } from '../components/MenuLink/MenuLink';
 import { SessionStatus } from '../components/SessionStatus/SessionStatus';
-import { ThemeSwitch } from '../components/ThemeSwitch/ThemeSwitch';
+import { CornerLinks } from '../components/CornerLinks/CornerLinks';
 import { ViolinArt } from '../components/ViolinArt/ViolinArt';
 import { levelSettings } from '../game/engine/levels';
 import { FIXED_SONGS, findFixedSong } from '../game/notation/songs';
@@ -156,7 +156,7 @@ export const Main: React.FC = () => {
       </Menu>
       <Controls>
         <SessionStatus />
-        <ThemeSwitch />
+        <CornerLinks />
       </Controls>
     </Page>
   );
