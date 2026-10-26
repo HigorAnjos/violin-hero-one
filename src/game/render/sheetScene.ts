@@ -53,16 +53,17 @@ const STAFF_ALPHA = 0.7;
 const CLEF_LIFT = -0.25;
 const ACCIDENTAL_LIFT = 0.05;
 /**
- * Pausas da Noto Music, do mesmo tamanho dos acidentes: glifo e quanto o centro da caixa de texto fica abaixo da linha
- * do meio, em espaços, para a semibreve pender da 4ª linha, a mínima sentar na 3ª e as outras centrarem na pauta.
+ * Pausas da Noto Music, assadas cortadas na tinta (trim): a caixa de texto do Pixi vem da fonte de reserva (a Noto
+ * Music só tem o subset music), que muda de aparelho para aparelho, e a tinta não. Cada glifo se prende pela própria
+ * borda a um grau da pauta: a semibreve pende da 4ª linha, a mínima senta na 3ª, as outras centram nela.
  */
-const REST_SIZE = REF * 1.78;
-const REST_GLYPHS: Record<RestValue, { glyph: string; drop: number }> = {
-  4: { glyph: '𝄻', drop: 0 },
-  2: { glyph: '𝄼', drop: 0 },
-  1: { glyph: '𝄽', drop: 0 },
-  0.5: { glyph: '𝄾', drop: 0 },
-  0.25: { glyph: '𝄿', drop: 0 },
+const REST_SIZE = REF * 3.5;
+const REST_GLYPHS: Record<RestValue, { glyph: string; anchor: number; step: number }> = {
+  4: { glyph: '𝄻', anchor: 0, step: MIDDLE_STEP + 2 },
+  2: { glyph: '𝄼', anchor: 1, step: MIDDLE_STEP },
+  1: { glyph: '𝄽', anchor: 0.5, step: MIDDLE_STEP },
+  0.5: { glyph: '𝄾', anchor: 0.5, step: MIDDLE_STEP },
+  0.25: { glyph: '𝄿', anchor: 0.5, step: MIDDLE_STEP - 0.5 },
 };
 const REST_VALUES = [4, 2, 1, 0.5, 0.25] as const;
 /** Ponto da pausa pontuada: à direita do centro do glifo, em espaços. */
@@ -236,7 +237,7 @@ export class SheetScene extends Container {
     this.accidentalTextures = new Map((['♯', '♭', '♮'] as const).map((a) => [a, this.bakeText(a, { fontFamily: theme.fonts.music, fontSize: REF * 1.78, fill: p.ink })]));
     // Só as figuras de pausa que a música usa
     const restValues = REST_VALUES.filter((v) => this.rests.some((r) => r.value === v));
-    this.restTextures = new Map(restValues.map((v) => [v, this.bakeText(REST_GLYPHS[v].glyph, { fontFamily: theme.fonts.music, fontSize: REST_SIZE, fill: p.ink })]));
+    this.restTextures = new Map(restValues.map((v) => [v, this.bakeText(REST_GLYPHS[v].glyph, { fontFamily: theme.fonts.music, fontSize: REST_SIZE, fill: p.ink, trim: true })]));
     this.fingerTextures = p.strings.map((c) => [0, 1, 2, 3, 4].map((f) => this.bakeText(String(f), { fontFamily: ui, fontWeight: '700', fontSize: REF, fill: c })));
     this.letterTextures = p.strings.map((c, i) => this.bakeText(STRING_LETTERS[i], { fontFamily: display, fontWeight: '800', fontSize: REF * 1.05, fill: c }));
     const names = [...new Set(this.notes.map((n) => n.name))];
@@ -624,9 +625,11 @@ export class SheetScene extends Container {
     const rest = this.rests[r];
     const k = l.space / REF;
     slot.rest = r;
+    const { anchor, step } = REST_GLYPHS[rest.value];
     slot.glyph.texture = this.restTextures.get(rest.value)!;
     slot.glyph.scale.set(k);
-    slot.glyph.position.set(0, stepY(l, MIDDLE_STEP) + REST_GLYPHS[rest.value].drop * l.space);
+    slot.glyph.anchor.set(0.5, anchor);
+    slot.glyph.position.set(0, stepY(l, step));
     slot.dot.visible = rest.dotted;
     if (rest.dotted) {
       slot.dot.scale.set(k);
