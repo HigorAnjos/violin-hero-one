@@ -87,6 +87,30 @@ describe('createGameSession', () => {
     expect(track.update).toHaveBeenLastCalledWith(context.currentTime);
   });
 
+  it('travada da thread principal: o quadro de depois não expira a nota cujas leituras ainda estão na fila', () => {
+    const { audio, context } = fakeAudio(10);
+    const events: SessionEvent[] = [];
+    const session = createGameSession(base(audio, { onEvent: (e) => events.push(e) }));
+    const first = session.engine.notes[0];
+    while (context.currentTime < first.time - 0.1) {
+      context.currentTime += 1 / 60;
+      session.frame();
+    }
+    // A thread trava 1,5 s em cima da 1ª nota; o rAF vem antes das leituras dela
+    context.currentTime = first.time + 1.4;
+    session.frame();
+    expect(events).toEqual([]);
+    for (let i = 0; i < 8; i++) session.push(reading(first.time + 0.1 + i * 0.01, first.midi));
+    expect(events[0]).toMatchObject({ type: 'judgment', index: 0, judgment: 'perfect' });
+    // Sem nada tocado, a nota seguinte ainda expira quando a expiração alcança a hora
+    const until = context.currentTime + 3;
+    while (context.currentTime < until) {
+      context.currentTime += 1 / 60;
+      session.frame();
+    }
+    expect(events.find((e) => e.type === 'judgment' && e.index === 1)).toMatchObject({ judgment: 'miss', issue: 'not-played' });
+  });
+
   it('no modo simulado ignora o microfone', () => {
     const { audio } = fakeAudio(0);
     const session = createGameSession(base(audio, { performance: { offsetMs: 0 } }));

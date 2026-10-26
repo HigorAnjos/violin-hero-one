@@ -145,6 +145,10 @@ describe('prática na partida', () => {
     expect(segments[1]).toMatchObject({ beat: 8 });
     expect(segments[1].time).toBeCloseTo(session.startAt + lap, 9);
     expect(session.beatAt(session.startAt + lap + SPB)).toBeCloseTo(9, 9);
+    // A faixa marca A e B pelo laço de agora; desligado, nada
+    expect(session.clock.currentLoop?.()).toEqual(LOOP);
+    session.practice!.setLoop(null);
+    expect(session.clock.currentLoop?.()).toBeNull();
   });
 
   it('compasso de entrada no andamento da prática', async () => {

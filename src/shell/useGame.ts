@@ -15,8 +15,8 @@ import type { Ear, EarAudio } from './Ear';
 import { createGameSession, type GameSession, type GameSessionOptions, type PracticeClock, type PracticeStart, type SessionEvent } from './gameSession';
 import { loadOrchestra, type OrchestraFactory } from './orchestra';
 import { loadMetronome, saveMetronome } from './metronome';
+import { createShowQueue } from '../game/render/showQueue';
 import { loadPlayPrefs, savePlayPrefs, type PlayPrefs } from './playPrefs';
-import { createShowQueue } from './showQueue';
 import { isRehearsalEar } from './simulatedEar';
 
 export type TrackLoader = (host: HTMLElement, options: TrackOptions) => Promise<Track>;
@@ -472,7 +472,10 @@ export function useGame(options: GameOptions) {
   }, []);
 
   /** O relógio de tempos da partida, para a faixa de partitura: vazio até a partida começar. */
-  const clock = React.useMemo<PracticeClock>(() => ({ segments: (until) => live.current.session?.clock.segments(until) ?? [] }), []);
+  const clock = React.useMemo<PracticeClock>(
+    () => ({ segments: (until) => live.current.session?.clock.segments(until) ?? [], currentLoop: () => live.current.session?.clock.currentLoop?.() ?? null }),
+    [],
+  );
 
   return {
     phase,
