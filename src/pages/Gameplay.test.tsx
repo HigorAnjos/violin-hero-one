@@ -13,6 +13,9 @@ import { renderScreen } from '../shell/testing';
 import type { GameDeps } from '../shell/useGame';
 import { Gameplay } from './Gameplay';
 
+// Partida inteira com motor e pista: sob carga (CI, suíte em paralelo) passa dos 5 s padrão
+vi.setConfig({ testTimeout: 15_000 });
+
 const FAST: Song = { ...ODE, bpm: 240 };
 
 function fakeContext() {

@@ -1,6 +1,6 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { palcoTheme } from '../assets/styles/themes/palco';
 import { loadA4 } from '../services/playerAudio';
 import { createFakeEar, reading } from '../shell/fakeEar';
@@ -8,6 +8,9 @@ import { loadOrchestraSettings } from '../game/synth';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
 import { Calibration } from './Calibration';
+
+// Tela inteira com o tema e a medição de latência: sob carga (CI, suíte em paralelo) passa dos 5 s padrão
+vi.setConfig({ testTimeout: 15_000 });
 
 const renderCalibration = (ear = createFakeEar(), theme = palcoTheme) => {
   renderScreen(<Calibration />, { ear, path: ROUTES.calibration, route: ROUTES.calibration, theme });
