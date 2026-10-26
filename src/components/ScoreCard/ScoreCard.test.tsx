@@ -23,4 +23,10 @@ describe('ScoreCard', () => {
     expect(screen.getByRole('img', { name: /^cordas, madeiras e metais tocando/ })).toBeInTheDocument();
     expect(container.querySelectorAll('[data-on]')).toHaveLength(3);
   });
+
+  it('sem a faixa dos naipes quando a tela pede (Cordas 3D)', () => {
+    renderScreen(<ScoreCard score={10} multiplier={1} combo={0} accuracy={100} level={3} sections={false} />);
+    expect(screen.getByText('10')).toBeInTheDocument();
+    expect(screen.queryByText('Orquestra tocando com você')).not.toBeInTheDocument();
+  });
 });

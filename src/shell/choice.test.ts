@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isReadyMode, levelFromSlug, loadingUrl, modeFromSlug, modesUrl, parseSongChoice, readyMode, songsUrl } from './choice';
+import { isReadyMode, levelFromSlug, loadingUrl, modeFromSlug, modesUrl, parseSongChoice, READY_MODES, readyMode, songsUrl } from './choice';
 import { GAME_MODES } from './play';
 import { needsMicrophone } from './routes';
 
@@ -13,12 +13,14 @@ describe('escolha na URL', () => {
     expect(loadingUrl({ mode: 'Partitura', songId: 'a', level: 'easy' })).toBe('/tocar/carregando?modo=partitura&musica=a&nivel=facil');
   });
 
-  it('os três modos têm tela e passam pela URL; sem modo, Arcade', () => {
+  it('os quatro modos têm tela e passam pela URL; sem modo, Arcade', () => {
+    expect(READY_MODES).toEqual(GAME_MODES);
     for (const mode of GAME_MODES) {
       expect(isReadyMode(mode)).toBe(true);
       expect(parseSongChoice(search(loadingUrl({ mode, songId: 'a', level: 'easy' })))?.mode).toBe(mode);
     }
     expect(readyMode(null)).toBe('Arcade');
+    expect(modeFromSlug('cordas-3d')).toBe('Cordas 3D');
   });
 
   it('sem música não há escolha; modo e nível estranhos viram Arcade e Fácil', () => {

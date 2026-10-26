@@ -10,20 +10,21 @@ const renderModes = (path: string = ROUTES.modes, theme = undefined as typeof pa
   renderScreen(<ModeSelect />, { path, route: ROUTES.modes, theme });
 
 describe('ModeSelect', () => {
-  it('Arcade marcado, Partitura livre; Cordas 3D em breve e fora da escolha', () => {
+  it('Arcade marcado; Partitura e Cordas 3D livres, nenhum "em breve"', () => {
     renderModes();
     expect(screen.getByRole('heading', { level: 1, name: 'Escolha o modo' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Arcade' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('radio', { name: 'Partitura' })).toHaveAttribute('aria-checked', 'false');
-    const soon = screen.getByRole('radio', { name: 'Cordas 3D, em breve' });
-    expect(soon).toHaveAttribute('aria-disabled', 'true');
-    expect(soon).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('radio', { name: 'Cordas 3D' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.queryByRole('radio', { name: /em breve/ })).not.toBeInTheDocument();
   });
 
-  it('clicar em Cordas 3D não muda nada', async () => {
+  it('Cordas 3D pelo clique leva à música com o modo', async () => {
     renderModes();
-    await userEvent.click(screen.getByRole('radio', { name: 'Cordas 3D, em breve' }));
-    expect(screen.getByRole('radio', { name: 'Arcade' })).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(screen.getByRole('radio', { name: 'Cordas 3D' }));
+    expect(screen.getByRole('radio', { name: 'Cordas 3D' })).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(screen.getByRole('button', { name: /Continuar com Cordas 3D/ }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/tocar/musica?modo=cordas-3d');
   });
 
   it('setas trocam e o botão acompanha; continuar leva à música com o modo', async () => {

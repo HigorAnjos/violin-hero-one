@@ -82,16 +82,46 @@ export function sheetPalette(theme: Theme): SheetPalette {
   };
 }
 
+function lane(theme: Theme, i: 0 | 1 | 2 | 3): LanePalette {
+  const letter = STRING_LETTERS[i];
+  const s = theme.game.strings[letter];
+  return { letter, main: solid(s.main), onNote: solid(s.text), glow: toTint(s.glow) };
+}
+
+const lanes = (theme: Theme) => [lane(theme, 0), lane(theme, 1), lane(theme, 2), lane(theme, 3)] as const;
+
+export interface Strings3DPalette {
+  /** Corda, letra G D A E, caixa da nota, haste, cauda e coluna da casa da vez. */
+  strings: readonly [LanePalette, LanePalette, LanePalette, LanePalette];
+  /** Chão do braço (o fundo da pista). */
+  floor: number;
+  /** Divisas das casas e linhas dos tempos. */
+  grid: number;
+  /** Barras de compasso, números das casas e medidor de fps. */
+  muted: number;
+  /** Contorno do chão (o magenta do design). */
+  border: number;
+  /** Contorno do acerto em volta da caixa. */
+  ink: number;
+}
+
+/** Cores das Cordas 3D, todas do tema, como a pista. */
+export function strings3dPalette(theme: Theme): Strings3DPalette {
+  return {
+    strings: lanes(theme),
+    floor: solid(theme.game.track),
+    grid: solid(theme.game.trackLine),
+    muted: solid(theme.colors.textMuted),
+    border: solid(theme.colors.primary.main),
+    ink: solid(theme.colors.text),
+  };
+}
+
 /** Todas as cores da pista saem do tema; o render não tem cor própria. */
 export function trackPalette(theme: Theme): TrackPalette {
   const g = theme.game;
-  const lane = (i: 0 | 1 | 2 | 3): LanePalette => {
-    const letter = STRING_LETTERS[i];
-    const s = g.strings[letter];
-    return { letter, main: solid(s.main), onNote: solid(s.text), glow: toTint(s.glow) };
-  };
   return {
-    lanes: [lane(0), lane(1), lane(2), lane(3)],
+    lanes: lanes(theme),
     track: solid(g.track),
     trackLine: solid(g.trackLine),
     hitLine: solid(g.hitLine),
