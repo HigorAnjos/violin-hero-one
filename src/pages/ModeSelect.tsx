@@ -9,7 +9,7 @@ import { isReadyMode, modeFromSlug, READY_MODES, readyMode, songsUrl } from '../
 import type { GameMode } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 
-/** Os modos do cartão que já têm tela; os outros (e Cordas 3D, do floor ciclo2-3d) aparecem "em breve". */
+/** Os modos do cartão que já têm tela; um modo sem tela aparece "em breve". A Prática não é cartão. */
 const PLAYABLE = READY_MODES.filter((mode) => mode !== 'Prática');
 
 const Header = styled.header`
@@ -74,7 +74,7 @@ const Keys = styled.p`
   }
 `;
 
-/** 2 · Escolha de modo: Arcade, Partitura e Cordas 3D (em breve). Setas trocam, Enter confirma. */
+/** 2 · Escolha de modo: Arcade, Partitura e Cordas 3D. Setas trocam, Enter confirma. */
 export const ModeSelect: React.FC = () => {
   const navigate = useNavigate();
   const [search] = useSearchParams();
@@ -118,6 +118,8 @@ export const ModeSelect: React.FC = () => {
           name="Cordas 3D"
           description="As quatro cordas na frente e as notas vindo do fundo. A coluna mostra a casa, a caixa mostra o dedo."
           audience="Quer aprender onde pôr os dedos"
+          radio={isReadyMode('Cordas 3D') ? radio('Cordas 3D') : undefined}
+          onConfirm={confirm}
         />
       </Cards>
 

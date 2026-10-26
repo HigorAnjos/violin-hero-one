@@ -61,14 +61,15 @@ test('sem banco: a estante são as 3 do app, com o aviso', async ({ page }) => {
   await expect(page.getByRole('radiogroup', { name: 'Músicas' }).getByRole('radio')).toHaveCount(3);
 });
 
-test('Cordas 3D aparece como em breve e não entra na escolha', async ({ page }) => {
+test('Cordas 3D entra na escolha pelas setas e leva à música com o modo', async ({ page }) => {
   await page.goto('/tocar');
-  const soon = page.getByRole('radio', { name: 'Cordas 3D, em breve' });
-  await expect(soon).toHaveAttribute('aria-disabled', 'true');
   await page.getByRole('radio', { name: 'Arcade' }).focus();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('radio', { name: 'Arcade' })).toBeFocused();
+  await expect(page.getByRole('radio', { name: 'Cordas 3D' })).toBeFocused();
+  await expect(page.getByRole('radio', { name: 'Cordas 3D' })).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/tocar\/musica\?modo=cordas-3d$/);
 });
 
 test('a biblioteca abre a seleção com a música escolhida', async ({ page }) => {

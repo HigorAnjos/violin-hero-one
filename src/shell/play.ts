@@ -5,7 +5,7 @@ import type { PracticeStart } from './gameSession';
 import type { RecordCheck } from './records';
 import { ROUTES } from './routes';
 
-export const GAME_MODES = ['Arcade', 'Partitura', 'Prática'] as const;
+export const GAME_MODES = ['Arcade', 'Partitura', 'Prática', 'Cordas 3D'] as const;
 export type GameMode = (typeof GAME_MODES)[number];
 
 /** O que viaja pela navegação da calibração até o resultado. */
@@ -28,7 +28,7 @@ export interface ResultState extends PlayState {
 
 export const DEFAULT_MODE: GameMode = 'Arcade';
 
-const MODE_ROUTE: Record<GameMode, string> = { Arcade: ROUTES.game, Partitura: ROUTES.sheet, Prática: ROUTES.practice };
+const MODE_ROUTE: Record<GameMode, string> = { Arcade: ROUTES.game, Partitura: ROUTES.sheet, Prática: ROUTES.practice, 'Cordas 3D': ROUTES.strings3d };
 
 /** Tela da partida de cada modo: para onde a contagem leva. */
 export function gameRoute(mode: GameMode | undefined): string {

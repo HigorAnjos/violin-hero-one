@@ -114,7 +114,7 @@ const Head = styled.div`
     }
 
     > span {
-      font-size: 0.6875rem;
+      font-size: 0.75rem;
     }
   }
 `;
@@ -125,8 +125,8 @@ const Status = styled.span<{ $color: string }>`
   color: ${({ $color }) => $color};
 
   @media (max-height: 500px) {
-    font-size: 0.6875rem;
-    letter-spacing: 0.12em;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
   }
 `;
 
