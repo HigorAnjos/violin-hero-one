@@ -119,6 +119,28 @@ describe('TrackScene', () => {
     expect(s.visibleNotes()).toBeGreaterThan(100);
   });
 
+  it('a 60 e a 120 fps, no mesmo instante as notas estão no mesmo lugar (movimento por tempo, não por quadro)', () => {
+    const frames = (fps: number) => {
+      const { s } = scene();
+      const seen: string[][] = [];
+      // da entrada às primeiras notas tocadas, com um acerto e um erro no meio; foto a cada 1/60 s
+      for (let f = 0; f <= 6 * fps; f++) {
+        const now = START - LEAD_SECONDS + f / fps;
+        if (f === 3 * fps) {
+          s.judge(judgment(notes[0], 'perfect'), now);
+          s.judge(judgment(notes[1], 'miss', 'not-played'), now);
+        }
+        s.update(now);
+        if (f % (fps / 60) === 0) seen.push(s.visibleChips());
+      }
+      return seen;
+    };
+    const at60 = frames(60);
+    expect(at60).toHaveLength(6 * 60 + 1);
+    expect(at60.some((chips) => chips.length > 0)).toBe(true);
+    expect(frames(120)).toEqual(at60);
+  });
+
   it('ignora julgamento de nota que não existe', () => {
     const { s } = scene();
     expect(() => s.judge({ ...judgment(notes[0], 'perfect'), index: 9999 })).not.toThrow();

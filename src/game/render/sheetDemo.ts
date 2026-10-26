@@ -1,10 +1,15 @@
 /**
  * Bancada da partitura para o dev server (dev/partitura.html): toca uma música com leituras simuladas, sem microfone,
- * para medir fps e conferir o visual. Parâmetros: ?musica=<id>&tema=palco&fps=1&altura=112&laco=1-2&andamento=0.75
- * (laço A–B por compasso, a partir de 1, e fator de andamento; cada volta é um motor novo, como na prática).
+ * para medir fps e conferir o visual. Parâmetros: ?musica=<id>&nivel=hard&tema=palco&fps=1&altura=112&laco=1-2&andamento=0.75
+ * &em=12 (laço A–B por compasso, a partir de 1, e fator de andamento; cada volta é um motor novo, como na prática; `em`
+ * congela a faixa nesse tempo da música, para conferir pausas e ligaduras). A música pode ser qualquer uma de
+ * content/songs, convertida aqui mesmo: a bancada não entra no build.
  */
 import { getTheme } from '../../assets/styles/themes';
 import { createEngine, renderPerformance, type Engine } from '../engine';
+import { n } from '../engine/testing';
+import { convertSongChart } from '../notation/catalog';
+import type { Level, Song } from '../notation/song';
 import { FIXED_SONGS, findFixedSong } from '../notation/songs';
 import { parseFpsFlag, type FpsReport } from './fps';
 import { createSheet, type Sheet } from './sheet';
@@ -16,8 +21,38 @@ declare global {
   }
 }
 
+/**
+ * Amostra para conferir a escrita (?musica=pausas): toda figura de pausa, a pontuada, ligaduras dentro do compasso,
+ * por cima da barra, acima e abaixo das cabeças, e uma ligadura no fim do compasso 7 para o laço 6-7 cortar.
+ */
+const SAMPLE: Song = {
+  ...FIXED_SONGS[1].song,
+  id: 'pausas',
+  title: 'Pausas e ligaduras',
+  measures: [
+    { beats: 4, notes: [n(0, 1, 74, 2, 3)] },
+    { beats: 4, notes: [] },
+    { beats: 4, notes: [n(0, 0.25, 74, 2, 3), n(1, 1, 76, 3, 0), n(2.75, 0.25, 78, 3, 1), n(3, 1, 79, 3, 2)] },
+    { beats: 4, notes: [n(0, 2, 81, 3, 3), n(2, 2, 81, 3, 3, true)] },
+    { beats: 4, notes: [n(0, 1, 81, 3, 3, true)] },
+    { beats: 4, notes: [n(0, 3, 69, 2, 0), n(3, 1, 69, 2, 0, true)] },
+    { beats: 4, notes: [n(0, 2, 69, 2, 0, true), n(2, 1.5, 71, 2, 1), n(3.5, 0.5, 71, 2, 1, true)] },
+    { beats: 4, notes: [n(0, 1, 71, 2, 1, true), n(2, 2, 74, 2, 3)] },
+  ],
+};
+
 const params = new URLSearchParams(location.search);
-const song = (findFixedSong(params.get('musica') ?? '') ?? FIXED_SONGS[1]).song;
+const SOURCES = import.meta.glob('../../../content/songs/*.musicxml', { query: '?raw', import: 'default' }) as Record<string, () => Promise<string>>;
+const id = params.get('musica') ?? '';
+const level = (params.get('nivel') ?? 'easy') as Level;
+const source = SOURCES[`../../../content/songs/${id}.musicxml`] as (() => Promise<string>) | undefined;
+const song =
+  id === SAMPLE.id
+    ? SAMPLE
+    : source && (level !== 'easy' || !findFixedSong(id))
+      ? convertSongChart({ name: `${id}.musicxml`, content: await source() }, level)
+      : (findFixedSong(id) ?? FIXED_SONGS[1]).song;
+const frozenBeat = params.has('em') ? Number(params.get('em')) : null;
 const theme = getTheme(params.get('tema'));
 // Padrão: a proporção da tela 5b (280 px numa tela de 720)
 const height = Number(params.get('altura') ?? Math.round((innerHeight * 280) / 720));
@@ -92,7 +127,7 @@ const sheet = (live.sheet = await createSheet(host, {
 addEventListener('resize', () => sheet.resize(width(), height));
 
 function frame() {
-  const now = clockNow();
+  const now = frozenBeat === null ? clockNow() : startAt + (frozenBeat - startBeat) * spb;
   if (loop && now >= startAt + (live.lap + 1) * lapLength) startLap(live.lap + 1);
   const { engine, readings } = live;
   while (live.next < readings.length && readings[live.next].time <= now) engine?.push(readings[live.next++].reading);
