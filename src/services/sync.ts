@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DeviceData } from './deviceData';
 import { createPlaySync, indexedDbPlayQueueStore, memoryPlayQueueStore, type PlaySync } from './playQueue';
+import { forgetProfilePending } from './profilePending';
 import { submitPlay, type PlayOutcome } from './progress';
 import { ensureSession, type SessionState } from './session';
 import { songCache, songStore } from './songCache';
@@ -34,6 +35,7 @@ export function createDeviceData(sync: PlaySync = playSync, songs = songStore, o
   return {
     flush: (userId) => sync.flush(userId, { strict: true }),
     async forget(userId) {
+      forgetProfilePending(userId);
       await Promise.all([sync.forget(userId), songs?.clear(userId)]);
     },
     use(userId) {

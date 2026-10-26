@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { THEME_STORAGE_KEY } from '../assets/styles/themes';
 import { loadA4 } from './playerAudio';
 import { isOnboarded, loadLocalProfile, saveLocalProfile } from './profile';
-import { loadPending, markProfilePending, clearProfilePending } from './profilePending';
+import { clearProfilePending, forgetProfilePending, loadPending, markProfilePending } from './profilePending';
+import { USER_STORAGE_KEY } from './user';
 import { readProfileRow, syncProfileNow, type ProfileSyncClient } from './profileSync';
 import type { SessionState } from './session';
 
@@ -59,6 +60,26 @@ describe('perfil do servidor no aparelho', () => {
     expect(await syncProfileNow(client, { status: 'offline' })).toBeNull();
     expect(await syncProfileNow(null, SIGNED_IN)).toBeNull();
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('pendente do usuário A: a troca para B não manda nada para B; forget de A apaga', async () => {
+    localStorage.setItem(USER_STORAGE_KEY, 'ana');
+    markProfilePending({ nickname: 'Ana', theme_id: 'neon' });
+    localStorage.setItem(USER_STORAGE_KEY, 'bia');
+    const { client, update } = fakeClient();
+    await syncProfileNow(client, { status: 'signed-in', userId: 'bia', anonymous: false });
+    expect(update).not.toHaveBeenCalled();
+    expect(loadPending('bia')).toEqual({});
+    expect(loadPending('ana')).toEqual({ nickname: 'Ana', theme_id: 'neon' });
+    forgetProfilePending('ana');
+    expect(loadPending('ana')).toEqual({});
+  });
+
+  it('pendente de antes da primeira sessão passa para o primeiro dono', async () => {
+    markProfilePending({ level: 'never' });
+    const { client, update } = fakeClient();
+    await syncProfileNow(client, SIGNED_IN);
+    expect(update).toHaveBeenCalledWith({ level: 'never' });
   });
 
   it('a pendência só sai com o valor que foi enviado', () => {

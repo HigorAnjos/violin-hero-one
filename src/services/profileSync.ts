@@ -23,8 +23,8 @@ export function readProfileRow(row: Record<string, unknown>): ProfileFields {
  * escolhido no servidor quer dizer que o onboarding já foi feito em algum aparelho: este pula. A latência fica de fora:
  * vale por par entrada>saída do aparelho (playerAudio.needsCalibration).
  */
-export function applyProfile(row: ProfileFields): void {
-  const pending = loadPending();
+export function applyProfile(row: ProfileFields, userId?: string): void {
+  const pending = loadPending(userId);
   const local = loadLocalProfile();
   const pick = <K extends 'level' | 'nickname' | 'animal'>(key: K, current: ProfileFields[K] | undefined): ProfileFields[K] =>
     key in pending ? (pending[key] as ProfileFields[K]) : (row[key] ?? current ?? null);
@@ -46,7 +46,7 @@ export function applyProfile(row: ProfileFields): void {
 /** A query do perfil do servidor (shell/profileSync.ts); a volta da rede a refaz. */
 export const PROFILE_QUERY_KEY = ['profile', 'remote'] as const;
 
-export type ProfileSyncClient ={ from: SupabaseClient['from']; rpc: SupabaseClient['rpc'] };
+export type ProfileSyncClient = { from: SupabaseClient['from']; rpc: SupabaseClient['rpc'] };
 
 /**
  * Sobe o que está pendente e traz o perfil do servidor para o aparelho. Sem cliente ou sessão, null (o aparelho
@@ -54,15 +54,16 @@ export type ProfileSyncClient ={ from: SupabaseClient['from']; rpc: SupabaseClie
  */
 export async function syncProfileNow(client: ProfileSyncClient | null, session: SessionState): Promise<ProfileFields | null> {
   if (!client || session.status !== 'signed-in') return null;
-  const pending = loadPending();
+  // Só a pendência do usuário da sessão: a de outro (convidado que saiu, conta trocada) nunca sobe para esta
+  const pending = loadPending(session.userId);
   if (Object.keys(pending).length) {
     const { error } = await client.from('profiles').update(pending).eq('id', session.userId);
     if (error) throw error;
-    clearProfilePending(pending);
+    clearProfilePending(pending, session.userId);
   }
   const { data, error } = await client.rpc('ensure_my_profile');
   if (error) throw error;
   const row = readProfileRow(((Array.isArray(data) ? data[0] : data) ?? {}) as Record<string, unknown>);
-  applyProfile(row);
+  applyProfile(row, session.userId);
   return row;
 }
