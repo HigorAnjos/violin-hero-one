@@ -2,27 +2,17 @@ import { expect, test, type Page } from '@playwright/test';
 import { simulateGame, type GameResult, type PracticeResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
 import { blockWebFonts, fallbackFontsReady, fontsReady } from './fonts';
-import { expectFits, tinyText, tooSmallTargets } from './layout';
+import { expectFits, expectVisibleFocus, LONG_TITLE, tinyText, tooSmallTargets } from './layout';
 import { openWithState } from './state';
 
 // Build do e2e (--mode e2e): ?ouvido=simulado e ?simular valem; sem gesto o Chromium não libera o áudio
 test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } });
 
-const LONG_TITLE = 'Concerto para Violino em Mi Menor, Op. 64 — Allegro molto appassionato (versão completa com cadência)';
 const SONG = { ...ODE, title: LONG_TITLE };
 const LOOP = { startMeasure: 2, endMeasure: 3 };
 
 const played = (errors: number): GameResult => simulateGame({ song: ODE, startAt: 1, noFail: true }, { errors, seed: 2 }).result;
 const lastResult = (page: Page) => page.evaluate(() => (window as Window & { __vhResult?: PracticeResult }).__vhResult);
-
-async function focusVisible(page: Page) {
-  await page.keyboard.press('Tab');
-  const outline = await page.evaluate(() => {
-    const el = document.activeElement as HTMLElement | null;
-    return el && el !== document.body ? getComputedStyle(el).outlineStyle : 'sem foco';
-  });
-  expect(outline).toBe('solid');
-}
 
 async function checkScreen(page: Page) {
   await expectFits(page);
@@ -48,7 +38,7 @@ for (const tema of ['caderno', 'palco'] as const) {
         await expect(page.getByTestId('partitura').locator('canvas')).toBeVisible();
         await ready(page);
         await checkScreen(page);
-        await focusVisible(page);
+        await expectVisibleFocus(page);
       });
 
       test('pausa com velocidade e metrônomo', async ({ page }) => {
@@ -69,7 +59,7 @@ for (const tema of ['caderno', 'palco'] as const) {
         await expect(page.getByTestId('partitura').locator('canvas')).toBeVisible();
         await ready(page);
         await checkScreen(page);
-        await focusVisible(page);
+        await expectVisibleFocus(page);
       });
 
       test('resultado com recorde e "Praticar compassos"', async ({ page }) => {

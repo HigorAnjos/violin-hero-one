@@ -2,67 +2,17 @@ import { expect, test, type Page } from '@playwright/test';
 import { simulateGame, type GameResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
 import { blockWebFonts, fallbackFontsReady, fontsReady } from './fonts';
-import { expectFits } from './layout';
+import { expectArrowsAligned, expectFits, LONG_TITLE } from './layout';
 import { openWithState } from './state';
 
 test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } });
 
-const LONG_TITLE = 'Concerto para Violino em Mi Menor, Op. 64 — Allegro molto appassionato (versão completa com cadência)';
 const SONG = { ...ODE, title: LONG_TITLE };
 
 /** Partida de verdade com os números inchados: pontuação de 7 dígitos e combo de 5. */
 function bigResult(errors: number, noFail = true): GameResult {
   const result = simulateGame({ song: ODE, startAt: 1, noFail }, { errors, seed: 2 }).result;
   return { ...result, score: 9876543, maxCombo: 12345 };
-}
-
-/**
- * Botões com ▸ ou ◂ (fora do subset latin, desenhados por outra fonte): a seta não muda a altura do botão
- * (medida com e sem ela) e fica no meio do texto, na mesma linha dos botões vizinhos.
- */
-async function arrowButtons(page: Page) {
-  return page.evaluate(() =>
-    [...document.querySelectorAll<HTMLElement>('button, a[href]')]
-      .filter((el) => el.offsetParent !== null && /[▸◂]/.test(el.textContent ?? ''))
-      .map((el) => {
-        const arrow = [...el.querySelectorAll('[aria-hidden="true"]')].find((s) => /^[▸◂]$/.test((s.textContent ?? '').trim()))!;
-        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-        let text: DOMRect | null = null;
-        while (!text && walker.nextNode()) {
-          const node = walker.currentNode;
-          if (arrow.contains(node) || !node.textContent?.trim()) continue;
-          const range = document.createRange();
-          range.selectNodeContents(node);
-          text = range.getBoundingClientRect();
-        }
-        const range = document.createRange();
-        range.selectNodeContents(arrow);
-        const a = range.getBoundingClientRect();
-        const mid = (r: DOMRect) => (r.top + r.bottom) / 2;
-        const box = el.getBoundingClientRect();
-        (arrow as HTMLElement).style.display = 'none';
-        const without = el.getBoundingClientRect().height;
-        (arrow as HTMLElement).style.display = '';
-        const neighbors = [...(el.parentElement?.children ?? [])].filter((s) => s !== el && s.matches('button, a[href]'));
-        const half = (n: number) => Math.round(n * 2) / 2;
-        return {
-          label: (el.textContent ?? '').trim(),
-          growth: half(box.height - without),
-          offset: text ? half(Math.abs(mid(a) - mid(text))) : 0,
-          rowShift: half(Math.max(0, ...neighbors.map((s) => Math.abs(mid(s.getBoundingClientRect()) - mid(box))))),
-        };
-      })
-  );
-}
-
-async function expectArrowsAligned(page: Page) {
-  const buttons = await arrowButtons(page);
-  expect(buttons.length, 'botões com seta na tela').toBeGreaterThan(0);
-  for (const b of buttons) {
-    expect(b.growth, `altura que a seta acrescenta a "${b.label}" (px)`).toBe(0);
-    expect(b.offset, `seta de "${b.label}" fora do meio do texto (px)`).toBeLessThanOrEqual(2);
-    expect(b.rowShift, `"${b.label}" desalinhado dos botões vizinhos (px)`).toBeLessThanOrEqual(0.5);
-  }
 }
 
 for (const fonte of ['real', 'reserva'] as const) {
