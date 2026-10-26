@@ -332,7 +332,7 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
               Velocidade da música<b>{speedLabel(pendingSpeed ?? speed)}</b>
             </span>
             {pendingSpeed === null ? (
-              <SpeedPicker speed={speed} onSpeed={chooseSpeed} label="Velocidade da música" />
+              <SpeedPicker speed={speed} onSpeed={chooseSpeed} label="Escolher a velocidade" />
             ) : (
               <Warning role="alertdialog" aria-labelledby="pausa-aviso">
                 <p id="pausa-aviso">{PRACTICE_WARNING}</p>

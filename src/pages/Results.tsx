@@ -91,8 +91,8 @@ const NewBadge = styled.div<{ $color: string }>`
 
   small {
     font-weight: 800;
-    font-size: 0.6875rem;
-    letter-spacing: 0.12em;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
     color: ${({ $color }) => $color};
   }
 

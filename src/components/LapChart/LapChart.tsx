@@ -40,7 +40,7 @@ const Chart = styled.div`
     gap: 0.375rem;
 
     > div > span {
-      font-size: 0.625rem;
+      font-size: 0.75rem;
     }
   }
 `;
@@ -56,7 +56,7 @@ const Goal = styled.div`
     position: absolute;
     right: 0;
     bottom: 2px;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     color: ${({ theme }) => theme.colors.warning.text};
   }
 `;
