@@ -10,6 +10,8 @@ import type { SheetClock } from './sheetLayout';
 import { Strings3DScene } from './strings3dScene';
 
 export interface Strings3DOptions {
+  /** Modo daltônico: padrão de cada corda nas caixas. Fixo na vida das cordas. */
+  patterns?: boolean;
   /** Fixo durante a música: trocar de tema é destruir as cordas e criar outras. */
   theme: Theme;
   notes: readonly EngineNote[];
@@ -80,6 +82,7 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
     bars: options.bars,
     reducedMotion: options.reducedMotion ?? prefersReducedMotion(),
     leadSeconds: options.leadSeconds,
+    patterns: options.patterns,
   });
   app.stage.addChild(scene);
   scene.layout(options.width, options.height);

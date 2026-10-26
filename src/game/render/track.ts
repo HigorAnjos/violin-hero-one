@@ -2,10 +2,12 @@ import { Application } from 'pixi.js';
 import type { Theme } from '../../assets/styles/themes';
 import type { EngineNote } from '../engine/types';
 import { FpsMeter, type FpsReport } from './fps';
+import type { LookOptions } from './look';
 import { prefersReducedMotion } from './present';
 import { TrackScene, type JudgmentEvent } from './scene';
 
-export interface TrackOptions {
+/** `patterns` (modo daltônico) e `noteNames` são fixos na vida da pista, como o tema. */
+export interface TrackOptions extends LookOptions {
   /** Fixo durante a música: trocar de tema é destruir esta pista e criar outra. */
   theme: Theme;
   notes: readonly EngineNote[];
@@ -64,7 +66,14 @@ export async function createTrack(host: HTMLCanvasElement | HTMLElement, options
   });
   if (!(host instanceof HTMLCanvasElement)) host.appendChild(app.canvas);
 
-  const scene = new TrackScene(app.renderer, { theme, notes, reducedMotion: options.reducedMotion ?? prefersReducedMotion(), leadSeconds: options.leadSeconds });
+  const scene = new TrackScene(app.renderer, {
+    theme,
+    notes,
+    reducedMotion: options.reducedMotion ?? prefersReducedMotion(),
+    leadSeconds: options.leadSeconds,
+    patterns: options.patterns,
+    noteNames: options.noteNames,
+  });
   app.stage.addChild(scene);
   scene.layout(options.width, options.height);
 

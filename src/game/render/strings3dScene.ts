@@ -2,6 +2,7 @@ import { Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import type { Theme } from '../../assets/styles/themes';
 import type { EngineNote } from '../engine/types';
 import { lowerBound, maxNotesInWindow, tailSeconds } from './layout';
+import { corner, drawPattern, glowLayers, noteLook, STRING_PATTERNS, type LookOptions, type NoteLook } from './look';
 import { strings3dPalette, type Strings3DPalette } from './palette';
 import { feedbackAlpha, glowRing } from './present';
 import type { JudgmentEvent, TextureBaker } from './scene';
@@ -29,7 +30,7 @@ import {
   type Strings3DLayout,
 } from './strings3dLayout';
 
-export interface Strings3DSceneOptions {
+export interface Strings3DSceneOptions extends Pick<LookOptions, 'patterns'> {
   theme: Theme;
   notes: readonly EngineNote[];
   reducedMotion: boolean;
@@ -162,6 +163,7 @@ export class Strings3DScene extends Container {
   private held = 0;
   private highlighted = -1;
 
+  private readonly look: NoteLook;
   private readonly vibrating = [false, false, false, false];
   private readonly holding = [false, false, false, false];
   private readonly laneHitAt = [-Infinity, -Infinity, -Infinity, -Infinity];
@@ -177,6 +179,7 @@ export class Strings3DScene extends Container {
     super();
     const { theme } = options;
     const p = (this.palette = strings3dPalette(theme));
+    this.look = noteLook(theme, options);
     this.reducedMotion = options.reducedMotion;
     this.lead = options.leadSeconds ?? LEAD_SECONDS_3D;
     this.clock = options.clock ?? null;
@@ -197,7 +200,7 @@ export class Strings3DScene extends Container {
     this.numberTextures = Array.from({ length: this.columns }, (_, i) => this.bakeText(String(i), ui));
     this.casaTexture = this.bakeText('CASA', ui);
     this.frameTexture = this.bake(
-      new Graphics().roundRect(4, 4, FRAME_W - 8, FRAME_H - 8, 22).stroke({ color: 0xffffff, width: 6 }),
+      new Graphics().roundRect(4, 4, FRAME_W - 8, FRAME_H - 8, corner(this.look, 22)).stroke({ color: 0xffffff, width: 6 }),
     );
     this.dotTexture = this.bake(new Graphics().circle(DOT_R, DOT_R, DOT_R).fill(0xffffff));
 
@@ -616,7 +619,11 @@ export class Strings3DScene extends Container {
       projectInto(l, x0 + (l.right - x0) * u, STRING_HEIGHTS[s] + offset, 0, a);
       g.lineTo(a.x, a.y);
     }
-    g.stroke({ color: this.palette.strings[s].main, width: Math.max(2, STRING_THICKNESS * scale) });
+    const color = this.palette.strings[s].main;
+    const width = Math.max(2, STRING_THICKNESS * scale);
+    // Neon: a corda acesa, o halo largo e fraco antes do traço
+    for (const { spread, alpha } of glowLayers(this.look)) g.stroke({ color, width: width * (1 + spread * 12), alpha });
+    g.stroke({ color, width });
   }
 
   /** A corda tocada vibra; parada, volta a ser reta. */
@@ -695,7 +702,10 @@ export class Strings3DScene extends Container {
     return this.bake(new Text({ text, style: { fill: 0xffffff, fontFamily, fontWeight: '800', fontSize: LABEL_PX } }));
   }
 
-  /** Caixas das notas, uma linha por corda (G D A E) e uma coluna por dedo (0 a 4), num atlas só. */
+  /**
+   * Caixas das notas, uma linha por corda (G D A E) e uma coluna por dedo (0 a 4), num atlas só. Canto reto no 8-Bits;
+   * no modo daltônico, o padrão da corda atrás do número do dedo.
+   */
   private bakeAtlas(font: string): Texture {
     const atlas = new Container();
     const g = new Graphics();
@@ -705,7 +715,8 @@ export class Strings3DScene extends Container {
         const x = finger * CELL_W;
         const y = s * CELL_H;
         // Folga de 1 px entre células: a filtragem da textura não puxa a cor da vizinha para a borda
-        g.roundRect(x + 1, y + 1, CELL_W - 2, CELL_H - 2, CELL_H * 0.16).fill(lane.main);
+        g.roundRect(x + 1, y + 1, CELL_W - 2, CELL_H - 2, corner(this.look, CELL_H * 0.16)).fill(lane.main);
+        if (this.look.patterns) drawPattern(g, STRING_PATTERNS[s], x + 3, y + 3, CELL_W - 6, CELL_H - 6, lane.onNote, 0.4);
         const digit = new Text({ text: String(finger), style: { fill: lane.onNote, fontFamily: font, fontWeight: '800', fontSize: CELL_H * 0.7 } });
         digit.anchor.set(0.5);
         digit.position.set(x + CELL_W / 2, y + CELL_H / 2 + CELL_H * 0.04);

@@ -1,6 +1,6 @@
-import { Texture, TextureSource } from 'pixi.js';
+import { Graphics, Texture, TextureSource, type Container } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
-import { cadernoTheme } from '../../assets/styles/themes';
+import { cadernoTheme, getTheme, type Theme } from '../../assets/styles/themes';
 import { palcoTheme } from '../../assets/styles/themes/palco';
 import { n, ODE } from '../engine/testing';
 import type { Issue, Judgment } from '../engine/types';
@@ -251,5 +251,29 @@ describe('SheetScene', () => {
   it('ignora julgamento de nota que não existe', () => {
     const { s } = scene();
     expect(() => s.judge(judgment(9999, 'perfect'))).not.toThrow();
+  });
+});
+
+describe('SheetScene: especiais', () => {
+  /** A primeira textura assada é a cabeça cheia da corda G: largura e altura da arte. */
+  function head(theme: Theme) {
+    let size: { width: number; height: number } | null = null;
+    const generateTexture = vi.fn(({ target }: { target: Container }) => {
+      if (!size && target instanceof Graphics) size = target.getLocalBounds().rectangle;
+      return new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    });
+    new SheetScene({ resolution: 1, generateTexture } as unknown as TextureBaker, { theme, song: ODE, clock: steadyClock(START, 100), reducedMotion: false });
+    return size!;
+  }
+
+  it('8-Bits: cabeça quadrada (quase tão alta quanto larga); Caderno, elipse', () => {
+    const round = head(cadernoTheme);
+    const square = head(getTheme('8-bits'));
+    expect(round.height / round.width).toBeLessThan(0.8);
+    expect(square.height / square.width).toBeGreaterThan(0.85);
+  });
+
+  it('Neon: halo em volta da cabeça', () => {
+    expect(head(getTheme('neon')).width).toBeGreaterThan(head(cadernoTheme).width * 1.3);
   });
 });
