@@ -4,4 +4,5 @@ export { Calibration } from './Calibration';
 export { GameOver } from './GameOver';
 export { Gameplay } from './Gameplay';
 export { GameplaySheet } from './GameplaySheet';
+export { Practice } from './Practice';
 export { Results } from './Results';
