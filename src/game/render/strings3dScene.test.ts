@@ -20,10 +20,10 @@ function fakeBaker() {
   const baked = () => ({ texture: new Texture(), aspect: 1.5 });
   const baker = {
     text: vi.fn<LabelBaker['text']>(baked),
-    box: vi.fn<LabelBaker['box']>(baked),
+    boxes: vi.fn<LabelBaker['boxes']>(baked),
     frame: vi.fn(baked),
   } satisfies LabelBaker;
-  const calls = () => baker.text.mock.calls.length + baker.box.mock.calls.length + baker.frame.mock.calls.length;
+  const calls = () => baker.text.mock.calls.length + baker.boxes.mock.calls.length + baker.frame.mock.calls.length;
   return { baker, calls };
 }
 
@@ -75,13 +75,34 @@ describe('Strings3DScene', () => {
     expect(calls()).toBe(baked);
   });
 
-  it('caixa da nota com a cor da corda dela e o dedo (uma por corda × dedo)', () => {
+  it('caixas num atlas só: uma célula por corda × dedo, na cor da corda', () => {
     const { baker } = make();
-    const boxes = baker.box.mock.calls;
-    expect(boxes).toHaveLength(20);
-    expect(boxes.map(([text]) => text).slice(0, 5)).toEqual(['0', '1', '2', '3', '4']);
-    expect(boxes[0][1]).toBe(hex(cadernoTheme, 'G'));
-    expect(boxes[15][1]).toBe(hex(cadernoTheme, 'E'));
+    expect(baker.boxes).toHaveBeenCalledTimes(1);
+    const [cells, columns] = baker.boxes.mock.calls[0];
+    expect(columns).toBe(5);
+    expect(cells).toHaveLength(20);
+    expect(cells.slice(0, 5).map((c) => c.text)).toEqual(['0', '1', '2', '3', '4']);
+    expect(cells[0].fill).toBe(hex(cadernoTheme, 'G'));
+    expect(cells[15].fill).toBe(hex(cadernoTheme, 'E'));
+    expect(cells[15].color).toBe(parseInt(cadernoTheme.game.strings.E.text.slice(1), 16));
+  });
+
+  it('cada caixa aponta para o dedo e a corda da nota no atlas; a haste tem a cor da corda', () => {
+    const { s } = make();
+    s.update(notes[0].time - 0.2);
+    const box = s.visibleBoxes()[0];
+    expect(box.finger).toBe(notes[0].finger);
+    expect(box.string).toBe(notes[0].string);
+    expect(s.stemColors()[0]).toBe(hex(cadernoTheme, (['G', 'D', 'A', 'E'] as const)[notes[0].string]));
+  });
+
+  it('as peças das notas são desenhos instanciados: o número de desenhos não cresce com as notas', () => {
+    const { s } = make();
+    const dense = Array.from({ length: 120 }, (_, i) => ({ ...notes[0], index: i, time: START + i * 0.01 }));
+    s.setNotes(dense);
+    s.update(START);
+    expect(s.visibleNotes()).toBeGreaterThan(60);
+    expect(s.noteDrawCalls()).toBe(5);
   });
 
   it('nada no chão antes de a primeira nota chegar ao fundo', () => {
@@ -99,7 +120,7 @@ describe('Strings3DScene', () => {
     const coming = s.visibleBoxes()[0];
     expect(coming.z).toBeCloseTo(-FLOOR_LENGTH / 2);
     expect(coming.x).toBeCloseTo(l.columnX[casaOf(first)]);
-    expect(coming.y).toBe(STRING_HEIGHTS[first.string]);
+    expect(coming.y).toBeCloseTo(STRING_HEIGHTS[first.string]);
     s.update(first.time);
     expect(s.visibleBoxes()[0].z).toBe(0);
   });
@@ -135,7 +156,7 @@ describe('Strings3DScene', () => {
     const { s } = make({ notes: held });
     s.judge(judgment(held[0], 'perfect'), held[0].time);
     s.update(held[0].time + 0.5);
-    expect(s.visibleBoxes().some((b) => b.z === 0 && b.y === STRING_HEIGHTS[held[0].string] && b.opacity === 1)).toBe(true);
+    expect(s.visibleBoxes().some((b) => b.z === 0 && Math.abs(b.y - STRING_HEIGHTS[held[0].string]) < 1e-6 && b.opacity === 1)).toBe(true);
     expect(s.heldNotes()).toBe(1);
     s.update(held[0].time + 1.6);
     expect(s.heldNotes()).toBe(0);

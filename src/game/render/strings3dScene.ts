@@ -2,16 +2,23 @@ import {
   BufferAttribute,
   BufferGeometry,
   CircleGeometry,
+  Color,
   DoubleSide,
+  InstancedBufferAttribute,
+  InstancedMesh,
   LineBasicMaterial,
   LineSegments,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
   PlaneGeometry,
+  Quaternion,
   Scene,
+  ShaderMaterial,
   Sprite,
   SpriteMaterial,
+  Vector3,
   type Material,
   type Texture,
 } from 'three';
@@ -48,12 +55,22 @@ export interface Baked {
   aspect: number;
 }
 
+/** Uma caixa de nota: fundo na cor da corda, dedo escrito na cor do texto da corda. */
+export interface BoxCell {
+  text: string;
+  fill: number;
+  color: number;
+}
+
 /** Quem desenha os rótulos em textura (canvas no navegador; falso nos testes). */
 export interface LabelBaker {
   /** Texto branco numa linha, fundo transparente: a cor vem do material (letra, casa, compasso). */
   text(text: string, font: string): Baked;
-  /** Caixa da nota: retângulo arredondado na cor da corda com o dedo escrito na cor do texto da corda. */
-  box(text: string, fill: number, color: number, font: string): Baked;
+  /**
+   * Atlas das caixas das notas, `columns` por linha, de cima para baixo: uma textura só para todas, e as caixas
+   * vão num único desenho instanciado. `aspect` é o de uma célula.
+   */
+  boxes(cells: readonly BoxCell[], columns: number, font: string): Baked;
   /** Contorno arredondado branco, do tamanho da caixa (acerto). */
   frame(): Baked;
 }
@@ -82,11 +99,13 @@ const STRING_THICKNESS = 0.035;
 const STEM_WIDTH = 0.025;
 const BORDER_WIDTH = 0.05;
 const TAIL_WIDTH = 0.24;
+const HOLD_BAR_HEIGHT = 0.06;
 const VIBRATE_SECONDS = 0.4;
 const VIBRATE_AMPLITUDE = 0.035;
 const STRING_SEGMENTS = 48;
 const MAX_GRID_LINES = 48;
 const MAX_BAR_LABELS = 6;
+const FINGERS = 5;
 /** Tempos à frente procurados no relógio: o laço curto ou o andamento lento cabem com folga. */
 const GRID_AHEAD_BEATS = 64;
 /** Ergue as camadas do chão um fio, sem briga de profundidade. */
@@ -94,16 +113,6 @@ const LIFT = 0.002;
 
 // Ordem de desenho (sem teste de profundidade, de trás para a frente dentro de cada camada)
 const ORDER = { floor: 0, overlay: 1, grid: 2, tail: 3, shadow: 4, string: 5, stem: 6, label: 7, box: 8, frame: 9 } as const;
-
-interface Chip {
-  box: Sprite;
-  stem: Mesh;
-  shadow: Mesh;
-  tail: Mesh;
-  /** Barra do "segure", embaixo da caixa: o fundo e quanto já foi. */
-  holdBack: Sprite;
-  holdFill: Sprite;
-}
 
 const basic = (color: number, opacity = 1) =>
   new MeshBasicMaterial({ color, transparent: true, opacity, depthTest: false, depthWrite: false, side: DoubleSide });
@@ -114,6 +123,147 @@ const sprite = (map: Texture | null, color = 0xffffff) =>
 function flat(mesh: Mesh): Mesh {
   mesh.rotation.x = -Math.PI / 2;
   return mesh;
+}
+
+// Placa instanciada: cor e transparência por instância (tint) e, com textura, o pedaço do atlas (rect)
+const QUAD_VERTEX = /* glsl */ `
+attribute vec4 tint;
+attribute vec4 rect;
+varying vec4 vTint;
+varying vec2 vUv;
+void main() {
+  vTint = tint;
+  vUv = rect.xy + uv * rect.zw;
+  gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+}`;
+
+const QUAD_FRAGMENT = /* glsl */ `
+uniform sampler2D map;
+uniform bool useMap;
+varying vec4 vTint;
+varying vec2 vUv;
+void main() {
+  vec4 color = vTint;
+  if (useMap) color *= texture2D(map, vUv);
+  if (color.a <= 0.0) discard;
+  gl_FragColor = color;
+  #include <colorspace_fragment>
+}`;
+
+const UP_RIGHT = new Quaternion();
+const FLAT = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
+
+/**
+ * Um tipo de peça das notas (caixa, haste, sombra, cauda, barra do segure) num único desenho: o quadro só escreve as
+ * matrizes e as cores das instâncias usadas, sem alocar.
+ */
+class Quads {
+  mesh: InstancedMesh;
+  count = 0;
+  private readonly material: ShaderMaterial;
+  private tint: InstancedBufferAttribute;
+  private rect: InstancedBufferAttribute;
+  private readonly matrix = new Matrix4();
+  private readonly position = new Vector3();
+  private readonly scale = new Vector3();
+  private readonly color = new Color();
+
+  constructor(
+    private readonly scene: Scene,
+    readonly geometry: BufferGeometry,
+    map: Texture | null,
+    private readonly order: number,
+    capacity: number,
+  ) {
+    this.material = new ShaderMaterial({
+      vertexShader: QUAD_VERTEX,
+      fragmentShader: QUAD_FRAGMENT,
+      uniforms: { map: { value: map }, useMap: { value: map !== null } },
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    [this.mesh, this.tint, this.rect] = this.build(capacity);
+  }
+
+  get capacity(): number {
+    return this.tint.count;
+  }
+
+  /** Cresce o número de instâncias (setNotes com mais notas na janela); fora do quadro. */
+  ensure(capacity: number): void {
+    if (capacity <= this.capacity) return;
+    this.scene.remove(this.mesh);
+    this.mesh.geometry.dispose();
+    this.mesh.dispose();
+    [this.mesh, this.tint, this.rect] = this.build(capacity);
+  }
+
+  begin(): void {
+    this.count = 0;
+  }
+
+  /** Mais uma instância; devolve o índice dela. Cor em hex do tema. */
+  push(x: number, y: number, z: number, sx: number, sy: number, rotation: Quaternion, color: number, alpha: number): number {
+    const i = this.count++;
+    this.position.set(x, y, z);
+    this.scale.set(sx, sy, 1);
+    this.mesh.setMatrixAt(i, this.matrix.compose(this.position, rotation, this.scale));
+    this.color.setHex(color);
+    this.tint.setXYZW(i, this.color.r, this.color.g, this.color.b, alpha);
+    return i;
+  }
+
+  /** Pedaço do atlas da instância `i` (u, v, largura, altura). */
+  setRect(i: number, u: number, v: number, w: number, h: number): void {
+    this.rect.setXYZW(i, u, v, w, h);
+  }
+
+  end(): void {
+    this.mesh.count = this.count;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    this.tint.needsUpdate = true;
+    this.rect.needsUpdate = true;
+  }
+
+  /** Posição, escala, transparência e pedaço do atlas de cada instância usada; para testes. */
+  read(): { x: number; y: number; z: number; sx: number; alpha: number; rect: [number, number] }[] {
+    const out = [];
+    const q = new Quaternion();
+    for (let i = 0; i < this.count; i++) {
+      this.mesh.getMatrixAt(i, this.matrix);
+      this.matrix.decompose(this.position, q, this.scale);
+      out.push({ x: this.position.x, y: this.position.y, z: this.position.z, sx: this.scale.x, alpha: this.tint.getW(i), rect: [this.rect.getX(i), this.rect.getY(i)] as [number, number] });
+    }
+    return out;
+  }
+
+  /** Cor (hex do tema) da instância `i`; para testes. */
+  colorAt(i: number): number {
+    return this.color.setRGB(this.tint.getX(i), this.tint.getY(i), this.tint.getZ(i)).getHex();
+  }
+
+  dispose(): void {
+    this.mesh.geometry.dispose();
+    this.mesh.dispose();
+    this.material.dispose();
+    this.geometry.dispose();
+  }
+
+  private build(capacity: number): [InstancedMesh, InstancedBufferAttribute, InstancedBufferAttribute] {
+    const tint = new InstancedBufferAttribute(new Float32Array(capacity * 4), 4);
+    const rect = new InstancedBufferAttribute(new Float32Array(capacity * 4).fill(1), 4);
+    const geometry = this.geometry.clone();
+    geometry.setAttribute('tint', tint);
+    geometry.setAttribute('rect', rect);
+    const mesh = new InstancedMesh(geometry, this.material, capacity);
+    mesh.count = 0;
+    mesh.renderOrder = this.order;
+    mesh.frustumCulled = false;
+    this.scene.add(mesh);
+    return [mesh, tint, rect];
+  }
 }
 
 /**
@@ -130,6 +280,8 @@ export class Strings3DScene {
   private readonly bars: readonly number[];
   private readonly columns: number;
   private l: Strings3DLayout;
+  /** As caixas ficam de frente para a câmera: a mesma inclinação dela. */
+  private readonly facing = new Quaternion();
 
   private notes: readonly EngineNote[] = [];
   private times = new Float64Array(0);
@@ -137,16 +289,20 @@ export class Strings3DScene {
   private state = new Uint8Array(0);
   private judgedAt = new Float64Array(0);
   private lookBack = MISS_FADE_SECONDS;
-  private readonly chips: Chip[] = [];
-  private usedChips = 0;
   private lastNow = 0;
 
-  private readonly boxes: Baked[][];
+  private readonly boxAtlas: Baked;
   private readonly letterTextures: Baked[];
   private readonly numberTextures: Baked[];
   private readonly casaTexture: Baked;
   private readonly frameTexture: Baked;
   private readonly barTextures = new Map<number, Baked>();
+
+  private readonly boxes: Quads;
+  private readonly stems: Quads;
+  private readonly shadows: Quads;
+  private readonly tailQuads: Quads;
+  private readonly holdBars: Quads;
 
   private readonly highlight: Mesh;
   private readonly numbers: Sprite[] = [];
@@ -178,9 +334,9 @@ export class Strings3DScene {
     this.l = strings3dLayout(1, 1, this.columns, this.lead);
     const l = this.l;
     const { display, ui } = theme.fonts;
-    this.camera.rotation.order = 'YXZ';
 
-    this.boxes = p.strings.map((s) => [0, 1, 2, 3, 4].map((finger) => baker.box(String(finger), s.main, s.onNote, display)));
+    const cells = p.strings.flatMap((s) => Array.from({ length: FINGERS }, (_, finger) => ({ text: String(finger), fill: s.main, color: s.onNote })));
+    this.boxAtlas = baker.boxes(cells, FINGERS, display);
     this.letterTextures = p.strings.map((s) => baker.text(s.letter, display));
     this.numberTextures = Array.from({ length: this.columns }, (_, i) => baker.text(String(i), ui));
     this.casaTexture = baker.text('CASA', ui);
@@ -245,6 +401,17 @@ export class Strings3DScene {
       this.frames.push(frame);
     }
 
+    // As peças das notas: um desenho instanciado por tipo
+    const stem = new PlaneGeometry(STEM_WIDTH, 1);
+    stem.translate(0, 0.5, 0);
+    const bar = new PlaneGeometry(1, 1);
+    bar.translate(0.5, 0, 0);
+    this.tailQuads = new Quads(this.scene, new PlaneGeometry(1, 1), null, ORDER.tail, 1);
+    this.shadows = new Quads(this.scene, new CircleGeometry(0.5, 20), null, ORDER.shadow, 1);
+    this.stems = new Quads(this.scene, stem, null, ORDER.stem, 1);
+    this.boxes = new Quads(this.scene, new PlaneGeometry(1, 1), this.boxAtlas.texture, ORDER.box, 1);
+    this.holdBars = new Quads(this.scene, bar, null, ORDER.box, 1);
+
     this.setNotes(options.notes);
   }
 
@@ -257,6 +424,7 @@ export class Strings3DScene {
     this.camera.rotation.set(-c.pitch, 0, 0);
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld();
+    this.facing.setFromAxisAngle(new Vector3(1, 0, 0), -c.pitch);
     this.update(this.lastNow);
   }
 
@@ -276,22 +444,9 @@ export class Strings3DScene {
     this.state = state;
     this.judgedAt = judgedAt;
     this.lookBack = MISS_FADE_SECONDS + this.tails.reduce((a, b) => Math.max(a, b), 0);
-    const poolSize = maxNotesInWindow(this.times, this.lead + this.lookBack + 0.5) + 2;
-    const p = this.palette;
-    while (this.chips.length < poolSize) {
-      const chip: Chip = {
-        tail: flat(this.mesh(this.chips[0]?.tail.geometry ?? new PlaneGeometry(1, 1), basic(p.strings[0].main, TAIL_ALPHA), ORDER.tail)),
-        shadow: flat(this.mesh(this.chips[0]?.shadow.geometry ?? new CircleGeometry(0.5, 20), basic(p.strings[0].main, SHADOW_ALPHA), ORDER.shadow)),
-        stem: this.mesh(this.chips[0]?.stem.geometry ?? new PlaneGeometry(STEM_WIDTH, 1), basic(p.strings[0].main), ORDER.stem),
-        box: this.add(sprite(this.boxes[0][0].texture), ORDER.box),
-        holdBack: this.add(sprite(null, p.grid), ORDER.box),
-        holdFill: this.add(sprite(null, p.strings[0].main), ORDER.box),
-      };
-      chip.holdBack.center.set(0, 0.5);
-      chip.holdFill.center.set(0, 0.5);
-      this.hide(chip);
-      this.chips.push(chip);
-    }
+    const pool = maxNotesInWindow(this.times, this.lead + this.lookBack + 0.5) + 2;
+    for (const q of [this.tailQuads, this.shadows, this.stems, this.boxes]) q.ensure(pool);
+    this.holdBars.ensure(pool * 2);
   }
 
   /** Registra o julgamento do motor; `at` é a hora do relógio em que o feedback começa. */
@@ -313,13 +468,13 @@ export class Strings3DScene {
     const p = this.palette;
     const first = lowerBound(this.times, now - this.lookBack);
     const last = lowerBound(this.times, now + this.lead + 0.05);
-    let used = 0;
+    const capacity = this.boxes.capacity;
     let next = -1;
     const holding = this.holding.fill(false);
-
+    for (const q of [this.tailQuads, this.shadows, this.stems, this.boxes, this.holdBars]) q.begin();
     for (const n of this.numbers) n.material.color.setHex(p.muted);
 
-    for (let i = first; i < last && used < this.chips.length; i++) {
+    for (let i = first; i < last && this.boxes.count < capacity && this.tailQuads.count < capacity; i++) {
       const s = this.state[i];
       const time = this.times[i];
       const tail = this.tails[i];
@@ -333,60 +488,35 @@ export class Strings3DScene {
       if (!showBox && !showTail) continue;
       if (s === 0 && next < 0) next = i;
 
-      const chip = this.chips[used++];
       const lane = p.strings[note.string];
       const column = Math.min(this.columns - 1, casaOf(note));
       const x = l.columnX[column];
       const y = STRING_HEIGHTS[note.string];
       const fade = s === MISSED ? MISSED_ALPHA * missFade : entryAlpha3d(z);
 
-      chip.tail.visible = showTail;
-      if (showTail) {
-        chip.tail.position.set(x, LIFT * 3, (z + tailEnd) / 2);
-        chip.tail.scale.set(TAIL_WIDTH, z - tailEnd, 1);
-        (chip.tail.material as MeshBasicMaterial).color.setHex(lane.main);
-        (chip.tail.material as MeshBasicMaterial).opacity = TAIL_ALPHA * entryAlpha3d(tailEnd);
-      }
+      if (showTail) this.tailQuads.push(x, LIFT * 3, (z + tailEnd) / 2, TAIL_WIDTH, z - tailEnd, FLAT, lane.main, TAIL_ALPHA * entryAlpha3d(tailEnd));
 
-      chip.box.visible = chip.stem.visible = chip.shadow.visible = showBox;
       if (showBox) {
         const k = boxScale(z);
         const w = BOX.width * k;
         const h = BOX.height * k;
-        chip.box.material.map = this.boxes[note.string][note.finger].texture;
-        chip.box.material.opacity = fade;
-        chip.box.position.set(x, y, z);
-        chip.box.scale.set(w, h, 1);
-        const stemTop = Math.max(0, y - h / 2);
-        chip.stem.visible = stemTop > 0;
-        chip.stem.position.set(x, stemTop / 2, z);
-        chip.stem.scale.set(k, stemTop, 1);
-        const stem = chip.stem.material as MeshBasicMaterial;
-        stem.color.setHex(lane.main);
-        stem.opacity = fade;
-        chip.shadow.position.set(x, LIFT * 4, z);
-        chip.shadow.scale.set(w * 0.9, w * 0.9, 1);
-        const shadow = chip.shadow.material as MeshBasicMaterial;
-        shadow.color.setHex(lane.main);
-        shadow.opacity = SHADOW_ALPHA * fade;
+        const b = this.boxes.push(x, y, z, w, h, this.facing, 0xffffff, fade);
+        this.boxes.setRect(b, note.finger / FINGERS, 1 - (note.string + 1) / 4, 1 / FINGERS, 1 / 4);
+        const stemTop = y - h / 2;
+        if (stemTop > 0) this.stems.push(x, 0, z, k, stemTop, UP_RIGHT, lane.main, fade);
+        this.shadows.push(x, LIFT * 4, z, w * 0.9, w * 0.9, FLAT, lane.main, SHADOW_ALPHA * fade);
       }
 
-      chip.holdBack.visible = chip.holdFill.visible = held;
       if (held) {
         holding[note.string] = true;
         this.numbers[column].material.color.setHex(lane.main);
         const left = x - BOX.width / 2;
         const barY = y - BOX.height / 2 - 0.08;
-        const barH = 0.06;
-        chip.holdBack.position.set(left, barY, 0);
-        chip.holdBack.scale.set(BOX.width, barH, 1);
-        chip.holdFill.position.set(left, barY, 0);
-        chip.holdFill.scale.set(BOX.width * Math.min(1, (now - time) / tail), barH, 1);
-        chip.holdFill.material.color.setHex(lane.main);
+        this.holdBars.push(left, barY, 0, BOX.width, HOLD_BAR_HEIGHT, this.facing, p.grid, 1);
+        this.holdBars.push(left, barY, 0.001, BOX.width * Math.min(1, (now - time) / tail), HOLD_BAR_HEIGHT, this.facing, lane.main, 1);
       }
     }
-    for (let i = used; i < this.usedChips; i++) this.hide(this.chips[i]);
-    this.usedChips = used;
+    for (const q of [this.tailQuads, this.shadows, this.stems, this.boxes, this.holdBars]) q.end();
 
     // A coluna da próxima nota acende na cor da corda dela, como o número da casa
     this.highlight.visible = next >= 0;
@@ -424,19 +554,34 @@ export class Strings3DScene {
 
   /** Notas com a caixa visível agora; para testes. */
   visibleNotes(): number {
-    return this.chips.filter((c) => c.box.visible).length;
+    return this.boxes.count;
   }
 
   /** Notas no "segure" (na corda, com a barra); para testes. */
   heldNotes(): number {
-    return this.chips.filter((c) => c.holdFill.visible).length;
+    return this.holdBars.count / 2;
   }
 
-  /** Onde estão as caixas visíveis (x, y, z) e quão acesas; para testes. */
-  visibleBoxes(): { x: number; y: number; z: number; opacity: number; map: Texture | null }[] {
-    return this.chips
-      .filter((c) => c.box.visible)
-      .map((c) => ({ x: c.box.position.x, y: c.box.position.y, z: c.box.position.z, opacity: c.box.material.opacity, map: c.box.material.map }));
+  /** Onde estão as caixas visíveis (x, y, z), quão acesas e qual dedo / corda do atlas; para testes. */
+  visibleBoxes(): { x: number; y: number; z: number; opacity: number; finger: number; string: number }[] {
+    return this.boxes.read().map((b) => ({
+      x: b.x,
+      y: b.y,
+      z: b.z,
+      opacity: b.alpha,
+      finger: Math.round(b.rect[0] * FINGERS),
+      string: Math.round((1 - b.rect[1]) * 4) - 1,
+    }));
+  }
+
+  /** Cor das hastes visíveis (a da corda da nota); para testes. */
+  stemColors(): number[] {
+    return Array.from({ length: this.stems.count }, (_, i) => this.stems.colorAt(i));
+  }
+
+  /** Desenhos por quadro das peças das notas (um por tipo, qualquer que seja o número de notas); para testes. */
+  noteDrawCalls(): number {
+    return [this.tailQuads, this.shadows, this.stems, this.boxes, this.holdBars].length;
   }
 
   /** Coluna acesa (a da próxima nota) e a cor dela, ou null; para testes. */
@@ -462,20 +607,14 @@ export class Strings3DScene {
 
   /** Texturas assadas por esta cena; destruídas junto com ela. */
   bakedTextures(): Texture[] {
-    return [
-      ...this.boxes.flat(),
-      ...this.letterTextures,
-      ...this.numberTextures,
-      this.casaTexture,
-      this.frameTexture,
-      ...this.barTextures.values(),
-    ].map((b) => b.texture);
+    return [this.boxAtlas, ...this.letterTextures, ...this.numberTextures, this.casaTexture, this.frameTexture, ...this.barTextures.values()].map((b) => b.texture);
   }
 
   destroy(): void {
     for (const t of this.bakedTextures()) t.dispose();
     for (const g of new Set(this.geometries)) g.dispose();
     for (const m of this.materials) m.dispose();
+    for (const q of [this.tailQuads, this.shadows, this.stems, this.boxes, this.holdBars]) q.dispose();
     this.scene.clear();
   }
 
@@ -498,11 +637,6 @@ export class Strings3DScene {
     this.geometries.push(geometry);
     const material = new LineBasicMaterial({ color, transparent: true, opacity, depthTest: false, depthWrite: false });
     return this.add(new LineSegments(geometry, material), order);
-  }
-
-  private hide(chip: Chip): void {
-    chip.box.visible = chip.stem.visible = chip.shadow.visible = chip.tail.visible = false;
-    chip.holdBack.visible = chip.holdFill.visible = false;
   }
 
   /** A corda tocada vibra; parada, volta a ser reta. */

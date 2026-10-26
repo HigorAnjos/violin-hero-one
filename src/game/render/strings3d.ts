@@ -40,7 +40,8 @@ export interface Strings3D {
   destroy(): void;
 }
 
-const MAX_RESOLUTION = 2;
+/** Menos que a pista (2): o 3D enche a tela toda e a meta é 60 fps no celular médio. */
+const MAX_RESOLUTION = 1.5;
 /** Rótulos assados neste tamanho de fonte (px do canvas) e reduzidos na placa: nítidos até o dobro da densidade. */
 const LABEL_PX = 96;
 
@@ -82,19 +83,26 @@ export const canvasBaker: LabelBaker = {
     ctx.fillText(text, canvas.width / 2, canvas.height / 2 + LABEL_PX * 0.06);
     return texture(canvas);
   },
-  box(text, fill, color, font) {
+  boxes(cells, columns, font) {
     const h = LABEL_PX * 1.25;
-    const [canvas, ctx] = context((h * BOX.width) / BOX.height, h);
-    ctx.fillStyle = css(fill);
-    ctx.beginPath();
-    ctx.roundRect(0, 0, canvas.width, canvas.height, h * 0.16);
-    ctx.fill();
+    const w = Math.ceil((h * BOX.width) / BOX.height);
+    const rows = Math.ceil(cells.length / columns);
+    const [canvas, ctx] = context(w * columns, h * rows);
     ctx.font = `800 ${LABEL_PX}px ${font}`;
-    ctx.fillStyle = css(color);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2 + LABEL_PX * 0.06);
-    return texture(canvas);
+    // Folga de 1 px entre células: a filtragem da textura não puxa a cor da vizinha para a borda
+    cells.forEach((cell, i) => {
+      const x = (i % columns) * w;
+      const y = Math.floor(i / columns) * h;
+      ctx.fillStyle = css(cell.fill);
+      ctx.beginPath();
+      ctx.roundRect(x + 1, y + 1, w - 2, h - 2, h * 0.16);
+      ctx.fill();
+      ctx.fillStyle = css(cell.color);
+      ctx.fillText(cell.text, x + w / 2, y + h / 2 + LABEL_PX * 0.06);
+    });
+    return { ...texture(canvas), aspect: w / h };
   },
   frame() {
     const [canvas, ctx] = context(LABEL_PX * 2.8, LABEL_PX * 2);
@@ -116,13 +124,15 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
   const { theme, onFps } = options;
   await loadFonts(theme);
 
+  const density = globalThis.devicePixelRatio || 1;
   const renderer = new WebGLRenderer({
     canvas: host instanceof HTMLCanvasElement ? host : undefined,
-    antialias: true,
+    // Com tela densa (dpr ≥ 2) o serrilhado quase não aparece e o MSAA custa caro no celular
+    antialias: density < 2,
     alpha: true,
     powerPreference: 'high-performance',
   });
-  renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, MAX_RESOLUTION));
+  renderer.setPixelRatio(Math.min(density, MAX_RESOLUTION));
   renderer.setClearColor(0x000000, 0);
   renderer.setSize(options.width, options.height);
   if (!(host instanceof HTMLCanvasElement)) host.appendChild(renderer.domElement);
