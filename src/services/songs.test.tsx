@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import type { SessionState } from './session';
-import { getSong, listCatalog, SongError, useCatalog, useSong, type SongsClient } from './songs';
+import { createSongCache, memorySongStore } from './songCache';
+import { getSong, listCatalog, loadSong, SongError, useCatalog, useSavedSongs, useSong, type SongsClient } from './songs';
 
 const CHART = {
   formatVersion: 1,
@@ -141,5 +142,62 @@ describe('hooks', () => {
     const { result } = renderHook(() => useSong('escala-re-maior', 'easy', null), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toMatchObject({ kind: 'offline' });
+  });
+
+  it('useSong com rede guarda no aparelho e a estante de guardadas fica sabendo', async () => {
+    const { client } = fakeClient({ rpc: { data: [ROW], error: null } });
+    const cache = createSongCache(memorySongStore());
+    const { result } = renderHook(() => ({ song: useSong('escala-re-maior', 'easy', client, cache), saved: useSavedSongs(cache) }), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.saved.data?.map((s) => s.sheet.id)).toEqual(['escala-re-maior']));
+    expect(result.current.song.data?.saved).toBe('saved');
+  });
+});
+
+const ROW = { ...SHEET_ROW, level: 'easy', format_version: 1, chart: CHART, hash: 'a'.repeat(64) };
+const signedIn = async () => SIGNED_IN;
+
+describe('loadSong com o cache do aparelho', () => {
+  it('com rede: devolve a do servidor e guarda; de novo com o mesmo hash, não regrava', async () => {
+    const { client } = fakeClient({ rpc: { data: [ROW], error: null } });
+    const cache = createSongCache(memorySongStore());
+    expect((await loadSong(client, signedIn, 'escala-re-maior', 'easy', cache)).saved).toBe('saved');
+    expect((await loadSong(client, signedIn, 'escala-re-maior', 'easy', cache)).saved).toBe('unchanged');
+  });
+
+  it('com rede e hash novo: troca a guardada', async () => {
+    const cache = createSongCache(memorySongStore());
+    await loadSong(fakeClient({ rpc: { data: [ROW], error: null } }).client, signedIn, 'escala-re-maior', 'easy', cache);
+    const newer = { ...ROW, chart: { ...CHART, bpm: 72 }, hash: 'b'.repeat(64) };
+    expect((await loadSong(fakeClient({ rpc: { data: [newer], error: null } }).client, signedIn, 'escala-re-maior', 'easy', cache)).saved).toBe('saved');
+    expect(await cache.find('escala-re-maior', 'easy')).toMatchObject({ hash: 'b'.repeat(64), song: { bpm: 72 } });
+  });
+
+  it.each([
+    ['sem cliente (offline)', null],
+    ['servidor fora do ar', fakeClient({ rpc: { data: null, error: { message: 'Failed to fetch' } } }).client],
+  ])('%s: usa a guardada', async (_name, offline) => {
+    const cache = createSongCache(memorySongStore());
+    await loadSong(fakeClient({ rpc: { data: [ROW], error: null } }).client, signedIn, 'escala-re-maior', 'easy', cache);
+    const kept = await loadSong(offline, signedIn, 'escala-re-maior', 'easy', cache);
+    expect(kept).toMatchObject({ saved: 'device', hash: 'a'.repeat(64), sheet: SHEET });
+  });
+
+  it('sem rede e sem guardada: o erro de sempre', async () => {
+    await expect(loadSong(null, signedIn, 'escala-re-maior', 'easy', createSongCache(memorySongStore()))).rejects.toMatchObject({ kind: 'offline' });
+  });
+
+  it('a música sumiu do servidor: não esconde com a guardada', async () => {
+    const cache = createSongCache(memorySongStore());
+    await loadSong(fakeClient({ rpc: { data: [ROW], error: null } }).client, signedIn, 'escala-re-maior', 'easy', cache);
+    await expect(loadSong(fakeClient({ rpc: { data: [], error: null } }).client, signedIn, 'escala-re-maior', 'easy', cache)).rejects.toMatchObject({
+      kind: 'not-found',
+    });
+  });
+
+  it('cache quebrado (sem espaço, sem IndexedDB): toca do mesmo jeito', async () => {
+    const broken = { remember: vi.fn().mockRejectedValue(new Error('quota')), find: vi.fn().mockRejectedValue(new Error('x')), list: vi.fn() };
+    const loaded = await loadSong(fakeClient({ rpc: { data: [ROW], error: null } }).client, signedIn, 'escala-re-maior', 'easy', broken);
+    expect(loaded).toMatchObject({ saved: null, sheet: SHEET });
+    await expect(loadSong(null, signedIn, 'escala-re-maior', 'easy', broken)).rejects.toMatchObject({ kind: 'offline' });
   });
 });

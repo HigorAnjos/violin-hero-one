@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LEVELS, parseSong, type Level, type Song, type TimeSignature } from '../game/notation/song';
 import { ensureSession, type AuthClient, type SessionState } from './session';
+import { songCache, type SavedSong, type SongCache } from './songCache';
 import { supabase } from './supabase';
 
 export type SongOrigin = 'catalog' | 'imported' | 'editor';
@@ -132,9 +133,37 @@ export async function getSong(client: SongsClient | null, session: SessionState,
   return { sheet: toSheet(row), song, hash: row.hash };
 }
 
+/** O servidor não respondeu (sem internet, sem sessão, fora do ar): só nesses casos vale a cópia do aparelho. */
+const unreachable = (error: unknown) => !(error instanceof SongError) || error.kind === 'offline' || error.kind === 'server';
+
+/**
+ * get_song com o cache do aparelho: com rede, guarda o que veio (o cache só regrava se o hash mudou); sem rede,
+ * devolve a guardada. "Não existe" e "partitura com problema" vêm do servidor e valem: a guardada não os esconde.
+ */
+export async function loadSong(
+  client: SongsClient | null,
+  session: () => Promise<SessionState>,
+  id: string,
+  level: Level,
+  cache: SongCache | null
+): Promise<LoadedSong & { saved: 'saved' | 'unchanged' | 'device' | null }> {
+  let loaded: LoadedSong;
+  try {
+    loaded = await getSong(client, await session(), id, level);
+  } catch (error) {
+    const kept = unreachable(error) ? await cache?.find(id, level).catch(() => undefined) : undefined;
+    if (kept) return { ...kept, saved: 'device' };
+    throw error;
+  }
+  // Sem espaço ou sem IndexedDB: toca do mesmo jeito, só não fica para depois
+  const saved = (await cache?.remember(loaded, level).catch(() => null)) ?? null;
+  return { ...loaded, saved };
+}
+
 export const songKeys = {
   catalog: ['songs', 'catalog'] as const,
   song: (id: string, level: Level) => ['songs', 'song', id, level] as const,
+  saved: ['songs', 'saved'] as const,
 };
 
 /** A sessão é a mesma do SessionStatus (query ['session']): dois logins anônimos ao mesmo tempo criariam dois usuários. */
@@ -156,12 +185,26 @@ export function useCatalog(client: SongsClient | null = supabase) {
   });
 }
 
-export function useSong(id: string, level: Level, client: SongsClient | null = supabase) {
+export function useSong(id: string, level: Level, client: SongsClient | null = supabase, cache: SongCache | null = songCache) {
   const session = useSession(client);
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: songKeys.song(id, level),
-    queryFn: async () => getSong(client, await session(), id, level),
+    queryFn: async () => {
+      const loaded = await loadSong(client, session, id, level, cache);
+      if (loaded.saved === 'saved') void queryClient.invalidateQueries({ queryKey: songKeys.saved });
+      return loaded;
+    },
     staleTime: Infinity,
     retry: retryUnlessFinal,
+  });
+}
+
+/** As músicas guardadas no aparelho (tocam sem internet); sem cache ou com erro de leitura, nenhuma. */
+export function useSavedSongs(cache: SongCache | null = songCache) {
+  return useQuery({
+    queryKey: songKeys.saved,
+    queryFn: async (): Promise<SavedSong[]> => (cache ? cache.list().catch(() => []) : []),
+    staleTime: Infinity,
   });
 }

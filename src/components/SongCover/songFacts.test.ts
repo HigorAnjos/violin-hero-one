@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { FIXED_SONGS } from '../../game/notation/songs';
-import { durationLabel, keyLabel, noteCount, songMeta, stringShares } from './songFacts';
+import { durationLabel, keyLabel, noteCount, offlineTag, songMeta, stringShares } from './songFacts';
 
 describe('ficha da música', () => {
+  it('selo de quem toca sem internet', () => {
+    expect(offlineTag({ embedded: true, saved: false }, false)).toBe('No app');
+    expect(offlineTag({ embedded: true, saved: true }, false)).toBe('No app');
+    expect(offlineTag({ embedded: false, saved: true }, false)).toBe('Baixada');
+    expect(offlineTag({ embedded: false, saved: false }, false)).toBeNull();
+    // Sem internet a estante inteira é do app ou baixada: só a baixada fica marcada
+    expect(offlineTag({ embedded: true, saved: false }, true)).toBeNull();
+    expect(offlineTag({ embedded: false, saved: true }, true)).toBe('Baixada');
+  });
+
   it('tom em português', () => {
     expect(keyLabel('D major')).toBe('Ré maior');
     expect(keyLabel('F# minor')).toBe('Fá♯ menor');

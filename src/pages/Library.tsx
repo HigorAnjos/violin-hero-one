@@ -7,8 +7,8 @@ import { OfflineBanner } from '../components/OfflineBanner/OfflineBanner';
 import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
 import { matchesSearch, SearchField } from '../components/SearchField/SearchField';
 import { SongCover } from '../components/SongCover/SongCover';
-import { songMeta } from '../components/SongCover/songFacts';
-import { useShelf, type ShelfSong } from '../services/shelf';
+import { offlineTag, songMeta } from '../components/SongCover/songFacts';
+import { savedCount, useShelf, type ShelfSong } from '../services/shelf';
 import { songsUrl } from '../shell/choice';
 import { ROUTES } from '../shell/routes';
 import { LibraryEmpty } from './LibraryEmpty';
@@ -220,18 +220,21 @@ const Status = styled.p`
   color: ${({ theme }) => theme.colors.textMuted};
 `;
 
-const SongCard: React.FC<{ song: ShelfSong; offline: boolean }> = ({ song, offline }) => (
-  <li>
-    <Card to={songsUrl('Arcade', song.id)}>
-      <Cover id={song.id}>{song.embedded && !offline && <Badge>No app</Badge>}</Cover>
-      <CardBody>
-        <b>{song.title}</b>
-        <span>{songMeta(song)}</span>
-        <Levels>{song.levels.map((l) => LEVEL_NAMES[l]).join(' · ')}</Levels>
-      </CardBody>
-    </Card>
-  </li>
-);
+const SongCard: React.FC<{ song: ShelfSong; offline: boolean }> = ({ song, offline }) => {
+  const tag = offlineTag(song, offline);
+  return (
+    <li>
+      <Card to={songsUrl('Arcade', song.id)}>
+        <Cover id={song.id}>{tag && <Badge>{tag}</Badge>}</Cover>
+        <CardBody>
+          <b>{song.title}</b>
+          <span>{songMeta(song)}</span>
+          <Levels>{song.levels.map((l) => LEVEL_NAMES[l]).join(' · ')}</Levels>
+        </CardBody>
+      </Card>
+    </li>
+  );
+};
 
 /** 8 · Biblioteca: todas as músicas da estante em cartões; tocar abre a seleção de música com ela escolhida. */
 export const Library: React.FC = () => {
@@ -246,12 +249,14 @@ export const Library: React.FC = () => {
     .filter((s) => (!onlyApp || s.embedded) && matchesSearch(query, s.title, s.composer))
     .sort(SORTS[sort].compare);
   const embedded = songs.filter((s) => s.embedded).length;
+  const saved = savedCount(songs);
+  const kicker = [`${songs.length} músicas`, `${embedded} no app`, saved ? `${saved} ${saved === 1 ? 'baixada' : 'baixadas'}` : ''].filter(Boolean).join(' · ');
 
   return (
     <Screen $gap="1.125rem">
       <Header>
         <Intro>
-          <Kicker>{shelf.status === 'ready' ? `${songs.length} músicas · ${embedded} no app` : 'Carregando…'}</Kicker>
+          <Kicker>{shelf.status === 'ready' ? kicker : 'Carregando…'}</Kicker>
           <ScreenTitle>Biblioteca</ScreenTitle>
         </Intro>
         <Button as={Link} to={ROUTES.home} $variant="ghost">
@@ -259,7 +264,7 @@ export const Library: React.FC = () => {
         </Button>
       </Header>
 
-      {shelf.status === 'ready' && shelf.fallback && <OfflineBanner reason={shelf.reason} count={songs.length} />}
+      {shelf.status === 'ready' && shelf.fallback && <OfflineBanner reason={shelf.reason} count={songs.length} saved={saved > 0} />}
 
       {empty ? (
         <LibraryEmpty />

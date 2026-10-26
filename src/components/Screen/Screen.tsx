@@ -24,13 +24,14 @@ export const clampLines = (lines: number) => css`
 
 /**
  * Moldura das telas cheias: ocupa a janela, centra o conteúdo até 1280 px e aperta tudo no
- * celular deitado (altura até 500 px), onde a página pode rolar em vez de cortar.
+ * celular deitado (altura até 500 px), onde a página pode rolar em vez de cortar. Com o aviso de versão nova
+ * aparecendo, encolhe no espaço que ele ocupa embaixo.
  */
 export const Screen = styled.main<{ $gap?: string }>`
   width: 100%;
   max-width: 80rem;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: calc(100vh - var(--update-notice-space, 0px));
+  min-height: calc(100dvh - var(--update-notice-space, 0px));
   margin: 0 auto;
   display: flex;
   flex-direction: column;

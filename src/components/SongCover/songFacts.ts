@@ -23,6 +23,16 @@ export function songMeta(sheet: { composer: string; bpm: number; durationSeconds
   return [sheet.composer.trim(), `${Math.round(sheet.bpm)} BPM`, durationLabel(sheet.durationSeconds)].filter(Boolean).join(' · ');
 }
 
+/**
+ * Selo de quem toca sem internet: "No app" (embutida) ou "Baixada" (já aberta com internet). Sem internet todas
+ * na estante são do app ou baixadas, então só a baixada continua marcada.
+ */
+export function offlineTag(song: { embedded: boolean; saved: boolean }, offline: boolean): string | null {
+  if (song.embedded && !offline) return 'No app';
+  if (song.saved && !song.embedded) return 'Baixada';
+  return null;
+}
+
 export interface StringShare {
   letter: (typeof STRING_LETTERS)[number];
   percent: number;
