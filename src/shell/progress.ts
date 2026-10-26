@@ -2,6 +2,7 @@ import React from 'react';
 import { BADGES, type BadgeId } from '../game/engine';
 import type { PlayerLevel } from '../game/engine/levels';
 import { loadEarnedBadges } from '../services/badges';
+import { useMyHistory, type History } from '../services/history';
 import { loadLocalProfile, type Animal } from '../services/profile';
 import { currentStreak, useMyBadges, useMyRecords, useMyStreak, type ProgressClient } from '../services/progress';
 import { supabase } from '../services/supabase';
@@ -17,6 +18,8 @@ export interface Progress {
   badges: BadgeId[];
   /** Dias seguidos que valem hoje; null sem servidor (o aparelho não conta sequência). */
   streakDays: number | null;
+  /** Minutos por dia e afinação por corda das últimas 4 semanas; null sem servidor. */
+  history: History | null;
 }
 
 /** Do aparelho: vh:profile, vh:recordes e vh:badges. */
@@ -29,6 +32,7 @@ export function loadLocalProgress(): Progress {
     records: loadRecords(),
     badges: loadEarnedBadges(),
     streakDays: null,
+    history: null,
   };
 }
 
@@ -38,7 +42,7 @@ export function mergeRecords(a: readonly RecordEntry[], b: readonly RecordEntry[
   for (const r of [...a, ...b]) {
     const key = `${r.songId}:${r.level}`;
     const seen = best.get(key);
-    if (!seen || r.score > seen.score) best.set(key, { songId: r.songId, level: r.level, score: r.score });
+    if (!seen || r.score > seen.score) best.set(key, { songId: r.songId, level: r.level, score: r.score, ...(r.accuracy === undefined ? {} : { accuracy: r.accuracy }) });
   }
   return [...best.values()].sort((x, y) => y.score - x.score);
 }
@@ -52,6 +56,7 @@ export function useProgress(client: ProgressClient | null = supabase): Progress 
   const records = useMyRecords(client);
   const badges = useMyBadges(client);
   const streak = useMyStreak(client);
+  const history = useMyHistory(client);
   return React.useMemo(() => {
     const owned = new Set([...local.badges, ...(badges.data ?? [])]);
     return {
@@ -59,6 +64,7 @@ export function useProgress(client: ProgressClient | null = supabase): Progress 
       records: records.data ? mergeRecords(local.records, records.data) : local.records,
       badges: BADGES.map((b) => b.id).filter((id) => owned.has(id)),
       streakDays: streak.isSuccess ? currentStreak(streak.data) : null,
+      history: history.data ?? null,
     };
-  }, [local, records.data, badges.data, streak.isSuccess, streak.data]);
+  }, [local, records.data, badges.data, streak.isSuccess, streak.data, history.data]);
 }

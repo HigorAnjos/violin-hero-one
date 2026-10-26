@@ -30,6 +30,8 @@ export interface RecordEntry {
   songId: string;
   level: Level;
   score: number;
+  /** Só o recorde do servidor sabe a precisão; o do aparelho guarda só a pontuação. */
+  accuracy?: number;
 }
 
 const LEVELS: readonly Level[] = ['easy', 'medium', 'hard'];

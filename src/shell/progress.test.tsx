@@ -12,7 +12,7 @@ afterEach(() => localStorage.clear());
 
 describe('progresso local', () => {
   it('aparelho vazio: sem nome, bicho, nível, recordes, selos nem sequência', () => {
-    expect(loadLocalProgress()).toEqual({ nickname: null, animal: null, level: null, records: [], badges: [], streakDays: null });
+    expect(loadLocalProgress()).toEqual({ nickname: null, animal: null, level: null, records: [], badges: [], streakDays: null, history: null });
   });
 
   it('junta perfil, recordes e selos do aparelho', () => {
@@ -57,7 +57,7 @@ function fakeClient(tables: Record<string, unknown>): ProgressClient {
   const session = { user: { id: 'u1', is_anonymous: true } };
   const query = (table: string) => {
     const result = { data: tables[table] ?? null, error: null };
-    return { select: () => Object.assign(Promise.resolve(result), { maybeSingle: async () => result }) };
+    return { select: () => Object.assign(Promise.resolve(result), { maybeSingle: async () => result, gte: async () => result }) };
   };
   return {
     auth: { getSession: async () => ({ data: { session }, error: null }), signInAnonymously: async () => ({ data: { session }, error: null }) },
@@ -87,10 +87,15 @@ describe('useProgress', () => {
       records: [{ song_id: 'minueto', level: 'medium', score: 5400, accuracy: '91.5' }],
       badges_earned: [{ badge_id: 'primeira-musica' }],
       streaks: { current_days: 4, best_days: 9, last_day: today },
+      play_days: [{ day: today, seconds: 600 }],
+      plays: [{ played_at: new Date().toISOString(), string_cents: ['3.5', null, '-2', '8'] }],
     });
     const { result } = renderHook(() => useProgress(client), { wrapper });
     await waitFor(() => expect(result.current.streakDays).toBe(4));
+    await waitFor(() => expect(result.current.history).not.toBeNull());
+    expect(result.current.history).toEqual({ days: [{ day: today, seconds: 600 }], plays: [{ playedAt: expect.any(String), stringCents: [3.5, null, -2, 8] }] });
     expect(result.current.records.map((r) => r.songId)).toEqual(['minueto', 'ode']);
+    expect(result.current.records[0].accuracy).toBe(91.5);
     expect(result.current.badges).toEqual(['primeira-musica', 'combo-25']);
   });
 });
