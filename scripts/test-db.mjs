@@ -565,6 +565,19 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       assert.deepEqual((await as(c, u, `select seconds from ${S}.play_days`)).rows, [{ seconds: 30 }]);
     });
 
+    it('partida comum que virou prática (combo zera na virada) vale como prática e não como partida normal', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 20 });
+      // 10 Perfeitos antes da virada e 10 na prática, que começa do combo zero: 2000 pontos, combo máximo 10
+      const converted = { ...playOf(id, { sequence: Array(20).fill('perfect') }), score: 2000, max_combo: 10 };
+      await invalid(submit(c, u, converted));
+      const r = await submit(c, u, { ...converted, mode: 'practice', speed: 0.7, duration_ms: 25000 });
+      assert.equal(r.record, null);
+      assert.deepEqual(r.badges, []);
+      // Duas quebras sem erro, nem na prática
+      await invalid(submit(c, u, { ...converted, mode: 'practice', speed: 0.7, duration_ms: 25000, client_id: randomUUID(), max_combo: 6, score: 2000 }));
+    });
+
     it('sequência: dias seguidos somam, um buraco zera a atual e mantém a melhor, dia fora de ordem recalcula', async () => {
       const u = await newUser(c);
       const id = await serverSong(c);

@@ -330,8 +330,10 @@ begin
     raise exception 'partida inválida: notas demais para a duração da prática' using errcode = '22023';
   end if;
 
-  -- Combo e pontos coerentes com as contagens
-  if v_combo > v_hits or (v_hits > 0 and v_combo < ceil(v_hits::numeric / (v_miss + 1))) then
+  -- Combo e pontos coerentes com as contagens. Só um erro quebra o combo, menos na partida comum
+  -- que virou prática ao mudar a velocidade (Decisões): a prática começa com combo zero, uma quebra a mais
+  if v_combo > v_hits
+     or (v_hits > 0 and v_combo < ceil(v_hits::numeric / (v_miss + case when v_mode = 'practice' then 2 else 1 end))) then
     raise exception 'partida inválida: combo máximo' using errcode = '22023';
   end if;
   if v_score % 10 <> 0
@@ -375,18 +377,23 @@ begin
   select u.id, coalesce(u.is_anonymous, false) from auth.users u where u.id = v_uid
   on conflict (id) do nothing;
 
-  insert into violinhero.plays (user_id, client_id, song_id, level, chart_hash, mode, looped, speed, no_fail, finished,
-                                score, accuracy, perfect, great, good, miss, max_combo, mean_abs_cents, string_cents,
-                                duration_ms, played_at, ranking_points, week)
-  values (v_uid, v_client, v_song, v_level, v_hash, v_mode, v_looped, v_speed, v_no_fail, v_finished,
-          v_score, round(v_accuracy, 2), v_perfect, v_great, v_good, v_miss, v_combo, v_mean_abs, v_cents,
-          v_duration, v_played_at,
-          -- Pontos de ranking: a pontuação pesada pelo nível; prática e partida interrompida não valem
-          case when v_finished and v_mode <> 'practice'
-               then round(v_score * case v_level when 'easy' then 1 when 'medium' then 1.25 else 1.5 end)::int
-               else 0 end,
-          date_trunc('week', v_day)::date)
-  returning * into v_play;
+  begin
+    insert into violinhero.plays (user_id, client_id, song_id, level, chart_hash, mode, looped, speed, no_fail, finished,
+                                  score, accuracy, perfect, great, good, miss, max_combo, mean_abs_cents, string_cents,
+                                  duration_ms, played_at, ranking_points, week)
+    values (v_uid, v_client, v_song, v_level, v_hash, v_mode, v_looped, v_speed, v_no_fail, v_finished,
+            v_score, round(v_accuracy, 2), v_perfect, v_great, v_good, v_miss, v_combo, v_mean_abs, v_cents,
+            v_duration, v_played_at,
+            -- Pontos de ranking: a pontuação pesada pelo nível; prática e partida interrompida não valem
+            case when v_finished and v_mode <> 'practice'
+                 then round(v_score * case v_level when 'easy' then 1 when 'medium' then 1.25 else 1.5 end)::int
+                 else 0 end,
+            date_trunc('week', v_day)::date)
+    returning * into v_play;
+  exception when unique_violation then
+    -- O mesmo client_id chegou em paralelo (fila reenviando antes da resposta): a outra venceu, vale a dela
+    return violinhero.submit_play(p_play);
+  end;
 
   -- Recorde por música e nível
   if v_play.counts_for_record then
