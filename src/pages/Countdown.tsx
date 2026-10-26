@@ -10,9 +10,9 @@ import { Kicker, SongKicker } from '../components/Screen/Screen';
 import type { Song } from '../game/notation/song';
 import { STRING_LETTERS } from '../game/notation/violin';
 import { FIXED_SONGS } from '../game/notation/songs';
-import type { PlayState } from '../shell/play';
+import { DEFAULT_MODE, gameRoute, type PlayState } from '../shell/play';
 import { loadGameScreens } from './loadGameScreens';
-import { ROUTES, safeInternalPath } from '../shell/routes';
+import { safeInternalPath } from '../shell/routes';
 
 /** O que quem abre a contagem passa pelo estado da navegação; segue adiante para o jogo. */
 export interface CountdownState extends PlayState {
@@ -122,8 +122,8 @@ export const Countdown: React.FC = () => {
   const state = (useLocation().state ?? {}) as CountdownState;
   // Vindo do onboarding, sem música escolhida: a primeira das músicas fixas
   const song = state.song ?? FIXED_SONGS[0].song;
-  const next = safeInternalPath(state.next ?? null, ROUTES.game);
   const { mode, latencyMs, noFail, practice } = state;
+  const next = safeInternalPath(state.next ?? null, gameRoute(mode));
   const start = React.useCallback(
     () => navigate(next, { replace: true, state: { song, mode, latencyMs, noFail, practice } satisfies PlayState }),
     [navigate, next, song, mode, latencyMs, noFail, practice]
@@ -134,7 +134,7 @@ export const Countdown: React.FC = () => {
   // O compasso de entrada dá tempo de baixar a tela de jogo antes de precisar dela
   React.useEffect(() => void loadGameScreens().catch(() => undefined), []);
   const note = firstNote(song);
-  const label = [song.title, state.mode ?? 'Arcade', LEVEL_NAMES[song.level]].join(' · ');
+  const label = [song.title, state.mode ?? DEFAULT_MODE, LEVEL_NAMES[song.level]].join(' · ');
 
   return (
     <Page>

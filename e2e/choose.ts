@@ -14,7 +14,8 @@ export async function skipOnboarding(page: Page) {
 export async function chooseSong(page: Page, title: string | RegExp, mode: 'Arcade' | 'Partitura' | 'Cordas 3D' = 'Arcade', level?: Level) {
   await page.getByRole('navigation', { name: 'Menu principal' }).getByRole('link', { name: /^Tocar/ }).click();
   await expect(page).toHaveURL(/\/tocar$/);
-  if (mode !== 'Arcade') await page.getByRole('radio', { name: mode }).click();
+  // Cordas 3D vem marcado; os outros modos são escolhidos no cartão
+  if (mode !== 'Cordas 3D') await page.getByRole('radio', { name: mode }).click();
   await page.getByRole('button', { name: new RegExp(`Continuar com ${mode}`) }).click();
   await page.getByRole('radiogroup', { name: 'Músicas' }).getByRole('radio', { name: title }).click();
   const details = page.getByRole('complementary', { name: 'Detalhes da música' });

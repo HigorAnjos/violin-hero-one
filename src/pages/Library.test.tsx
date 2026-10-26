@@ -104,7 +104,7 @@ describe('Library', () => {
     expect(await screen.findByRole('heading', { name: 'Sua biblioteca ainda está vazia' }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Tocar a primeira grátis/ })).toHaveAttribute(
       'href',
-      `/tocar/carregando?modo=arcade&musica=${FIXED_SONGS[0].id}&nivel=facil`
+      `/tocar/carregando?modo=cordas-3d&musica=${FIXED_SONGS[0].id}&nivel=facil`
     );
     expect(within(screen.getByRole('list', { name: 'Grátis para começar' })).getAllByRole('link')).toHaveLength(FIXED_SONGS.length);
   });

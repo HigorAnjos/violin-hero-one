@@ -9,7 +9,7 @@ import { SongCover } from '../components/SongCover/SongCover';
 import { levelSettings } from '../game/engine/levels';
 import { loadLocalProfile } from '../services/profile';
 import { savedCount, usePlayableSong, useShelf } from '../services/shelf';
-import { modesUrl, parseSongChoice, songsUrl, type SongChoice } from '../shell/choice';
+import { menuMode, modesUrl, parseSongChoice, songsUrl, type SongChoice } from '../shell/choice';
 import type { PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 
@@ -195,7 +195,7 @@ const Preparing: React.FC<{ choice: SongChoice }> = ({ choice }) => {
   const sheet = shelf.status === 'ready' ? shelf.songs.find((s) => s.id === choice.songId) : undefined;
   const title = playable.status === 'ready' ? playable.song.title : (sheet?.title ?? (playable.status === 'error' ? 'Música indisponível' : '…'));
   const level = LEVEL_NAMES[choice.level];
-  const back = songsUrl(choice.mode === 'Prática' ? 'Arcade' : choice.mode, choice.songId);
+  const back = songsUrl(menuMode(choice.mode), choice.songId);
 
   const song = playable.status === 'ready' ? playable.song : null;
   React.useEffect(() => {

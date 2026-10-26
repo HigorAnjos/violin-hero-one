@@ -5,7 +5,7 @@ import { Button } from '../components/Button/Button';
 import { ModeCard } from '../components/ModeCard/ModeCard';
 import { useRadioGroup } from '../components/RadioGroup/useRadioGroup';
 import { Kicker, Lead, Screen, ScreenTitle } from '../components/Screen/Screen';
-import { isReadyMode, modeFromSlug, READY_MODES, readyMode, songsUrl } from '../shell/choice';
+import { isReadyMode, menuMode, modeFromSlug, READY_MODES, songsUrl } from '../shell/choice';
 import type { GameMode } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 
@@ -78,8 +78,7 @@ const Keys = styled.p`
 export const ModeSelect: React.FC = () => {
   const navigate = useNavigate();
   const [search] = useSearchParams();
-  const fromUrl = modeFromSlug(search.get('modo'));
-  const [mode, setMode] = React.useState<GameMode>(fromUrl === 'Prática' ? 'Arcade' : readyMode(fromUrl));
+  const [mode, setMode] = React.useState<GameMode>(menuMode(modeFromSlug(search.get('modo'))));
   const radio = useRadioGroup(PLAYABLE, mode, setMode);
   // Vindo da Biblioteca, a música já escolhida segue para a seleção
   const confirm = () => navigate(songsUrl(mode, search.get('musica') ?? undefined));

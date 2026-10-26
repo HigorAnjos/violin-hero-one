@@ -1,5 +1,5 @@
 import { LEVELS, type Level } from '../game/notation/song';
-import { GAME_MODES, type GameMode } from './play';
+import { DEFAULT_MODE, GAME_MODES, type GameMode } from './play';
 import { ROUTES } from './routes';
 
 /** Modo, música e nível ficam na URL: recarregar ou voltar não perde a escolha. */
@@ -11,8 +11,11 @@ export const READY_MODES: readonly GameMode[] = ['Arcade', 'Partitura', 'Prátic
 
 export const isReadyMode = (mode: GameMode) => READY_MODES.includes(mode);
 
-/** Modo pedido pela URL que ainda não tem tela vira Arcade. */
-export const readyMode = (mode: GameMode | null): GameMode => (mode && isReadyMode(mode) ? mode : 'Arcade');
+/** Modo pedido pela URL que ainda não tem tela vira o padrão. */
+export const readyMode = (mode: GameMode | null): GameMode => (mode && isReadyMode(mode) ? mode : DEFAULT_MODE);
+
+/** Modo marcado nas telas de escolha: Prática não é cartão e vira o padrão. */
+export const menuMode = (mode: GameMode | null): GameMode => (mode === 'Prática' ? DEFAULT_MODE : readyMode(mode));
 
 export function modeFromSlug(slug: string | null): GameMode | null {
   return GAME_MODES.find((mode) => MODE_SLUG[mode] === slug) ?? null;

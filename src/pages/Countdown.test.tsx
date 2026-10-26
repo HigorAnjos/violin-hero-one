@@ -54,14 +54,14 @@ describe('Countdown', () => {
 
   it('sem música escolhida, usa a primeira das músicas fixas; pular vai direto para o jogo', () => {
     renderCountdown();
-    expect(screen.getByText(`${FIXED_SONGS[0].title} · Arcade · Fácil`)).toBeInTheDocument();
+    expect(screen.getByText(`${FIXED_SONGS[0].title} · Cordas 3D · Fácil`)).toBeInTheDocument();
     act(() => screen.getByRole('button', { name: /Pular contagem/ }).click());
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/jogo$/);
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/jogo\/3d$/);
   });
 
   it('destino de fora do jogo é ignorado', () => {
     renderCountdown({ next: 'https://mal.com' });
     act(() => screen.getByRole('button', { name: /Pular contagem/ }).click());
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/jogo$/);
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/jogo\/3d$/);
   });
 });

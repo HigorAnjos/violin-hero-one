@@ -28,7 +28,8 @@ export interface ResultState extends PlayState {
   clientId?: string;
 }
 
-export const DEFAULT_MODE: GameMode = 'Arcade';
+/** Modo marcado de início e o que vale quando a URL ou a navegação não dizem (decisão do Higor). */
+export const DEFAULT_MODE: GameMode = 'Cordas 3D';
 
 const MODE_ROUTE: Record<GameMode, string> = { Arcade: ROUTES.game, Partitura: ROUTES.sheet, Prática: ROUTES.practice, 'Cordas 3D': ROUTES.strings3d };
 

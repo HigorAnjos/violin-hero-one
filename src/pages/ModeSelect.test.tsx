@@ -10,12 +10,12 @@ const renderModes = (path: string = ROUTES.modes, theme = undefined as typeof pa
   renderScreen(<ModeSelect />, { path, route: ROUTES.modes, theme });
 
 describe('ModeSelect', () => {
-  it('Arcade marcado; Partitura e Cordas 3D livres, nenhum "em breve"', () => {
+  it('Cordas 3D marcado de início; Arcade e Partitura livres, nenhum "em breve"', () => {
     renderModes();
     expect(screen.getByRole('heading', { level: 1, name: 'Escolha o modo' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Arcade' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Cordas 3D' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Arcade' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByRole('radio', { name: 'Partitura' })).toHaveAttribute('aria-checked', 'false');
-    expect(screen.getByRole('radio', { name: 'Cordas 3D' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.queryByRole('radio', { name: /em breve/ })).not.toBeInTheDocument();
   });
 
@@ -46,9 +46,9 @@ describe('ModeSelect', () => {
 
   it('Enter no cartão confirma', async () => {
     renderModes();
-    screen.getByRole('radio', { name: 'Arcade' }).focus();
+    screen.getByRole('radio', { name: 'Cordas 3D' }).focus();
     await userEvent.keyboard('{Enter}');
-    expect(screen.getByTestId('location')).toHaveTextContent('/tocar/musica?modo=arcade');
+    expect(screen.getByTestId('location')).toHaveTextContent('/tocar/musica?modo=cordas-3d');
   });
 
   it('volta com o modo que veio na URL; Prática não é cartão e vira Arcade', () => {
@@ -56,8 +56,8 @@ describe('ModeSelect', () => {
     expect(screen.getByRole('radio', { name: 'Partitura' })).toHaveAttribute('aria-checked', 'true');
   });
 
-  it('Prática pela URL não marca cartão nenhum além do Arcade', () => {
+  it('Prática pela URL não é cartão: marca o padrão, Cordas 3D', () => {
     renderModes('/tocar?modo=pratica');
-    expect(screen.getByRole('radio', { name: 'Arcade' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Cordas 3D' })).toHaveAttribute('aria-checked', 'true');
   });
 });
