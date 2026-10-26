@@ -3,7 +3,7 @@ import type { EngineState, PracticeResult } from '../game/engine';
 import { scaleSong } from '../game/engine/testing';
 import { songDurationSeconds } from '../game/notation/song';
 import type { EarAudio } from './Ear';
-import { beatTimes, createGameSession, mergeStates, TEMPO_CHANGE_MARGIN_SECONDS, type GameSessionOptions, type SessionEvent } from './gameSession';
+import { beatTimes, createGameSession, mergeStates, TEMPO_CHANGE_MARGIN_SECONDS, type ClickScheduler, type GameSessionOptions, type SessionEvent } from './gameSession';
 
 const SONG = scaleSong(3);
 const SPB = 60 / SONG.bpm;
@@ -24,7 +24,7 @@ function rig(extra: Partial<GameSessionOptions> = {}) {
   };
   const audio = { context, source: {}, stream: null } as unknown as EarAudio;
   const events: SessionEvent[] = [];
-  const clicks = vi.fn((_c: BaseAudioContext, _t: readonly number[], _d?: AudioNode) => () => undefined);
+  const clicks = vi.fn<ClickScheduler>(() => () => undefined);
   const session = createGameSession({ song: SONG, audio, a4: 442, latencySeconds: 0, clicks, performance: { errors: 0 }, onEvent: (e) => events.push(e), ...extra });
   const run = (until: number) => {
     while (context.currentTime < until) {
