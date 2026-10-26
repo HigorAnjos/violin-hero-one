@@ -41,7 +41,6 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
       <EarProvider ear={chosen}>
         <BrowserRouter>
           <MicGuard />
-          <UpdatePrompt update={update} />
           <React.Suspense fallback={null}>
             <Routes>
             <Route path={ROUTES.home} element={<Home />} />
@@ -64,6 +63,8 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           </React.Suspense>
+          {/* Depois das telas: é o último no Tab e não tira o foco de nada */}
+          <UpdatePrompt update={update} />
         </BrowserRouter>
       </EarProvider>
     </ThemeChoiceProvider>

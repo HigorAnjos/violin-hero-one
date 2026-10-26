@@ -18,6 +18,8 @@ export const GlobalStyles = createGlobalStyle`
     font-family: ${({ theme }) => theme.fonts.ui};
     font-variant-numeric: tabular-nums;
     min-height: 100vh;
+    /* Aviso de versão nova no pé da janela (UpdateNotice): as telas de menu encolhem e nada fica embaixo dele */
+    padding-bottom: var(--update-notice-space, 0px);
     -webkit-font-smoothing: antialiased;
   }
 

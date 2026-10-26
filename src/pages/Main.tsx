@@ -15,8 +15,9 @@ import { ROUTES } from '../shell/routes';
 
 const Page = styled.main`
   position: relative;
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* Encolhe no espaço do aviso de versão nova, quando ele aparece (UpdateNotice) */
+  min-height: calc(100vh - var(--update-notice-space, 0px));
+  min-height: calc(100dvh - var(--update-notice-space, 0px));
   overflow: hidden;
   display: flex;
   flex-direction: column;
