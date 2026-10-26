@@ -4,7 +4,7 @@
  * design valem para qualquer tamanho; tudo é fração da caixa da pista.
  */
 
-/** Segundos que uma nota leva do topo da pista até a linha de acerto. */
+/** Segundos que uma nota leva do topo da pista até a linha de acerto, sem nível (LevelSettings.trackLeadSeconds). */
 export const LEAD_SECONDS = 2;
 /** Depois da hora, a nota perdida ainda cai este tanto antes de sumir. */
 export const MISS_TAIL_SECONDS = 0.5;
@@ -28,9 +28,23 @@ export interface Box {
  * acima da partitura. 1280×720 dá 640×550 e 844×390 dá 440×272, como no design.
  */
 export function stageBox(viewportWidth: number, viewportHeight: number): Box {
-  const sheet = Math.max(118, Math.round(viewportHeight * 0.236));
   const width = Math.round(Math.min(viewportWidth - SIDE_GUTTER * 2, Math.max(440, Math.min(640, viewportWidth * 0.5))));
-  return { x: Math.round((viewportWidth - width) / 2), y: 0, width, height: Math.max(0, viewportHeight - sheet) };
+  return { x: Math.round((viewportWidth - width) / 2), y: 0, width, height: Math.max(0, viewportHeight - sheetHeight(viewportHeight)) };
+}
+
+const sheetHeight = (viewportHeight: number) => Math.max(118, Math.round(viewportHeight * 0.236));
+
+/** Altura de tela até a qual a partida usa os cartões compactos (celular deitado), como o COMPACT_QUERY. */
+const COMPACT_VIEWPORT_HEIGHT = 500;
+
+/**
+ * Caixa das Cordas 3D (Gameplay3D.dc): a largura toda acima da partitura, com os cartões por cima dos cantos de cima,
+ * onde o chão em perspectiva deixa espaço (1280×720 dá 1280×550). No celular deitado os cartões descem sobre as cordas:
+ * a caixa fica entre eles, como a da pista (844×390 dá 440×272).
+ */
+export function strings3dBox(viewportWidth: number, viewportHeight: number): Box {
+  if (viewportHeight <= COMPACT_VIEWPORT_HEIGHT) return stageBox(viewportWidth, viewportHeight);
+  return { x: 0, y: 0, width: viewportWidth, height: Math.max(0, viewportHeight - sheetHeight(viewportHeight)) };
 }
 
 export interface TrackLayout {
@@ -60,6 +74,8 @@ export interface TrackLayout {
   targetRadius: number;
   targetStroke: number;
   letterSize: number;
+  /** Segundos do topo da pista à linha de acerto. */
+  lead: number;
   /** Unidades do plano por segundo de música. */
   speed: number;
   /** `x` é o centro (center) ou a borda direita (right) do texto; `y` é o topo do rótulo. */
@@ -69,7 +85,7 @@ export interface TrackLayout {
 /** Caixa larga e baixa (celular deitado): o feedback vai para o canto direito, fora das notas. */
 const WIDE_BOX = 1.4;
 
-export function trackLayout(width: number, height: number): TrackLayout {
+export function trackLayout(width: number, height: number, lead: number = LEAD_SECONDS): TrackLayout {
   const perspective = height * 1.6;
   const originY = height * 0.08;
   const planeBottom = height * 1.11;
@@ -105,7 +121,8 @@ export function trackLayout(width: number, height: number): TrackLayout {
     targetRadius: laneWidth * 0.28,
     targetStroke: laneWidth * 0.04,
     letterSize: laneWidth * 0.32,
-    speed: (enterDepth - hitDepth) / LEAD_SECONDS,
+    lead,
+    speed: (enterDepth - hitDepth) / lead,
     feedback: {
       x: wide ? width - SIDE_GUTTER / 2 : width / 2,
       y: Math.round(height * (wide ? 0.47 : 0.36)),

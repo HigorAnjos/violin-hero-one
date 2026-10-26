@@ -22,6 +22,7 @@ export const PALCO: Palette = {
   hitLine: '#f2eaf7',
   strings: { G: '#a78bfa', D: '#ff4fa3', A: '#22d3ee', E: '#ffe066' },
   judgments: { perfect: '#ffffff', great: '#22d3ee', good: '#ffe066', miss: '#ff6b6b' },
+  art: { wood: '#c9773d', ebony: '#120a1a', halo: '#2f2140' },
 };
 
 export const palcoTheme = buildTheme(PALCO);

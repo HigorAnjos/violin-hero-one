@@ -1,5 +1,5 @@
-// Sobe o Supabase local (o CLI aplica supabase/migrations no start) e roda os testes de banco
-// contra ele. Uso: npm run db:local [-- --stop] — com --stop, derruba os containers no fim.
+// Sobe o Supabase local (o CLI aplica supabase/migrations no start), grava o catálogo e roda os
+// testes de banco contra ele. Uso: npm run db:local [-- --stop] — com --stop, derruba os containers no fim.
 import { execFileSync, spawnSync } from 'node:child_process';
 
 const supabase = (args, opts = {}) => execFileSync('npx', ['supabase', ...args], { encoding: 'utf8', ...opts });
@@ -14,7 +14,7 @@ if (!DB_URL) {
 const env = { ...process.env, DATABASE_URL: DB_URL };
 
 let code = 0;
-for (const script of ['migrate', 'test:db']) {
+for (const script of ['migrate', 'seed:songs', 'test:db']) {
   code = spawnSync('npm', ['run', script], { stdio: 'inherit', env }).status ?? 1;
   if (code !== 0) break;
 }

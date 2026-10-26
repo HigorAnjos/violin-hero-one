@@ -31,13 +31,14 @@ const Head = styled.div`
 `;
 
 const Pill = styled.span`
-  padding: 0.25rem 0.5rem;
+  padding: 0.125rem 0.5rem;
+  line-height: 1.25;
   border-radius: ${({ theme }) => theme.borderRadius.pill};
   background-color: ${({ theme }) => theme.colors.info.main};
   color: ${({ theme }) => theme.colors.background};
   font-weight: 700;
-  font-size: 0.6875rem;
-  letter-spacing: 0.14em;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
 `;
 
 const Question = styled.div`

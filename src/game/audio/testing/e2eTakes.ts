@@ -10,7 +10,7 @@ export const TAKE_LEAD_IN_SECONDS = 2.1;
  * Os 3 erros da Ode, longe uns dos outros e de notas vizinhas iguais:
  * - ataque 10 (compasso 3, Mi): sai Sol, 3 semitons acima — nota errada;
  * - ataque 27 (compasso 8, Mi pontuado, 0,9 s): entra 285 ms atrasado; o motor vê ~265 ms (rampa do ataque e
- *   detecção) — além da janela Bom (220 ms) e antes de a nota expirar sem tentativa, que viraria "não tocada";
+ *   detecção) — além da janela Bom (220 ms) e dentro da faixa de atraso (até ~470 ms), que dá "atrasada";
  * - ataque 46 (compasso 12, Lá de 2 tempos): 62 ¢ alto — fora da tolerância (50 ¢), mas antes de virar outra nota (75 ¢).
  */
 export const ODE_SLIPS: Readonly<Record<number, NoteSlip>> = {

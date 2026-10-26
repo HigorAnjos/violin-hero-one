@@ -1,3 +1,4 @@
+import { tinyText } from './layout';
 import { expect, test } from './microphone';
 
 const PROGRESS = /de 4 cordas/;
@@ -10,6 +11,8 @@ test('cordas soltas no microfone: passa as quatro e libera o Continuar', async (
   await page.goto('/primeira-vez/cordas');
   await expect(page.getByRole('status').filter({ hasText: PROGRESS })).toHaveText('4 de 4 cordas · tudo certo!', { timeout: 30000 });
   await expect(page.getByRole('button', { name: /Continuar/ })).toBeEnabled();
+  // Os cartões das cordas encolhem no celular deitado: nenhum texto abaixo de 12 px
+  expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);
 });
 
 for (const take of ['silencio', 'tv'] as const) {

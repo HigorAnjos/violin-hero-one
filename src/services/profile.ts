@@ -1,11 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { PLAYER_LEVELS, type PlayerLevel } from '../game/engine/levels';
 import { ensureSession, type AuthClient, type SessionState } from './session';
 import { supabase } from './supabase';
-
-/** Mesmos valores do enum violinhero.player_level. */
-export const PLAYER_LEVELS = ['never', 'beginner', 'some_songs', 'years'] as const;
-export type PlayerLevel = (typeof PLAYER_LEVELS)[number];
 
 export const ANIMALS = ['fox', 'penguin', 'cat'] as const;
 export type Animal = (typeof ANIMALS)[number];

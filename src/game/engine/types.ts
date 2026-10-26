@@ -127,6 +127,11 @@ export interface Engine {
   push(reading: PitchReading | null): void;
   /** Hora atual do AudioContext; chame a cada quadro, com ou sem leitura, para expirar notas. */
   advance(now: number): void;
+  /**
+   * Tira as notas ainda não julgadas a partir de `at` (a troca de andamento ou o salto do loop que outro motor assume).
+   * Sem nota em aberto, a partida termina.
+   */
+  retire(at: number): void;
   /** Resultado final; lança enquanto status for playing. */
   result(): GameResult;
 }

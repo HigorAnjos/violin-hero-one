@@ -6,6 +6,8 @@ const baseURL = `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: './e2e',
+  // e2e/catalogo/ precisa do Supabase local: roda pelo playwright.catalogo.config.ts (npm run test:e2e:catalogo)
+  testIgnore: 'catalogo/**',
   // Grava os WAV do microfone falso (e2e/audio/synthetic/) antes dos testes
   globalSetup: './e2e/global-setup.ts',
   timeout: 30000,
@@ -16,7 +18,11 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL,
-    trace: 'on-first-retry',
+    // Print e trace de toda falha (não só da repetição): a CI publica os dois como artefato do job e2e
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
+    // O page.route não vê o que o service worker responde (fontes, áudio): só o offline.spec liga o SW
+    serviceWorkers: 'block',
   },
   projects: [
     {

@@ -4,7 +4,7 @@ import styled, { css, keyframes, useTheme } from 'styled-components';
 import { Badge, badgeColor } from '../components/Badge/Badge';
 import { Button } from '../components/Button/Button';
 import { badgeInfo, featuredBadges, nextCombo } from '../components/ResultSummary/summary';
-import { Kicker } from '../components/Screen/Screen';
+import { SongKicker } from '../components/Screen/Screen';
 import { STRING_LETTERS } from '../game/notation/violin';
 import { readResultState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
@@ -248,7 +248,7 @@ export const BadgeEarned: React.FC = () => {
         ))}
       </div>
       <Rise $delay={0.6}>
-        <Kicker style={{ color }}>{song.title} · ganho nesta partida</Kicker>
+        <SongKicker style={{ color }}>{song.title} · ganho nesta partida</SongKicker>
       </Rise>
       <Stage>
         <svg viewBox="-300 -300 600 600" aria-hidden="true">

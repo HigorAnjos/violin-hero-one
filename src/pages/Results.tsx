@@ -18,10 +18,12 @@ import {
   tuningStat,
 } from '../components/ResultSummary/summary';
 import { formatPercent, formatPoints } from '../components/ScoreCard/ScoreCard';
-import { Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
+import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
 import { JUDGMENT_LABEL, JUDGMENTS } from '../game/engine';
 import { STRING_LETTERS } from '../game/notation/violin';
-import { readResultState } from '../shell/play';
+import type { PracticeStart } from '../shell/gameSession';
+import { gameRoute, readResultState } from '../shell/play';
+import type { RecordCheck } from '../shell/records';
 import { ROUTES } from '../shell/routes';
 
 const STAR = 'M17 2l4.5 9.4 10.3 1.2-7.6 7 2.1 10.2L17 24.7l-9.3 5.1 2.1-10.2-7.6-7 10.3-1.2z';
@@ -35,9 +37,19 @@ const Header = styled.header`
   gap: ${({ theme }) => theme.spacing.lg};
 
   > div:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: ${({ theme }) => theme.spacing.xs};
+  }
+
+  > div:first-child ${Kicker} {
+    ${clampLines(1)}
+  }
+
+  h1 {
+    ${clampLines(2)}
   }
 
   @media (max-height: 500px) {
@@ -48,6 +60,7 @@ const Header = styled.header`
     }
 
     h1 {
+      ${clampLines(1)}
       font-size: 1.25rem;
     }
 
@@ -59,7 +72,9 @@ const Header = styled.header`
 `;
 
 const NewBadge = styled.div<{ $color: string }>`
+  flex: none;
   display: flex;
+  white-space: nowrap;
   align-items: center;
   gap: 0.625rem;
   padding: 0.375rem 1rem 0.375rem 0.5rem;
@@ -76,8 +91,8 @@ const NewBadge = styled.div<{ $color: string }>`
 
   small {
     font-weight: 800;
-    font-size: 0.6875rem;
-    letter-spacing: 0.12em;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
     color: ${({ $color }) => $color};
   }
 
@@ -152,12 +167,37 @@ const Grow = styled(Panel)`
 `;
 
 const Score = styled.span`
+  ${clampLines(1)}
   font-weight: 800;
   font-size: 3.75rem;
   line-height: 1;
 
   @media (max-height: 500px) {
     font-size: 2rem;
+  }
+`;
+
+const ScoreRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+`;
+
+const RecordPill = styled.span`
+  flex: none;
+  padding: 0.25rem 0.75rem;
+  border: 2px solid ${({ theme }) => theme.colors.warning.main};
+  border-radius: ${({ theme }) => theme.borderRadius.pill};
+  font-weight: 800;
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: ${({ theme }) => theme.colors.warning.text};
+
+  @media (max-height: 500px) {
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
   }
 `;
 
@@ -190,6 +230,7 @@ const Stats = styled.dl`
   gap: 0.75rem;
 
   > div {
+    min-width: 0;
     display: flex;
     flex-direction: column-reverse;
     gap: 0.375rem;
@@ -197,6 +238,11 @@ const Stats = styled.dl`
     background-color: ${({ theme }) => theme.colors.surface};
     border: 2px solid ${({ theme }) => theme.colors.surfaceBorder};
     border-radius: ${({ theme }) => theme.borderRadius.sm};
+  }
+
+  dt,
+  dd {
+    ${clampLines(1)}
   }
 
   dd {
@@ -209,7 +255,13 @@ const Stats = styled.dl`
     gap: ${({ theme }) => theme.spacing.xs};
 
     > div {
-      padding: ${({ theme }) => theme.spacing.xxs} ${({ theme }) => theme.spacing.xs};
+      padding: ${({ theme }) => theme.spacing.xxs} 0.375rem;
+    }
+
+    /* 12 px é o piso: o "Combo máx" cabe tirando o espaçamento das letras e parte do recuo da célula */
+    dt {
+      font-size: 0.75rem;
+      letter-spacing: 0;
     }
 
     dd {
@@ -223,6 +275,11 @@ const Row = styled.div`
   grid-template-columns: 6.875rem 1fr 3.5rem;
   gap: 0.875rem;
   align-items: center;
+
+  > span:first-child,
+  > b {
+    ${clampLines(1)}
+  }
 
   > span:first-child {
     font-family: ${({ theme }) => theme.fonts.display};
@@ -343,12 +400,26 @@ const Footer = styled.footer`
   }
 `;
 
+/** Velocidade com que "Praticar compassos" abre o trecho mais difícil. */
+export const HARDEST_PRACTICE_SPEED = 0.7;
+
+/** O trecho mais difícil vira a prática: laço de A a B, a 70%. */
+export function practiceHardest(hard: { from: number; to: number }): PracticeStart {
+  return { loop: { startMeasure: hard.from, endMeasure: hard.to }, speed: HARDEST_PRACTICE_SPEED };
+}
+
+/** "Novo recorde!" na primeira vez; "+1.250 sobre o recorde" quando passa o anterior. */
+export function recordText(record: RecordCheck, score: number): string {
+  return record.previous === null ? 'Novo recorde!' : `+${formatPoints(score - record.previous)} sobre o recorde`;
+}
+
 /** 7 · Resultado: pontos, julgamentos, afinação por corda e o trecho mais difícil. */
 export const Results: React.FC = () => {
   const theme = useTheme();
   const state = readResultState(useLocation().state);
   if (!state) return <Navigate to={ROUTES.home} replace />;
-  const { song, result, mode } = state;
+  const { song, result, mode, record } = state;
+  const practiced = 'laps' in result;
   const total = result.judgments.length;
   const starCount = stars(result.accuracy);
   const perMeasure = measureAccuracy(result);
@@ -384,8 +455,16 @@ export const Results: React.FC = () => {
                 <path key={i} transform={`translate(${i * 38} 0)`} d={STAR} fill={i < starCount ? theme.colors.warning.main : theme.colors.surfaceBorder} />
               ))}
             </Stars>
-            <Score>{formatPoints(result.score)}</Score>
-            {state.noFail && <Muted>Modo sem falha: a música não parou.</Muted>}
+            <ScoreRow>
+              <Score>{formatPoints(result.score)}</Score>
+              {record?.improved && <RecordPill role="status">{recordText(record, result.score)}</RecordPill>}
+            </ScoreRow>
+            {practiced ? (
+              <Muted>Partida de prática: sem selos e sem recorde.</Muted>
+            ) : (
+              record && !record.improved && record.previous !== null && <Muted>Recorde: {formatPoints(record.previous)}</Muted>
+            )}
+            {state.noFail && !practiced && <Muted>Modo sem falha: a música não parou.</Muted>}
           </Panel>
           <Stats>
             <div>
@@ -461,10 +540,21 @@ export const Results: React.FC = () => {
           Menu
         </Button>
         <i />
-        <Button as={Link} to={ROUTES.calibration} state={{ song, mode }} $variant="ghost">
+        <Button as={Link} to={ROUTES.calibration} state={{ song, mode, practice: state.practice }} $variant="ghost">
           Afinar de novo
         </Button>
-        <Button as={Link} to={ROUTES.countdown} state={{ song, mode, latencyMs: state.latencyMs, next: ROUTES.game }} replace>
+        {hard && (
+          <Button
+            as={Link}
+            to={ROUTES.countdown}
+            state={{ song, mode: 'Prática', latencyMs: state.latencyMs, practice: practiceHardest(hard), next: gameRoute('Prática') }}
+            replace
+            $variant="ghost"
+          >
+            Praticar compassos
+          </Button>
+        )}
+        <Button as={Link} to={ROUTES.countdown} state={{ song, mode, latencyMs: state.latencyMs, practice: state.practice, next: gameRoute(mode) }} replace>
           Tocar de novo <span aria-hidden="true">▸</span>
         </Button>
       </Footer>

@@ -17,10 +17,26 @@ import type {
   TimingWindows,
 } from './types';
 
+/** Trecho de compassos, a partir de 0: de `from` (incluso) a `to` (excluso). */
+export interface MeasureRange {
+  from: number;
+  to: number;
+}
+
 export interface EngineOptions {
   song: Song;
-  /** Tempo do AudioContext, em segundos, do primeiro tempo da música. */
+  /** Tempo do AudioContext, em segundos, do primeiro tempo da música (ou do trecho, com `section`). */
   startAt: number;
+  /**
+   * Só este trecho é julgado (o loop A–B da prática). Cada volta e cada troca de andamento é um motor novo: as notas
+   * vão para o relógio do AudioContext na criação, e criar é barato.
+   */
+  section?: MeasureRange;
+  /**
+   * O trecho continua a música sem salto (troca de andamento): a ligada que o abre segue a nota do motor anterior e não
+   * é julgada. Sem isto ela vira ataque, como na volta do loop.
+   */
+  tiedIn?: boolean;
   /** Andamento da partida; padrão: o da música. */
   bpm?: number;
   /** Lá de referência, em Hz. */
@@ -42,12 +58,27 @@ export interface EngineOptions {
   onEvent?: EngineListener;
 }
 
-/** Os ataques da música no relógio do AudioContext; a nota ligada só estende a duração da anterior. */
-export function scheduleNotes(song: Song, startAt: number, bpm: number = song.bpm, a4: number = DEFAULT_A4): EngineNote[] {
+/**
+ * Os ataques da música no relógio do AudioContext; a nota ligada só estende a duração da anterior. Com `section`, só as
+ * notas do trecho, com o primeiro tempo dele em `startAt`; a ligada que abre o trecho vira ataque, ou some com `tiedIn`.
+ */
+export function scheduleNotes(
+  song: Song,
+  startAt: number,
+  bpm: number = song.bpm,
+  a4: number = DEFAULT_A4,
+  section?: MeasureRange,
+  tiedIn = false,
+): EngineNote[] {
   const spb = 60 / bpm;
+  const from = section?.from ?? 0;
+  const to = section?.to ?? song.measures.length;
+  const offset = song.measures.slice(0, from).reduce((total, m) => total + m.beats, 0);
   const notes: EngineNote[] = [];
   for (const n of timeline(song)) {
+    if (n.measure < from || n.measure >= to) continue;
     const previous = notes[notes.length - 1];
+    if (n.tie && !previous && tiedIn) continue;
     if (n.tie && previous) {
       previous.duration += n.beats * spb;
       continue;
@@ -56,7 +87,7 @@ export function scheduleNotes(song: Song, startAt: number, bpm: number = song.bp
       index: notes.length,
       noteIndex: n.index,
       measure: n.measure,
-      time: startAt + n.at * spb,
+      time: startAt + (n.at - offset) * spb,
       duration: n.beats * spb,
       midi: n.midi,
       string: n.string,
@@ -71,7 +102,7 @@ export function createEngine(options: EngineOptions): Engine {
   const { song, onEvent } = options;
   const windows = options.windows ?? DEFAULT_WINDOWS;
   const tolerance = options.toleranceCents ?? DEFAULT_TOLERANCE_CENTS;
-  const notes = scheduleNotes(song, options.startAt, options.bpm ?? song.bpm, options.a4 ?? DEFAULT_A4);
+  const notes = scheduleNotes(song, options.startAt, options.bpm ?? song.bpm, options.a4 ?? DEFAULT_A4, options.section, options.tiedIn);
   const judgments: NoteJudgment[] = [];
   const counts = emptyCounts();
 
@@ -157,6 +188,13 @@ export function createEngine(options: EngineOptions): Engine {
     },
     advance(now: number) {
       if (status === 'playing') judge.advance(now);
+    },
+    retire(at: number) {
+      if (status !== 'playing') return;
+      let keep = judgments.length;
+      while (keep < notes.length && notes[keep].time < at) keep++;
+      notes.length = keep;
+      if (judgments.length === notes.length) finish('finished');
     },
     result() {
       if (!final) throw new Error('a partida ainda não terminou');

@@ -6,7 +6,7 @@ import { Button } from '../components/Button/Button';
 import { CountIn, useCountIn } from '../components/CountIn/CountIn';
 import { firstNote, LEVEL_NAMES } from '../components/CountIn/countIn';
 import { OrchestraBackdrop } from '../components/OrchestraBackdrop/OrchestraBackdrop';
-import { Kicker } from '../components/Screen/Screen';
+import { Kicker, SongKicker } from '../components/Screen/Screen';
 import type { Song } from '../game/notation/song';
 import { STRING_LETTERS } from '../game/notation/violin';
 import { FIXED_SONGS } from '../game/notation/songs';
@@ -123,12 +123,14 @@ export const Countdown: React.FC = () => {
   // Vindo do onboarding, sem música escolhida: a primeira das músicas fixas
   const song = state.song ?? FIXED_SONGS[0].song;
   const next = safeInternalPath(state.next ?? null, ROUTES.game);
-  const { mode, latencyMs, noFail } = state;
+  const { mode, latencyMs, noFail, practice } = state;
   const start = React.useCallback(
-    () => navigate(next, { replace: true, state: { song, mode, latencyMs, noFail } satisfies PlayState }),
-    [navigate, next, song, mode, latencyMs, noFail]
+    () => navigate(next, { replace: true, state: { song, mode, latencyMs, noFail, practice } satisfies PlayState }),
+    [navigate, next, song, mode, latencyMs, noFail, practice]
   );
-  const view = useCountIn(song, start);
+  // Na prática, a entrada já vem na velocidade escolhida
+  const counted = React.useMemo(() => (practice ? { ...song, bpm: song.bpm * practice.speed } : song), [song, practice]);
+  const view = useCountIn(counted, start);
   // O compasso de entrada dá tempo de baixar a tela de jogo antes de precisar dela
   React.useEffect(() => void loadGameScreens().catch(() => undefined), []);
   const note = firstNote(song);
@@ -139,7 +141,7 @@ export const Countdown: React.FC = () => {
       <OrchestraBackdrop />
       <Veil aria-hidden="true" />
       <Center>
-        <Kicker>{label}</Kicker>
+        <SongKicker>{label}</SongKicker>
         <CountIn view={view} bpm={song.bpm} />
         <Cue>Levante o arco</Cue>
         {note && (

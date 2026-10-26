@@ -1,12 +1,15 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { OPEN_STRING_MIDI } from '../game/notation/violin';
 import { isOnboarded } from '../services/profile';
 import { createFakeEar, reading, type FakeEar } from '../shell/fakeEar';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
 import { OnboardTest, progressText } from './OnboardTest';
+
+// As quatro cordas lidas uma a uma, com os medidores: sob carga (CI, suíte em paralelo) passa dos 5 s padrão
+vi.setConfig({ testTimeout: 15_000 });
 
 const renderTest = (ear: FakeEar = createFakeEar()) => {
   renderScreen(<OnboardTest />, { ear, path: ROUTES.strings, route: ROUTES.strings });

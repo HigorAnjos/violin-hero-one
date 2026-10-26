@@ -2,31 +2,56 @@ import React from 'react';
 import { audioDeviceKey, latencySeconds, latencyToMs } from '../game/audio';
 import { centsBetween } from '../game/audio/tuning';
 import { scheduleClicks } from '../game/audio/latency/click';
-import type { EngineEvent, EngineNote, GameResult, PerformanceOptions } from '../game/engine';
+import type { EngineNote, GameResult, Judgment, LapSummary, LevelSettings, PerformanceOptions } from '../game/engine';
 import { secondsPerBeat, type Song } from '../game/notation/song';
-import type { Track, TrackOptions } from '../game/render';
-import { levelFor, loadOrchestraSettings, saveOrchestraSettings, type OrchestraLevel } from '../game/synth';
+import type { Sheet, SheetOptions, Track, TrackOptions } from '../game/render';
+import type { Strings3D, Strings3DOptions } from '../game/render/strings3d';
+import { levelFor, loadOrchestraSettings, saveOrchestraSettings, type LoopRange, type OrchestraLevel } from '../game/synth';
 import { explainJudgment, type Explanation } from '../components/JudgmentHint/explain';
 import type { TracePoint } from '../components/TuningCard/TuningCard';
 import { TRACE_SECONDS } from '../components/TuningCard/TuningCard';
 import { loadEarnedBadges } from '../services/badges';
 import type { Ear, EarAudio } from './Ear';
-import { createGameSession, type GameSession, type GameSessionOptions } from './gameSession';
+import { createGameSession, type GameSession, type GameSessionOptions, type PracticeClock, type PracticeStart, type SessionEvent } from './gameSession';
 import { loadOrchestra, type OrchestraFactory } from './orchestra';
+import { loadMetronome, saveMetronome } from './metronome';
+import { createShowQueue } from './showQueue';
 import { isRehearsalEar } from './simulatedEar';
 
 export type TrackLoader = (host: HTMLElement, options: TrackOptions) => Promise<Track>;
+export type SheetLoader = (host: HTMLElement, options: SheetOptions) => Promise<Sheet>;
+export type Strings3DLoader = (host: HTMLElement, options: Strings3DOptions) => Promise<Strings3D>;
 
 /** A pista vem sob demanda: o Pixi não entra no download inicial. */
 export const loadTrack: TrackLoader = (host, options) => import('../game/render').then((m) => m.createTrack(host, options));
+/** A faixa de partitura, do mesmo pedaço da pista. */
+export const loadSheet: SheetLoader = (host, options) => import('../game/render').then((m) => m.createSheet(host, options));
+/** As Cordas 3D (2,5D no Pixi) sob demanda: a cena vem num pedaço pequeno e divide o do Pixi com a pista. */
+export const loadStrings3D: Strings3DLoader = (host, options) => import('../game/render/strings3d').then((m) => m.createStrings3D(host, options));
 
 export interface GameDeps {
   loadTrack: TrackLoader;
+  loadSheet: SheetLoader;
+  loadStrings3D: Strings3DLoader;
   orchestra: OrchestraFactory | null;
   clicks: GameSessionOptions['clicks'];
 }
 
-export const GAME_DEPS: GameDeps = { loadTrack, orchestra: loadOrchestra, clicks: scheduleClicks };
+export const GAME_DEPS: GameDeps = { loadTrack, loadSheet, loadStrings3D, orchestra: loadOrchestra, clicks: scheduleClicks };
+
+/** Pista em perspectiva (Arcade), faixa de partitura (5b, prática) ou Cordas 3D (5c). */
+export type GameView = 'track' | 'sheet' | '3d';
+
+/** Tempo, desde o começo da música, em que cada compasso começa: as barras do chão das Cordas 3D. */
+export function measureStarts(song: Song): number[] {
+  const starts: number[] = [];
+  let beat = 0;
+  for (const m of song.measures) {
+    starts.push(beat);
+    beat += m.beats;
+  }
+  return starts;
+}
 
 export type GamePhase = 'starting' | 'playing' | 'paused' | 'counting' | 'over' | 'broken';
 
@@ -38,13 +63,48 @@ export interface GameHud {
   level: OrchestraLevel;
   /** Próxima nota a julgar. */
   target: EngineNote | null;
+  /** A que vem depois dela. */
+  next: EngineNote | null;
   liveCents: number | null;
   trace: TracePoint[];
   explanation: Explanation | null;
-  /** Segundos desde o primeiro tempo (negativo antes). */
+  /** O último julgamento em fila (cada um fica ao menos 250 ms); null depois que some. */
+  callout: Callout | null;
+  /** Onde a música está, em segundos no andamento dela (negativo antes do primeiro tempo; no laço, volta ao A). */
   elapsed: number;
   measure: number;
   judged: number;
+  /** Só na prática. */
+  practice: PracticeHud | null;
+}
+
+export interface PracticeHud {
+  /** Volta que está sendo julgada, a partir de 0. */
+  lap: number;
+  /** As voltas já fechadas, em ordem. */
+  laps: LapSummary[];
+  /** Índice em `laps` da de maior precisão (empate: a primeira); null sem volta fechada. */
+  bestLap: number | null;
+  speed: number;
+  loop: LoopRange | null;
+}
+
+/** O que a tela Practice comanda durante a partida. */
+export interface PracticeApi {
+  /** 0,5 a 1; vale no próximo início de compasso. */
+  setSpeed(speed: number): void;
+  setLoop(range: LoopRange | null): void;
+  /** Encerra; o resultado (PracticeResult, com as voltas) chega em onFinish. */
+  stop(): void;
+}
+
+/** A volta fechada de maior precisão; empate fica com a primeira (os pontos crescem com o combo). */
+export function bestLapOf(laps: readonly LapSummary[]): number | null {
+  let best: number | null = null;
+  laps.forEach((lap, i) => {
+    if (lap.complete && lap.notes > 0 && (best === null || lap.accuracy > laps[best].accuracy)) best = i;
+  });
+  return best;
 }
 
 export interface GameOptions {
@@ -55,16 +115,32 @@ export interface GameOptions {
   /** ?simular (só DEV/e2e). */
   performance: PerformanceOptions | null;
   host: React.RefObject<HTMLElement | null>;
+  /** Padrão: a pista. Lido na montagem. */
+  view?: GameView;
   trackOptions: Omit<TrackOptions, 'notes' | 'width' | 'height'>;
   box: () => { x: number; y: number; width: number; height: number };
   onBeat?: (beat: number) => void;
   onFinish: (result: GameResult) => void;
   onMicError: (error: unknown) => void;
+  /** A prática dentro da partida (lida na montagem): trecho, laço A–B e velocidade. Sempre sem falha. */
+  practice?: PracticeStart | null;
+  /** Folgas e descida da pista do nível do jogador (lido na montagem); padrão: as do motor. */
+  level?: Pick<LevelSettings, 'toleranceCents' | 'windows' | 'trackLeadSeconds'>;
   deps?: Partial<GameDeps>;
 }
 
-/** O erro fica à vista este tempo depois do julgamento. */
+/** O erro fica à vista este tempo depois do julgamento, se nada vier depois. */
 const EXPLAIN_SECONDS = 2.5;
+/** O julgamento grande (5b) fica à vista este tempo, se nada vier depois. */
+export const CALLOUT_SECONDS = 0.9;
+
+/** O julgamento grande da tela, com o combo de depois dele. */
+export interface Callout {
+  judgment: Judgment;
+  combo: number;
+  /** Muda a cada julgamento mostrado, para a animação recomeçar. */
+  serial: number;
+}
 const HUD_EVERY_FRAMES = 4;
 /** Dá tempo de ver o último julgamento antes de trocar de tela. */
 export const FINISH_DELAY_MS = 1500;
@@ -76,12 +152,15 @@ const EMPTY_HUD: GameHud = {
   accuracy: 0,
   level: 3,
   target: null,
+  next: null,
   liveCents: null,
   trace: [],
   explanation: null,
+  callout: null,
   elapsed: 0,
   measure: 0,
   judged: 0,
+  practice: null,
 };
 
 /** Liga Ouvido, motor, pista e orquestra num requestAnimationFrame só, com pausa e reabertura do microfone. */
@@ -96,6 +175,8 @@ export function useGame(options: GameOptions) {
   const [counting, setCounting] = React.useState<number | null>(null);
   const [micClosed, setMicClosed] = React.useState(false);
   const [volume, setVolume] = React.useState(() => loadOrchestraSettings().volume);
+  const [metronome, setMetronome] = React.useState(loadMetronome);
+  const [practiced, setPracticed] = React.useState(false);
   const [latencyMs, setLatencyMs] = React.useState<number | null>(null);
   const live = React.useRef<{ session: GameSession | null; latency: number; paused: boolean; closes: number }>({
     session: null,
@@ -111,18 +192,20 @@ export function useGame(options: GameOptions) {
 
   React.useEffect(() => {
     const deps = { ...GAME_DEPS, ...opts.current.deps };
+    const player = opts.current.level;
     const shared = live.current;
     let alive = true;
     let raf = 0;
-    let track: Track | null = null;
+    let track: Track | Sheet | Strings3D | null = null;
     let frames = 0;
     let level: OrchestraLevel = 3;
-    let explained: { at: number; explanation: Explanation } | null = null;
+    const explained = createShowQueue<Explanation>(EXPLAIN_SECONDS);
+    const called = createShowQueue<Omit<Callout, 'serial'>>(CALLOUT_SECONDS);
     const trace: { time: number; cents: number }[] = [];
     let liveCents: number | null = null;
     let session: GameSession | null = null;
     const offs: (() => void)[] = [];
-    const spb = secondsPerBeat(song);
+    const laps: LapSummary[] = [];
 
     const target = () => (session ? (session.engine.notes[session.engine.state.judged] ?? null) : null);
 
@@ -130,8 +213,10 @@ export function useGame(options: GameOptions) {
       if (!session) return;
       const s = session.engine.state;
       while (trace.length && now - trace[0].time > TRACE_SECONDS) trace.shift();
-      const elapsed = now - session.startAt;
+      // Posição na música (no laço, volta ao A), no andamento original: o relógio da barra de progresso
+      const elapsed = session.beatAt(now) * secondsPerBeat(song);
       const t = target();
+      const call = called.current(now);
       setHud({
         score: s.score,
         combo: s.combo,
@@ -139,22 +224,38 @@ export function useGame(options: GameOptions) {
         accuracy: s.accuracy,
         level,
         target: t,
+        next: session.engine.notes[s.judged + 1] ?? null,
         liveCents,
         trace: trace.map((p) => ({ age: now - p.time, cents: p.cents })),
-        explanation: explained && now - explained.at < EXPLAIN_SECONDS ? explained.explanation : null,
+        explanation: explained.current(now)?.item ?? null,
+        callout: call && { ...call.item, serial: call.serial },
         elapsed,
         measure: t ? t.measure : song.measures.length - 1,
         judged: t ? t.noteIndex : Number.MAX_SAFE_INTEGER,
+        practice: session.practice && {
+          lap: session.practice.practice.lap,
+          laps: [...laps],
+          bestLap: bestLapOf(laps),
+          speed: session.practice.speed,
+          loop: session.practice.loop,
+        },
       });
     };
 
-    const onEvent = (event: EngineEvent) => {
+    const onEvent = (event: SessionEvent) => {
       if (!session) return;
+      if (event.type === 'notes') return follow();
+      if (event.type === 'lap') {
+        laps.push(event.summary);
+        return;
+      }
       if (event.type === 'judgment') {
         level = levelFor(event.state, level);
         const note = session.engine.notes[event.index];
-        const explanation = explainJudgment(event, note, latencyToMs(live.current.latency));
-        explained = explanation ? { at: session.now(), explanation } : null;
+        const explanation = explainJudgment(event, note, latencyToMs(live.current.latency), player);
+        const now = session.now();
+        if (explanation) explained.push(explanation, now);
+        called.push({ judgment: event.judgment, combo: event.state.combo }, now);
         return;
       }
       if (event.type === 'gameover') level = 0;
@@ -166,7 +267,7 @@ export function useGame(options: GameOptions) {
     const frame = () => {
       if (!alive || !session) return;
       const now = session.frame();
-      opts.current.onBeat?.((now - session.startAt) / spb);
+      opts.current.onBeat?.(session.beatAt(now));
       if (++frames % HUD_EVERY_FRAMES === 0) pushHud(now);
       raf = requestAnimationFrame(frame);
     };
@@ -186,6 +287,11 @@ export function useGame(options: GameOptions) {
         orchestra: deps.orchestra,
         orchestraPrefs: loadOrchestraSettings(),
         clicks: deps.clicks,
+        practice: opts.current.practice,
+        toleranceCents: player?.toleranceCents,
+        windows: player?.windows,
+        leadSeconds: player?.trackLeadSeconds,
+        metronome: loadMetronome(),
         onEvent,
       });
       shared.session = session;
@@ -214,8 +320,31 @@ export function useGame(options: GameOptions) {
       const host = opts.current.host.current;
       if (!host) return;
       const box = opts.current.box();
-      deps
-        .loadTrack(host, { ...opts.current.trackOptions, notes: session.engine.notes, width: box.width, height: box.height })
+      const { theme, reducedMotion, showFps, onFps } = opts.current.trackOptions;
+      const view = opts.current.view;
+      const surface: Promise<Track | Sheet | Strings3D> =
+        view === 'sheet'
+          ? deps.loadSheet(host, { theme, reducedMotion, showFps, onFps, song, clock: session.clock, width: box.width, height: box.height })
+          : view === '3d'
+            ? deps.loadStrings3D(host, {
+                theme,
+                reducedMotion,
+                onFps,
+                notes: session.engine.notes,
+                clock: session.clock,
+                bars: measureStarts(song),
+                leadSeconds: player?.trackLeadSeconds,
+                width: box.width,
+                height: box.height,
+              })
+            : deps.loadTrack(host, {
+              ...opts.current.trackOptions,
+              leadSeconds: player?.trackLeadSeconds,
+              notes: session.engine.notes,
+              width: box.width,
+              height: box.height,
+            });
+      surface
         .then((created) => {
           if (!alive) return created.destroy();
           track = created;
@@ -279,7 +408,7 @@ export function useGame(options: GameOptions) {
     }
     setPhase('counting');
     const beats = song.timeSignature.beats;
-    const beatMs = secondsPerBeat(song) * 1000;
+    const beatMs = (secondsPerBeat(song) * 1000) / (session.practice?.speed ?? 1);
     const closes = live.current.closes;
     for (let left = beats; left > 0; left--) {
       setCounting(left);
@@ -301,5 +430,47 @@ export function useGame(options: GameOptions) {
     saveOrchestraSettings({ ...loadOrchestraSettings(), volume: next });
   }, []);
 
-  return { phase, hud, counting, micClosed, volume, latencyMs, pause, resume, changeVolume };
+  const changeMetronome = React.useCallback((next: number) => {
+    setMetronome(next);
+    live.current.session?.setMetronome(next);
+    saveMetronome(next);
+  }, []);
+
+  const practice = React.useMemo<PracticeApi>(
+    () => ({
+      setSpeed: (speed) => void live.current.session?.practice?.setSpeed(speed),
+      setLoop: (range) => live.current.session?.practice?.setLoop(range),
+      stop: () => live.current.session?.practice?.stop(),
+    }),
+    [],
+  );
+
+  /** A partida comum vira prática no próximo compasso, nesta velocidade (Pausa). Devolve se virou. */
+  const toPractice = React.useCallback((speed: number) => {
+    const at = live.current.session?.toPractice(speed) ?? null;
+    if (at !== null) setPracticed(true);
+    return at !== null;
+  }, []);
+
+  /** O relógio de tempos da partida, para a faixa de partitura: vazio até a partida começar. */
+  const clock = React.useMemo<PracticeClock>(() => ({ segments: (until) => live.current.session?.clock.segments(until) ?? [] }), []);
+
+  return {
+    phase,
+    hud,
+    counting,
+    micClosed,
+    volume,
+    latencyMs,
+    pause,
+    resume,
+    changeVolume,
+    metronome,
+    changeMetronome,
+    practice,
+    /** A partida comum já virou prática (sem selos e sem recorde). */
+    practiced,
+    toPractice,
+    clock,
+  };
 }

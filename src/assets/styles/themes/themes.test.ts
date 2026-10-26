@@ -55,6 +55,7 @@ describe.each(THEMES.map((t) => [t.id, t] as const))('tema %s', (_id, theme) => 
 
   it('estrutura idêntica: só a cor muda', () => {
     expect(theme.fonts).toEqual(base.fonts);
+    expect(theme.fonts.music).toMatch(/^'Noto Music'/);
     expect(theme.spacing).toEqual(base.spacing);
     expect(theme.borderRadius).toEqual(base.borderRadius);
   });

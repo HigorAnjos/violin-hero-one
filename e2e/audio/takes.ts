@@ -3,7 +3,7 @@ import path from 'node:path';
 import { TAKE_LEAD_IN_SECONDS, e2eTakes, type TakeName } from '../../src/game/audio/testing/e2eTakes';
 import { DEFAULT_SAMPLE_RATE } from '../../src/game/audio/testing/synth';
 import { alignFirstOnset, decodeWav, encodeWav } from '../../src/game/audio/testing/wav';
-import { parseSong } from '../../src/game/notation/song';
+import { convertSongFile } from '../../src/game/notation/catalog';
 
 export type { TakeName };
 
@@ -30,7 +30,11 @@ export function takePath(name: TakeName): string {
   return SONG_TAKES.has(name) ? path.join(ALIGNED_DIR, `${name}.wav`) : realPath(name);
 }
 
-const loadSong = (id: string) => parseSong(JSON.parse(readFileSync(path.join(SONGS_DIR, `${id}.json`), 'utf8')));
+/** O nível Fácil, o mesmo das músicas fixas do jogo. */
+const loadSong = (id: string) => {
+  const name = `${id}.musicxml`;
+  return convertSongFile({ name, content: readFileSync(path.join(SONGS_DIR, name), 'utf8') }).charts.easy;
+};
 
 /** Grava as sintéticas e, das reais de música, uma cópia com a primeira nota no lead-in da partida. */
 export function prepareTakes(): void {

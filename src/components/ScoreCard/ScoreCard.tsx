@@ -4,7 +4,7 @@ import type { OrchestraSection } from '../../assets/styles/themes/types';
 import { LEVEL_LABEL, PERCUSSION_COMBO, SECTION_ORDER, type OrchestraLevel } from '../../game/synth';
 import { Orchestra } from '../Orchestra/Orchestra';
 import { SECTION_LABEL } from '../Orchestra/stage';
-import { Kicker } from '../Screen/Screen';
+import { clampLines, Kicker } from '../Screen/Screen';
 
 const points = new Intl.NumberFormat('pt-BR');
 const percent = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -48,6 +48,7 @@ const Card = styled.section`
 `;
 
 const Score = styled.span`
+  ${clampLines(1)}
   font-weight: 800;
   font-size: 2.25rem;
   line-height: 1;
@@ -64,6 +65,10 @@ const Row = styled.div`
   font-weight: 700;
   font-size: 0.9375rem;
   color: ${({ theme }) => theme.colors.textMuted};
+
+  > span:last-child {
+    ${clampLines(1)}
+  }
 
   @media (max-height: 500px) {
     gap: 0.5rem;
@@ -118,7 +123,7 @@ const Chip = styled.span<{ $color: string; $on: boolean }>`
   background-color: ${({ $on, $color }) => ($on ? $color : 'transparent')};
   color: ${({ $on, $color, theme }) => ($on ? theme.colors.background : $color)};
   font-weight: 800;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
 `;
 
 const Strip = styled.div`
@@ -147,10 +152,12 @@ export interface ScoreCardProps {
   combo: number;
   accuracy: number;
   level: OrchestraLevel;
+  /** Falso: sem a faixa dos naipes no desktop (Cordas 3D, onde o cartão não pode descer sobre a corda G). */
+  sections?: boolean;
 }
 
 /** Placar da Gameplay: pontos, multiplicador, precisão e os naipes que tocam junto. */
-export const ScoreCard: React.FC<ScoreCardProps> = ({ score, multiplier, combo, accuracy, level }) => {
+export const ScoreCard: React.FC<ScoreCardProps> = ({ score, multiplier, combo, accuracy, level, sections: showSections = true }) => {
   const sections = SECTION_ORDER.slice(0, level) as OrchestraSection[];
   const label = `${LEVEL_LABEL[level]} tocando; ${orchestraHint(level, combo).toLowerCase()}`;
   return (
@@ -164,15 +171,17 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({ score, multiplier, combo, 
           {formatPercent(accuracy)} de acertos
         </span>
       </Row>
-      <Band>
-        <Kicker>Orquestra tocando com você</Kicker>
-        <Sections role="img" aria-label={label}>
-          {SECTION_ORDER.map((s) => (
-            <SectionChip key={s} section={s} on={sections.includes(s)} />
-          ))}
-        </Sections>
-        <small>{orchestraHint(level, combo)}</small>
-      </Band>
+      {showSections && (
+        <Band>
+          <Kicker>Orquestra tocando com você</Kicker>
+          <Sections role="img" aria-label={label}>
+            {SECTION_ORDER.map((s) => (
+              <SectionChip key={s} section={s} on={sections.includes(s)} />
+            ))}
+          </Sections>
+          <small>{orchestraHint(level, combo)}</small>
+        </Band>
+      )}
       <Strip>
         <Orchestra level={level} />
       </Strip>

@@ -37,31 +37,62 @@ export interface ScheduleOptions {
   headphones?: boolean;
 }
 
-/** Todas as notas da orquestra no relógio do AudioContext, em ordem de tempo. */
-export function scheduleOrchestra(song: Song, options: ScheduleOptions): TimedNote[] {
-  const { startAt, bpm = song.bpm, a4 = DEFAULT_A4, sections, headphones = false } = options;
-  const spb = 60 / bpm;
+/** Uma nota da orquestra no tempo da música, antes de ganhar instante: o que o agendador coloca trecho a trecho. */
+export interface BeatNote {
+  part: Part;
+  section: OrchestraSection;
+  /** Início, em tempos desde o começo da música. */
+  beat: number;
+  beats: number;
+  midi: number;
+  frequency: number;
+  velocity: number;
+}
+
+/** Todas as notas da orquestra no tempo da música, em ordem de início. */
+export function orchestraBeats(song: Song, options: Omit<ScheduleOptions, 'startAt' | 'bpm'> = {}): BeatNote[] {
+  const { a4 = DEFAULT_A4, sections, headphones = false } = options;
   const { parts } = arrange(song, { avoidMelody: !headphones });
-  const notes: TimedNote[] = [];
+  const notes: BeatNote[] = [];
   for (const part of PARTS) {
     const section = PART_SECTION[part];
     if (sections && !sections.includes(section)) continue;
     for (const note of parts[part]) {
-      const time = beatTime(startAt, note.beat, spb);
-      const duration = note.beats * spb;
       notes.push({
         part,
         section,
-        time,
-        duration,
-        end: time + duration + VOICES[part].release,
+        beat: note.beat,
+        beats: note.beats,
         midi: note.midi,
         frequency: midiToFrequency(note.midi, a4),
         velocity: note.velocity,
       });
     }
   }
-  return notes.sort((a, b) => a.time - b.time);
+  return notes.sort((a, b) => a.beat - b.beat);
+}
+
+/** A nota no relógio, pela âncora do trecho de andamento em que ela começa; com âncora (startAt, 0) é o beatTime. */
+export function placeNote(note: BeatNote, anchor: { time: number; beat: number; spb: number }): TimedNote {
+  const time = anchor.time + (note.beat - anchor.beat) * anchor.spb;
+  const duration = note.beats * anchor.spb;
+  return {
+    part: note.part,
+    section: note.section,
+    time,
+    duration,
+    end: time + duration + VOICES[note.part].release,
+    midi: note.midi,
+    frequency: note.frequency,
+    velocity: note.velocity,
+  };
+}
+
+/** Todas as notas da orquestra no relógio do AudioContext, em ordem de tempo, num andamento só. */
+export function scheduleOrchestra(song: Song, options: ScheduleOptions): TimedNote[] {
+  const { startAt, bpm = song.bpm } = options;
+  const anchor = { time: startAt, beat: 0, spb: 60 / bpm };
+  return orchestraBeats(song, options).map((note) => placeNote(note, anchor));
 }
 
 /** Nenhuma nota dura mais que isto (um compasso inteiro de 12 tempos a 30 bpm mais o release): limite da busca para trás. */

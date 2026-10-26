@@ -13,6 +13,9 @@ import { renderScreen } from '../shell/testing';
 import type { GameDeps } from '../shell/useGame';
 import { Gameplay } from './Gameplay';
 
+// Partida inteira com motor e pista: sob carga (CI, suíte em paralelo) passa dos 5 s padrão
+vi.setConfig({ testTimeout: 15_000 });
+
 const FAST: Song = { ...ODE, bpm: 240 };
 
 function fakeContext() {
@@ -40,7 +43,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const track = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
+const track = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), setNotes: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
 
 function setup(search = '', state: PlayState = { song: FAST, mode: 'Arcade' }) {
   const ear: FakeEar = createFakeEar();
@@ -94,6 +97,24 @@ describe('Gameplay', () => {
     expect(screen.getByRole('timer')).toHaveTextContent('4');
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument(), { timeout: 3000 });
     expect(context.resume).toHaveBeenCalled();
+  });
+
+  it('velocidade na pausa: avisa, confirma, a partida vira prática e termina sem selo', async () => {
+    const { run } = setup('?simular=0');
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    run(1.5);
+    await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
+    await userEvent.click(screen.getByRole('button', { name: '70%' }));
+    expect(screen.getByRole('alertdialog')).toHaveTextContent(/conta como prática/);
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await userEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument(), { timeout: 3000 });
+    run(20);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(ROUTES.results), { timeout: 3000 });
+    expect(loadEarnedBadges()).toEqual([]);
+    const result = (window as Window & { __vhResult?: { laps?: unknown[]; badges: string[] } }).__vhResult;
+    expect(result?.laps?.length).toBeGreaterThan(0);
+    expect(result?.badges).toEqual([]);
   });
 
   it('ESC pausa', async () => {

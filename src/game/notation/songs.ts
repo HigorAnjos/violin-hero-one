@@ -1,7 +1,6 @@
-// No ciclo 1 as músicas fixas vão no bundle; no ciclo 2 passam para o banco via seed-songs.
-import escalaReMaior from '../../../content/songs/escala-re-maior.json';
-import odeAAlegria from '../../../content/songs/ode-a-alegria.json';
-import brilhaBrilhaEstrelinha from '../../../content/songs/brilha-brilha-estrelinha.json';
+// Músicas embutidas no app para o primeiro uso e para jogar offline; o resto do catálogo vem do banco.
+// fixedSongs.json é gerado de content/songs/*.musicxml por `npm run songs:fixed`: o conversor não entra no app.
+import fixedSongs from './fixedSongs.json';
 import { parseSong, type Song } from './song';
 
 export interface CatalogSong {
@@ -10,9 +9,8 @@ export interface CatalogSong {
   song: Song;
 }
 
-export const FIXED_SONG_SOURCES: readonly unknown[] = [escalaReMaior, odeAAlegria, brilhaBrilhaEstrelinha];
-
-export const FIXED_SONGS: readonly CatalogSong[] = FIXED_SONG_SOURCES.map((raw) => {
+/** O nível Fácil de cada uma. */
+export const FIXED_SONGS: readonly CatalogSong[] = fixedSongs.map((raw) => {
   const song = parseSong(raw);
   return { id: song.id, title: song.title, song };
 });

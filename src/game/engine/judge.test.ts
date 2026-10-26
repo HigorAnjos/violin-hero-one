@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PitchReading } from '../audio/types';
 import { midiToFrequency } from '../notation/violin';
-import { DETECTION_LAG_SECONDS, createJudge, type JudgeOptions, type Verdict } from './judge';
+import { ATTEMPT_MARGIN_SECONDS, DETECTION_LAG_SECONDS, EXPIRY_SLACK_SECONDS, createJudge, type JudgeOptions, type Verdict } from './judge';
 import { engineNote as note, reading } from './testing';
 import type { EngineNote } from './types';
 
@@ -51,24 +51,61 @@ describe('janelas de tempo', () => {
     expect(verdicts[0]).toMatchObject({ kind: 'miss', attempt: { kind: 'timing', offsetMs: expect.closeTo(-300, 6) } });
   });
 
-  it('nota nunca tocada erra quando a janela fecha, sem tentativa', () => {
+  it('nota nunca tocada erra quando a faixa de atraso fecha, sem tentativa', () => {
     const { judge, verdicts } = setup([note(0, 1, 66)]);
-    judge.advance(1.2);
+    judge.advance(1.55);
     expect(verdicts).toHaveLength(0);
-    judge.advance(1.4);
+    judge.advance(1.65);
     expect(verdicts[0]).toEqual({ kind: 'miss', index: 0, attempt: null });
     expect(judge.done).toBe(true);
   });
 
-  it('mantém a nota aberta 100 ms além da janela para leituras atrasadas pela thread principal', () => {
+  it('mantém a nota aberta 100 ms além da faixa de atraso para leituras atrasadas pela thread principal', () => {
+    const closes = 1 + 0.22 + ATTEMPT_MARGIN_SECONDS + DETECTION_LAG_SECONDS + EXPIRY_SLACK_SECONDS;
     const { judge, verdicts, feed } = setup([note(0, 1, 66)]);
-    judge.advance(1 + 0.22 + DETECTION_LAG_SECONDS + 0.09);
-    feed(attack(1, 215, 66));
-    expect(verdicts[0]).toMatchObject({ kind: 'hit' });
+    judge.advance(closes - 0.01);
+    feed([...attack(1, 460, 66, 0.05), null]);
+    judge.advance(3);
+    expect(verdicts[0]).toMatchObject({ kind: 'miss', attempt: { kind: 'timing', offsetMs: expect.closeTo(460, 6) } });
 
     const late = setup([note(0, 1, 66)]);
-    late.judge.advance(1 + 0.22 + DETECTION_LAG_SECONDS + 0.11);
-    expect(late.verdicts[0]).toMatchObject({ kind: 'miss' });
+    late.judge.advance(closes + 0.01);
+    expect(late.verdicts[0]).toEqual({ kind: 'miss', index: 0, attempt: null });
+  });
+
+  it.each([300, 400, 460])('nota certa %s ms atrasada erra como atrasada, não como não tocada', (offset) => {
+    const { judge, verdicts, feed } = setup([note(0, 1, 66)]);
+    feed([...attack(1, offset, 66, 0.2), null]);
+    judge.advance(3);
+    expect(verdicts[0]).toMatchObject({ kind: 'miss', attempt: { kind: 'timing', offsetMs: expect.closeTo(offset, 6) } });
+  });
+
+  it('além da faixa de atraso o ataque não é mais da nota: não tocada', () => {
+    const { judge, verdicts, feed } = setup([note(0, 1, 66)]);
+    feed([...attack(1, 500, 66, 0.2), null]);
+    judge.advance(3);
+    expect(verdicts[0]).toEqual({ kind: 'miss', index: 0, attempt: null });
+  });
+
+  it('nota certa atrasada fica com a dela mesmo com a próxima mais perto, e não rouba a próxima', () => {
+    const { judge, verdicts, feed } = setup([note(0, 1, 66), note(1, 1.5, 69)]);
+    feed([...attack(1, 400, 66, 0.08), null]);
+    feed([...attack(1.5, 20, 69, 0.2), null]);
+    judge.advance(3);
+    expect(verdicts).toEqual([
+      { kind: 'miss', index: 0, attempt: expect.objectContaining({ kind: 'timing', offsetMs: expect.closeTo(400, 6) }) },
+      expect.objectContaining({ kind: 'hit', index: 1, offsetMs: expect.closeTo(20, 6) }),
+    ]);
+  });
+
+  it('nota de outra altura perto da próxima segue sendo nota errada da próxima', () => {
+    const { judge, verdicts, feed } = setup([note(0, 1, 66), note(1, 1.5, 69)]);
+    feed([...attack(1.5, -100, 71, 0.2), null]);
+    judge.advance(3);
+    expect(verdicts).toEqual([
+      { kind: 'miss', index: 0, attempt: null },
+      { kind: 'miss', index: 1, attempt: expect.objectContaining({ kind: 'wrong', playedMidi: 71 }) },
+    ]);
   });
 });
 

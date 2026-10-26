@@ -3,8 +3,10 @@ import type { Theme } from './types';
 /** Estrutura igual em todos os temas do catálogo: só a cor muda. */
 export const base = {
   fonts: {
-    display: "'Baloo 2', 'Nunito', system-ui, sans-serif",
-    ui: "'Nunito', system-ui, sans-serif",
+    // A face Fallback (fonts.css) ocupa o espaço da real enquanto o woff2 não chega ou se ele falhar
+    display: "'Baloo 2', 'Baloo 2 Fallback', system-ui, sans-serif",
+    ui: "'Nunito', 'Nunito Fallback', system-ui, sans-serif",
+    music: "'Noto Music', serif",
   },
   spacing: {
     xxs: '0.25rem',

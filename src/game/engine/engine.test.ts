@@ -5,7 +5,7 @@ import { midiToFrequency } from '../notation/violin';
 import { ENERGY_START } from './energy';
 import { createEngine, scheduleNotes, type EngineOptions } from './engine';
 import { DETECTION_LAG_SECONDS } from './judge';
-import { A4, ODE, reading, scaleSong } from './testing';
+import { A4, ODE, n, reading, scaleSong } from './testing';
 import type { EngineEvent, NoteJudgment } from './types';
 
 const START = 10;
@@ -42,6 +42,65 @@ describe('scheduleNotes', () => {
     expect(slow[1].time).toBeCloseTo(1.2, 9);
     expect(slow[0].frequency).toBeCloseTo(midiToFrequency(78, 415), 9);
   });
+  it('trecho A–B: só as notas dos compassos pedidos, com o primeiro tempo do trecho em startAt', () => {
+    const notes = scheduleNotes(ODE, START, ODE.bpm, A4, { from: 1, to: 3 });
+    expect(notes).toHaveLength(8);
+    expect(notes[0]).toMatchObject({ index: 0, noteIndex: 4, measure: 1, midi: 81 });
+    expect(notes[0].time).toBeCloseTo(START, 9);
+    expect(notes[7]).toMatchObject({ index: 7, noteIndex: 11, measure: 2 });
+    expect(notes[7].time).toBeCloseTo(START + 7 * 0.6, 9);
+  });
+
+  it('trecho que abre numa nota ligada: ela vira ataque, com a própria duração', () => {
+    const song = { ...ODE, measures: [{ beats: 4, notes: [n(0, 4, 78, 3, 1)] }, { beats: 4, notes: [n(0, 2, 78, 3, 1, true), n(2, 2, 76, 3, 0)] }] };
+    expect(scheduleNotes(song, START, 60, A4)).toHaveLength(2);
+    const notes = scheduleNotes(song, START, 60, A4, { from: 1, to: 2 });
+    expect(notes.map((x) => [x.noteIndex, x.time - START, x.duration])).toEqual([
+      [1, 0, 2],
+      [2, 2, 2],
+    ]);
+  });
+});
+
+describe('trecho e andamento da prática', () => {
+  it('o motor julga só o trecho e termina nele, no andamento dado', () => {
+    const { engine, events, play } = setup({ section: { from: 3, to: 4 }, bpm: ODE.bpm * 0.5 });
+    expect(engine.notes).toHaveLength(3);
+    expect(engine.notes[1].time - engine.notes[0].time).toBeCloseTo(1.5 * 1.2, 9);
+    [0, 1, 2].forEach((i) => play(i));
+    const done = events.find((e) => e.type === 'done');
+    expect(done && done.type === 'done' && done.result.counts.perfect).toBe(3);
+    expect(engine.status).toBe('finished');
+  });
+
+  it('trecho que continua a música (tiedIn): a ligada que o abre segue a nota de antes e não é julgada', () => {
+    const song = { ...ODE, measures: [{ beats: 4, notes: [n(0, 4, 78, 3, 1)] }, { beats: 4, notes: [n(0, 2, 78, 3, 1, true), n(2, 2, 76, 3, 0)] }] };
+    const notes = scheduleNotes(song, START, 60, A4, { from: 1, to: 2 }, true);
+    expect(notes.map((x) => [x.index, x.noteIndex, x.time - START])).toEqual([[0, 2, 2]]);
+  });
+
+  it('retire tira as notas em aberto a partir do instante e termina quando não sobra nenhuma', () => {
+    const { engine, events, play } = setup();
+    play(0);
+    play(1);
+    engine.retire(engine.notes[4].time);
+    expect(engine.notes).toHaveLength(4);
+    expect(engine.state.total).toBe(4);
+    play(2);
+    play(3);
+    expect(engine.status).toBe('finished');
+    expect(events.at(-1)?.type).toBe('done');
+    expect(engine.result().judgments).toHaveLength(4);
+  });
+
+  it('retire nunca tira nota já julgada', () => {
+    const { engine, play } = setup();
+    play(0);
+    play(1);
+    engine.retire(engine.notes[0].time);
+    expect(engine.notes).toHaveLength(2);
+    expect(engine.status).toBe('finished');
+  });
 });
 
 describe('julgamentos', () => {
@@ -67,7 +126,7 @@ describe('julgamentos', () => {
     play(0, { midiShift: 2 });
     play(1, { offsetMs: 260 });
     play(2, { cents: -62 });
-    engine.advance(engine.notes[3].time + 0.4);
+    engine.advance(engine.notes[3].time + 0.65);
     expect(judgments().map((j) => [j.judgment, j.issue])).toEqual([
       ['miss', 'wrong-note'],
       ['miss', 'late'],

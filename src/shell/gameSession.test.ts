@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { EngineEvent } from '../game/engine';
 import { ODE, reading } from '../game/engine/testing';
 import type { EarAudio } from './Ear';
-import { countInTimes, createGameSession, LEAD_SECONDS, type GameSessionOptions } from './gameSession';
+import { countInTimes, createGameSession, LEAD_SECONDS, type GameSessionOptions, type SessionEvent } from './gameSession';
 import type { GameOrchestra } from './orchestra';
 
 function fakeAudio(start = 10) {
@@ -55,9 +54,26 @@ describe('createGameSession', () => {
     expect(clicks).toHaveBeenCalledWith(audio.context, countInTimes(ODE, 12, 10.05));
   });
 
+  it('o nível dá a descida da pista e as folgas do motor', () => {
+    const firstJudgment = (extra: Partial<GameSessionOptions>) => {
+      const { audio } = fakeAudio(10);
+      const events: SessionEvent[] = [];
+      const session = createGameSession(base(audio, { ...extra, onEvent: (e) => events.push(e) }));
+      const first = session.engine.notes[0];
+      // 40 ¢ alto: Bom com a folga de sempre (Ótimo até 35 ¢), Ótimo com a do "nunca toquei" (até 42 ¢)
+      for (let i = 0; i < 6; i++) session.push(reading(first.time + 0.1 + i * 0.02, first.midi, 40));
+      session.engine.advance(first.time + 1);
+      return { startAt: session.startAt, judgment: events.find((e) => e.type === 'judgment') };
+    };
+    const loose = firstJudgment({ leadSeconds: 3, toleranceCents: 60, windows: { perfect: 100, great: 170, good: 280 } });
+    expect(loose.startAt).toBe(13);
+    expect(loose.judgment).toMatchObject({ judgment: 'great' });
+    expect(firstJudgment({})).toMatchObject({ startAt: 10 + LEAD_SECONDS, judgment: { judgment: 'good' } });
+  });
+
   it('?simular: o violinista sintético toca a música inteira no relógio do jogo', () => {
     const { audio, context } = fakeAudio(0);
-    const events: EngineEvent[] = [];
+    const events: SessionEvent[] = [];
     const track = { update: vi.fn(), onJudgment: vi.fn() };
     const session = createGameSession(base(audio, { performance: { offsetMs: 0 }, onEvent: (e) => events.push(e) }));
     session.setTrack(track);

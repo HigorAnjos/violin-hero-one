@@ -5,8 +5,8 @@ import { Button } from '../components/Button/Button';
 import { Orchestra } from '../components/Orchestra/Orchestra';
 import { stringName } from '../components/ResultSummary/summary';
 import { formatPercent, formatPoints } from '../components/ScoreCard/ScoreCard';
-import { Kicker } from '../components/Screen/Screen';
-import { readResultState, type PlayState } from '../shell/play';
+import { clampLines, Kicker } from '../components/Screen/Screen';
+import { gameRoute, readResultState, type PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 
 const Page = styled.main`
@@ -43,6 +43,7 @@ const Page = styled.main`
 const Story = styled.div`
   position: relative;
   width: 32.5rem;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1.125rem;
@@ -106,12 +107,14 @@ const Stats = styled.dl`
   gap: 1.75rem;
 
   div {
+    min-width: 0;
     display: flex;
     flex-direction: column-reverse;
     gap: 0.25rem;
   }
 
   dd {
+    ${clampLines(1)}
     font-weight: 800;
     font-size: 1.75rem;
     line-height: 1;
@@ -142,8 +145,8 @@ const Next = styled.nav`
   }
 
   small {
-    font-size: 0.6875rem;
-    letter-spacing: 0.1em;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
   }
 
   @media (max-height: 500px) {
@@ -187,7 +190,7 @@ export const GameOver: React.FC = () => {
   const state = readResultState(useLocation().state);
   if (!state) return <Navigate to={ROUTES.home} replace />;
   const { song, result } = state;
-  const again: PlayState & { next: string } = { song, mode: state.mode, latencyMs: state.latencyMs, next: ROUTES.game };
+  const again: PlayState & { next: string } = { song, mode: state.mode, latencyMs: state.latencyMs, next: gameRoute(state.mode) };
   const reached = Math.max(1, result.reachedMeasure + 1);
 
   return (

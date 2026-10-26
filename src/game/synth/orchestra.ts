@@ -1,8 +1,18 @@
 import type { OrchestraSection } from '../../assets/styles/themes/types';
 import { ENERGY_MAX, ENERGY_START } from '../engine/energy';
-import type { Song } from '../notation/song';
+import { attacks, type Song } from '../notation/song';
 import { PARTS, PART_SECTION, type Part } from './arrange';
-import { DUCK_DB, DUCK_RAMP_SECONDS, duckWindows, notesSoundingAt, scheduleOrchestra, type TimedNote } from './schedule';
+import {
+  DUCK_DB,
+  DUCK_HALF_SECONDS,
+  DUCK_RAMP_SECONDS,
+  notesSoundingAt,
+  orchestraBeats,
+  placeNote,
+  type DuckWindow,
+  type TimedNote,
+} from './schedule';
+import { MIN_TEMPO_FACTOR, between, createTimeline, timeIn, type LoopRange, type TempoSegment } from './timeline';
 import { SECTION_ORDER, levelFor, sectionsFor, type OrchestraDrive, type OrchestraLevel } from './sections';
 import { clampVolume, DEFAULT_ORCHESTRA_VOLUME } from './settings';
 import { VOICES, dbToGain, type Voice } from './voices';
@@ -11,6 +21,10 @@ export const SECTION_FADE_IN_SECONDS = 0.4;
 export const SECTION_FADE_OUT_SECONDS = 0.8;
 export const VOLUME_RAMP_SECONDS = 0.05;
 export const STOP_FADE_SECONDS = 0.3;
+/** Cada passada do agendador manda para o AudioContext o que começa até agora + isto: piso de qualquer mudança. */
+export const LOOKAHEAD_SECONDS = 0.2;
+/** Intervalo entre passadas; o lookahead cobre ~7 passadas perdidas para um quadro longo. */
+export const TICK_SECONDS = 0.025;
 
 /**
  * −120 dBFS de DC, abaixo de um degrau de 16 bits: o Chrome marca a página como audível com qualquer saída não nula e
@@ -23,6 +37,8 @@ export interface OrchestraOptions {
   startAt: number;
   /** Andamento da partida; padrão: o da música. */
   bpm?: number;
+  /** Fator de andamento desde o primeiro tempo, de 0,5 a 1; padrão 1. */
+  tempo?: number;
   a4?: number;
   /** Energia inicial, 0 a 1; padrão: a de início do Motor. */
   energy?: number;
@@ -43,8 +59,22 @@ export interface Orchestra {
   readonly headphones: boolean;
   readonly level: OrchestraLevel;
   readonly sections: readonly OrchestraSection[];
-  /** Todas as notas agendadas, em ordem de início, no relógio do AudioContext (sem compensação de latência). */
+  /** As notas já colocadas pelo agendador, em ordem de início, no relógio do AudioContext (sem compensação de latência). */
   readonly notes: readonly TimedNote[];
+  /** Laço A–B ligado, ou null. */
+  readonly loop: LoopRange | null;
+  /** Os trechos de andamento até `until`, congelados e projetados: onde cai cada volta do laço, para a shell. */
+  segments(until: number): TempoSegment[];
+  /**
+   * Muda o andamento (fator de 0,5 a 1 sobre o da partida) a partir de `at`, ou do horizonte do agendador (agora +
+   * LOOKAHEAD_SECONDS) se `at` for antes. Devolve o instante em que vale: onde a shell cria o Motor novo.
+   */
+  setTempo(factor: number, at?: number): number;
+  /**
+   * Liga ou desliga (null) o laço A–B a partir do horizonte do agendador, que devolve. Ao fim do compasso B volta ao
+   * início de A; se a música já passou de B, salta no próximo início de compasso.
+   */
+  setLoop(range: LoopRange | null): number;
   /**
    * Contrato da máscara (Decisões): as notas MIDI que a orquestra toca no instante `t`, no relógio compensado do jogo, o
    * mesmo de startAt e das notas do Motor. Quem chama é o engine, com PitchReading.time menos a latência calibrada;
@@ -70,8 +100,10 @@ export interface Orchestra {
 const QUIET_LOGGER = { log: () => undefined, warn: () => undefined };
 
 /**
- * Agenda a orquestra inteira no AudioContext do jogo, de uma vez, em startAt + tempo × segundos por tempo, direto nos
- * AudioParams: o mesmo relógio da pista e do Motor, sem Transport e sem deriva; context.suspend() pausa junto.
+ * Agenda a orquestra no AudioContext do jogo com lookahead: a cada TICK_SECONDS manda o que começa até agora +
+ * LOOKAHEAD_SECONDS, direto nos AudioParams, pela linha do tempo (createTimeline): startAt + tempo × segundos por tempo
+ * num andamento só, o mesmo relógio da pista e do Motor, sem Transport e sem deriva; context.suspend() pausa junto,
+ * porque o relógio para. Andamento e laço mudam sem recriar: só o que ainda não foi agendado segue a mudança.
  *
  * Imports profundos e sob demanda: o ponto de entrada do tone cria um Transport global (um segundo AudioContext e um
  * ticker em worker) só de importar. O Context do Tone embrulha o contexto do jogo com o relógio "offline" (sem ticker)
@@ -143,39 +175,73 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
     PARTS.map((part) => [part, Array.from({ length: VOICES[part].polyphony }, () => makeVoice(part))]),
   ) as Record<Part, ToneVoice[]>;
 
-  const now = context.currentTime;
-  const notes = scheduleOrchestra(song, { startAt, bpm: options.bpm, a4: options.a4, headphones });
-  const next: Record<Part, number> = { bass: 0, pad: 0, arpeggio: 0, brass: 0, timpani: 0 };
-  // Agendar com o contexto suspenso avisa uma vez por nota; ele volta a rodar com o jogo.
-  const suspended = raw.state !== 'running';
-  if (suspended) setLogger(QUIET_LOGGER);
-  try {
-    for (const note of notes) {
-      const pool = voices[note.part];
-      const voice = pool[next[note.part]++ % pool.length];
-      if (note.time + note.duration <= now) continue;
-      voice.triggerAttackRelease(note.frequency, note.duration, Math.max(note.time, now), note.velocity);
-    }
-    if (!headphones) {
-      const low = dbToGain(DUCK_DB);
-      for (const { from, to } of duckWindows(song, startAt, options.bpm)) {
-        if (to + DUCK_RAMP_SECONDS <= now) continue;
-        duck.gain.setValueAtTime(1, Math.max(now, from - DUCK_RAMP_SECONDS));
-        duck.gain.linearRampToValueAtTime(low, Math.max(now, from));
-        duck.gain.setValueAtTime(low, Math.max(now, to));
-        duck.gain.linearRampToValueAtTime(1, to + DUCK_RAMP_SECONDS);
-      }
-    }
-  } finally {
-    if (suspended) setLogger(console);
-  }
-  const fadingUntil: Partial<Record<OrchestraSection, number>> = {};
-
+  const timeline = createTimeline(song, { startAt, bpm: options.bpm, factor: options.tempo });
+  const beatNotes = orchestraBeats(song, { a4: options.a4, headphones });
+  const attackBeats = attacks(song).map((note) => ({ beat: note.at }));
+  const lookback =
+    Math.max(0, ...beatNotes.map((note) => note.beats)) * (60 / timeline.bpm / MIN_TEMPO_FACTOR) +
+    Math.max(...PARTS.map((part) => VOICES[part].release));
+  const notes: TimedNote[] = [];
   let disposed = false;
   let stopping: Promise<void> | undefined;
+  const next: Record<Part, number> = { bass: 0, pad: 0, arpeggio: 0, brass: 0, timpani: 0 };
+  const low = dbToGain(DUCK_DB);
+  let openDuck: DuckWindow | undefined;
+  const closeDuck = (now: number) => {
+    if (!openDuck) return;
+    duck.gain.setValueAtTime(low, Math.max(now, openDuck.to));
+    duck.gain.linearRampToValueAtTime(1, openDuck.to + DUCK_RAMP_SECONDS);
+    openDuck = undefined;
+  };
+  // A janela fica aberta enquanto um ataque ainda colocável puder encostar nela; juntar é o mesmo critério do duckWindows.
+  const duckAttack = (at: number, now: number) => {
+    const from = at - DUCK_HALF_SECONDS;
+    const to = at + DUCK_HALF_SECONDS;
+    if (to + DUCK_RAMP_SECONDS <= now) return;
+    if (openDuck && from - openDuck.to <= 2 * DUCK_RAMP_SECONDS) {
+      openDuck.to = to;
+      return;
+    }
+    closeDuck(now);
+    duck.gain.setValueAtTime(1, Math.max(now, from - DUCK_RAMP_SECONDS));
+    duck.gain.linearRampToValueAtTime(low, Math.max(now, from));
+    openDuck = { from, to };
+  };
+
+  // Começa um pouco atrás de agora: entrando atrasado, o que ainda soa começa já.
+  const cursor = timeline.cursor(context.currentTime - lookback);
+  const tick = () => {
+    if (disposed) return;
+    const now = context.currentTime;
+    const horizon = now + LOOKAHEAD_SECONDS;
+    // Agendar com o contexto suspenso avisa uma vez por nota; ele volta a rodar com o jogo.
+    const suspended = raw.state !== 'running';
+    if (suspended) setLogger(QUIET_LOGGER);
+    try {
+      for (const span of cursor.advance(horizon)) {
+        for (const beatNote of between(beatNotes, span.fromBeat, span.toBeat)) {
+          const note = placeNote(beatNote, span);
+          notes.push(note);
+          const pool = voices[note.part];
+          const voice = pool[next[note.part]++ % pool.length];
+          if (note.time + note.duration <= now) continue;
+          voice.triggerAttackRelease(note.frequency, note.duration, Math.max(note.time, now), note.velocity);
+        }
+        if (!headphones) for (const attack of between(attackBeats, span.fromBeat, span.toBeat)) duckAttack(timeIn(span, attack.beat), now);
+      }
+      if (openDuck && openDuck.to + DUCK_HALF_SECONDS + 2 * DUCK_RAMP_SECONDS < horizon) closeDuck(now);
+    } finally {
+      if (suspended) setLogger(console);
+    }
+  };
+  tick();
+  const ticker = setInterval(tick, TICK_SECONDS * 1000);
+  const fadingUntil: Partial<Record<OrchestraSection, number>> = {};
+
   const dispose = () => {
     if (disposed) return;
     disposed = true;
+    clearInterval(ticker);
     keepAudible.stop();
     keepAudible.disconnect();
     for (const pool of Object.values(voices)) for (const voice of pool) voice.dispose();
@@ -189,6 +255,20 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
     startAt,
     headphones,
     notes,
+    get loop() {
+      return timeline.loop;
+    },
+    segments: (until) => timeline.segments(until),
+    setTempo(factor, at = context.currentTime) {
+      const time = timeline.setTempo(factor, Math.max(at, context.currentTime + LOOKAHEAD_SECONDS));
+      tick();
+      return time;
+    },
+    setLoop(range) {
+      const time = timeline.setLoop(range);
+      tick();
+      return time;
+    },
     get level() {
       return level;
     },
@@ -199,7 +279,15 @@ export async function createOrchestra(context: BaseAudioContext, song: Song, opt
       if (disposed || stopping || !enabled || volume === 0) return [];
       const audible = new Set(active);
       for (const section of SECTION_ORDER) if ((fadingUntil[section] ?? -Infinity) > t) audible.add(section);
-      return [...new Set(notesSoundingAt(notes, t, audible).map((note) => note.midi))].sort((a, b) => a - b);
+      const around: TimedNote[] = [];
+      const spans = timeline.spans(t - lookback, t);
+      spans.forEach((span, i) => {
+        // No último trecho toBeat é o próprio t, e a nota que começa em t já soa; nos outros é o fim do trecho (o salto).
+        const last = i === spans.length - 1;
+        for (const note of between(beatNotes, span.fromBeat, span.toBeat, last)) around.push(placeNote(note, span));
+      });
+      around.sort((a, b) => a.time - b.time);
+      return [...new Set(notesSoundingAt(around, t, audible).map((note) => note.midi))].sort((a, b) => a - b);
     },
     update(drive) {
       if (disposed || stopping) return;

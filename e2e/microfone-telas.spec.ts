@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { chooseSong, skipOnboarding } from './choose';
 
 // Microfone falso do Chromium e autoplay liberado: o Ouvido de verdade abre sem violino
 test.use({
@@ -28,20 +29,27 @@ test('nenhuma tela de menu deixa o microfone aberto', async ({ page }) => {
   await expect(page).toHaveURL(/\/primeira-vez\/cordas$/);
   await expect.poll(() => liveTracks(page)).toBeGreaterThan(0);
   await page.getByRole('link', { name: 'Pular por agora' }).click();
-  await expect(page).toHaveURL(/\/teste$/);
+  await expect(page).toHaveURL(/\/$/);
   await expect.poll(() => liveTracks(page)).toBe(0);
 
-  await page.getByRole('link', { name: /Tocar Ode/ }).click();
+  // Modo, música e carregando também são menu: o microfone só abre no afinar
+  await page.getByRole('navigation', { name: 'Menu principal' }).getByRole('link', { name: /^Tocar/ }).click();
+  await page.getByRole('button', { name: /Continuar com Arcade/ }).click();
+  await expect(page.getByRole('radiogroup', { name: 'Músicas' })).toBeVisible();
+  expect(await liveTracks(page)).toBe(0);
+  await page.getByRole('radio', { name: /Ode/ }).click();
+  await page.getByRole('complementary', { name: 'Detalhes da música' }).getByRole('link', { name: /Tocar/ }).click();
   await expect(page).toHaveURL(/\/afinar$/);
   await expect.poll(() => liveTracks(page)).toBeGreaterThan(0);
   await page.getByRole('link', { name: 'Voltar' }).first().click();
-  await expect(page).toHaveURL(/\/(teste|primeira-vez\/nivel)$/);
+  await expect(page).toHaveURL(/\/$/);
   await expect.poll(() => liveTracks(page)).toBe(0);
 });
 
 test('do afinar ao jogo o microfone segue aberto, e sair pela pausa o fecha', async ({ page }) => {
-  await page.goto('/teste');
-  await page.getByRole('link', { name: /Tocar Escala/ }).click();
+  await skipOnboarding(page);
+  await page.goto('/');
+  await chooseSong(page, /Escala/);
   await expect.poll(() => liveTracks(page)).toBeGreaterThan(0);
   await page.getByRole('button', { name: /Começar/ }).click();
   await page.getByRole('button', { name: /Pular contagem/ }).click();
@@ -49,7 +57,6 @@ test('do afinar ao jogo o microfone segue aberto, e sair pela pausa o fecha', as
   expect(await liveTracks(page)).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Pausar' }).click();
   await page.getByRole('button', { name: 'Sair para músicas' }).click();
-  // Sem a primeira vez feita, o início leva ao onboarding (nível): menu, sem microfone
-  await expect(page).toHaveURL(/\/(teste|primeira-vez\/nivel)$/);
+  await expect(page).toHaveURL(/\/$/);
   await expect.poll(() => liveTracks(page)).toBe(0);
 });

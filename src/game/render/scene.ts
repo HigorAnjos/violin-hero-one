@@ -27,6 +27,8 @@ export interface SceneOptions {
   theme: Theme;
   notes: readonly EngineNote[];
   reducedMotion: boolean;
+  /** Segundos do topo da pista à linha de acerto; padrão LEAD_SECONDS. */
+  leadSeconds?: number;
 }
 
 // Texturas assadas uma vez neste tamanho e escaladas no quadro: o resize não refaz textura.
@@ -57,11 +59,11 @@ interface Chip {
 export class TrackScene extends Container {
   private readonly palette: TrackPalette;
   private readonly reducedMotion: boolean;
-  private readonly notes: readonly EngineNote[];
-  private readonly times: Float64Array;
-  private readonly tails: Float64Array;
-  private readonly state: Uint8Array;
-  private readonly lookBack: number;
+  private notes: readonly EngineNote[] = [];
+  private times = new Float64Array(0);
+  private tails = new Float64Array(0);
+  private state = new Uint8Array(0);
+  private lookBack = MISS_TAIL_SECONDS;
 
   private readonly bg = new Graphics();
   private readonly tailLayer = new Container();
@@ -84,7 +86,8 @@ export class TrackScene extends Container {
   private readonly glowTextures: Texture[];
   private readonly labelTextures: Map<Judgment, Texture>;
 
-  private l: TrackLayout = trackLayout(1, 1);
+  private readonly lead: number;
+  private l: TrackLayout;
   private readonly laneHitAt = [-Infinity, -Infinity, -Infinity, -Infinity];
   private ringScale = [1, 1];
   private feedbackAt = -Infinity;
@@ -100,12 +103,8 @@ export class TrackScene extends Container {
     const { theme } = options;
     this.palette = trackPalette(theme);
     this.reducedMotion = options.reducedMotion;
-    this.notes = options.notes;
-    this.times = Float64Array.from(this.notes, (n) => n.time);
-    this.tails = Float64Array.from(this.notes, (n) => tailSeconds(n.duration));
-    this.state = new Uint8Array(this.notes.length);
-    const longestTail = this.tails.reduce((a, b) => Math.max(a, b), 0);
-    this.lookBack = MISS_TAIL_SECONDS + longestTail;
+    this.lead = options.leadSeconds ?? LEAD_SECONDS;
+    this.l = trackLayout(1, 1, this.lead);
 
     const p = this.palette;
     const display = theme.fonts.display;
@@ -132,20 +131,7 @@ export class TrackScene extends Container {
       this.stringLetters.push(letter);
     }
 
-    const poolSize = maxNotesInWindow(this.times, LEAD_SECONDS + this.lookBack + 0.5) + 2;
-    for (let i = 0; i < poolSize; i++) {
-      const tail = new Sprite(Texture.WHITE);
-      const gem = new Sprite();
-      const letter = new Sprite();
-      tail.anchor.set(0.5, 1);
-      gem.anchor.set(0.5);
-      letter.anchor.set(0.5);
-      tail.visible = gem.visible = letter.visible = false;
-      this.tailLayer.addChild(tail);
-      this.gemLayer.addChild(gem);
-      this.letterLayer.addChild(letter);
-      this.chips.push({ tail, gem, letter });
-    }
+    this.setNotes(options.notes);
 
     this.feedbackLabel.anchor.set(0.5, 1);
     this.feedbackLabel.visible = false;
@@ -162,7 +148,7 @@ export class TrackScene extends Container {
   }
 
   layout(width: number, height: number): void {
-    const l = (this.l = trackLayout(width, height));
+    const l = (this.l = trackLayout(width, height, this.lead));
     const p = this.palette;
     const far = l.farDepth * 1.02;
     const half = l.planeWidth / 2;
@@ -215,6 +201,35 @@ export class TrackScene extends Container {
     this.update(this.lastNow);
   }
 
+  /**
+   * Troca as notas da pista (a prática acrescenta a volta seguinte e corta o que a troca de andamento refez). As notas
+   * que continuam no mesmo índice e no mesmo instante guardam o acerto ou o erro já mostrado.
+   */
+  setNotes(notes: readonly EngineNote[]): void {
+    const times = Float64Array.from(notes, (n) => n.time);
+    const state = new Uint8Array(notes.length);
+    for (let i = 0; i < Math.min(notes.length, this.notes.length); i++) if (this.times[i] === times[i]) state[i] = this.state[i];
+    this.notes = notes;
+    this.times = times;
+    this.tails = Float64Array.from(notes, (n) => tailSeconds(n.duration));
+    this.state = state;
+    this.lookBack = MISS_TAIL_SECONDS + this.tails.reduce((a, b) => Math.max(a, b), 0);
+    const poolSize = maxNotesInWindow(this.times, this.lead + this.lookBack + 0.5) + 2;
+    while (this.chips.length < poolSize) {
+      const tail = new Sprite(Texture.WHITE);
+      const gem = new Sprite();
+      const letter = new Sprite();
+      tail.anchor.set(0.5, 1);
+      gem.anchor.set(0.5);
+      letter.anchor.set(0.5);
+      tail.visible = gem.visible = letter.visible = false;
+      this.tailLayer.addChild(tail);
+      this.gemLayer.addChild(gem);
+      this.letterLayer.addChild(letter);
+      this.chips.push({ tail, gem, letter });
+    }
+  }
+
   /** Registra o julgamento do motor; `at` é a hora do relógio em que o feedback começa. */
   judge(event: JudgmentEvent, at: number = this.lastNow): void {
     const note = this.notes[event.index];
@@ -239,7 +254,7 @@ export class TrackScene extends Container {
     const l = this.l;
     const missDepth = l.hitDepth - MISS_TAIL_SECONDS * l.speed;
     const first = lowerBound(this.times, now - this.lookBack);
-    const last = lowerBound(this.times, now + LEAD_SECONDS + 0.05);
+    const last = lowerBound(this.times, now + this.lead + 0.05);
     let used = 0;
 
     for (let i = first; i < last && used < this.chips.length; i++) {
@@ -316,6 +331,12 @@ export class TrackScene extends Container {
   /** Notas com a cabeça visível agora; para testes. */
   visibleNotes(): number {
     return this.chips.filter((c) => c.gem.visible).length;
+  }
+
+  /** Posição, tamanho e transparência das notas e caudas visíveis, em texto; para testes. */
+  visibleChips(): string[] {
+    const view = (s: Sprite) => (s.visible ? `${s.x.toFixed(3)},${s.y.toFixed(3)},${s.scale.x.toFixed(4)},${s.scale.y.toFixed(4)},${s.alpha.toFixed(3)}` : '-');
+    return this.chips.slice(0, this.usedChips).map((c) => `${view(c.gem)} ${view(c.tail)}`);
   }
 
   /** Quanto as notas visíveis estão apagadas (1 = acesas); para testes. */

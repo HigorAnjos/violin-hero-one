@@ -13,6 +13,8 @@ export interface TrackOptions {
   height: number;
   /** Padrão: a preferência "reduzir movimento" do sistema. */
   reducedMotion?: boolean;
+  /** Segundos do topo da pista à linha de acerto (LevelSettings.trackLeadSeconds); padrão LEAD_SECONDS. */
+  leadSeconds?: number;
   /** Mostra fps e pior quadro no canto da pista. */
   showFps?: boolean;
   /** Recebe o relatório de fps a cada segundo (com ou sem showFps). */
@@ -25,6 +27,8 @@ export interface Track {
   update(now: number): void;
   /** Evento `judgment` do motor, para o feedback (acerto, erro com motivo, combo). */
   onJudgment(event: JudgmentEvent): void;
+  /** Troca as notas (a prática: volta nova, troca de andamento); o índice de onJudgment é o desta lista. */
+  setNotes(notes: readonly EngineNote[]): void;
   resize(width: number, height: number): void;
   destroy(): void;
 }
@@ -60,7 +64,7 @@ export async function createTrack(host: HTMLCanvasElement | HTMLElement, options
   });
   if (!(host instanceof HTMLCanvasElement)) host.appendChild(app.canvas);
 
-  const scene = new TrackScene(app.renderer, { theme, notes, reducedMotion: options.reducedMotion ?? prefersReducedMotion() });
+  const scene = new TrackScene(app.renderer, { theme, notes, reducedMotion: options.reducedMotion ?? prefersReducedMotion(), leadSeconds: options.leadSeconds });
   app.stage.addChild(scene);
   scene.layout(options.width, options.height);
 
@@ -86,6 +90,9 @@ export async function createTrack(host: HTMLCanvasElement | HTMLElement, options
     },
     onJudgment(event) {
       if (!destroyed) scene.judge(event);
+    },
+    setNotes(notes) {
+      if (!destroyed) scene.setNotes(notes);
     },
     resize(width, height) {
       if (destroyed) return;
