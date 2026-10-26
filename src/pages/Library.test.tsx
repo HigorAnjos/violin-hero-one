@@ -51,7 +51,8 @@ describe('Library', () => {
     await waitFor(() => expect(cards()).toHaveLength(CATALOG_ORDER.length));
     expect(screen.getByText(`${CATALOG_ORDER.length} músicas · ${FIXED_SONGS.length} no app`)).toBeInTheDocument();
     const first = cards()[0];
-    expect(first).toHaveAttribute('href', `/tocar/musica?modo=arcade&musica=${CATALOG_ORDER[0]}`);
+    // A música escolhida vai para a escolha de modo (Arcade, Partitura, Cordas 3D) antes da seleção
+    expect(first).toHaveAttribute('href', `/tocar?musica=${CATALOG_ORDER[0]}`);
     expect(first).toHaveTextContent('Fácil · Médio · Difícil');
     expect(first).toHaveTextContent('No app');
   });

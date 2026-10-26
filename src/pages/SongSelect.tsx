@@ -287,7 +287,7 @@ export const SongSelect: React.FC = () => {
         </Intro>
         <Tools>
           <Search label="Buscar música" value={query} onChange={setQuery} />
-          <Button as={Link} to={modesUrl(mode === 'Prática' ? 'Arcade' : mode)} $variant="ghost">
+          <Button as={Link} to={modesUrl(mode === 'Prática' ? 'Arcade' : mode, selected?.id)} $variant="ghost">
             <span aria-hidden="true">◂</span>Voltar
           </Button>
         </Tools>

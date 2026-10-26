@@ -72,10 +72,13 @@ test('Cordas 3D entra na escolha pelas setas e leva à música com o modo', asyn
   await expect(page).toHaveURL(/\/tocar\/musica\?modo=cordas-3d$/);
 });
 
-test('a biblioteca abre a seleção com a música escolhida', async ({ page }) => {
+test('a biblioteca pede o modo e abre a seleção com a música escolhida', async ({ page }) => {
   await page.goto('/biblioteca');
   await page.getByRole('list', { name: 'Músicas' }).getByRole('link', { name: /Ode/ }).click();
-  await expect(page).toHaveURL(/\/tocar\/musica\?modo=arcade&musica=ode-a-alegria$/);
+  await expect(page).toHaveURL(/\/tocar\?musica=ode-a-alegria$/);
+  await page.getByRole('radio', { name: /Cordas 3D/ }).click();
+  await page.getByRole('button', { name: /Continuar com Cordas 3D/ }).click();
+  await expect(page).toHaveURL(/\/tocar\/musica\?modo=cordas-3d&musica=ode-a-alegria$/);
   await expect(page.getByRole('radio', { name: /Ode/ })).toHaveAttribute('aria-checked', 'true');
 });
 

@@ -33,6 +33,8 @@ describe('escolha na URL', () => {
   it('endereços das telas de escolha, todas sem microfone', () => {
     expect(modesUrl()).toBe('/tocar');
     expect(modesUrl('Partitura')).toBe('/tocar?modo=partitura');
+    expect(modesUrl(undefined, 'aleluia')).toBe('/tocar?musica=aleluia');
+    expect(modesUrl('Cordas 3D', 'aleluia')).toBe('/tocar?modo=cordas-3d&musica=aleluia');
     expect(songsUrl('Arcade')).toBe('/tocar/musica?modo=arcade');
     expect(songsUrl('Arcade', 'aleluia')).toBe('/tocar/musica?modo=arcade&musica=aleluia');
     for (const path of ['/tocar', '/tocar/musica', '/tocar/carregando', '/biblioteca']) expect(needsMicrophone(path)).toBe(false);

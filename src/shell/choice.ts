@@ -22,8 +22,13 @@ export function levelFromSlug(slug: string | null): Level | null {
   return LEVELS.find((level) => LEVEL_SLUG[level] === slug) ?? null;
 }
 
-export function modesUrl(mode?: GameMode): string {
-  return mode ? `${ROUTES.modes}?modo=${MODE_SLUG[mode]}` : ROUTES.modes;
+/** Escolha de modo; `songId` vem de quem já escolheu a música (Biblioteca) e segue para a seleção. */
+export function modesUrl(mode?: GameMode, songId?: string): string {
+  const params = new URLSearchParams();
+  if (mode) params.set('modo', MODE_SLUG[mode]);
+  if (songId) params.set('musica', songId);
+  const query = params.toString();
+  return query ? `${ROUTES.modes}?${query}` : ROUTES.modes;
 }
 
 export function songsUrl(mode: GameMode, songId?: string): string {

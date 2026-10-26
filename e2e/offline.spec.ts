@@ -93,6 +93,8 @@ test('depois de uma visita, sem internet: abre, mostra embutidas e baixadas e jo
 
   // A baixada abre do aparelho, no nível guardado, até a afinação
   await cards.filter({ hasText: 'Greensleeves' }).click();
+  // A biblioteca pede o modo antes da seleção
+  await page.getByRole('button', { name: /Continuar com Arcade/ }).click();
   await page.getByRole('complementary', { name: 'Detalhes da música' }).getByRole('link', { name: /Tocar/ }).click();
   await expect(page).toHaveURL(/\/afinar(\?.*)?$/);
   await page.goto('/?ouvido=simulado');

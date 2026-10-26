@@ -9,7 +9,7 @@ import { matchesSearch, SearchField } from '../components/SearchField/SearchFiel
 import { SongCover } from '../components/SongCover/SongCover';
 import { offlineTag, songMeta } from '../components/SongCover/songFacts';
 import { savedCount, useShelf, type ShelfSong } from '../services/shelf';
-import { songsUrl } from '../shell/choice';
+import { modesUrl } from '../shell/choice';
 import { ROUTES } from '../shell/routes';
 import { LibraryEmpty } from './LibraryEmpty';
 
@@ -224,7 +224,7 @@ const SongCard: React.FC<{ song: ShelfSong; offline: boolean }> = ({ song, offli
   const tag = offlineTag(song, offline);
   return (
     <li>
-      <Card to={songsUrl('Arcade', song.id)}>
+      <Card to={modesUrl(undefined, song.id)}>
         <Cover id={song.id}>{tag && <Badge>{tag}</Badge>}</Cover>
         <CardBody>
           <b>{song.title}</b>

@@ -37,6 +37,13 @@ describe('ModeSelect', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/tocar/musica?modo=partitura');
   });
 
+  it('vindo da Biblioteca com a música escolhida, o modo segue junto com ela', async () => {
+    renderModes(`${ROUTES.modes}?musica=ode-a-alegria`);
+    await userEvent.click(screen.getByRole('radio', { name: 'Cordas 3D' }));
+    await userEvent.click(screen.getByRole('button', { name: /Continuar com Cordas 3D/ }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/tocar/musica?modo=cordas-3d&musica=ode-a-alegria');
+  });
+
   it('Enter no cartão confirma', async () => {
     renderModes();
     screen.getByRole('radio', { name: 'Arcade' }).focus();
