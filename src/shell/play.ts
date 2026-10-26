@@ -2,6 +2,7 @@ import type { GameResult } from '../game/engine';
 import type { Song } from '../game/notation/song';
 import { FIXED_SONGS } from '../game/notation/songs';
 import type { PracticeStart } from './gameSession';
+import type { RecordCheck } from './records';
 import { ROUTES } from './routes';
 
 export const GAME_MODES = ['Arcade', 'Partitura', 'Prática'] as const;
@@ -21,6 +22,8 @@ export interface PlayState {
 
 export interface ResultState extends PlayState {
   result: GameResult;
+  /** O recorde local antes desta partida; ausente quando ela não vale recorde (prática, laço, velocidade < 100%). */
+  record?: RecordCheck;
 }
 
 export const DEFAULT_MODE: GameMode = 'Arcade';
@@ -40,7 +43,7 @@ export function readPlayState(raw: unknown): Required<Pick<PlayState, 'song' | '
   return { ...state, song: state.song ?? FIXED_SONGS[0].song, mode: isGameMode(state.mode) ? state.mode : DEFAULT_MODE };
 }
 
-export function readResultState(raw: unknown): (ReturnType<typeof readPlayState> & { result: GameResult }) | null {
+export function readResultState(raw: unknown): (ReturnType<typeof readPlayState> & Pick<ResultState, 'result' | 'record'>) | null {
   const state = raw && typeof raw === 'object' ? (raw as Partial<ResultState>) : null;
   return state?.result ? { ...readPlayState(state), result: state.result } : null;
 }

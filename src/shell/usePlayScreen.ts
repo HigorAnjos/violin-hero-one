@@ -10,6 +10,7 @@ import { DEV_TOOLS } from './devTools';
 import { micFailure } from './Ear';
 import { readPlayState, type GameMode, type ResultState } from './play';
 import { playerLevelSettings } from './playerLevel';
+import { checkRecord } from './records';
 import { micTroubleUrl, ROUTES } from './routes';
 import type { GamePhase, useGame } from './useGame';
 
@@ -34,7 +35,8 @@ export function usePlayScreen(mode: GameMode) {
 
   const finish = React.useCallback(
     (result: GameResult, extra: Partial<ResultState> = {}) => {
-      const state: ResultState = { song: play.song, mode: play.mode, latencyMs: play.latencyMs, noFail: play.noFail, ...extra, result };
+      const record = checkRecord(play.song, result) ?? undefined;
+      const state: ResultState = { song: play.song, mode: play.mode, latencyMs: play.latencyMs, noFail: play.noFail, ...extra, result, record };
       if (DEV_TOOLS) (window as Window & { __vhResult?: GameResult }).__vhResult = result;
       if (result.status === 'failed') return navigate(ROUTES.gameOver, { replace: true, state });
       addEarnedBadges(result.badges);
