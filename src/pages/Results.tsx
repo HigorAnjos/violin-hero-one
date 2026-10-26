@@ -255,12 +255,13 @@ const Stats = styled.dl`
     gap: ${({ theme }) => theme.spacing.xs};
 
     > div {
-      padding: ${({ theme }) => theme.spacing.xxs} ${({ theme }) => theme.spacing.xs};
+      padding: ${({ theme }) => theme.spacing.xxs} 0.375rem;
     }
 
+    /* 12 px é o piso: o "Combo máx" cabe tirando o espaçamento das letras e parte do recuo da célula */
     dt {
       font-size: 0.75rem;
-      letter-spacing: 0.02em;
+      letter-spacing: 0;
     }
 
     dd {
