@@ -90,7 +90,8 @@ test('reduzir movimento: o julgamento grande da partitura não pulsa', async ({ 
   await page.goto('/jogo/partitura?ouvido=simulado&musica=ode-a-alegria&simular=0');
   const judgment = page.locator('[data-judgment]').first();
   await expect(judgment).toBeVisible({ timeout: 15000 });
-  expect(await judgment.evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
+  // A fila troca o elemento do julgamento a cada ~250 ms: toHaveCSS reconsulta, um evaluate num nó já desmontado lê ''
+  await expect(judgment).toHaveCSS('animation-name', 'none');
 });
 
 test('joga uma música inteira em Partitura com ?simular', async ({ page }) => {
