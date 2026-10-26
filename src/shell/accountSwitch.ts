@@ -45,11 +45,16 @@ export async function adoptUser(client: { rpc: SupabaseClient['rpc'] } | null, s
   if (session.status !== 'signed-in') return 'same';
   // Mesmo usuário (renovação do token, e-mail confirmado no anônimo): cache e fila já são dele
   if (currentUserId() === session.userId) return 'same';
+  const previous = currentUserId();
   // Primeira sessão no aparelho (ou aparelho de antes desta versão): o que está nele é desse usuário
-  const previous = rememberUser(session.userId);
-  if (!previous) return 'first';
+  if (!previous) {
+    rememberUser(session.userId);
+    return 'first';
+  }
+  // O dono só troca depois de esquecer o anterior: se o forget falhar, o próximo evento tenta de novo
   await data.forget(previous);
   for (const key of PER_USER_KEYS) storage()?.removeItem(key);
+  rememberUser(session.userId);
   data.use(session.userId);
   if (!session.anonymous) {
     // Conta que já existe já jogou: o aparelho novo vai direto para a tela inicial

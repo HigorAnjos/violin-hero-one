@@ -84,6 +84,17 @@ describe('adoptUser', () => {
     expect(isOnboarded()).toBe(true);
   });
 
+  it('forget falhou (IndexedDB): o aparelho segue do anterior, com o que é dele, e a próxima sessão tenta de novo', async () => {
+    deviceOf('anon-1');
+    const { data } = fakeDevice();
+    vi.mocked(data.forget).mockRejectedValueOnce(new Error('idb'));
+    await expect(adoptUser(profileRpc(), session('conta-1'), data)).rejects.toThrow('idb');
+    expect(currentUserId()).toBe('anon-1');
+    expect(loadRecords()).toHaveLength(1);
+    expect(await adoptUser(profileRpc(), session('conta-1'), data)).toBe('switched');
+    expect(currentUserId()).toBe('conta-1');
+  });
+
   it('sem rede para o perfil da conta: troca mesmo assim', async () => {
     deviceOf('anon-1');
     const client = { rpc: vi.fn().mockResolvedValue({ data: null, error: { message: 'rede' } }) };
