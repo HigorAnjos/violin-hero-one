@@ -69,7 +69,8 @@ test('da tela inicial ao Perfil e às Configurações pelos botões do canto', a
   await page.goto('/');
   await page.getByRole('link', { name: 'Perfil' }).click();
   await expect(page.getByRole('heading', { name: 'Maria Eduarda Pizzicato' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Melhor pontuação' })).toContainText('1.234.567');
+  await expect(page.getByRole('region', { name: 'Conquistas' }).getByRole('img', { name: 'Selo Primeira música' })).toBeVisible();
+  await expect(page.getByText('Toque uma música inteira sem errar nenhuma nota')).toBeVisible();
   await page.getByRole('link', { name: 'Configurações' }).click();
   await expect(page).toHaveURL(/\/configuracoes$/);
   await expect(page.getByRole('region', { name: 'Latência' })).toContainText('142 ms');

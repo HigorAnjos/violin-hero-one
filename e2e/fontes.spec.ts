@@ -15,11 +15,13 @@ function bigResult(errors: number, noFail = true): GameResult {
   return { ...result, score: 9876543, maxCombo: 12345 };
 }
 
-for (const fonte of ['real', 'reserva'] as const) {
-  test.describe(`fonte ${fonte}`, () => {
-    const ready = async (page: Page) => (fonte === 'real' ? fontsReady(page) : fallbackFontsReady(page));
+// O 8-Bits troca a fonte dos títulos (Pixelify Sans): mede de novo, com ela e com a reserva dela
+for (const tema of ['caderno', '8-bits'] as const) for (const fonte of ['real', 'reserva'] as const) {
+  test.describe(`${tema}, fonte ${fonte}`, () => {
+    const ready = async (page: Page) => (fonte === 'real' ? fontsReady(page, tema) : fallbackFontsReady(page, tema));
 
     test.beforeEach(async ({ page }) => {
+      await page.addInitScript((id) => localStorage.setItem('vh:theme', id), tema);
       if (fonte === 'reserva') await blockWebFonts(page);
     });
 

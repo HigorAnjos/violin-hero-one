@@ -21,7 +21,7 @@ async function stringsDrawn(page: Page) {
   expect(shot.byteLength).toBeGreaterThan(5000);
 }
 
-for (const tema of ['caderno', 'palco'] as const) {
+for (const tema of ['caderno', 'palco', '8-bits'] as const) {
   test(`${tema}: Cordas 3D (5c) cabem, alvos de 44 px, texto legível e foco visível`, async ({ page }) => {
     await page.addInitScript((id) => localStorage.setItem('vh:theme', id), tema);
     await openWithState(page, '/jogo/3d?ouvido=simulado&simular=0', { song: { ...ODE, title: LONG_TITLE }, mode: 'Cordas 3D' });
@@ -29,7 +29,7 @@ for (const tema of ['caderno', 'palco'] as const) {
     await expect(page.getByRole('region', { name: 'Afinação' })).toBeVisible();
     await expect(page.getByRole('img', { name: /Cordas 3D: as quatro cordas/ })).toBeVisible();
     await stringsDrawn(page);
-    await fontsReady(page);
+    await fontsReady(page, tema);
     await expectFits(page);
     expect(await tooSmallTargets(page), 'alvos de toque abaixo de 44 px').toEqual([]);
     expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);

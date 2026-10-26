@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
   await skipOnboarding(page);
 });
 
-for (const tema of ['caderno', 'palco'] as const) {
+for (const tema of ['caderno', 'palco', '8-bits'] as const) {
   for (const fonte of ['real', 'reserva'] as const) {
     test.describe(`${tema}, fonte ${fonte}`, () => {
       test.beforeEach(async ({ page }) => {
@@ -36,7 +36,7 @@ for (const tema of ['caderno', 'palco'] as const) {
         test(`${screen.name} cabe na tela, com toque de 44 px`, async ({ page }) => {
           await page.goto(screen.path);
           await screen.ready(page);
-          await (fonte === 'real' ? fontsReady(page) : fallbackFontsReady(page));
+          await (fonte === 'real' ? fontsReady(page, tema) : fallbackFontsReady(page, tema));
           await expect(page.locator('html')).toHaveAttribute('data-theme', tema);
           await expectFits(page);
           expect(await tooSmallTargets(page)).toEqual([]);
