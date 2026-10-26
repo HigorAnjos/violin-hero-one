@@ -24,7 +24,26 @@ export const ROUTES = {
   profile: '/perfil',
   settings: '/configuracoes',
   reminder: '/lembrete',
+  login: '/entrar',
+  account: '/conta',
 } as const;
+
+/** Onde a conta é pedida (GuestPrompt): ranking, desafio ou usar em outro aparelho. Nunca no meio de uma música. */
+export type AccountReason = 'ranking' | 'desafio' | 'aparelho';
+
+const ACCOUNT_REASONS: readonly AccountReason[] = ['ranking', 'desafio', 'aparelho'];
+
+/** `next`: para onde ir com a conta criada (e para onde o link do e-mail volta). `back`: o "Agora não". */
+export function accountUrl(reason: AccountReason, next: string, back: string = next): string {
+  return `${ROUTES.account}?${new URLSearchParams({ motivo: reason, depois: next, voltar: back })}`;
+}
+
+export function parseAccountUrl(search: URLSearchParams): { reason: AccountReason; next: string; back: string } {
+  const raw = search.get('motivo');
+  const reason = ACCOUNT_REASONS.find((r) => r === raw) ?? 'aparelho';
+  const next = safeInternalPath(search.get('depois'), ROUTES.home);
+  return { reason, next, back: safeInternalPath(search.get('voltar'), next) };
+}
 
 /**
  * Telas que ouvem o violino; em qualquer outra (Início, Biblioteca, Configurações…) o microfone fica fechado.

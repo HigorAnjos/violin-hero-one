@@ -54,6 +54,8 @@ export function fakeCatalogClient({ ids = CATALOG_ORDER, failRpc = false }: { id
   const auth = {
     getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'u1', is_anonymous: true } } }, error: null }),
     signInAnonymously: vi.fn(),
+    // A shell acompanha a sessão (useAccountWatch); aqui ela nunca muda
+    onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
   };
   return { client: { auth, from: vi.fn().mockReturnValue(query), rpc } as unknown as SongsClient, rpc };
 }

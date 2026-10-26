@@ -1,11 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { currentUserId, rememberUser } from './user';
 
 export type SessionState =
   | { status: 'offline' }
-  | { status: 'signed-in'; userId: string; anonymous: boolean };
+  /** `email`: só o próprio jogador vê (Configurações › Conta); nunca vai para outro jogador. */
+  | { status: 'signed-in'; userId: string; anonymous: boolean; email?: string };
 
 export type AuthClient = Pick<SupabaseClient['auth'], 'getSession' | 'signInAnonymously'>;
+
+/** O estado da sessão para um usuário do Supabase. */
+export function signedIn(user: { id: string; is_anonymous?: boolean; email?: string }): SessionState {
+  return { status: 'signed-in', userId: user.id, anonymous: user.is_anonymous ?? false, ...(user.email ? { email: user.email } : {}) };
+}
 
 /**
  * Todo jogador é um usuário do Supabase desde o primeiro toque: sem sessão salva, entra como
@@ -21,7 +26,6 @@ export async function ensureSession(client: { auth: AuthClient } | null): Promis
     if (error || !data.user) return { status: 'offline' };
     user = data.user;
   }
-  // Primeira sessão no aparelho: o cache e a fila passam a ser dela (a troca de conta usa DeviceData.use)
-  if (!currentUserId()) rememberUser(user.id);
-  return { status: 'signed-in', userId: user.id, anonymous: user.is_anonymous ?? false };
+  // O dono do cache e da fila (vh:usuario) é gravado pelo adoptUser da conta, na primeira sessão e em toda troca
+  return signedIn(user);
 }

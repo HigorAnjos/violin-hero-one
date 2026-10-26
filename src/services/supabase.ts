@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.SUPABASE_ANON_KEY;
+/** Públicas (vão no build); a conta lê por elas os provedores ligados no auth. */
+export const supabaseUrl = import.meta.env.SUPABASE_URL;
+export const supabaseAnonKey = import.meta.env.SUPABASE_ANON_KEY;
 const schema = import.meta.env.SUPABASE_SCHEMA || 'violinhero';
 
 /**

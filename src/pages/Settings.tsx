@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { A4Picker } from '../components/A4Picker/A4Picker';
+import { AccountPanel } from '../components/AccountPanel/AccountPanel';
 import { Button } from '../components/Button/Button';
 import { SettingsControls, SettingsPanel, SettingsRange, SettingsRow, SettingsValue } from '../components/SettingsPanel/SettingsPanel';
 import { ThemePicker } from '../components/ThemePicker/ThemePicker';
@@ -128,6 +129,7 @@ export const SETTINGS_SECTIONS = [
   { id: 'jogo', label: 'Jogo' },
   { id: 'visual', label: 'Visual' },
   { id: 'acessibilidade', label: 'Acessibilidade' },
+  { id: 'conta', label: 'Conta' },
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number]['id'];
@@ -306,6 +308,7 @@ export const Settings: React.FC = () => {
           </SettingsPanel>
         )}
         {section === 'acessibilidade' && <AccessibilitySection />}
+        {section === 'conta' && <AccountPanel back={settingsUrl('conta')} />}
       </Content>
     </Page>
   );

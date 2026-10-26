@@ -21,19 +21,21 @@ describe('ensureSession', () => {
     expect(spies.signInAnonymously).not.toHaveBeenCalled();
   });
 
+  it('conta com e-mail: o e-mail vem junto para o próprio jogador ver', async () => {
+    const { auth } = fakeClient({ session: { user: { id: 'u1', is_anonymous: false, email: 'lia@t.test' } } });
+    expect(await ensureSession({ auth })).toEqual({ status: 'signed-in', userId: 'u1', anonymous: false, email: 'lia@t.test' });
+  });
+
   it('primeiro toque: entra como anônimo, sem cadastro', async () => {
     const { auth, spies } = fakeClient({ signIn: { data: { user: { id: 'anon', is_anonymous: true } }, error: null } });
     expect(await ensureSession({ auth })).toEqual({ status: 'signed-in', userId: 'anon', anonymous: true });
     expect(spies.signInAnonymously).toHaveBeenCalledOnce();
   });
 
-  it('a primeira sessão vira a dona do cache e da fila; as seguintes não trocam o dono', async () => {
+  it('não decide o dono do cache e da fila: isso é do adoptUser (shell/accountSwitch), na primeira sessão e na troca', async () => {
     localStorage.removeItem(USER_STORAGE_KEY);
     await ensureSession({ auth: fakeClient({ session: { user: { id: 'u1', is_anonymous: true } } }).auth });
-    expect(currentUserId()).toBe('u1');
-    await ensureSession({ auth: fakeClient({ session: { user: { id: 'u2', is_anonymous: false } } }).auth });
-    expect(currentUserId()).toBe('u1');
-    localStorage.removeItem(USER_STORAGE_KEY);
+    expect(currentUserId()).toBeNull();
   });
 
   it('falha ao entrar (sem rede, login anônimo desligado): offline, sem erro', async () => {

@@ -665,6 +665,64 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
     });
   });
 
+  describe('conta', () => {
+    /** O que o GoTrue faz ao confirmar o e-mail (ou ligar o Google) no anônimo: o mesmo id deixa de ser anônimo. */
+    const link = (uid) => c.query(`update auth.users set is_anonymous = false, email = $2 where id = $1`, [uid, `c-${uid}@t.test`]);
+
+    /** Tudo que `viewer` lê de `owner` em progresso e perfil; vazio é o esperado. */
+    async function seenOf(viewer, owner) {
+      const seen = {};
+      for (const table of PROGRESS_TABLES) {
+        const { rows } = await as(c, viewer, `select * from ${S}.${table} where user_id = $1`, [owner]);
+        if (rows.length) seen[table] = rows.length;
+      }
+      const profile = await as(c, viewer, `select id from ${S}.profiles where id = $1`, [owner]);
+      if (profile.rows.length) seen.profiles = 1;
+      return seen;
+    }
+
+    it('criar conta mantém o id: partida, recorde, selo, dia, sequência e perfil continuam do jogador', async () => {
+      const u = await newUser(c);
+      await submit(c, u, playOf(await serverSong(c)));
+      await link(u);
+      assert.deepEqual(Object.keys(await seenOf(u, u)), [...PROGRESS_TABLES, 'profiles']);
+      const { rows } = await as(c, u, `select is_anonymous from ${S}.profiles`);
+      assert.deepEqual(rows, [{ is_anonymous: false }]);
+    });
+
+    it('depois do vínculo, a conta A NÃO lê nada da conta B, nem B de A', async () => {
+      const a = await newUser(c);
+      const b = await newUser(c);
+      const id = await serverSong(c);
+      await submit(c, a, playOf(id));
+      await submit(c, b, playOf(id));
+      await link(a);
+      await link(b);
+      assert.deepEqual(await seenOf(a, b), {});
+      assert.deepEqual(await seenOf(b, a), {});
+    });
+
+    it('convidado novo depois de sair, e o anônimo antigo do aparelho que entrou na conta, NÃO leem nada da conta', async () => {
+      const conta = await newUser(c);
+      await submit(c, conta, playOf(await serverSong(c)));
+      await link(conta);
+      // O anônimo do outro aparelho subiu a fila antes de entrar na conta: as partidas ficam com ele
+      const antigo = await newUser(c);
+      await submit(c, antigo, playOf(await serverSong(c)));
+      const novo = await newUser(c);
+      assert.deepEqual(await seenOf(novo, conta), {});
+      assert.deepEqual(await seenOf(antigo, conta), {});
+      assert.deepEqual(await seenOf(conta, antigo), {});
+    });
+
+    it('ninguém do app vira conta sozinho nem lê e-mail de outro (auth fica fora do alcance)', async () => {
+      const a = await newUser(c);
+      const b = await newUser(c, { anonymous: false });
+      await denied(as(c, a, `update ${S}.profiles set is_anonymous = false where id = $1`, [a]));
+      await denied(as(c, a, `select email from auth.users where id = $1`, [b]));
+    });
+  });
+
   describe('funções', () => {
     it('só as funções da lista permitida são executáveis por anon e authenticated', async () => {
       const { rows } = await c.query(

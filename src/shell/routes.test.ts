@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { micTroubleUrl, needsMicrophone, parseMicTrouble, ROUTES, safeInternalPath } from './routes';
+import { accountUrl, micTroubleUrl, needsMicrophone, parseAccountUrl, parseMicTrouble, ROUTES, safeInternalPath } from './routes';
 
 describe('rotas', () => {
+  it('ida e volta do pedido de conta; destino de fora vira a raiz e motivo desconhecido vira outro aparelho', () => {
+    const url = accountUrl('ranking', '/ranking', '/perfil');
+    expect(url).toBe('/conta?motivo=ranking&depois=%2Franking&voltar=%2Fperfil');
+    expect(parseAccountUrl(new URL(url, 'http://x').searchParams)).toEqual({ reason: 'ranking', next: '/ranking', back: '/perfil' });
+    expect(parseAccountUrl(new URLSearchParams('motivo=x&depois=//mal.com'))).toEqual({ reason: 'aparelho', next: '/', back: '/' });
+    expect(needsMicrophone(ROUTES.account)).toBe(false);
+  });
+
   it('só as telas que ouvem o violino pedem microfone; menu e desconhecidas não', () => {
     const playing = [ROUTES.calibration, ROUTES.game, ROUTES.gameOver, ROUTES.badge, ROUTES.results];
     for (const path of [ROUTES.mic, ROUTES.strings, ROUTES.micTrouble, ROUTES.countdown, `${ROUTES.countdown}/`, ...playing]) {

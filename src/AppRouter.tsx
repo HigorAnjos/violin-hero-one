@@ -5,8 +5,10 @@ import { Countdown } from './pages/Countdown';
 import { lazyGameScreen } from './pages/loadGameScreens';
 import { Main } from './pages/Main';
 import { ModeSelect } from './pages/ModeSelect';
+import { GuestPrompt } from './pages/GuestPrompt';
 import { Library } from './pages/Library';
 import { Loading } from './pages/Loading';
+import { Login } from './pages/Login';
 import { SongSelect } from './pages/SongSelect';
 import { MicTrouble } from './pages/MicTrouble';
 import { OnboardLevel } from './pages/OnboardLevel';
@@ -17,6 +19,7 @@ import { Reminder } from './pages/Reminder';
 import { Settings } from './pages/Settings';
 import { isOnboarded } from './services/profile';
 import type { AppUpdate } from './shell/appUpdate';
+import { useAccountWatch } from './shell/accountSwitch';
 import { useDeviceSync } from './shell/deviceSync';
 import { ProfileSync, useRemoteProfile } from './shell/profileSync';
 import { EarProvider, type Ear } from './shell/Ear';
@@ -36,21 +39,23 @@ const GameOver = lazyGameScreen('GameOver');
 const BadgeEarned = lazyGameScreen('BadgeEarned');
 const Results = lazyGameScreen('Results');
 
-/** Primeira vez no aparelho: onboarding. Depois, a tela inicial. */
+/** Primeira vez no aparelho: boas-vindas (começar sem cadastro ou entrar numa conta). Depois, a tela inicial. */
 const Home: React.FC = () => (isOnboarded() ? <Main /> : <FirstVisit />);
 
-/** Aparelho novo de quem já jogou: o perfil do servidor (com o nível escolhido) pula o onboarding. */
+/** Aparelho novo de quem já jogou: o perfil do servidor (com o nível escolhido) pula as boas-vindas e o onboarding. */
 const FirstVisit: React.FC = () => {
   const remote = useRemoteProfile();
   if (remote.isPending) return null;
-  return isOnboarded() ? <Main /> : <Navigate to={ROUTES.level} replace />;
+  return isOnboarded() ? <Main /> : <Navigate to={ROUTES.login} replace />;
 };
 
 export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, update }) => {
   // Sem Ouvido de conferência (main.tsx, ?ouvido=simulado), o microfone de verdade
   const [chosen] = React.useState(() => ear ?? createMicrophoneEar());
   useReminderTimer();
+  // Nesta ordem: o DeviceData do sync está registrado quando a conta troca de usuário
   useDeviceSync();
+  useAccountWatch();
   return (
     <ThemeChoiceProvider>
       <GlobalStyles />
@@ -81,6 +86,8 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.settings} element={<Settings />} />
             <Route path={ROUTES.profile} element={<Profile />} />
             <Route path={ROUTES.reminder} element={<Reminder />} />
+            <Route path={ROUTES.login} element={<Login />} />
+            <Route path={ROUTES.account} element={<GuestPrompt />} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           </React.Suspense>
