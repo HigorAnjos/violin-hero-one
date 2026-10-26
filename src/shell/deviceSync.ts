@@ -2,6 +2,7 @@ import React from 'react';
 import { onlineManager, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { setDeviceData } from '../services/deviceData';
 import type { PlaySync } from '../services/playQueue';
+import { PROFILE_QUERY_KEY } from '../services/profileSync';
 import { ensureSession, type SessionState } from '../services/session';
 import { songKeys, type LoadedSong } from '../services/songs';
 import { supabase } from '../services/supabase';
@@ -29,6 +30,8 @@ export async function reconnect(queryClient: QueryClient, sync: PlaySync = playS
     queryClient.invalidateQueries({
       predicate: (q) => q.queryKey[0] === 'songs' && q.queryKey[1] === 'song' && (q.state.data as { saved?: string } | undefined)?.saved === 'device',
     }),
+    // O perfil sobe o que mudou sem rede e traz o do servidor
+    queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY }),
   ]);
   await sync.flush().catch(() => undefined);
 }

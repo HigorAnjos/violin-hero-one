@@ -18,6 +18,7 @@ import { Settings } from './pages/Settings';
 import { isOnboarded } from './services/profile';
 import type { AppUpdate } from './shell/appUpdate';
 import { useDeviceSync } from './shell/deviceSync';
+import { ProfileSync, useRemoteProfile } from './shell/profileSync';
 import { EarProvider, type Ear } from './shell/Ear';
 import { MicGuard } from './shell/MicGuard';
 import { createMicrophoneEar } from './shell/microphoneEar';
@@ -36,7 +37,14 @@ const BadgeEarned = lazyGameScreen('BadgeEarned');
 const Results = lazyGameScreen('Results');
 
 /** Primeira vez no aparelho: onboarding. Depois, a tela inicial. */
-const Home: React.FC = () => (isOnboarded() ? <Main /> : <Navigate to={ROUTES.level} replace />);
+const Home: React.FC = () => (isOnboarded() ? <Main /> : <FirstVisit />);
+
+/** Aparelho novo de quem já jogou: o perfil do servidor (com o nível escolhido) pula o onboarding. */
+const FirstVisit: React.FC = () => {
+  const remote = useRemoteProfile();
+  if (remote.isPending) return null;
+  return isOnboarded() ? <Main /> : <Navigate to={ROUTES.level} replace />;
+};
 
 export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, update }) => {
   // Sem Ouvido de conferência (main.tsx, ?ouvido=simulado), o microfone de verdade
@@ -46,6 +54,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
   return (
     <ThemeChoiceProvider>
       <GlobalStyles />
+      <ProfileSync />
       <EarProvider ear={chosen}>
         <BrowserRouter>
           <MicGuard />
