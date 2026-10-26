@@ -148,8 +148,28 @@ export function strings3dLayout(width: number, height: number, columns: number =
   pose.pitch = (lo + hi) / 2;
   const top = maxBy(points.top, pose, (p) => p.ty);
   let tanHalf = top / (2 * (0.5 - TOP_FRACTION));
-  const sideTan = maxBy([...points.sides, ...points.top, ...points.bottom], pose, (p) => Math.abs(p.tx));
-  tanHalf = Math.max(tanHalf, sideTan / (aspect * SIDE_FILL));
+  const all = [...points.sides, ...points.top, ...points.bottom];
+  const sideTan = () => maxBy(all, pose, (p) => Math.abs(p.tx)) / (aspect * SIDE_FILL);
+  if (sideTan() > tanHalf) {
+    // Caixa estreita: a largura manda. Abre o campo e inclina de novo para os números continuarem no pé da caixa
+    const bottomAt = (pitch: number, t: number) => {
+      pose.pitch = pitch;
+      return 0.5 + maxBy(points.bottom, pose, (p) => -p.ty) / (2 * t);
+    };
+    for (let round = 0; round < 4; round++) {
+      tanHalf = sideTan();
+      let a = 0;
+      let b = Math.PI / 3;
+      for (let i = 0; i < 40; i++) {
+        const mid = (a + b) / 2;
+        // Inclinar mais sobe os números na tela
+        if (bottomAt(mid, tanHalf) > BOTTOM_FRACTION) a = mid;
+        else b = mid;
+      }
+      pose.pitch = (a + b) / 2;
+    }
+    tanHalf = Math.max(tanHalf, sideTan());
+  }
 
   return {
     width,

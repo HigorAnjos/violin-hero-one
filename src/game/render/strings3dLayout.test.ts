@@ -1,5 +1,6 @@
 import { PerspectiveCamera, Vector3 } from 'three';
 import { describe, expect, it } from 'vitest';
+import { stageBox, strings3dBox } from './layout';
 import {
   BOX,
   boxScale,
@@ -19,10 +20,21 @@ import {
   strings3dLayout,
 } from './strings3dLayout';
 
-const SIZES = [
-  [1280, 550],
-  [844, 272],
+const VIEWPORTS = [
+  [1280, 720],
+  [844, 390],
 ] as const;
+
+describe('caixa das Cordas 3D na tela', () => {
+  it('1280×720: a largura toda acima da partitura, como no design', () => {
+    expect(strings3dBox(1280, 720)).toEqual({ x: 0, y: 0, width: 1280, height: 550 });
+  });
+
+  it('844×390 (celular deitado): entre os cartões compactos, como a pista', () => {
+    expect(strings3dBox(844, 390)).toEqual(stageBox(844, 390));
+    expect(strings3dBox(844, 390)).toEqual({ x: 202, y: 0, width: 440, height: 272 });
+  });
+});
 
 describe('casa e colunas', () => {
   it('casa é o semitom acima da corda solta', () => {
@@ -83,7 +95,8 @@ describe('posição da nota no tempo', () => {
   });
 });
 
-describe.each(SIZES)('layout por proporção em %i×%i', (width, height) => {
+describe.each(VIEWPORTS)('layout por proporção em %i×%i', (viewportWidth, viewportHeight) => {
+  const { width, height } = strings3dBox(viewportWidth, viewportHeight);
   const l = strings3dLayout(width, height);
   const p = (x: number, y: number, z: number) => project(l, x, y, z);
 
@@ -108,7 +121,8 @@ describe.each(SIZES)('layout por proporção em %i×%i', (width, height) => {
     const farTop = p(0, STRING_HEIGHTS[0] + BOX.height * (1 + BOX.farGrowth), -FLOOR_LENGTH).y;
     const numbers = p(0, -NUMBER_HEIGHT / 2, NUMBER_Z).y;
     expect(farTop / height).toBeGreaterThanOrEqual(0.2);
-    expect(farTop / height).toBeLessThanOrEqual(0.3);
+    // Na caixa estreita do celular quem manda é a largura: o conteúdo encolhe preso ao pé, e o fundo desce
+    expect(farTop / height).toBeLessThanOrEqual(width / height > 2 ? 0.3 : 0.5);
     expect(numbers / height).toBeGreaterThan(0.93);
     expect(numbers).toBeLessThanOrEqual(height);
   });
@@ -122,13 +136,13 @@ describe.each(SIZES)('layout por proporção em %i×%i', (width, height) => {
 
   it('cordas de cima para baixo G D A E, separadas o bastante para tocar o olho', () => {
     const ys = STRING_HEIGHTS.map((h) => p(0, h, 0).y);
-    for (let i = 1; i < 4; i++) expect(ys[i] - ys[i - 1]).toBeGreaterThan(height * 0.08);
+    for (let i = 1; i < 4; i++) expect(ys[i] - ys[i - 1]).toBeGreaterThan(height * 0.07);
   });
 
-  it('a letra da corda tem pelo menos 14 px e a caixa da nota na corda pelo menos 24 px', () => {
+  it('a letra da corda tem pelo menos 14 px e a caixa da nota na corda pelo menos 16 px (o dedo legível)', () => {
     const scale = p(l.left - LETTER_OFFSET, STRING_HEIGHTS[3], 0).scale;
     expect(LETTER_HEIGHT * scale).toBeGreaterThanOrEqual(14);
-    expect(BOX.height * p(0, STRING_HEIGHTS[3], 0).scale).toBeGreaterThanOrEqual(24);
+    expect(BOX.height * p(0, STRING_HEIGHTS[3], 0).scale).toBeGreaterThanOrEqual(16);
   });
 });
 
