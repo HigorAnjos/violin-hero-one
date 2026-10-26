@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { simulateGame, type GameResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
+import { chooseSong, skipOnboarding } from './choose';
 import { fontsReady } from './fonts';
 import { openWithState } from './state';
 
@@ -72,9 +73,9 @@ test.describe('telas de jogo: cabem, 44 px de toque, foco visível', () => {
 
 test('joga a escala do início ao fim com o ouvido simulado, da afinação ao resultado', async ({ page }) => {
   test.setTimeout(60000);
-  await page.goto('/teste?ouvido=simulado');
-  await page.getByRole('link', { name: /Tocar Escala/ }).click();
-  await expect(page).toHaveURL(/\/afinar$/);
+  await skipOnboarding(page);
+  await page.goto('/?ouvido=simulado');
+  await chooseSong(page, /Escala/);
   await page.getByRole('button', { name: /Começar/ }).click();
   await expect(page).toHaveURL(/\/contagem$/);
   await expect(page).toHaveURL(/\/jogo$/, { timeout: 10000 });
