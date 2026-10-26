@@ -13,7 +13,7 @@ import { levelSettings, type PlayerLevel } from '../game/engine/levels';
 import type { Level } from '../game/notation/song';
 import { loadLocalProfile } from '../services/profile';
 import { EMBEDDED_SHELF, usePlayableSong, useShelf, type ShelfSong } from '../services/shelf';
-import { loadingUrl, modeFromSlug, modesUrl } from '../shell/choice';
+import { isReadyMode, loadingUrl, modeFromSlug, modesUrl, readyMode } from '../shell/choice';
 import type { GameMode } from '../shell/play';
 
 const DEFAULT_LEVEL: PlayerLevel = 'beginner';
@@ -237,9 +237,15 @@ const Details: React.FC<{ song: ShelfSong; mode: GameMode; settings: ReturnType<
           <PlayButton as={Link} to={loadingUrl({ mode, songId: song.id, level })}>
             Tocar <span aria-hidden="true">▸</span>
           </PlayButton>
-          <Button as={Link} to={loadingUrl({ mode: 'Prática', songId: song.id, level })} $variant="ghost">
-            Praticar trecho
-          </Button>
+          {isReadyMode('Prática') ? (
+            <Button as={Link} to={loadingUrl({ mode: 'Prática', songId: song.id, level })} $variant="ghost">
+              Praticar trecho
+            </Button>
+          ) : (
+            <Button type="button" disabled $variant="ghost" aria-label="Praticar trecho, em breve">
+              Praticar trecho
+            </Button>
+          )}
         </>
       }
     />
@@ -249,7 +255,7 @@ const Details: React.FC<{ song: ShelfSong; mode: GameMode; settings: ReturnType<
 /** 3 · Seleção de música: a estante (catálogo ou as embutidas), busca, dificuldade e Tocar. */
 export const SongSelect: React.FC = () => {
   const [search, setSearch] = useSearchParams();
-  const mode = modeFromSlug(search.get('modo')) ?? 'Arcade';
+  const mode = readyMode(modeFromSlug(search.get('modo')));
   const shelf = useShelf();
   const [query, setQuery] = React.useState('');
   const [settings] = React.useState(() => levelSettings(loadLocalProfile().level ?? DEFAULT_LEVEL));

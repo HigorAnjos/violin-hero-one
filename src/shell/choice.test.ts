@@ -1,14 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { levelFromSlug, loadingUrl, modeFromSlug, modesUrl, parseSongChoice, songsUrl } from './choice';
+import { isReadyMode, levelFromSlug, loadingUrl, modeFromSlug, modesUrl, parseSongChoice, readyMode, songsUrl } from './choice';
+import { GAME_MODES } from './play';
 import { needsMicrophone } from './routes';
 
 const search = (url: string) => new URL(url, 'http://x').searchParams;
 
 describe('escolha na URL', () => {
   it('ida e volta de modo, música e nível, em português', () => {
-    const url = loadingUrl({ mode: 'Partitura', songId: 'greensleeves', level: 'medium' });
-    expect(url).toBe('/tocar/carregando?modo=partitura&musica=greensleeves&nivel=medio');
-    expect(parseSongChoice(search(url))).toEqual({ mode: 'Partitura', songId: 'greensleeves', level: 'medium' });
+    const url = loadingUrl({ mode: 'Arcade', songId: 'greensleeves', level: 'medium' });
+    expect(url).toBe('/tocar/carregando?modo=arcade&musica=greensleeves&nivel=medio');
+    expect(parseSongChoice(search(url))).toEqual({ mode: 'Arcade', songId: 'greensleeves', level: 'medium' });
+    expect(loadingUrl({ mode: 'Partitura', songId: 'a', level: 'easy' })).toBe('/tocar/carregando?modo=partitura&musica=a&nivel=facil');
+  });
+
+  it('modo sem tela registrada vira Arcade', () => {
+    for (const mode of GAME_MODES.filter((m) => !isReadyMode(m))) {
+      expect(readyMode(mode)).toBe('Arcade');
+      expect(parseSongChoice(search(loadingUrl({ mode, songId: 'a', level: 'easy' })))?.mode).toBe('Arcade');
+    }
+    expect(readyMode(null)).toBe('Arcade');
   });
 
   it('sem música não há escolha; modo e nível estranhos viram Arcade e Fácil', () => {

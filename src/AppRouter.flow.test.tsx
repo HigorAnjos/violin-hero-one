@@ -7,7 +7,9 @@ import { CATALOG_ORDER } from './game/notation/catalog';
 import { FIXED_SONGS } from './game/notation/songs';
 import { markOnboarded } from './services/profile';
 import { fakeChart, fakeCatalogClient } from './services/testing';
+import { READY_MODES } from './shell/choice';
 import { createFakeEar } from './shell/fakeEar';
+import { gameRoute } from './shell/play';
 
 const db = vi.hoisted(() => ({ client: null as unknown }));
 vi.mock('./services/supabase', () => ({
@@ -36,6 +38,25 @@ async function playFromHome(title: string) {
   await userEvent.click(within(screen.getByRole('complementary', { name: 'Detalhes da música' })).getByRole('link', { name: /Tocar/ }));
   return screen.findByRole('heading', { name: 'Afine antes de tocar' }, { timeout: 5000 });
 }
+
+describe('modos que a escolha oferece', () => {
+  afterEach(() => window.localStorage.clear());
+
+  // Rota fora do router cai no '*' e volta para o início: aqui é onde um modo novo sem tela quebraria
+  it.each(READY_MODES)('%s tem a sua tela no router', async (mode) => {
+    const route = gameRoute(mode);
+    markOnboarded();
+    window.history.replaceState({ usr: { song: FIXED_SONGS[0].song, mode }, key: 'k', idx: 0 }, '', route);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AppRouter ear={createFakeEar()} />
+      </QueryClientProvider>
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(window.location.pathname).toBe(route);
+    expect(screen.queryByRole('navigation', { name: 'Menu principal' })).not.toBeInTheDocument();
+  });
+});
 
 describe('da tela inicial até afinar', () => {
   afterEach(() => {

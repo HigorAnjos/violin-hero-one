@@ -5,14 +5,12 @@ import { Button } from '../components/Button/Button';
 import { ModeCard } from '../components/ModeCard/ModeCard';
 import { useRadioGroup } from '../components/RadioGroup/useRadioGroup';
 import { Kicker, Lead, Screen, ScreenTitle } from '../components/Screen/Screen';
-import { modeFromSlug, songsUrl } from '../shell/choice';
+import { isReadyMode, modeFromSlug, READY_MODES, readyMode, songsUrl } from '../shell/choice';
+import type { GameMode } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 
-/** Modos que já dá para jogar; Cordas 3D chega no floor ciclo2-3d. */
-const PLAYABLE = ['Arcade', 'Partitura'] as const;
-type PlayableMode = (typeof PLAYABLE)[number];
-
-const isPlayable = (mode: string | null): mode is PlayableMode => PLAYABLE.includes(mode as PlayableMode);
+/** Os modos do cartão que já têm tela; os outros (e Cordas 3D, do floor ciclo2-3d) aparecem "em breve". */
+const PLAYABLE = READY_MODES.filter((mode) => mode !== 'Prática');
 
 const Header = styled.header`
   display: flex;
@@ -81,7 +79,7 @@ export const ModeSelect: React.FC = () => {
   const navigate = useNavigate();
   const [search] = useSearchParams();
   const fromUrl = modeFromSlug(search.get('modo'));
-  const [mode, setMode] = React.useState<PlayableMode>(isPlayable(fromUrl) ? fromUrl : 'Arcade');
+  const [mode, setMode] = React.useState<GameMode>(fromUrl === 'Prática' ? 'Arcade' : readyMode(fromUrl));
   const radio = useRadioGroup(PLAYABLE, mode, setMode);
   const confirm = () => navigate(songsUrl(mode));
 
@@ -104,7 +102,7 @@ export const ModeSelect: React.FC = () => {
           name="Arcade"
           description="A pista vem na sua direção, estilo Guitar Hero. Cada raia é uma corda: leia a cor e toque no tempo."
           audience="Quer jogar sem saber ler partitura"
-          radio={radio('Arcade')}
+          radio={isReadyMode('Arcade') ? radio('Arcade') : undefined}
           onConfirm={confirm}
         />
         <ModeCard
@@ -112,7 +110,7 @@ export const ModeSelect: React.FC = () => {
           name="Partitura"
           description="A pauta corre embaixo da tela e a nota acende na agulha. Cor indica a corda, número indica o dedo."
           audience="Quer aprender a ler música de verdade"
-          radio={radio('Partitura')}
+          radio={isReadyMode('Partitura') ? radio('Partitura') : undefined}
           onConfirm={confirm}
         />
         <ModeCard

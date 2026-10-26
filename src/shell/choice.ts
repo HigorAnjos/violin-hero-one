@@ -6,6 +6,17 @@ import { ROUTES } from './routes';
 const MODE_SLUG: Record<GameMode, string> = { Arcade: 'arcade', Partitura: 'partitura', Prática: 'pratica' };
 const LEVEL_SLUG: Record<Level, string> = { easy: 'facil', medium: 'medio', hard: 'dificil' };
 
+/**
+ * Modos com tela registrada no AppRouter. Partitura e Prática entram quando o floor ciclo2-telas-jogo trouxer as
+ * rotas (o teste do AppRouter confere que toda rota daqui existe).
+ */
+export const READY_MODES: readonly GameMode[] = ['Arcade'];
+
+export const isReadyMode = (mode: GameMode) => READY_MODES.includes(mode);
+
+/** Modo pedido pela URL que ainda não tem tela vira Arcade. */
+export const readyMode = (mode: GameMode | null): GameMode => (mode && isReadyMode(mode) ? mode : 'Arcade');
+
 export function modeFromSlug(slug: string | null): GameMode | null {
   return GAME_MODES.find((mode) => MODE_SLUG[mode] === slug) ?? null;
 }
@@ -34,9 +45,9 @@ export function loadingUrl({ mode, songId, level }: SongChoice): string {
   return `${ROUTES.loading}?${new URLSearchParams({ modo: MODE_SLUG[mode], musica: songId, nivel: LEVEL_SLUG[level] })}`;
 }
 
-/** Escolha completa da URL do carregando; faltando a música, nula. Modo e nível desconhecidos viram Arcade e Fácil. */
+/** Escolha completa da URL do carregando; faltando a música, nula. Modo sem tela e nível desconhecido viram Arcade e Fácil. */
 export function parseSongChoice(search: URLSearchParams): SongChoice | null {
   const songId = search.get('musica');
   if (!songId) return null;
-  return { songId, mode: modeFromSlug(search.get('modo')) ?? 'Arcade', level: levelFromSlug(search.get('nivel')) ?? 'easy' };
+  return { songId, mode: readyMode(modeFromSlug(search.get('modo'))), level: levelFromSlug(search.get('nivel')) ?? 'easy' };
 }
