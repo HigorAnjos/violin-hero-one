@@ -1,20 +1,25 @@
 import { randomUUID } from 'node:crypto';
 import { expect as baseExpect, test, type Page } from '@playwright/test';
+import { songDurationSeconds } from '../../src/game/notation/song';
+import { DEVICE_DB_NAME, PLAYS_STORE } from '../../src/services/deviceDb';
+import { chooseSong } from '../choose';
+import { CATALOG } from './catalogo';
 
 // O Kong do Supabase local às vezes segura por ~7 s as primeiras chamadas de uma página nova, e o primeiro e-mail
 // do GoTrue leva o mesmo: 5 s não bastam
 const expect = baseExpect.configure({ timeout: 20000 });
 
 /**
- * Conta de ponta a ponta no Supabase local: o convidado joga, cria conta pelo link mágico (o mesmo usuário), outro
- * aparelho entra com o mesmo e-mail e vê o que ele fez; sair volta a um convidado novo, sem nada da conta.
- * O link chega na caixa local do supabase start (Mailpit, porta 54324). Google não tem e2e (sem provedor local).
+ * Conta de ponta a ponta no Supabase local: o convidado joga (a partida sobe pela fila do aparelho), cria conta pelo
+ * link mágico (o mesmo usuário), outro aparelho entra com o mesmo e-mail e vê o que ele fez; sair volta a um convidado
+ * novo, sem nada da conta. O link chega na caixa local do supabase start (Mailpit, porta 54324). Google não tem e2e
+ * (sem provedor local).
  */
-const API = process.env.E2E_SUPABASE_URL!;
-const ANON_KEY = process.env.E2E_SUPABASE_ANON_KEY!;
 const MAILPIT = process.env.E2E_MAILPIT_URL || 'http://127.0.0.1:54324';
-const SONG = 'escala-re-maior';
-const LEVEL = 'medium';
+
+/** A mais curta da estante no Fácil: a partida toca em tempo real. */
+const SHORTEST = [...CATALOG].sort((a, b) => songDurationSeconds(a.charts.easy) - songDurationSeconds(b.charts.easy))[0];
+const SECONDS = songDurationSeconds(SHORTEST.charts.easy);
 
 /** Cada aparelho é um contexto novo, sem a sessão compartilhada do sessao.setup.ts. */
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -44,36 +49,30 @@ async function storedSession(page: Page): Promise<StoredSession> {
   return found!;
 }
 
-async function rpc<T>(token: string, fn: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API}/rest/v1/rpc/${fn}`, {
-    method: 'POST',
-    headers: { apikey: ANON_KEY, authorization: `Bearer ${token}`, 'content-type': 'application/json', 'content-profile': 'violinhero', 'accept-profile': 'violinhero' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`${fn}: ${res.status} ${await res.text()}`);
-  return (await res.json()) as T;
-}
+/** Partidas esperando na fila do aparelho (IndexedDB do ciclo3-sync). */
+const queued = (page: Page) =>
+  page.evaluate(
+    ([name, store]) =>
+      new Promise<number>((resolve, reject) => {
+        const open = indexedDB.open(name);
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const count = open.result.transaction(store, 'readonly').objectStore(store).count();
+          count.onsuccess = () => resolve(count.result);
+          count.onerror = () => reject(count.error);
+        };
+      }),
+    [DEVICE_DB_NAME, PLAYS_STORE] as const
+  );
 
-type Chart = { bpm: number; measures: { beats: number; notes: { string: number; tie?: boolean }[] }[] };
-
-/**
- * "Joga" a música inteira sem errar, como o app mandaria pelo submit_play (o envio pela fila é do ciclo3-sync).
- * Pontos como score.ts: 100 por Perfeito, ×1 nos 10 primeiros seguidos, até ×4.
- */
-async function playPerfectly(token: string) {
-  const [row] = await rpc<{ chart: Chart }[]>(token, 'get_song', { p_song_id: SONG, p_level: LEVEL });
-  const attacks = row.chart.measures.flatMap((m) => m.notes).filter((n) => !n.tie);
-  const score = attacks.reduce((sum, _n, i) => sum + 100 * Math.min(4, 1 + Math.floor(i / 10)), 0);
-  const strings = new Set(attacks.map((n) => n.string));
-  const seconds = row.chart.measures.reduce((sum, m) => sum + m.beats, 0) * (60 / row.chart.bpm);
-  return rpc<{ record: { improved: boolean } }>(token, 'submit_play', {
-    p_play: {
-      client_id: randomUUID(), song_id: SONG, level: LEVEL, mode: 'arcade', finished: true, no_fail: false, looped: false,
-      speed: 1, score, accuracy: 100, counts: { perfect: attacks.length, great: 0, good: 0, miss: 0 }, max_combo: attacks.length,
-      mean_abs_cents: 4, string_cents: [0, 1, 2, 3].map((s) => (strings.has(s) ? 4 : null)),
-      duration_ms: Math.round(seconds * 1000) + 500, played_at: new Date().toISOString(),
-    },
-  });
+/** Joga a música mais curta inteira com o ouvido simulado, como o jogador; termina com a fila do aparelho vazia. */
+async function playShortest(page: Page) {
+  await page.goto('/?ouvido=simulado');
+  await chooseSong(page, new RegExp(`^${SHORTEST.sheet.title.replace(/[()]/g, '\\$&')}$`), 'Arcade', 'easy');
+  await page.getByRole('button', { name: /Começar/ }).click();
+  await page.getByRole('button', { name: /Pular contagem/ }).click();
+  await expect(page).toHaveURL(/\/(selo-novo|resultado)$/, { timeout: (SECONDS + 20) * 1000 });
+  await expect.poll(() => queued(page), { message: 'a partida sobe pela fila' }).toBe(0);
 }
 
 /** O link do e-mail mais novo para `to`, assim que chegar (`count`: quantos e-mails já devem ter chegado). */
@@ -97,16 +96,16 @@ async function linkFromMail(to: string, count: number): Promise<string> {
 }
 
 test('convidado joga, cria conta pelo link mágico e outro aparelho entra e vê o que ele fez; sair limpa', async ({ browser, baseURL }) => {
-  test.setTimeout(120000);
+  test.setTimeout((2 * SECONDS + 150) * 1000);
   const email = `violinista-${randomUUID().slice(0, 8)}@t.test`;
 
-  // Aparelho 1: convidado, joga a Escala de Ré maior no Médio sem errar
+  // Aparelho 1: convidado joga a música mais curta; a partida sobe pela fila
   const one = await (await browser.newContext({ baseURL })).newPage();
   await one.addInitScript(() => localStorage.setItem('vh:onboarded', '1'));
   await one.goto('/');
   const guest = await storedSession(one);
   expect(guest.user.is_anonymous).toBe(true);
-  await playPerfectly(guest.access_token);
+  await playShortest(one);
 
   // Conta pedida (outro aparelho): o que já é dele aparece e vai junto
   await one.goto('/configuracoes?secao=conta');
@@ -126,14 +125,13 @@ test('convidado joga, cria conta pelo link mágico e outro aparelho entra e vê 
   expect(linked.user.id).toBe(guest.user.id);
   expect(linked.user.is_anonymous).toBe(false);
 
-  // Aparelho 2: primeira vez, entra com o mesmo e-mail e vê o que foi feito no aparelho 1
+  // Aparelho 2: o convidado de lá também jogou; entrar na conta avisa que isso não vai junto, e Ficar não troca
   const two = await (await browser.newContext({ baseURL })).newPage();
+  await two.addInitScript(() => localStorage.setItem('vh:onboarded', '1'));
   await two.goto('/');
-  await expect(two).toHaveURL(/\/entrar$/);
   const otherGuest = await storedSession(two);
-  // O convidado deste aparelho também jogou: entrar na conta avisa que isso não vai junto, e Ficar não troca
-  await playPerfectly(otherGuest.access_token);
-  await two.reload();
+  await playShortest(two);
+  await two.goto('/entrar');
   await two.getByRole('button', { name: 'Entrar com e-mail' }).click();
   await two.getByLabel('E-mail').fill(email);
   await two.getByRole('button', { name: 'Mandar link' }).click();
@@ -149,8 +147,8 @@ test('convidado joga, cria conta pelo link mágico e outro aparelho entra e vê 
   await expect.poll(() => two.evaluate(() => localStorage.getItem('vh:usuario'))).toBe(guest.user.id);
   expect(otherGuest.user.id).not.toBe(guest.user.id);
   await two.goto('/perfil');
-  await expect(two.getByRole('region', { name: 'Músicas aprendidas' })).toContainText(/^Músicas aprendidas\s*1/);
   await expect(two.getByRole('region', { name: 'Sequência' })).toContainText('1 dia');
+  await expect(two.getByText(/^[1-6] \/ 6 selos$/)).toBeVisible();
 
   // Sair no aparelho 2: convidado novo, nada da conta
   await two.goto('/configuracoes?secao=conta');
@@ -160,8 +158,8 @@ test('convidado joga, cria conta pelo link mágico e outro aparelho entra e vê 
   expect(after.user.is_anonymous).toBe(true);
   expect(after.user.id).not.toBe(guest.user.id);
   await two.goto('/perfil');
-  await expect(two.getByRole('region', { name: 'Músicas aprendidas' })).toContainText(/^Músicas aprendidas\s*0/);
   await expect(two.getByRole('region', { name: 'Sequência' })).toContainText('0 dias');
+  await expect(two.getByText('0 / 6 selos')).toBeVisible();
 
   // O aparelho 1 segue na conta (sair é só deste aparelho)
   await one.reload();
