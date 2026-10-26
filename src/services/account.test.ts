@@ -124,6 +124,13 @@ describe('sair da conta', () => {
     expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
   });
 
+  it('auth não deixou sair: nada é esquecido e o erro sobe', async () => {
+    const { client } = fakeAuth({ signOut: vi.fn().mockResolvedValue({ error: { status: 0, name: 'AuthRetryableFetchError' } }) });
+    const { data, calls } = fakeDevice();
+    await rejectsAs(signOut(client, account, data), 'offline');
+    expect(calls).toEqual([]);
+  });
+
   it('sem rede para o convidado novo: offline', async () => {
     const { client } = fakeAuth({ signInAnonymously: vi.fn().mockResolvedValue({ data: { user: null }, error: new Error('rede') }) });
     expect(await signOut(client, account, fakeDevice().data)).toEqual({ status: 'offline' });

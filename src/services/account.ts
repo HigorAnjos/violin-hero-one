@@ -145,9 +145,10 @@ export async function unsentBeforeSignOut(session: SessionState, data: DeviceDat
  */
 export async function signOut(client: AccountClient | null, session: SessionState, data: DeviceData = deviceData()): Promise<SessionState> {
   const db = requireClient(client);
-  if (session.status === 'signed-in') await data.forget(session.userId);
+  // Sai primeiro: se o auth falhar, o aparelho segue na conta com a fila e o cache intactos
   const { error } = await db.auth.signOut({ scope: 'local' });
   fail(error);
+  if (session.status === 'signed-in') await data.forget(session.userId);
   const fresh = await db.auth.signInAnonymously();
   if (fresh.error || !fresh.data.user) return { status: 'offline' };
   return signedIn(fresh.data.user);
