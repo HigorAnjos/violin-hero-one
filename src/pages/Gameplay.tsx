@@ -75,7 +75,7 @@ const box = () => stageBox(window.innerWidth, window.innerHeight);
 export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
   const ear = useEar();
   const theme = useTheme();
-  const { play, a4, performance, level, bands, finish, micError, navigate } = usePlayScreen();
+  const { play, a4, performance, level, bands, finish, micError, navigate } = usePlayScreen('Arcade');
   const compact = useMediaQuery(COMPACT_QUERY);
   const host = React.useRef<HTMLDivElement>(null);
   const sheet = React.useRef<SheetStripHandle>(null);

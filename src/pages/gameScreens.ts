@@ -3,4 +3,5 @@ export { BadgeEarned } from './BadgeEarned';
 export { Calibration } from './Calibration';
 export { GameOver } from './GameOver';
 export { Gameplay } from './Gameplay';
+export { GameplaySheet } from './GameplaySheet';
 export { Results } from './Results';

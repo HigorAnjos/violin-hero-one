@@ -46,6 +46,8 @@ export interface GameHud {
   level: OrchestraLevel;
   /** Próxima nota a julgar. */
   target: EngineNote | null;
+  /** A que vem depois dela. */
+  next: EngineNote | null;
   liveCents: number | null;
   trace: TracePoint[];
   explanation: Explanation | null;
@@ -133,6 +135,7 @@ const EMPTY_HUD: GameHud = {
   accuracy: 0,
   level: 3,
   target: null,
+  next: null,
   liveCents: null,
   trace: [],
   explanation: null,
@@ -201,6 +204,7 @@ export function useGame(options: GameOptions) {
         accuracy: s.accuracy,
         level,
         target: t,
+        next: session.engine.notes[s.judged + 1] ?? null,
         liveCents,
         trace: trace.map((p) => ({ age: now - p.time, cents: p.cents })),
         explanation: explained.current(now)?.item ?? null,

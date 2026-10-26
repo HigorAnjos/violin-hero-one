@@ -8,7 +8,7 @@ import { addEarnedBadges } from '../services/badges';
 import { loadA4 } from '../services/playerAudio';
 import { DEV_TOOLS } from './devTools';
 import { micFailure } from './Ear';
-import { readPlayState, type ResultState } from './play';
+import { readPlayState, type GameMode, type ResultState } from './play';
 import { playerLevelSettings } from './playerLevel';
 import { micTroubleUrl, ROUTES } from './routes';
 import type { GamePhase } from './useGame';
@@ -17,15 +17,16 @@ import type { GamePhase } from './useGame';
  * O que as telas de partida (Arcade, Partitura, Prática) têm em comum: o estado da navegação, o Lá, o nível, o
  * ?simular, para onde ir no fim e no erro do microfone, e o ESC da pausa.
  */
-export function usePlayScreen() {
+export function usePlayScreen(mode: GameMode) {
   const navigate = useNavigate();
   const location = useLocation();
   const play = React.useMemo(() => {
-    const state = readPlayState(location.state);
+    // O modo é o da tela: quem chega direto no endereço (e2e, recarregar) volta para a mesma tela no "de novo"
+    const state = { ...readPlayState(location.state), mode };
     // ?musica=<id> abre a música direto na tela, para o e2e que toca um WAV no lugar do microfone
     const chosen = DEV_TOOLS ? findFixedSong(new URLSearchParams(location.search).get('musica') ?? '') : undefined;
     return chosen ? { ...state, song: chosen.song } : state;
-  }, [location.state, location.search]);
+  }, [location.state, location.search, mode]);
   const [a4] = React.useState(loadA4);
   const [performance] = React.useState(() => (DEV_TOOLS ? parseSimulate(location.search) : null));
   const [level] = React.useState(playerLevelSettings);
