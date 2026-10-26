@@ -157,6 +157,15 @@ const Play = styled(Link)`
     font-size: 1.625rem;
   }
 
+  > span:nth-child(2) {
+    flex: 1;
+  }
+
+  > span:last-child {
+    font-weight: 800;
+    font-size: 1.25rem;
+  }
+
   b {
     display: block;
     font-weight: 800;
