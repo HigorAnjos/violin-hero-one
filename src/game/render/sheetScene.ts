@@ -1,4 +1,4 @@
-import { Container, Graphics, Sprite, Text, Texture, type TextStyleOptions } from 'pixi.js';
+import { Container, Graphics, GraphicsContext, Sprite, Text, Texture, type TextStyleOptions } from 'pixi.js';
 import type { Theme } from '../../assets/styles/themes';
 import type { Issue, Judgment } from '../engine/types';
 import type { Song } from '../notation/song';
@@ -15,6 +15,8 @@ import {
   barOffsets,
   beatWarp,
   clefFade,
+  dashedCubic,
+  loopMarks,
   markApplies,
   noteAlpha,
   MIDDLE_STEP,
@@ -27,6 +29,7 @@ import {
   type BeatSegment,
   type BeatWarp,
   type BeatWindow,
+  type MeasureLoop,
   type SheetClock,
   type SheetLayout,
   type TieArc,
@@ -114,6 +117,17 @@ interface RestSlot {
   rest: number;
 }
 
+/** Linha de A ou de B com a bandeirinha ("A · 18" à direita da linha, "B · 19" à esquerda). */
+interface LoopMark {
+  line: Sprite;
+  flag: Sprite;
+}
+
+/** Bandeirinha: texto deste tamanho na textura, com folga de lado e altura do design (8 px e 22 px no texto de 12 px). */
+const FLAG_TEXT = REF * 0.67;
+const LOOP_BAND_ALPHA = 0.06;
+const LOOP_ARC_ALPHA = 0.7;
+
 interface TieSlot {
   /** Redesenhado só quando muda a ligadura do slot: a forma depende do layout, não do quadro. */
   arc: Graphics;
@@ -157,6 +171,31 @@ export class SheetScene extends Container {
   private readonly markState: Uint8Array;
   private readonly markTexture: (Texture | null)[];
   private readonly windows: BeatWindow[] = [];
+  private readonly totalBeats: number;
+  private readonly uiFont: string;
+
+  // Laço A–B: tempos de A e B, onde ficam na faixa e quanto as linhas recuam antes deles (como a barra de compasso)
+  private loop: MeasureLoop | null = null;
+  private loopA = 0;
+  private loopB = 0;
+  private spacedA = 0;
+  private spacedB = 0;
+  private loopOffA = 0;
+  private loopOffB = 0;
+  private flagTextures: Texture[] = [];
+  private readonly bandLayer = new Container();
+  private readonly loopLayer = new Container();
+  private readonly bands: Sprite[] = [];
+  private readonly aMarks: LoopMark[] = [];
+  private readonly bMarks: LoopMark[] = [];
+  private readonly loopArcs: Graphics[] = [];
+  private readonly arcContext = new GraphicsContext();
+  private hasArc = false;
+  /** Quantos de cada peça do laço este quadro mostrou e o anterior; x da última linha de A e de B (a passada repete). */
+  private readonly loopCount = { bands: 0, a: 0, b: 0, arcs: 0 };
+  private readonly loopUsed = { bands: 0, a: 0, b: 0, arcs: 0 };
+  private lastA = NaN;
+  private lastB = NaN;
 
   private readonly paper = new Sprite(Texture.WHITE);
   private readonly staff: Sprite[] = [];
@@ -241,14 +280,15 @@ export class SheetScene extends Container {
     this.spacedBars = spaced(this.bars);
     this.spacedTieFrom = spaced(this.ties.map((t) => t.fromAt));
     this.spacedTieTo = spaced(this.tieTo);
-    // A barra foge da pausa como foge da nota
-    this.barOffsets = barOffsets(this.spacedBars, spaced(starts));
+    this.totalBeats = song.measures.reduce((sum, m) => sum + m.beats, 0);
+    // A barra foge da pausa como foge da nota; uma a mais no fim da música, para o B do laço no último compasso
+    this.barOffsets = barOffsets([...this.spacedBars, warp.forward(this.totalBeats)], spaced(starts));
     this.markAt = new Float64Array(this.notes.length).fill(NaN);
     this.markState = new Uint8Array(this.notes.length);
     this.markTexture = new Array(this.notes.length).fill(null);
 
     const p = this.palette;
-    const ui = theme.fonts.ui;
+    const ui = (this.uiFont = theme.fonts.ui);
     const display = theme.fonts.display;
     this.headTextures = p.strings.map((c) => this.bakeHead(c, null));
     this.hollowTextures = p.strings.map((c) => this.bakeHead(p.paper, c));
@@ -315,7 +355,23 @@ export class SheetScene extends Container {
 
     this.l = sheetLayout(1, 1, this.keySprites.length);
     this.eventMode = 'none';
-    this.addChild(this.paper, ...this.staff, this.zone, this.holdBg, this.holdFill, this.barLayer, this.restLayer, this.tieLayer, this.noteLayer, this.needle, this.needleLabel, this.cover, this.fpsText);
+    this.addChild(
+      this.paper,
+      this.bandLayer,
+      ...this.staff,
+      this.zone,
+      this.holdBg,
+      this.holdFill,
+      this.barLayer,
+      this.restLayer,
+      this.tieLayer,
+      this.noteLayer,
+      this.loopLayer,
+      this.needle,
+      this.needleLabel,
+      this.cover,
+      this.fpsText,
+    );
   }
 
   layout(width: number, height: number): void {
@@ -370,9 +426,54 @@ export class SheetScene extends Container {
     const ties = 2 * maxNotesInWindow(this.tieTo, span + longestTie) + 2;
     while (this.tieSlots.length < ties) this.tieSlots.push(this.makeTie());
     for (const slot of this.tieSlots) slot.tie = -1;
+    this.layoutLoop();
     this.until = -Infinity;
     this.fetchedAt = -Infinity;
     this.update(this.lastNow);
+  }
+
+  /** Liga, troca ou desliga o laço marcado na faixa: refaz as bandeirinhas e o arco só aqui, nunca no quadro. */
+  private setLoop(loop: MeasureLoop | null): void {
+    const valid = loop && loop.startMeasure >= 0 && loop.endMeasure >= loop.startMeasure && loop.endMeasure < this.bars.length;
+    this.loop = valid ? { startMeasure: loop.startMeasure, endMeasure: loop.endMeasure } : null;
+    for (const t of this.flagTextures) t.destroy(true);
+    this.flagTextures = [];
+    if (this.loop) {
+      const { startMeasure: s, endMeasure: e } = this.loop;
+      this.loopA = this.bars[s];
+      this.loopB = this.bars[e + 1] ?? this.totalBeats;
+      this.spacedA = this.warp.forward(this.loopA);
+      this.spacedB = this.warp.forward(this.loopB);
+      this.loopOffA = this.barOffsets[s];
+      this.loopOffB = this.barOffsets[e + 1];
+      // Na faixa compacta, só a letra: o alto dela divide espaço com o julgamento e a passada da tela
+      this.flagTextures = [this.bakeLoopFlag(`A · ${s + 1}`), this.bakeLoopFlag(`B · ${e + 1}`), this.bakeLoopFlag('A'), this.bakeLoopFlag('B')];
+    }
+    this.layoutLoop();
+  }
+
+  /** Tamanho dos marcadores e o desenho do arco de volta (de B, em x = 0, até A), no layout atual. */
+  private layoutLoop(): void {
+    const l = this.l;
+    const m = loopMarks(l);
+    for (const mark of [...this.aMarks, ...this.bMarks]) this.layoutLoopMark(mark);
+    for (const band of this.bands) band.height = l.height;
+
+    this.arcContext.clear();
+    const width = (this.spacedB - this.spacedA) * l.pxPerBeat;
+    this.hasArc = this.loop !== null && m.arc !== null && width > l.space * 4;
+    if (!this.hasArc || !m.arc) return;
+    const { baseY, topY, dash, gap } = m.arc;
+    const from = -l.space * 0.22;
+    const to = -width + l.space * 0.9;
+    const span = from - to;
+    for (const piece of dashedCubic([from, baseY, from - 0.21 * span, topY, to + 0.22 * span, topY, to, baseY], dash, gap)) this.arcContext.poly(piece, false);
+    this.arcContext
+      .moveTo(to, baseY)
+      .lineTo(to + l.space * 0.55, baseY - l.space * 0.5)
+      .moveTo(to, baseY)
+      .lineTo(to + l.space * 0.72, baseY + l.space * 0.17)
+      .stroke({ color: this.palette.loop, width: m.arc.width, alpha: LOOP_ARC_ALPHA, cap: 'round' });
   }
 
   /** Marca o julgamento do motor na própria nota; `at` é a hora do relógio do julgamento. */
@@ -401,6 +502,8 @@ export class SheetScene extends Container {
       this.segments = this.clock.segments(horizon + 2);
       this.until = horizon + 2;
       this.fetchedAt = now;
+      const loop = this.clock.currentLoop?.() ?? null;
+      if (loop?.startMeasure !== this.loop?.startMeasure || loop?.endMeasure !== this.loop?.endMeasure) this.setLoop(loop);
     }
     const count = beatWindows(this.segments, now, l.behind, l.ahead, this.windows, this.warp);
 
@@ -408,6 +511,8 @@ export class SheetScene extends Container {
     let bars = 0;
     let rests = 0;
     let ties = 0;
+    this.loopCount.bands = this.loopCount.a = this.loopCount.b = this.loopCount.arcs = 0;
+    this.lastA = this.lastB = NaN;
     let holding = -1;
     let holdX = 0;
     for (let w = 0; w < count; w++) {
@@ -434,6 +539,8 @@ export class SheetScene extends Container {
         }
       }
       for (let m = lowerBound(this.bars, Math.max(win.fromBeat, 1e-9)); m < this.bars.length && this.bars[m] < win.toBeat && bars < this.barSlots.length; m++) {
+        // As barras de A e de B são as linhas do laço
+        if (this.loop && (m === this.loop.startMeasure || m === this.loop.endMeasure + 1)) continue;
         const bar = this.barSlots[bars++];
         const x = beatX(l, this.spacedBars[m] + win.shift - this.barOffsets[m]);
         bar.line.visible = bar.number.visible = true;
@@ -462,7 +569,9 @@ export class SheetScene extends Container {
         slot.arc.x = beatX(l, this.spacedTieFrom[t] + win.shift);
         slot.arc.alpha = noteAlpha(distance, this.spacedBeats[tie.to], hit) * clefFade(l, beatX(l, distance));
       }
+      if (this.loop) this.drawLoop(win);
     }
+    this.hideLoop();
     for (let i = used; i < this.usedSlots; i++) this.slots[i].root.visible = false;
     for (let i = bars; i < this.usedBars; i++) this.barSlots[i].line.visible = this.barSlots[i].number.visible = false;
     for (let i = rests; i < this.usedRests; i++) this.restSlots[i].root.visible = false;
@@ -485,6 +594,123 @@ export class SheetScene extends Container {
       this.holdFill.position.set(holdX, y);
       this.holdFill.setSize(Math.max(0, l.needleX - holdX), l.holdHeight);
     }
+  }
+
+  /**
+   * O laço neste pedaço: banda de A a B, as linhas de A e B e o arco de volta. Depois do salto, o A da passada nova cai
+   * na linha do B da anterior (as duas se encontram onde a música volta). Cria peça só quando o pool não basta.
+   */
+  private drawLoop(win: BeatWindow): void {
+    const l = this.l;
+    const c = this.loopCount;
+    const a = this.loopA;
+    const b = this.loopB;
+    if (win.fromBeat > b + 1e-9 || win.toBeat < a - 1e-9) return;
+    const glued = Math.abs(win.passFrom - a) < 1e-9;
+    const aX = beatX(l, this.spacedA + win.shift - (glued ? this.loopOffB : this.loopOffA));
+    const bX = beatX(l, this.spacedB + win.shift - this.loopOffB);
+
+    const from = Math.max(a, win.fromBeat);
+    const to = Math.min(b, win.toBeat);
+    if (to > from) {
+      const x0 = from === a ? aX : beatX(l, this.warp.forward(from) + win.shift);
+      const x1 = to === b ? bX : beatX(l, this.warp.forward(to) + win.shift);
+      const band = this.bands[c.bands] ?? this.makeBand();
+      c.bands++;
+      band.visible = true;
+      band.x = x0;
+      band.width = Math.max(0, x1 - x0);
+    }
+    if (a >= win.fromBeat - 1e-9 && a < win.toBeat && !(Math.abs(aX - this.lastA) < 0.5)) {
+      const mark = this.aMarks[c.a] ?? this.makeLoopMark(this.aMarks, 0);
+      c.a++;
+      mark.line.visible = mark.flag.visible = true;
+      mark.line.x = aX;
+      mark.flag.x = aX - mark.line.width / 2;
+      this.lastA = aX;
+    }
+    if (Math.abs(bX - this.lastB) < 0.5) return;
+    this.lastB = bX;
+    if (b > win.fromBeat && b <= win.toBeat + 1e-9) {
+      const mark = this.bMarks[c.b] ?? this.makeLoopMark(this.bMarks, 1);
+      c.b++;
+      mark.line.visible = mark.flag.visible = true;
+      mark.line.x = bX;
+      mark.flag.x = bX + mark.line.width / 2;
+    }
+    // O arco sai do B desta passada, mesmo com o B ainda fora da tela: a parte da esquerda já aparece
+    if (this.hasArc) {
+      const arc = this.loopArcs[c.arcs] ?? this.makeLoopArc();
+      c.arcs++;
+      arc.visible = true;
+      arc.x = bX;
+    }
+  }
+
+  private layoutLoopMark(mark: LoopMark): void {
+    const m = loopMarks(this.l);
+    const texture = this.flagTextures[(mark.flag.anchor.x === 0 ? 0 : 1) + (this.l.compact ? 2 : 0)];
+    mark.line.position.y = m.flagTop;
+    mark.line.setSize(m.lineWidth, m.lineBottom - m.flagTop);
+    mark.flag.texture = texture ?? Texture.EMPTY;
+    mark.flag.scale.set(m.labelSize / FLAG_TEXT);
+    mark.flag.position.y = m.flagTop;
+  }
+
+  /** Esconde as peças do laço que o quadro anterior usou e este não. */
+  private hideLoop(): void {
+    const c = this.loopCount;
+    const u = this.loopUsed;
+    for (let i = c.bands; i < u.bands; i++) this.bands[i].visible = false;
+    for (let i = c.a; i < u.a; i++) this.aMarks[i].line.visible = this.aMarks[i].flag.visible = false;
+    for (let i = c.b; i < u.b; i++) this.bMarks[i].line.visible = this.bMarks[i].flag.visible = false;
+    for (let i = c.arcs; i < u.arcs; i++) this.loopArcs[i].visible = false;
+    u.bands = c.bands;
+    u.a = c.a;
+    u.b = c.b;
+    u.arcs = c.arcs;
+  }
+
+  private makeBand(): Sprite {
+    const band = new Sprite(Texture.WHITE);
+    band.tint = this.palette.loop;
+    band.alpha = LOOP_BAND_ALPHA;
+    band.height = this.l.height;
+    this.bands.push(band);
+    this.bandLayer.addChild(band);
+    return band;
+  }
+
+  /** `side` 0 é A (bandeirinha à direita da linha), 1 é B (à esquerda). */
+  private makeLoopMark(marks: LoopMark[], side: 0 | 1): LoopMark {
+    const line = new Sprite(Texture.WHITE);
+    line.tint = this.palette.loop;
+    line.anchor.set(0.5, 0);
+    const flag = new Sprite(this.flagTextures[side] ?? Texture.EMPTY);
+    flag.anchor.set(side, 0);
+    const mark = { line, flag };
+    marks.push(mark);
+    this.loopLayer.addChild(line, flag);
+    this.layoutLoopMark(mark);
+    return mark;
+  }
+
+  private makeLoopArc(): Graphics {
+    const arc = new Graphics(this.arcContext);
+    this.loopArcs.push(arc);
+    this.loopLayer.addChild(arc);
+    return arc;
+  }
+
+  /** Marcas do laço agora: x das linhas de A e B, das pontas da banda e dos arcos; para testes. */
+  loopView(): { a: number[]; b: number[]; bands: [number, number][]; arcs: number[] } {
+    const shown = (marks: LoopMark[]) => marks.filter((m) => m.line.visible).map((m) => m.line.x);
+    return {
+      a: shown(this.aMarks),
+      b: shown(this.bMarks),
+      bands: this.bands.filter((s) => s.visible).map((s): [number, number] => [s.x, s.x + s.width]),
+      arcs: this.loopArcs.filter((g) => g.visible).map((g) => g.x),
+    };
   }
 
   /** Notas na faixa agora (também as que já passaram, sob a clave); para testes. */
@@ -548,9 +774,28 @@ export class SheetScene extends Container {
   }
 
   override destroy(): void {
-    const baked = this.bakedTextures();
+    const baked = [...this.bakedTextures(), ...this.flagTextures];
     super.destroy({ children: true });
     for (const t of baked) t.destroy(true);
+    this.flagTextures = [];
+    // O arco do laço é de todos os Graphics do pool: nenhum deles destrói o desenho
+    this.arcContext.destroy();
+  }
+
+  /** Bandeirinha "A · 18": texto do primário sobre o magenta do laço, assada quando o laço muda. */
+  private bakeLoopFlag(text: string): Texture {
+    const p = this.palette;
+    // O texto assado primeiro dá a largura da bandeirinha sem medir fonte fora do renderizador
+    const label = this.bakeText(text, { fontFamily: this.uiFont, fontWeight: '700', fontSize: FLAG_TEXT, letterSpacing: FLAG_TEXT * 0.1, fill: p.loopText });
+    const padX = FLAG_TEXT * 0.67;
+    const height = FLAG_TEXT * 1.83;
+    const sprite = new Sprite(label);
+    sprite.position.set(padX, (height - label.height) / 2);
+    const flag = new Container();
+    flag.addChild(new Graphics().rect(0, 0, label.width + padX * 2, height).fill(p.loop), sprite);
+    const texture = this.bake(flag);
+    label.destroy(true);
+    return texture;
   }
 
   /** Monta o slot para a nota `i` (textura, haste, linhas suplementares): só quando a nota do slot muda. */

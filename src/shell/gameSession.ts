@@ -94,6 +94,8 @@ export interface GameSessionOptions {
 export interface PracticeClock {
   /** Desde o começo da partida; copia a lista a cada chamada (guarde e peça de novo quando `until` passar). */
   segments(until: number): TempoSegment[];
+  /** O laço A–B ligado agora (a faixa marca A e B); null fora da prática ou sem laço. */
+  currentLoop?(): LoopRange | null;
 }
 
 export interface PracticeControls extends PracticeClock {
@@ -441,7 +443,7 @@ export function createGameSession(options: GameSessionOptions): GameSession {
     get practice() {
       return controls;
     },
-    clock: { segments: (until) => (line ? line.segments(until) : steady.map((s) => ({ ...s }))) },
+    clock: { segments: (until) => (line ? line.segments(until) : steady.map((s) => ({ ...s }))), currentLoop: () => line?.loop ?? null },
     get handoffAt() {
       return handoffAt;
     },

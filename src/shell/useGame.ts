@@ -453,7 +453,10 @@ export function useGame(options: GameOptions) {
   }, []);
 
   /** O relógio de tempos da partida, para a faixa de partitura: vazio até a partida começar. */
-  const clock = React.useMemo<PracticeClock>(() => ({ segments: (until) => live.current.session?.clock.segments(until) ?? [] }), []);
+  const clock = React.useMemo<PracticeClock>(
+    () => ({ segments: (until) => live.current.session?.clock.segments(until) ?? [], currentLoop: () => live.current.session?.clock.currentLoop?.() ?? null }),
+    [],
+  );
 
   return {
     phase,

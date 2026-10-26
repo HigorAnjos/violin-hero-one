@@ -17,10 +17,18 @@ export interface BeatSegment {
   endBeat: number;
 }
 
+/** Laço A–B em compassos, a partir de 0, B incluso (o LoopRange da prática). */
+export interface MeasureLoop {
+  startMeasure: number;
+  endMeasure: number;
+}
+
 /** De onde a faixa tira o tempo da música: a prática (laço A–B e andamento) ou um andamento só. */
 export interface SheetClock {
   /** Os trechos desde o começo da partida até pelo menos `until`, em ordem. */
   segments(until: number): readonly BeatSegment[];
+  /** O laço ligado agora, para a faixa marcar A e B; sem ele (ou null), nada é marcado. */
+  currentLoop?(): MeasureLoop | null;
 }
 
 /** Partida sem prática: o primeiro tempo em `startAt`, andamento fixo. */
@@ -372,4 +380,78 @@ export const PASSED_ALPHA = 0.35;
 /** A nota que já passou inteira pela agulha fica apagada, a não ser que tenha sido acertada. */
 export function noteAlpha(distance: number, beats: number, hit: boolean): number {
   return hit || distance + beats > 0 ? 1 : PASSED_ALPHA;
+}
+
+/** Menor texto da interface, também no canvas. */
+export const MIN_TEXT_PX = 12;
+
+/** Marcadores do laço A–B (Practice.dc): bandeirinha "A · 18" no alto, linha até embaixo e arco tracejado de B a A. */
+export interface LoopMarks {
+  flagTop: number;
+  flagHeight: number;
+  /** Texto da bandeirinha, nunca abaixo de MIN_TEXT_PX. */
+  labelSize: number;
+  lineBottom: number;
+  lineWidth: number;
+  /** O arco de volta, acima da pauta; null na faixa compacta, que não tem lugar para ele. */
+  arc: { baseY: number; topY: number; width: number; dash: number; gap: number } | null;
+}
+
+/** Medidas do design (espaço de 18 px): bandeirinha de 22 px a 20 px do topo, texto de 12 px, arco de 56 a 10 px. */
+export function loopMarks(l: SheetLayout): LoopMarks {
+  const labelSize = Math.max(MIN_TEXT_PX, l.space * 0.67);
+  const flagHeight = Math.max(l.space * 1.22, labelSize * 1.83);
+  const flagTop = l.compact ? l.space * 0.2 : l.middleY - l.space * 7.2;
+  return {
+    flagTop,
+    flagHeight,
+    labelSize,
+    lineBottom: l.height - flagTop,
+    lineWidth: Math.max(2, l.space * 0.17),
+    arc: l.compact
+      ? null
+      : { baseY: flagTop + flagHeight + l.space * 0.8, topY: flagTop - l.space * 0.55, width: Math.max(1, l.space * 0.083), dash: l.space / 3, gap: l.space / 3 },
+  };
+}
+
+/**
+ * Curva cúbica de (x0, y0) a (x3, y3) cortada em traços de `dash` com vãos de `gap`, medidos ao longo da curva: cada
+ * traço é uma linha quebrada [x, y, x, y, …].
+ */
+export function dashedCubic(points: readonly [number, number, number, number, number, number, number, number], dash: number, gap: number, steps = 96): number[][] {
+  const [x0, y0, x1, y1, x2, y2, x3, y3] = points;
+  const at = (t: number): [number, number] => {
+    const u = 1 - t;
+    const a = u * u * u;
+    const b = 3 * u * u * t;
+    const c = 3 * u * t * t;
+    const d = t * t * t;
+    return [a * x0 + b * x1 + c * x2 + d * x3, a * y0 + b * y1 + c * y2 + d * y3];
+  };
+  const out: number[][] = [];
+  let [px, py] = at(0);
+  let on = true;
+  let left = dash;
+  let current: number[] = [px, py];
+  for (let i = 1; i <= steps; i++) {
+    const [x, y] = at(i / steps);
+    let length = Math.hypot(x - px, y - py);
+    while (length > 0) {
+      const step = Math.min(left, length);
+      const k = step / length;
+      px += (x - px) * k;
+      py += (y - py) * k;
+      length -= step;
+      left -= step;
+      if (on) current.push(px, py);
+      if (left <= 1e-9) {
+        if (on && current.length >= 4) out.push(current);
+        on = !on;
+        left = on ? dash : gap;
+        current = on ? [px, py] : [];
+      }
+    }
+  }
+  if (on && current.length >= 4) out.push(current);
+  return out;
 }

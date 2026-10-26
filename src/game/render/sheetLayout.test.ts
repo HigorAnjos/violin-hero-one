@@ -6,7 +6,10 @@ import {
   BEAT_SPACES,
   beatWarp,
   clefFade,
+  dashedCubic,
   IDENTITY_WARP,
+  loopMarks,
+  MIN_TEXT_PX,
   MIN_GAP_BEATS,
   MIN_GAP_SPACES,
   beatAt,
@@ -121,6 +124,43 @@ describe('relógio de tempos', () => {
     const first = out[0];
     beatWindows(segments, 2, 1, 1, out);
     expect(out[0]).toBe(first);
+  });
+});
+
+describe('marcadores do laço', () => {
+  it('bandeirinha com texto de 12 px ou mais; o arco fica acima da pauta e some na faixa compacta', () => {
+    for (const [w, h] of [
+      [1198, 280],
+      [810, 184],
+      [810, 112],
+    ]) {
+      const l = sheetLayout(w, h, 2);
+      const m = loopMarks(l);
+      expect(m.labelSize).toBeGreaterThanOrEqual(MIN_TEXT_PX);
+      expect(m.flagTop).toBeGreaterThanOrEqual(0);
+      expect(m.lineBottom).toBeLessThanOrEqual(h);
+      if (l.compact) expect(m.arc).toBeNull();
+      else {
+        expect(m.arc!.topY).toBeGreaterThanOrEqual(0);
+        expect(m.arc!.baseY).toBeLessThan(stepY(l, 38));
+      }
+    }
+    // Design (espaço 18): bandeirinha a 20 px do topo, 22 px de altura, arco de 56 a 10 px
+    const m = loopMarks(sheetLayout(1198, 280, 2));
+    const near = (value: number, design: number) => expect(Math.abs(value - design)).toBeLessThan(1.5);
+    near(m.flagTop, 20);
+    near(m.flagHeight, 22);
+    near(m.arc!.baseY, 56);
+    near(m.arc!.topY, 10);
+  });
+
+  it('arco tracejado: traços do tamanho pedido, ao longo da curva, das duas pontas', () => {
+    const pieces = dashedCubic([0, 0, 0, 0, 100, 0, 100, 0], 6, 6);
+    const length = (p: number[]) => p.reduce((sum, _, i) => (i >= 2 && i % 2 === 0 ? sum + Math.hypot(p[i] - p[i - 2], p[i + 1] - p[i - 1]) : sum), 0);
+    expect(pieces.length).toBeGreaterThanOrEqual(8);
+    for (const p of pieces.slice(0, -1)) expect(length(p)).toBeCloseTo(6, 6);
+    expect(pieces[0].slice(0, 2)).toEqual([0, 0]);
+    expect(pieces.at(-1)!.at(-2)).toBeCloseTo(100, 6);
   });
 });
 

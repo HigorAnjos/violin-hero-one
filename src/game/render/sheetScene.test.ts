@@ -253,6 +253,58 @@ describe('SheetScene', () => {
     expect(() => s.judge(judgment(9999, 'perfect'))).not.toThrow();
   });
 
+  it('laço A–B: banda, linhas de A e B com bandeirinha e o arco de volta; o A da volta nova cai no B da anterior', () => {
+    // Laço nos compassos 2–3 (tempos 4 a 12), com as voltas já na linha do tempo
+    const jump = START + 12 * SPB;
+    const lap = 8 * SPB;
+    const segments: BeatSegment[] = [{ time: START, beat: 0, spb: SPB, endTime: jump, endBeat: 12 }];
+    for (let k = 0; k < 6; k++) segments.push({ time: jump + k * lap, beat: 4, spb: SPB, endTime: jump + (k + 1) * lap, endBeat: 12 });
+    let loop: { startMeasure: number; endMeasure: number } | null = { startMeasure: 1, endMeasure: 2 };
+    const { baker, generateTexture } = fakeBaker();
+    const s = new SheetScene(baker, { theme: cadernoTheme, song: ODE, clock: { segments: () => segments, currentLoop: () => loop }, reducedMotion: false });
+    const theme = generateTexture.mock.calls.length;
+    s.layout(W, H);
+    const baked = generateTexture.mock.calls.length;
+    // As bandeirinhas "A · 2" e "B · 3" e as só com a letra da faixa compacta (texto e caixa de cada uma)
+    expect(baked - theme).toBe(8);
+
+    // Primeira passada, antes de A: a linha de A à frente, e o B lá na frente com o arco voltando
+    s.update(START + 2 * SPB);
+    let view = s.loopView();
+    expect(view.a).toHaveLength(1);
+    expect(view.a[0]).toBeGreaterThan(needleX);
+    expect(view.arcs).toHaveLength(1);
+    expect(view.bands[0][0]).toBeCloseTo(view.a[0]);
+
+    // Um tempo antes do salto: B à frente da agulha, e o A da volta seguinte na mesma linha
+    s.update(jump - SPB);
+    view = s.loopView();
+    const b = view.b.find((x) => x > needleX)!;
+    expect(b).toBeGreaterThan(needleX);
+    expect(b).toBeLessThan(needleX + pxPerBeat);
+    expect(view.a.some((x) => Math.abs(x - b) < 0.5)).toBe(true);
+    expect(view.arcs.some((x) => Math.abs(x - b) < 0.5)).toBe(true);
+    // A banda cobre a passada até B e continua na volta seguinte
+    expect(view.bands.some(([, end]) => Math.abs(end - b) < 0.5)).toBe(true);
+    expect(view.bands.some(([start]) => Math.abs(start - b) < 0.5)).toBe(true);
+
+    // Os quadros não assam nada: as bandeirinhas são do laço, não do quadro
+    for (let t = 0; t < 2; t += 1 / 60) s.update(jump + t);
+    expect(generateTexture.mock.calls.length).toBe(baked);
+
+    // Laço desligado: na próxima consulta ao relógio, nada marcado
+    loop = null;
+    s.update(jump + 3);
+    expect(s.loopView()).toEqual({ a: [], b: [], bands: [], arcs: [] });
+    s.destroy();
+  });
+
+  it('sem laço no relógio (a partida comum), nada de A e B', () => {
+    const { s } = scene();
+    s.update(START + 3);
+    expect(s.loopView()).toEqual({ a: [], b: [], bands: [], arcs: [] });
+  });
+
   it.each([
     ['tela 5b', W, H],
     ['celular deitado (844×390)', 810, 184],
