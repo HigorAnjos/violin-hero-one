@@ -204,7 +204,7 @@ const Preparing: React.FC<{ choice: SongChoice }> = ({ choice }) => {
 
   const ready = playable.status === 'ready';
   const steps = [
-    { label: 'Ficha da música', state: sheet || ready ? 'done' : 'working' },
+    { label: 'Ficha da música', state: sheet || ready ? 'done' : playable.status === 'loading' ? 'working' : 'waiting' },
     { label: `Partitura e notas do nível ${level}`, state: ready ? 'done' : playable.status === 'loading' ? 'working' : 'waiting' },
     { label: 'Dedilhado e cordas', state: ready ? 'done' : 'waiting' },
     { label: 'Afinar e conferir o microfone', state: 'waiting' },

@@ -66,6 +66,7 @@ describe('Loading', () => {
     expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Escolher outra' })).toHaveAttribute('href', '/tocar/musica?modo=arcade&musica=greensleeves');
     expect(screen.getByText('Sem internet')).toBeInTheDocument();
+    expect(screen.queryByText(/\(carregando\)/)).not.toBeInTheDocument();
   });
 
   it('tentar de novo pede a partitura outra vez', async () => {
