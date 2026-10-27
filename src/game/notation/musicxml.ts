@@ -38,6 +38,8 @@ export interface Score {
 export interface ScorePart {
   id: string;
   name: string;
+  /** Programa General MIDI (0 a 127), quando o arquivo diz; 40 é violino. */
+  instrument?: number;
   score: Score;
 }
 
@@ -261,9 +263,12 @@ function toScore(part: RawPart, header: { title: string; composer: string; tempo
   };
 }
 
-function readHeader(root: XmlElement) {
+/** Título: no catálogo, o da obra; no importado, o do movimento (a canção dentro do ciclo), quando houver. */
+function readHeader(root: XmlElement, lenient: boolean) {
   if (root.name !== 'score-partwise') throw new RangeError(`MusicXML: esperado <score-partwise>, veio <${root.name}>`);
-  const title = (textAt(root, 'work', 'work-title') || textAt(root, 'movement-title') || '').trim();
+  const work = textAt(root, 'work', 'work-title');
+  const movement = textAt(root, 'movement-title');
+  const title = ((lenient ? movement || work : work || movement) ?? '').trim();
   const composer = (children(child(root, 'identification'), 'creator').find((c) => c.attributes.type === 'composer')?.text ?? '').trim();
   return { title, composer };
 }
@@ -271,7 +276,7 @@ function readHeader(root: XmlElement) {
 /** A 1ª parte da partitura (o formato do catálogo). */
 export function parseMusicXml(source: string, options: MusicXmlOptions = {}): Score {
   const root = parseXml(source);
-  const header = readHeader(root);
+  const header = readHeader(root, !!options.lenient);
   const part = child(root, 'part');
   if (!part) throw new RangeError('MusicXML: partitura sem <part>');
   return toScore(readPart(part, !!options.lenient), header, !!options.lenient);
@@ -284,16 +289,21 @@ export function parseMusicXml(source: string, options: MusicXmlOptions = {}): Sc
 export function parseMusicXmlParts(source: string, options: MusicXmlOptions = { lenient: true }): ScorePart[] {
   const lenient = !!options.lenient;
   const root = parseXml(source);
-  const header = readHeader(root);
-  const names = new Map(
-    children(child(root, 'part-list'), 'score-part').map((p) => [p.attributes.id, (textAt(p, 'part-name') ?? '').replace(/\s+/g, ' ').trim()]),
-  );
+  const header = readHeader(root, lenient);
+  const listed = new Map(children(child(root, 'part-list'), 'score-part').map((p) => [p.attributes.id, p]));
   const raw = children(root, 'part').map((part) => ({ id: part.attributes.id ?? '', part: readPart(part, lenient) }));
   if (!raw.length) throw new RangeError('MusicXML: partitura sem <part>');
   const tempo = raw.find((r) => r.part.tempo !== undefined)?.part.tempo;
-  return raw.map(({ id, part }, i) => ({
-    id: id || `P${i + 1}`,
-    name: names.get(id) || `Parte ${i + 1}`,
-    score: toScore(part, { ...header, tempo }, lenient),
-  }));
+  return raw.map(({ id, part }, i) => {
+    const entry = listed.get(id);
+    // <midi-program> conta de 1 a 128
+    const program = Number(textAt(entry, 'midi-instrument', 'midi-program'));
+    const scorePart: ScorePart = {
+      id: id || `P${i + 1}`,
+      name: (textAt(entry, 'part-name') ?? '').replace(/\s+/g, ' ').trim() || `Parte ${i + 1}`,
+      score: toScore(part, { ...header, tempo }, lenient),
+    };
+    if (Number.isInteger(program) && program >= 1 && program <= 128) scorePart.instrument = program - 1;
+    return scorePart;
+  });
 }
