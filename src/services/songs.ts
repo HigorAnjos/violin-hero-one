@@ -204,7 +204,7 @@ export function useCatalog(client: SongsClient | null = supabase) {
   });
 }
 
-/** A estante do dono (importadas e do editor); useImportSong a atualiza quando uma música entra. */
+/** A estante do dono (importadas e do editor); quem grava (songImport.ts) invalida songKeys.mine. */
 export function useOwnSongs(client: SongsClient | null = supabase) {
   const session = useSession(client);
   return useQuery({
