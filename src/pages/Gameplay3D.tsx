@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
+import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countIn';
 import { JudgmentCallout } from '../components/JudgmentCallout/JudgmentCallout';
 import { Orchestra } from '../components/Orchestra/Orchestra';
@@ -91,6 +92,22 @@ const Callout = styled(JudgmentCallout)`
     top: auto;
     bottom: 8.25rem;
   }
+`;
+
+const SceneAlert = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: ${({ theme }) => theme.spacing.sm};
+  padding: ${({ theme }) => theme.spacing.md};
+  background: ${({ theme }) => theme.colors.background};
+  color: ${({ theme }) => theme.colors.text};
+  font-size: 1rem;
+  text-align: center;
 `;
 
 const Fps = styled.output`
@@ -189,7 +206,7 @@ export const Gameplay3D: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => 
         paused={paused}
         compact={compact}
       />
-      {paused && (
+      {paused && !game.sceneFailed && (
         <PauseMenu
           subtitle={`${play.song.title} · ${LEVEL_NAMES[play.song.level]}`}
           elapsed={Math.max(0, hud.elapsed)}
@@ -204,6 +221,13 @@ export const Gameplay3D: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => 
           micClosed={game.micClosed}
           {...pauseSettings(game)}
         />
+      )}
+      {game.sceneFailed && (
+        <SceneAlert role="alert">
+          <p>Não deu para desenhar as Cordas 3D neste aparelho.</p>
+          <Button type="button" onClick={() => navigate(ROUTES.countdown, { replace: true, state: { song: play.song, mode: 'Arcade', next: gameRoute('Arcade'), noFail: play.noFail } })}>Tocar no Arcade</Button>
+          <Button type="button" $variant="ghost" onClick={() => navigate(ROUTES.modes)}>Voltar</Button>
+        </SceneAlert>
       )}
       {phase === 'broken' && <p role="alert">Não deu para começar o áudio. Volte e tente de novo.</p>}
     </Page>

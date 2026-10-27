@@ -14,7 +14,7 @@ import { loadOrchestraSettings, saveOrchestraSettings, volumeLabel, type Orchest
 import { clampA4, loadA4, useSaveCalibration } from '../services/playerAudio';
 import { loadLocalProfile } from '../services/profile';
 import { loadMetronome, saveMetronome } from '../shell/metronome';
-import type { PlayState } from '../shell/play';
+import { DEFAULT_MODE, type PlayState } from '../shell/play';
 import { loadPlayPrefs, savePlayPrefs, type PlayPrefs } from '../shell/playPrefs';
 import { ROUTES } from '../shell/routes';
 
@@ -153,7 +153,7 @@ export function measuredWhen(iso: string, now = new Date()): string {
 /** A música da tela inicial, para "Medir de novo" abrir a calibração como o "Afinar" do menu. */
 function calibrationState(): PlayState {
   const { firstSongId } = levelSettings(loadLocalProfile().level ?? 'beginner');
-  return { song: (findFixedSong(firstSongId) ?? FIXED_SONGS[0]).song, mode: 'Arcade' };
+  return { song: (findFixedSong(firstSongId) ?? FIXED_SONGS[0]).song, mode: DEFAULT_MODE };
 }
 
 const AudioSection: React.FC = () => {

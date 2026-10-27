@@ -62,6 +62,7 @@ describe('Settings', () => {
     expect(screen.getByText('142 ms')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('link', { name: 'Medir de novo' }));
     expect(screen.getByTestId('location')).toHaveTextContent(ROUTES.calibration);
+    expect(JSON.parse(screen.getByTestId('location').getAttribute('data-state')!)).toMatchObject({ mode: 'Cordas 3D' });
   });
 
   it('sem medida: convida a medir', () => {

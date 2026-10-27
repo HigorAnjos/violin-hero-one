@@ -172,6 +172,7 @@ export function useGame(options: GameOptions) {
   });
   const { ear, song, a4, noFail, performance } = options;
   const [phase, setPhase] = React.useState<GamePhase>('starting');
+  const [sceneFailed, setSceneFailed] = React.useState(false);
   const [hud, setHud] = React.useState<GameHud>(EMPTY_HUD);
   const [counting, setCounting] = React.useState<number | null>(null);
   const [micClosed, setMicClosed] = React.useState(false);
@@ -358,7 +359,12 @@ export function useGame(options: GameOptions) {
           track = shared.surface = created;
           session?.setTrack(created);
         })
-        .catch(() => undefined);
+        .catch(() => {
+          if (!alive || view !== '3d') return;
+          live.current.paused = true;
+          void session?.pause();
+          setSceneFailed(true);
+        });
     };
 
     ear.setA4(a4);
@@ -478,6 +484,7 @@ export function useGame(options: GameOptions) {
   );
 
   return {
+    sceneFailed,
     phase,
     hud,
     counting,
