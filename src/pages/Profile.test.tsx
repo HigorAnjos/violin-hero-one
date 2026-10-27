@@ -37,9 +37,9 @@ function withHistory(): Progress {
     streakDays: 12,
     history: {
       days: [
-        { day: shiftDay(today, 1), seconds: 42 * 60 },
-        { day: shiftDay(today, 2), seconds: 100 * 60 },
-        { day: shiftDay(today, 20), seconds: 999 * 60 },
+        { day: shiftDay(today, 1), seconds: 42 * 60, marked: true },
+        { day: shiftDay(today, 2), seconds: 100 * 60, marked: true },
+        { day: shiftDay(today, 20), seconds: 999 * 60, marked: true },
       ],
       plays: [
         { playedAt: at(24), stringCents: [11, 10, 14, 20] },
@@ -87,6 +87,16 @@ describe('Profile', () => {
     expect(screen.getByText('Toque uma música inteira sem errar nenhuma nota')).toBeInTheDocument();
   });
 
+  it('só prática hoje: os minutos somam, mas o dia não acende a sequência (quem decide é o servidor)', () => {
+    const base = withHistory();
+    fake = { ...base, history: { ...base.history!, days: [...base.history!.days, { day: today, seconds: 10 * 60, marked: false }] } };
+    renderScreen(<Profile />);
+    const streak = within(screen.getByRole('region', { name: 'Sequência' }));
+    expect(streak.getByRole('img', { name: 'Tocou em 2 dos últimos 7 dias' })).toBeInTheDocument();
+    expect(streak.getByText('Toque hoje para manter')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Prática na semana' })).getByText('2h 32min')).toBeInTheDocument();
+  });
+
   it('metas no imperativo para cada selo', () => {
     expect(BADGES.map(goalFor)).toEqual([
       'Toque uma música até o fim',
@@ -104,5 +114,11 @@ describe('Profile', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/configuracoes');
     expect(screen.getByRole('link', { name: /Menu/ })).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', { name: 'Tocar' })).toHaveAttribute('href', expect.stringMatching(/^\/tocar/));
+  });
+
+  it('Conquistas leva à coleção de selos', () => {
+    fake = withHistory();
+    renderScreen(<Profile />);
+    expect(screen.getByRole('link', { name: `Ver todos os selos: 2 de ${BADGES.length}` })).toHaveAttribute('href', '/selos');
   });
 });

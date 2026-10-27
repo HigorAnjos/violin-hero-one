@@ -3,9 +3,15 @@ import { shiftDay, type PlayDay, type PlayTuning } from '../services/history';
 import { todayInBrazil } from '../services/progress';
 
 /** Segundos de cada um dos `n` dias até hoje, do mais antigo para hoje; dia sem partida é 0. */
-export function lastDays(days: readonly PlayDay[], today: string, n: number): number[] {
+export function lastDays(days: readonly Pick<PlayDay, 'day' | 'seconds'>[], today: string, n: number): number[] {
   const byDay = new Map(days.map((d) => [d.day, d.seconds]));
   return Array.from({ length: n }, (_, i) => byDay.get(shiftDay(today, n - 1 - i)) ?? 0);
+}
+
+/** Quais dos `n` dias até hoje valeram para a sequência (o servidor marca; prática só soma tempo). */
+export function markedDays(days: readonly Pick<PlayDay, 'day' | 'marked'>[], today: string, n: number): boolean[] {
+  const marked = new Set(days.filter((d) => d.marked).map((d) => d.day));
+  return Array.from({ length: n }, (_, i) => marked.has(shiftDay(today, n - 1 - i)));
 }
 
 /** "2h 22min", "35 min", "0 min". */
