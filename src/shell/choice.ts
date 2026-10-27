@@ -25,6 +25,32 @@ export function levelFromSlug(slug: string | null): Level | null {
   return LEVELS.find((level) => LEVEL_SLUG[level] === slug) ?? null;
 }
 
+/** O que o endereço do ranking escolhe; o que faltar, a tela escolhe (a última partida jogada, a semana). */
+export interface RankingChoice {
+  songId?: string;
+  level?: Level;
+  period?: 'week' | 'all';
+}
+
+const PERIOD_SLUG = { week: 'semana', all: 'geral' } as const;
+
+export function rankingUrl({ songId, level, period }: RankingChoice = {}): string {
+  const params = new URLSearchParams();
+  if (songId) params.set('musica', songId);
+  if (level) params.set('nivel', LEVEL_SLUG[level]);
+  if (period) params.set('periodo', PERIOD_SLUG[period]);
+  const query = params.toString();
+  return query ? `${ROUTES.ranking}?${query}` : ROUTES.ranking;
+}
+
+export function parseRankingUrl(search: URLSearchParams): RankingChoice {
+  const songId = search.get('musica') || undefined;
+  const level = levelFromSlug(search.get('nivel')) ?? undefined;
+  const slug = search.get('periodo');
+  const period = (Object.keys(PERIOD_SLUG) as (keyof typeof PERIOD_SLUG)[]).find((p) => PERIOD_SLUG[p] === slug);
+  return { ...(songId && { songId }), ...(level && { level }), ...(period && { period }) };
+}
+
 /** Escolha de modo; `songId` vem de quem já escolheu a música (Biblioteca) e segue para a seleção. */
 export function modesUrl(mode?: GameMode, songId?: string): string {
   const params = new URLSearchParams();
