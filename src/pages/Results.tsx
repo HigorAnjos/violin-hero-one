@@ -22,6 +22,7 @@ import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Sc
 import { JUDGMENT_LABEL, JUDGMENTS } from '../game/engine';
 import { STRING_LETTERS } from '../game/notation/violin';
 import type { PracticeStart } from '../shell/gameSession';
+import { rankingUrl } from '../shell/choice';
 import { gameRoute, readResultState } from '../shell/play';
 import type { RecordCheck } from '../shell/records';
 import { ROUTES } from '../shell/routes';
@@ -391,6 +392,12 @@ const Timeline = styled.div`
   }
 `;
 
+/** Do resultado para o ranking da música e do nível jogados (na semana). */
+const RankingLink = styled(Button)`
+  align-self: flex-start;
+  margin-left: -${({ theme }) => theme.spacing.xxs};
+`;
+
 const Footer = styled.footer`
   display: flex;
   align-items: center;
@@ -471,6 +478,11 @@ export const Results: React.FC = () => {
               record && !record.improved && record.previous !== null && <Muted>Recorde: {formatPoints(record.previous)}</Muted>
             )}
             {state.noFail && !practiced && <Muted>Modo sem falha: a música não parou.</Muted>}
+            {!practiced && (
+              <RankingLink as={Link} to={rankingUrl({ songId: song.id, level: song.level, period: 'week' })} $variant="link">
+                Ver no ranking <span aria-hidden="true">▸</span>
+              </RankingLink>
+            )}
           </Panel>
           <Stats>
             <div>

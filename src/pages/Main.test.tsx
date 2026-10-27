@@ -48,8 +48,9 @@ describe('Main', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/tocar');
   });
 
-  it('Configurações e Perfil no canto, sessão Offline sem banco', async () => {
+  it('Ranking, Configurações e Perfil no canto, sessão Offline sem banco', async () => {
     renderScreen(<Main />);
+    expect(screen.getByRole('link', { name: 'Ranking' })).toHaveAttribute('href', '/ranking');
     expect(screen.getByRole('link', { name: 'Configurações' })).toHaveAttribute('href', '/configuracoes');
     expect(screen.getByRole('link', { name: 'Perfil' })).toHaveAttribute('href', '/perfil');
     expect(await screen.findByText('Offline', undefined, { timeout: 5000 })).toBeInTheDocument();
