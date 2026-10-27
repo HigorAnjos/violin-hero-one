@@ -18,6 +18,7 @@ test('8-Bits desenha o 5 de Combo 25 com a fonte de interface', async ({ page })
   await fontsReady(page, '8-bits');
   const widths = await combo.evaluate(async (heading) => {
     const style = getComputedStyle(heading);
+    if (!style.fontFamily.startsWith('"Nunito Digits"')) throw new Error(`Pilha inesperada: ${style.fontFamily}`);
     await document.fonts.load(`${style.fontWeight} ${style.fontSize} Nunito`, '5');
     await document.fonts.load(`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`, '5');
     const context = document.createElement('canvas').getContext('2d')!;
@@ -25,16 +26,25 @@ test('8-Bits desenha o 5 de Combo 25 com a fonte de interface', async ({ page })
       context.font = `${style.fontWeight} ${style.fontSize} ${family}`;
       return context.measureText(glyph).width;
     };
+    const ink = (family: string) => {
+      context.font = `${style.fontWeight} ${style.fontSize} ${family}`;
+      const glyph = context.measureText('5');
+      return glyph.actualBoundingBoxLeft + glyph.actualBoundingBoxRight;
+    };
     return {
       digit: measure(style.fontFamily, '5'),
       ui: measure('Nunito', '5'),
-      pixel: measure('"Pixelify Sans"', '5'),
+      ink: ink(style.fontFamily),
+      uiInk: ink('Nunito'),
+      pixelInk: ink('"Pixelify Sans"'),
       letter: measure(style.fontFamily, 'S'),
       pixelLetter: measure('"Pixelify Sans"', 'S'),
     };
   });
   expect(widths.digit).toBeCloseTo(widths.ui, 2);
-  expect(Math.abs(widths.digit - widths.pixel)).toBeGreaterThan(0.1);
+  expect(widths.ink).toBeCloseTo(widths.uiInk, 2);
+  // Em certos tamanhos os avanços coincidem; o contorno do glifo ainda distingue as fontes.
+  expect(Math.abs(widths.ink - widths.pixelInk)).toBeGreaterThan(0.1);
   expect(widths.letter).toBeCloseTo(widths.pixelLetter, 2);
 });
 
