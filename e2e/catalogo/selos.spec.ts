@@ -75,9 +75,13 @@ test(`selo novo vem do servidor, entra na coleção com data e partida e não co
   await page.goto('/?ouvido=simulado');
   await expect(page.getByTestId('sequencia')).toHaveText('Sequência: 1 dia');
 
-  // 2ª partida "de outro aparelho": sem vh:badges, o motor acha os mesmos selos novos, o servidor diz que não
+  // 2ª partida "de outro aparelho": sem vh:badges, o app aprende os selos da conta ao abrir e não comemora de novo
+  await page.evaluate(() => localStorage.removeItem('vh:badges'));
+  await page.reload();
+  await expect
+    .poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem('vh:badges') ?? '[]') as string[]).sort()), { message: 'selos da conta no aparelho' })
+    .toEqual([...outcome.badges].sort());
   await page.evaluate(() => {
-    localStorage.removeItem('vh:badges');
     const w = window as Window & { __sawBadge?: boolean };
     w.__sawBadge = false;
     new MutationObserver(() => {

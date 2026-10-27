@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BADGES, type BadgeId, type GameResult, type Judgment, type PracticeResult } from '../game/engine';
 import type { Level, Song } from '../game/notation/song';
+import { addEarnedBadges } from './badges';
 import { ensureSession, type AuthClient, type SessionState } from './session';
 import { supabase } from './supabase';
 
@@ -301,9 +302,24 @@ export function useMyRecords(client: ProgressClient | null = supabase) {
   return useQuery({ queryKey: progressKeys.records, queryFn: async () => listMyRecords(client, await session()), retry: retryServer });
 }
 
+/**
+ * Selos da conta, que também entram em vh:badges: o motor passa a contar como já ganhos os que a conta tem (outro
+ * aparelho), e o selo não comemora de novo mesmo quando a resposta do submit_play demora.
+ */
+export function myBadgesQuery(client: ProgressClient | null, session: () => Promise<SessionState>) {
+  return {
+    queryKey: progressKeys.badges,
+    queryFn: async () => {
+      const ids = await listMyBadges(client, await session());
+      addEarnedBadges(ids);
+      return ids;
+    },
+    retry: retryServer,
+  };
+}
+
 export function useMyBadges(client: ProgressClient | null = supabase) {
-  const session = useSession(client);
-  return useQuery({ queryKey: progressKeys.badges, queryFn: async () => listMyBadges(client, await session()), retry: retryServer });
+  return useQuery(myBadgesQuery(client, useSession(client)));
 }
 
 export function useMyBadgeCollection(client: ProgressClient | null = supabase) {

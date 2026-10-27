@@ -4,7 +4,8 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ODE } from '../game/engine/testing';
 import { createPlaySync, memoryPlayQueueStore } from '../services/playQueue';
-import { progressKeys } from '../services/progress';
+import { loadEarnedBadges } from '../services/badges';
+import { progressKeys, type ProgressClient } from '../services/progress';
 import type { SessionState } from '../services/session';
 import { songKeys } from '../services/songs';
 import { forgetUserQueries, playedChart, reconnect, useDeviceSync } from './deviceSync';
@@ -78,15 +79,33 @@ describe('useDeviceSync', () => {
   it('partida que o servidor aceitou invalida o progresso (selos, sequência, recordes)', async () => {
     const t = setup();
     t.goOnline();
-    t.queryClient.setQueryData(progressKeys.badges, []);
+    await t.session();
     t.queryClient.setQueryData(progressKeys.streak, null);
     const wrapper = ({ children }: { children: React.ReactNode }) => React.createElement(QueryClientProvider, { client: t.queryClient }, children);
-    const view = renderHook(() => useDeviceSync(t.sync), { wrapper });
+    const view = renderHook(() => useDeviceSync(t.sync, null), { wrapper });
     await t.sync.enqueue({ payload: { client_id: 'a' } as never, chartHash: 'h', checkChart: false });
     await t.sync.flush();
-    await waitFor(() => expect(t.queryClient.getQueryState(progressKeys.badges)?.isInvalidated).toBe(true));
-    expect(t.queryClient.getQueryState(progressKeys.streak)?.isInvalidated).toBe(true);
+    await waitFor(() => expect(t.queryClient.getQueryState(progressKeys.streak)?.isInvalidated).toBe(true));
     view.unmount();
+  });
+
+  it('os selos da conta entram em vh:badges na abertura e depois de cada partida aceita', async () => {
+    localStorage.clear();
+    const t = setup();
+    t.goOnline();
+    await t.session();
+    let owned = [{ badge_id: 'combo-25' }];
+    const select = vi.fn(async () => ({ data: owned, error: null }));
+    const client = { auth: {}, from: () => ({ select }), rpc: vi.fn() } as unknown as ProgressClient;
+    const wrapper = ({ children }: { children: React.ReactNode }) => React.createElement(QueryClientProvider, { client: t.queryClient }, children);
+    const view = renderHook(() => useDeviceSync(t.sync, client), { wrapper });
+    await waitFor(() => expect(loadEarnedBadges()).toEqual(['combo-25']));
+    owned = [...owned, { badge_id: 'sem-erros' }];
+    await t.sync.enqueue({ payload: { client_id: 'b' } as never, chartHash: 'h', checkChart: false });
+    await t.sync.flush();
+    await waitFor(() => expect(loadEarnedBadges()).toEqual(['combo-25', 'sem-erros']));
+    view.unmount();
+    localStorage.clear();
   });
 });
 
