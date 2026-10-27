@@ -24,12 +24,12 @@ afterEach(() => {
   localStorage.clear();
 });
 
-function setup(search = '') {
+function setup(search = '', overrides: Partial<GameDeps> = {}) {
   const ear = createFakeEar();
   const context = { currentTime: 1, state: 'running', suspend: vi.fn(async () => undefined), resume: vi.fn(async () => undefined) };
   ear.provideAudio({ context, source: {}, stream: null } as unknown as EarAudio);
   const sheet = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
-  const deps: Partial<GameDeps> = { loadTrack: vi.fn(), loadSheet: vi.fn(async () => sheet), orchestra: null, clicks: () => () => undefined };
+  const deps: Partial<GameDeps> = { loadTrack: vi.fn(), loadSheet: vi.fn(async () => sheet), orchestra: null, clicks: () => () => undefined, ...overrides };
   renderScreen(<GameplaySheet deps={deps} />, { ear, path: `${ROUTES.sheet}${search}`, route: ROUTES.sheet, state: { song: FAST }, theme: palcoTheme });
   const run = (seconds: number) =>
     act(() => {
@@ -44,6 +44,13 @@ function setup(search = '') {
 }
 
 describe('GameplaySheet', () => {
+  it('falha ao desenhar mantém a partida avançando até o resultado', async () => {
+    const { deps, run } = setup('?simular=0', { loadSheet: vi.fn().mockRejectedValue(new Error('cena indisponível')) });
+    await waitFor(() => expect(deps.loadSheet).toHaveBeenCalled());
+    run(12);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(new RegExp(`${ROUTES.badge}|${ROUTES.results}`)), { timeout: 3000 });
+  });
+
   it('monta a faixa de partitura (não a pista), o cabeçalho e os painéis da 5b', async () => {
     const { deps } = setup();
     await waitFor(() => expect(deps.loadSheet).toHaveBeenCalled());

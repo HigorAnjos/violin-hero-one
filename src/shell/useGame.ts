@@ -360,7 +360,7 @@ export function useGame(options: GameOptions) {
           session?.setTrack(created);
         })
         .catch(() => {
-          if (!alive) return;
+          if (!alive || view !== '3d') return;
           live.current.paused = true;
           void session?.pause();
           setSceneFailed(true);
