@@ -392,10 +392,24 @@ const Timeline = styled.div`
   }
 `;
 
-/** Do resultado para o ranking da música e do nível jogados (na semana). */
+/** Estrelas e, do lado, o link do ranking. */
+const StarsRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${({ theme }) => theme.spacing.sm};
+`;
+
+/**
+ * Do resultado para o ranking da música e do nível jogados (na semana). A margem negativa devolve o que os 44 px de
+ * toque crescem além das estrelas: a linha não fica mais alta (no celular deitado o resultado já ocupa a tela toda).
+ */
 const RankingLink = styled(Button)`
-  align-self: flex-start;
-  margin-left: -${({ theme }) => theme.spacing.xxs};
+  margin: -0.3125rem 0;
+
+  @media (max-height: 500px) {
+    margin: -0.8125rem 0;
+  }
 `;
 
 const Footer = styled.footer`
@@ -463,11 +477,18 @@ export const Results: React.FC = () => {
       <Body>
         <div>
           <Panel aria-label="Pontuação">
-            <Stars width="190" height="34" viewBox="0 0 190 34" role="img" aria-label={`${starCount} de 5 estrelas`}>
-              {[0, 1, 2, 3, 4].map((i) => (
-                <path key={i} transform={`translate(${i * 38} 0)`} d={STAR} fill={i < starCount ? theme.colors.warning.main : theme.colors.surfaceBorder} />
-              ))}
-            </Stars>
+            <StarsRow>
+              <Stars width="190" height="34" viewBox="0 0 190 34" role="img" aria-label={`${starCount} de 5 estrelas`}>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <path key={i} transform={`translate(${i * 38} 0)`} d={STAR} fill={i < starCount ? theme.colors.warning.main : theme.colors.surfaceBorder} />
+                ))}
+              </Stars>
+              {!practiced && (
+                <RankingLink as={Link} to={rankingUrl({ songId: song.id, level: song.level, period: 'week' })} $variant="link">
+                  Ver no ranking <span aria-hidden="true">▸</span>
+                </RankingLink>
+              )}
+            </StarsRow>
             <ScoreRow>
               <Score>{formatPoints(result.score)}</Score>
               {record?.improved && <RecordPill role="status">{recordText(record, result.score)}</RecordPill>}
@@ -478,11 +499,6 @@ export const Results: React.FC = () => {
               record && !record.improved && record.previous !== null && <Muted>Recorde: {formatPoints(record.previous)}</Muted>
             )}
             {state.noFail && !practiced && <Muted>Modo sem falha: a música não parou.</Muted>}
-            {!practiced && (
-              <RankingLink as={Link} to={rankingUrl({ songId: song.id, level: song.level, period: 'week' })} $variant="link">
-                Ver no ranking <span aria-hidden="true">▸</span>
-              </RankingLink>
-            )}
           </Panel>
           <Stats>
             <div>
