@@ -939,7 +939,12 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       await needsAccount(accept(guest, challenge.code));
       const guestPlay = await submit(c, guest, playOf(songId, FOUR));
       await needsAccount(create(guest, guestPlay.play_id));
-      assert.equal((await c.query(`select count(*)::int as n from ${S}.challenge_entries`)).rows[0].n, 0);
+      // Só os aceites deste desafio: o Supabase local é o mesmo do e2e, que deixa os dele na tabela
+      const entries = await c.query(
+        `select count(*)::int as n from ${S}.challenge_entries e join ${S}.challenges ch on ch.id = e.challenge_id where ch.code = $1`,
+        [challenge.code]
+      );
+      assert.equal(entries.rows[0].n, 0);
       await invalid(accept(a.id, challenge.code));
       await close(challenge.code);
       await invalid(accept((await account('cat')).id, challenge.code));
