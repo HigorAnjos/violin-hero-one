@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { BADGES_STORAGE_KEY } from '../services/badges';
 import { deviceData, type DeviceData } from '../services/deviceData';
+import { adoptOrphanDraft, clearDraft } from '../services/editorDraft';
 import { markOnboarded, PROFILE_STORAGE_KEY, saveLocalProfile, type Animal, type StartProfile } from '../services/profile';
 import { progressKeys } from '../services/progress';
 import { signedIn, type SessionState } from '../services/session';
@@ -49,11 +50,14 @@ export async function adoptUser(client: { rpc: SupabaseClient['rpc'] } | null, s
   // Primeira sessão no aparelho (ou aparelho de antes desta versão): o que está nele é desse usuário
   if (!previous) {
     rememberUser(session.userId);
+    adoptOrphanDraft(session.userId);
     return 'first';
   }
   // O dono só troca depois de esquecer o anterior: se o forget falhar, o próximo evento tenta de novo
   await data.forget(previous);
   for (const key of PER_USER_KEYS) storage()?.removeItem(key);
+  // O rascunho do editor é texto do jogador: some com ele
+  clearDraft(previous);
   rememberUser(session.userId);
   data.use(session.userId);
   if (!session.anonymous) {

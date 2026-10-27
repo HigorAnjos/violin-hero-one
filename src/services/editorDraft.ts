@@ -43,3 +43,19 @@ export function clearDraft(user = currentUserId()): void {
     // sem armazenamento: não havia rascunho
   }
 }
+
+/**
+ * Primeira sessão no aparelho: o rascunho escrito antes dela (sem dono, chave ':') passa a ser desse usuário, como o
+ * resto do que o aparelho guardava. Se ele já tinha rascunho, o dele fica e o sem dono sai.
+ */
+export function adoptOrphanDraft(user: string): void {
+  try {
+    const store = storage();
+    const orphan = store?.getItem(keyFor(null));
+    if (!store || orphan === null || orphan === undefined) return;
+    if (store.getItem(keyFor(user)) === null) store.setItem(keyFor(user), orphan);
+    store.removeItem(keyFor(null));
+  } catch {
+    // sem armazenamento: não havia rascunho
+  }
+}

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEditor, insertNote } from '../game/notation/editor';
-import { clearDraft, DRAFT_STORAGE_KEY, loadDraft, saveDraft } from './editorDraft';
+import { adoptOrphanDraft, clearDraft, DRAFT_STORAGE_KEY, loadDraft, saveDraft } from './editorDraft';
 import { USER_STORAGE_KEY } from './user';
 
 describe('rascunho do editor', () => {
@@ -23,6 +23,17 @@ describe('rascunho do editor', () => {
     saveDraft(createEditor({ title: 'X' }).doc);
     expect(localStorage.getItem(`${DRAFT_STORAGE_KEY}:u9`)).toContain('"title":"X"');
     expect(loadDraft()?.doc.meta.title).toBe('X');
+  });
+
+  it('o rascunho sem dono vai para o primeiro usuário; o que ele já tinha fica', () => {
+    saveDraft(createEditor({ title: 'Sem dono' }).doc, null);
+    adoptOrphanDraft('u1');
+    expect(loadDraft('u1')?.doc.meta.title).toBe('Sem dono');
+    expect(loadDraft(null)).toBeNull();
+    saveDraft(createEditor({ title: 'Outro' }).doc, null);
+    adoptOrphanDraft('u1');
+    expect(loadDraft('u1')?.doc.meta.title).toBe('Sem dono');
+    expect(loadDraft(null)).toBeNull();
   });
 
   it('lixo no armazenamento vira null, sem lançar', () => {
