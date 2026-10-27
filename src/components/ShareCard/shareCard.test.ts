@@ -11,6 +11,7 @@ function recorder() {
   const texts: { text: string; font: string; color: string; x: number; y: number }[] = [];
   const rects: { x: number; y: number; w: number; h: number; color: string }[] = [];
   const state = { font: '', fillStyle: '' as unknown };
+  const violin = { active: false, y: 0, angle: 0, scale: 1, tops: [] as number[] };
   const noop = () => undefined;
   const ctx = {
     get font() {
@@ -38,17 +39,20 @@ function recorder() {
     closePath: noop,
     moveTo: noop,
     lineTo: noop,
-    arc: noop,
+    arc: (x: number, y: number, r: number) => {
+      if (violin.active) violin.tops.push(violin.y + violin.scale * (x * Math.sin(violin.angle) + y * Math.cos(violin.angle) - r));
+    },
     ellipse: noop,
     fill: noop,
     stroke: noop,
-    save: noop,
-    restore: noop,
-    translate: noop,
-    rotate: noop,
+    save: () => { violin.active = true; },
+    restore: () => { violin.active = false; },
+    translate: (_x: number, y: number) => { violin.y = y; },
+    rotate: (angle: number) => { violin.angle = angle; },
+    scale: (x: number, y: number) => { expect(x).toBe(y); violin.scale = y; },
   } as unknown as CardContext;
   const canvas: CardCanvas = { width: 300, height: 150, getContext: () => ctx };
-  return { canvas, texts, rects };
+  return { canvas, texts, rects, violin };
 }
 
 const DATA: ShareCardData = {
@@ -77,6 +81,13 @@ const THEMES = [
 ] as [string, Theme][];
 
 describe('cartão para compartilhar', () => {
+  it('a voluta inteira fica dentro do cartão, com margem superior de pelo menos 40 px', () => {
+    const { canvas, violin } = recorder();
+    drawShareCard(canvas, DATA, cadernoTheme);
+    expect(violin.scale).toBe(190 / 250);
+    expect(violin.tops).toHaveLength(1);
+    expect(Math.min(...violin.tops)).toBeGreaterThanOrEqual(40);
+  });
   it.each(THEMES)('QR com matriz M, silêncio e contraste AA em %s', (_name, theme) => {
     for (const link of [undefined, 'https://violinhero.app/desafio/ABC123']) {
       const { canvas, rects, texts } = recorder();

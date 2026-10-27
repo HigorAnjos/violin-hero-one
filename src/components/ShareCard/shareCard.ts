@@ -55,6 +55,7 @@ export type CardContext = Pick<
   | 'restore'
   | 'translate'
   | 'rotate'
+  | 'scale'
 >;
 
 export interface CardCanvas {
@@ -110,7 +111,8 @@ function text(ctx: CardContext, value: string, x: number, y: number, font: strin
 function drawViolin(ctx: CardContext, theme: Theme) {
   const ink = theme.colors.text;
   ctx.save();
-  ctx.translate(790, 230);
+  ctx.translate(790, 280);
+  ctx.scale(190 / 250, 190 / 250);
   ctx.rotate((14 * Math.PI) / 180);
   ctx.lineWidth = 6;
   ctx.strokeStyle = ink;
