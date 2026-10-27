@@ -20,6 +20,7 @@ export const ROUTES = {
   practice: '/pratica',
   gameOver: '/orquestra-parou',
   badge: '/selo-novo',
+  badges: '/selos',
   results: '/resultado',
   profile: '/perfil',
   settings: '/configuracoes',

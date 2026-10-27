@@ -2,9 +2,13 @@
 // Cada cenário roda dentro de uma transação revertida (ROLLBACK): não deixa resíduo.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { after, afterEach, before, beforeEach, describe, it } from 'node:test';
 import dotenv from 'dotenv';
 import pg from 'pg';
+
+/** Os casos dos selos que badges.test.ts também roda (badgesFor): uma regra só dos dois lados. */
+const BADGE_CASES = JSON.parse(readFileSync(new URL('../src/game/engine/badgeCases.json', import.meta.url), 'utf8')).cases;
 
 dotenv.config({ path: '.env.local', quiet: true });
 // Na máquina, sem banco, os testes se pulam; na CI isso seria um verde falso
@@ -422,12 +426,16 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
     it('reenvio do mesmo client_id devolve a mesma partida e não conta de novo', async () => {
       const u = await newUser(c);
       const id = await serverSong(c);
-      const play = playOf(id);
+      const play = playOf(id, { mean_abs_cents: 4 });
       const first = await submit(c, u, play);
+      assert.deepEqual(first.badges, ['primeira-musica', 'sem-erros', 'afinacao-de-ouro']);
       const again = await submit(c, u, play);
       assert.equal(again.duplicate, true);
       assert.equal(again.play_id, first.play_id);
-      assert.deepEqual(again.badges, [...first.badges].sort());
+      // Os mesmos selos, na mesma ordem (a de BADGES), sem gravar outra linha
+      assert.deepEqual(again.badges, first.badges);
+      assert.deepEqual(again.streak, first.streak);
+      assert.equal((await c.query(`select count(*)::int as n from ${S}.badges_earned where user_id = $1`, [u])).rows[0].n, 3);
       assert.equal((await c.query(`select count(*)::int as n from ${S}.plays where user_id = $1`, [u])).rows[0].n, 1);
       assert.equal((await c.query(`select plays from ${S}.play_days where user_id = $1`, [u])).rows[0].plays, 1);
       // O mesmo client_id de outro jogador é outra partida
@@ -577,6 +585,71 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       assert.deepEqual(r.badges, []);
       // Duas quebras sem erro, nem na prática
       await invalid(submit(c, u, { ...converted, mode: 'practice', speed: 0.7, duration_ms: 25000, client_id: randomUUID(), max_combo: 6, score: 2000 }));
+    });
+
+    describe('selos: casos compartilhados com o motor (badgeCases.json)', () => {
+      for (const k of BADGE_CASES) {
+        it(k.name, async () => {
+          const u = await newUser(c);
+          const { perfect, great, good, miss } = k.counts;
+          const hits = perfect + great + good;
+          const total = hits + miss;
+          const id = await serverSong(c, { notes: k.chartNotes ?? total });
+          // Pontos no mínimo das contagens (×1 sempre cabe no teto); a prática leva tempo de sobra
+          const play = {
+            ...playOf(id, { sequence: [] }),
+            mode: k.practice ? 'practice' : 'arcade',
+            finished: k.finished,
+            counts: k.counts,
+            score: 100 * perfect + 70 * great + 40 * good,
+            max_combo: k.maxCombo,
+            accuracy: total ? (100 * perfect + 70 * great + 40 * good) / total : 0,
+            mean_abs_cents: k.meanAbsCents,
+            string_cents: [null, hits ? 3.25 : null, null, null],
+            duration_ms: 1000 * total + 60000,
+          };
+          assert.deepEqual((await submit(c, u, play)).badges, k.badges);
+          const { rows } = await as(c, u, `select badge_id from ${S}.badges_earned order by earned_at, badge_id`);
+          assert.deepEqual(rows.map((r) => r.badge_id).sort(), [...k.badges].sort());
+        });
+      }
+    });
+
+    it('partida forjada (recusada) não deixa selo, dia nem sequência', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 30 });
+      const ok = playOf(id, { sequence: Array(30).fill('perfect'), mean_abs_cents: 2 });
+      for (const play of [{ ...ok, score: ok.score + 10 }, { ...ok, max_combo: 31 }, { ...ok, accuracy: 50 }]) {
+        await invalid(submit(c, u, play));
+      }
+      for (const table of PROGRESS_TABLES) {
+        assert.equal((await c.query(`select count(*)::int as n from ${S}.${table} where user_id = $1`, [u])).rows[0].n, 0, table);
+      }
+    });
+
+    it('prática não dá selo nem marca dia de sequência; o tempo do dia soma', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 30 });
+      const practice = playOf(id, { mode: 'practice', speed: 0.5, duration_ms: 60000, sequence: Array(30).fill('perfect'), mean_abs_cents: 2 });
+      const r = await submit(c, u, practice);
+      assert.deepEqual(r.badges, []);
+      assert.equal(r.streak, null);
+      assert.deepEqual((await as(c, u, `select seconds, plays from ${S}.play_days`)).rows, [{ seconds: 60, plays: 0 }]);
+      assert.deepEqual((await as(c, u, `select * from ${S}.streaks`)).rows, []);
+      assert.deepEqual((await as(c, u, `select * from ${S}.badges_earned`)).rows, []);
+      // O reenvio da prática também não traz sequência
+      assert.equal((await submit(c, u, practice)).streak, null);
+      // A partida normal do mesmo dia marca
+      const s = (await submit(c, u, playOf(id, { sequence: Array(30).fill('perfect') }))).streak;
+      assert.deepEqual([s.current_days, s.best_days], [1, 1]);
+    });
+
+    it('partida sem nota julgada não marca dia', async () => {
+      const u = await newUser(c);
+      const id = await serverSong(c, { notes: 4 });
+      const r = await submit(c, u, playOf(id, { finished: false, sequence: [] }));
+      assert.equal(r.streak, null);
+      assert.deepEqual((await as(c, u, `select plays from ${S}.play_days`)).rows, [{ plays: 0 }]);
     });
 
     it('sequência: dias seguidos somam, um buraco zera a atual e mantém a melhor, dia fora de ordem recalcula', async () => {

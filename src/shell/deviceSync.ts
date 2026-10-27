@@ -3,7 +3,7 @@ import { onlineManager, useQueryClient, type QueryClient } from '@tanstack/react
 import { setDeviceData } from '../services/deviceData';
 import type { PlaySync } from '../services/playQueue';
 import { PROFILE_QUERY_KEY } from '../services/profileSync';
-import { progressKeys } from '../services/progress';
+import { myBadgesQuery, progressKeys, type ProgressClient } from '../services/progress';
 import { songStore } from '../services/songCache';
 import { ensureSession, type SessionState } from '../services/session';
 import { songKeys, type LoadedSong } from '../services/songs';
@@ -50,10 +50,13 @@ export function forgetUserQueries(queryClient: QueryClient): void {
  * Liga a sincronização na shell: registra o DeviceData para a troca de conta, aponta a fila para a sessão do app e
  * sobe as partidas pendentes na abertura, ao voltar a rede, no foco e no recuo da fila.
  */
-export function useDeviceSync(sync: PlaySync = playSync): void {
+export function useDeviceSync(sync: PlaySync = playSync, client: ProgressClient | null = supabase): void {
   const queryClient = useQueryClient();
   React.useEffect(() => {
     setSessionSource(sessionQuery(queryClient));
+    // Os selos da conta entram em vh:badges logo na abertura: a partida já sai sabendo o que a conta tem
+    const learnBadges = () => void queryClient.prefetchQuery(myBadgesQuery(client, sessionQuery(queryClient)));
+    learnBadges();
     setDeviceData(createDeviceData(sync, songStore, () => forgetUserQueries(queryClient)));
     let alive = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -64,6 +67,8 @@ export function useDeviceSync(sync: PlaySync = playSync): void {
     const run = () => void reconnect(queryClient, sync).finally(schedule);
     const onVisible = () => document.visibilityState === 'visible' && run();
     const offOnline = onlineManager.subscribe((online) => online && run());
+    // Partida que o servidor aceitou: selos, sequência e recordes da conta mudaram
+    const offOutcome = sync.subscribe(() => void queryClient.invalidateQueries({ queryKey: progressKeys.all }).then(learnBadges));
     addEventListener('focus', run);
     document.addEventListener('visibilitychange', onVisible);
     void sync.flush().catch(() => undefined).finally(schedule);
@@ -71,11 +76,12 @@ export function useDeviceSync(sync: PlaySync = playSync): void {
       alive = false;
       clearTimeout(timer);
       offOnline();
+      offOutcome();
       removeEventListener('focus', run);
       document.removeEventListener('visibilitychange', onVisible);
       setDeviceData(null);
     };
-  }, [queryClient, sync]);
+  }, [queryClient, sync, client]);
 }
 
 /** O chart que a partida tocou, pela query da música: com hash do banco ou do aparelho (que pode ter ficado velho). */

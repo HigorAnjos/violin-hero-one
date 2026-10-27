@@ -9,6 +9,7 @@ import {
   getMyStreak,
   listMyBadges,
   listMyRecords,
+  myBadgesQuery,
   playPayload,
   PLAY_MODE_OF,
   ProgressError,
@@ -18,7 +19,9 @@ import {
   useSubmitPlay,
   type ProgressClient,
 } from './progress';
+import { loadEarnedBadges } from './badges';
 import type { SessionState } from './session';
+import { rememberUser } from './user';
 
 const SIGNED_IN: SessionState = { status: 'signed-in', userId: 'u1', anonymous: true };
 const SONG = { id: 'ode-a-alegria', level: 'easy' as const };
@@ -217,5 +220,44 @@ describe('hooks', () => {
     });
     expect(rpc).toHaveBeenCalledWith('submit_play', { p_play: payload });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['progress'] });
+  });
+});
+
+describe('myBadgesQuery', () => {
+  const pending = () => {
+    let answer: (rows: { badge_id: string }[]) => void = () => undefined;
+    const select = vi.fn(() => new Promise((resolve) => (answer = (rows) => resolve({ data: rows, error: null }))));
+    return {
+      client: { auth: {}, from: () => ({ select }), rpc: vi.fn() } as unknown as ProgressClient,
+      // Responde quando o pedido saiu (a sessão é esperada antes)
+      answer: async (rows: { badge_id: string }[]) => {
+        await vi.waitFor(() => expect(select).toHaveBeenCalled());
+        answer(rows);
+      },
+    };
+  };
+
+  it('os selos da conta do aparelho entram em vh:badges', async () => {
+    localStorage.clear();
+    rememberUser('u1');
+    const { client, answer } = pending();
+    const run = myBadgesQuery(client, async () => SIGNED_IN).queryFn();
+    await answer([{ badge_id: 'combo-25' }]);
+    expect(await run).toEqual(['combo-25']);
+    expect(loadEarnedBadges()).toEqual(['combo-25']);
+    localStorage.clear();
+  });
+
+  it('resposta da conta A que chega depois da troca para B não grava nada no aparelho de B', async () => {
+    localStorage.clear();
+    rememberUser('u1');
+    const { client, answer } = pending();
+    const run = myBadgesQuery(client, async () => SIGNED_IN).queryFn();
+    // A troca de conta (accountSwitch) limpa vh:badges e passa o aparelho para B
+    rememberUser('u2');
+    await answer([{ badge_id: 'combo-25' }, { badge_id: 'sem-erros' }]);
+    expect(await run).toEqual(['sem-erros', 'combo-25']);
+    expect(loadEarnedBadges()).toEqual([]);
+    localStorage.clear();
   });
 });

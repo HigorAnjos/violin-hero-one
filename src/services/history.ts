@@ -10,6 +10,8 @@ export interface PlayDay {
   /** aaaa-mm-dd, horário de Brasília (o mesmo dia da sequência). */
   day: string;
   seconds: number;
+  /** O dia valeu para a sequência: alguma partida (não prática) com nota julgada. O servidor decide (0006). */
+  marked: boolean;
 }
 
 export interface PlayTuning {
@@ -35,13 +37,17 @@ export async function loadHistory(client: ProgressClient | null, session: Sessio
   if (!client || session.status !== 'signed-in') throw new ProgressError('offline');
   const since = shiftDay(today, HISTORY_DAYS - 1);
   const [days, plays] = await Promise.all([
-    client.from('play_days').select('day, seconds').gte('day', since),
+    client.from('play_days').select('day, seconds, plays').gte('day', since),
     client.from('plays').select('played_at, string_cents').gte('played_at', `${since}T00:00:00-03:00`),
   ]);
   const error = days.error ?? plays.error;
   if (error) throw new ProgressError(error.code ? 'server' : 'offline', error);
   return {
-    days: ((days.data ?? []) as { day: string; seconds: number }[]).map((d) => ({ day: d.day, seconds: d.seconds })),
+    days: ((days.data ?? []) as { day: string; seconds: number; plays: number }[]).map((d) => ({
+      day: d.day,
+      seconds: d.seconds,
+      marked: d.plays > 0,
+    })),
     plays: ((plays.data ?? []) as { played_at: string; string_cents: (number | string | null)[] }[]).map((p) => ({
       playedAt: p.played_at,
       stringCents: p.string_cents.map((c) => (c === null ? null : Number(c))),

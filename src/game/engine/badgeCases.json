@@ -1,0 +1,21 @@
+{
+  "$comment": "Casos dos selos rodados nos dois lados: badges.test.ts (badgesFor) e scripts/test-db.mjs (submit_play). chartNotes: ataques do chart (padrão: as notas julgadas). meanAbsCents vai como o app manda.",
+  "cases": [
+    { "name": "música inteira sem erro e afinada", "finished": true, "counts": { "perfect": 10, "great": 0, "good": 0, "miss": 0 }, "maxCombo": 10, "meanAbsCents": 4, "badges": ["primeira-musica", "sem-erros", "afinacao-de-ouro"] },
+    { "name": "Ótimo e Bom sem erro, desafinada", "finished": true, "counts": { "perfect": 2, "great": 1, "good": 1, "miss": 0 }, "maxCombo": 4, "meanAbsCents": 14.5, "badges": ["primeira-musica", "sem-erros"] },
+    { "name": "um erro tira o sem erros", "finished": true, "counts": { "perfect": 9, "great": 0, "good": 0, "miss": 1 }, "maxCombo": 9, "meanAbsCents": 4, "badges": ["primeira-musica", "afinacao-de-ouro"] },
+    { "name": "10 ¢ exatos ainda é ouro", "finished": true, "counts": { "perfect": 10, "great": 0, "good": 0, "miss": 0 }, "maxCombo": 10, "meanAbsCents": 10, "badges": ["primeira-musica", "sem-erros", "afinacao-de-ouro"] },
+    { "name": "10,004 ¢ arredonda para 10,00 (o servidor guarda duas casas)", "finished": true, "counts": { "perfect": 10, "great": 0, "good": 0, "miss": 0 }, "maxCombo": 10, "meanAbsCents": 10.004, "badges": ["primeira-musica", "sem-erros", "afinacao-de-ouro"] },
+    { "name": "10,006 ¢ arredonda para 10,01: sem ouro", "finished": true, "counts": { "perfect": 10, "great": 0, "good": 0, "miss": 0 }, "maxCombo": 10, "meanAbsCents": 10.006, "badges": ["primeira-musica", "sem-erros"] },
+    { "name": "10,5 ¢: sem ouro", "finished": true, "counts": { "perfect": 9, "great": 0, "good": 0, "miss": 1 }, "maxCombo": 9, "meanAbsCents": 10.5, "badges": ["primeira-musica"] },
+    { "name": "27 de 30 é 90% certinho: ainda é ouro", "finished": true, "counts": { "perfect": 27, "great": 0, "good": 0, "miss": 3 }, "maxCombo": 10, "meanAbsCents": 5, "badges": ["primeira-musica", "afinacao-de-ouro"] },
+    { "name": "80% de acertos: sem ouro", "finished": true, "counts": { "perfect": 8, "great": 0, "good": 0, "miss": 2 }, "maxCombo": 8, "meanAbsCents": 3, "badges": ["primeira-musica"] },
+    { "name": "combo 50 numa música terminada", "finished": true, "counts": { "perfect": 50, "great": 0, "good": 0, "miss": 0 }, "maxCombo": 50, "meanAbsCents": 12, "badges": ["primeira-musica", "sem-erros", "combo-25", "combo-50"] },
+    { "name": "combo 100", "finished": true, "counts": { "perfect": 100, "great": 0, "good": 0, "miss": 0 }, "maxCombo": 100, "meanAbsCents": 20, "badges": ["primeira-musica", "sem-erros", "combo-25", "combo-50", "combo-100"] },
+    { "name": "combo 24 não é combo 25", "finished": true, "counts": { "perfect": 48, "great": 0, "good": 0, "miss": 1 }, "maxCombo": 24, "meanAbsCents": 30, "badges": ["primeira-musica"] },
+    { "name": "a orquestra parou: só o combo vale", "finished": false, "chartNotes": 30, "counts": { "perfect": 26, "great": 0, "good": 0, "miss": 0 }, "maxCombo": 26, "meanAbsCents": 2, "badges": ["combo-25"] },
+    { "name": "parou sem nota julgada: nada", "finished": false, "chartNotes": 4, "counts": { "perfect": 0, "great": 0, "good": 0, "miss": 0 }, "maxCombo": 0, "meanAbsCents": null, "badges": [] },
+    { "name": "terminou errando todas: só a primeira música", "finished": true, "counts": { "perfect": 0, "great": 0, "good": 0, "miss": 12 }, "maxCombo": 0, "meanAbsCents": null, "badges": ["primeira-musica"] },
+    { "name": "prática não dá selo", "practice": true, "finished": true, "counts": { "perfect": 30, "great": 0, "good": 0, "miss": 0 }, "maxCombo": 30, "meanAbsCents": 4, "badges": [] }
+  ]
+}

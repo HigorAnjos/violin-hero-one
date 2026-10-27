@@ -24,6 +24,7 @@ import { STRING_LETTERS } from '../game/notation/violin';
 import type { PracticeStart } from '../shell/gameSession';
 import { rankingUrl } from '../shell/choice';
 import { gameRoute, readResultState } from '../shell/play';
+import { badgesToShow } from '../shell/progress';
 import type { RecordCheck } from '../shell/records';
 import { ROUTES } from '../shell/routes';
 import { usePlayOutcome } from '../services/sync';
@@ -66,7 +67,9 @@ const Header = styled.header`
       font-size: 1.25rem;
     }
 
-    [role='status'] {
+    /* O selo novo (ou "Seus selos") mantém os 44 px de toque; a margem negativa devolve o que eles crescem além do título */
+    > a {
+      margin: -0.5rem 0;
       padding-top: 0.125rem;
       padding-bottom: 0.125rem;
     }
@@ -103,6 +106,13 @@ const NewBadge = styled.div<{ $color: string }>`
     font-weight: 800;
     font-size: 1.0625rem;
   }
+`;
+
+/** O selo novo leva à coleção. */
+const NewBadgeLink = styled(NewBadge).attrs({ as: Link })`
+  min-height: 2.75rem;
+  color: inherit;
+  text-decoration: none;
 `;
 
 const Body = styled.div`
@@ -445,7 +455,8 @@ export const Results: React.FC = () => {
   const confirmed = outcome && !outcome.duplicate ? outcome : undefined;
   const { song, result, mode } = state;
   const record = confirmed ? (confirmed.record ?? undefined) : state.record;
-  const earned = confirmed ? confirmed.badges : result.badges;
+  // O reenvio traz os selos daquela partida: valem como a primeira resposta
+  const earned = badgesToShow(result.badges, outcome);
   const practiced = 'laps' in result;
   const total = result.judgments.length;
   const starCount = stars(result.accuracy);
@@ -463,14 +474,18 @@ export const Results: React.FC = () => {
           </Kicker>
           <ScreenTitle>{song.title}</ScreenTitle>
         </div>
-        {firstBadge && (
-          <NewBadge role="status" aria-label={`Selo conquistado nesta partida: ${firstBadge.label}`} $color={badgeColor(theme, firstBadge.kind)}>
+        {firstBadge ? (
+          <NewBadgeLink to={ROUTES.badges} aria-label={`Selo conquistado nesta partida: ${firstBadge.label}. Ver seus selos`} $color={badgeColor(theme, firstBadge.kind)}>
             <Badge kind={firstBadge.kind} label={firstBadge.label} size={34} decorative />
             <span>
               <small>SELO NOVO!</small>
               <b>{firstBadge.label}</b>
             </span>
-          </NewBadge>
+          </NewBadgeLink>
+        ) : (
+          <Button as={Link} to={ROUTES.badges} $variant="ghost">
+            Seus selos
+          </Button>
         )}
       </Header>
 

@@ -14,7 +14,7 @@ import { todayInBrazil } from '../services/progress';
 import { useShelf } from '../services/shelf';
 import { modesUrl } from '../shell/choice';
 import { useProgress } from '../shell/progress';
-import { formatDuration, lastDays, LEARNED_ACCURACY, learnedSongs, stringTrend, tuningAverage } from '../shell/progressStats';
+import { formatDuration, lastDays, LEARNED_ACCURACY, learnedSongs, markedDays, stringTrend, tuningAverage } from '../shell/progressStats';
 import { ROUTES } from '../shell/routes';
 import { LEVEL_INFO } from './OnboardLevel';
 import { settingsUrl } from './Settings';
@@ -433,6 +433,25 @@ const Empty = styled.p`
   color: ${({ theme }) => theme.colors.textMuted};
 `;
 
+/** "Ver todos" da coleção: texto pequeno no cabeçalho do painel, com a área de toque de 44 px sem mexer no layout. */
+const SeeAll = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.75rem;
+  margin: -0.875rem -0.5rem;
+  padding: 0 0.5rem;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  color: ${({ theme }) => theme.colors.info.text};
+  text-decoration: none;
+
+  @media (max-height: 500px) {
+    font-size: 0.75rem;
+  }
+`;
+
 /** A próxima meta, no imperativo, a partir do primeiro selo que falta. */
 export function goalFor(badge: BadgeInfo): string {
   if (badge.kind === 'combo') return `Acerte ${badge.id.replace('combo-', '')} notas seguidas`;
@@ -469,6 +488,8 @@ export const Profile: React.FC = () => {
   const history = progress.history;
   const [today] = React.useState(todayInBrazil);
   const week = history ? lastDays(history.days, today, 7) : null;
+  // A sequência é a do servidor: o dia de prática soma minutos, mas não acende a bolinha
+  const marked = history ? markedDays(history.days, today, 7) : null;
   const fortnight = history ? lastDays(history.days, today, 14) : null;
   const tallest = fortnight ? Math.max(...fortnight) : 0;
   const tuning = history ? tuningAverage(history.plays, today) : null;
@@ -515,14 +536,14 @@ export const Profile: React.FC = () => {
         <Card aria-label="Sequência" $tone={streak ? 'warning' : undefined}>
           <Kicker>Sequência</Kicker>
           <Big $tone={streak ? 'warning' : undefined}>{streak === null ? '—' : `${streak} ${streak === 1 ? 'dia' : 'dias'}`}</Big>
-          {week && (
-            <Week aria-label={`Tocou em ${week.filter(Boolean).length} dos últimos 7 dias`} role="img">
-              {week.map((seconds, i) => (
-                <i key={i} data-off={seconds || i === 6 ? undefined : ''} data-today={i === 6 && !seconds ? '' : undefined} />
+          {marked && (
+            <Week aria-label={`Tocou em ${marked.filter(Boolean).length} dos últimos 7 dias`} role="img">
+              {marked.map((on, i) => (
+                <i key={i} data-off={on || i === 6 ? undefined : ''} data-today={i === 6 && !on ? '' : undefined} />
               ))}
             </Week>
           )}
-          <Sub>{streak === null ? 'Conta com internet' : week?.[6] ? 'Hoje já valeu' : streak ? 'Toque hoje para manter' : 'Toque hoje para começar'}</Sub>
+          <Sub>{streak === null ? 'Conta com internet' : marked?.[6] ? 'Hoje já valeu' : streak ? 'Toque hoje para manter' : 'Toque hoje para começar'}</Sub>
         </Card>
         <Card aria-label="Prática na semana">
           <Kicker>Prática na semana</Kicker>
@@ -610,9 +631,9 @@ export const Profile: React.FC = () => {
         <Card aria-label="Conquistas">
           <PanelHead>
             <Kicker>Conquistas</Kicker>
-            <Sub>
-              {owned.size} de {BADGES.length}
-            </Sub>
+            <SeeAll to={ROUTES.badges} aria-label={`Ver todos os selos: ${owned.size} de ${BADGES.length}`}>
+              {owned.size} de {BADGES.length} · Ver todos <span aria-hidden="true">▸</span>
+            </SeeAll>
           </PanelHead>
           <Achievements>
             {BADGES.map((b) => (

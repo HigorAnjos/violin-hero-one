@@ -2,8 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BADGES, type BadgeId, type GameResult, type Judgment, type PracticeResult } from '../game/engine';
 import type { Level, Song } from '../game/notation/song';
+import { addEarnedBadges } from './badges';
 import { ensureSession, type AuthClient, type SessionState } from './session';
 import { supabase } from './supabase';
+import { currentUserId } from './user';
 
 /** Mesmos valores do enum violinhero.play_mode. */
 export type PlayMode = 'arcade' | 'sheet' | 'practice' | 'strings3d';
@@ -196,6 +198,61 @@ export async function listMyBadges(client: ProgressClient | null, session: Sessi
   return BADGES.map((b) => b.id).filter((id) => owned.has(id));
 }
 
+/** Um selo da coleção: quando e em que partida saiu. */
+export interface EarnedBadge {
+  id: BadgeId;
+  earnedAt: string;
+  /** A partida em que saiu; songTitle null quando a música não é mais legível para o jogador. */
+  play: { songId: string; songTitle: string | null; level: Level } | null;
+}
+
+export interface BadgeCollection {
+  /** Na ordem de BADGES. */
+  earned: EarnedBadge[];
+  /** Maior combo de uma partida que vale selo (sem prática); null sem partida. */
+  bestCombo: number | null;
+  /** Menor afinação média de uma música terminada (sem prática), em cents; null sem nenhuma. */
+  bestCents: number | null;
+}
+
+interface EarnedRow {
+  badge_id: string;
+  earned_at: string;
+  play: { song_id: string; level: Level; song: { title: string } | null } | null;
+}
+
+/** A coleção de selos com data e partida, e o quanto falta para os de combo e de afinação (a RLS só devolve os dele). */
+export async function getMyBadgeCollection(client: ProgressClient | null, session: SessionState): Promise<BadgeCollection> {
+  const db = requireSession(client, session);
+  const [earned, combo, cents] = await Promise.all([
+    db.from('badges_earned').select('badge_id, earned_at, play:plays(song_id, level, song:songs(title))'),
+    db.from('plays').select('max_combo').neq('mode', 'practice').order('max_combo', { ascending: false }).limit(1),
+    db
+      .from('plays')
+      .select('mean_abs_cents')
+      .neq('mode', 'practice')
+      .eq('finished', true)
+      .not('mean_abs_cents', 'is', null)
+      .order('mean_abs_cents', { ascending: true })
+      .limit(1),
+  ]);
+  const error = earned.error ?? combo.error ?? cents.error;
+  if (error) throw new ProgressError(errorKind(error), error);
+  const rows = new Map(((earned.data ?? []) as unknown as EarnedRow[]).map((r) => [r.badge_id, r]));
+  const bestCombo = (combo.data as { max_combo: number }[] | null)?.[0]?.max_combo;
+  const bestCents = (cents.data as { mean_abs_cents: number | string }[] | null)?.[0]?.mean_abs_cents;
+  return {
+    earned: BADGES.flatMap((b) => {
+      const row = rows.get(b.id);
+      if (!row) return [];
+      const play = row.play ? { songId: row.play.song_id, songTitle: row.play.song?.title ?? null, level: row.play.level } : null;
+      return [{ id: b.id, earnedAt: row.earned_at, play }];
+    }),
+    bestCombo: bestCombo ?? null,
+    bestCents: bestCents === undefined ? null : Number(bestCents),
+  };
+}
+
 /** Sequência guardada; null antes da primeira partida. */
 export async function getMyStreak(client: ProgressClient | null, session: SessionState): Promise<StreakInfo | null> {
   const db = requireSession(client, session);
@@ -220,6 +277,7 @@ export const progressKeys = {
   all: ['progress'] as const,
   records: ['progress', 'records'] as const,
   badges: ['progress', 'badges'] as const,
+  badgeCollection: ['progress', 'badges', 'collection'] as const,
   streak: ['progress', 'streak'] as const,
 };
 
@@ -245,9 +303,36 @@ export function useMyRecords(client: ProgressClient | null = supabase) {
   return useQuery({ queryKey: progressKeys.records, queryFn: async () => listMyRecords(client, await session()), retry: retryServer });
 }
 
+/**
+ * Selos da conta, que também entram em vh:badges: o motor passa a contar como já ganhos os que a conta tem (outro
+ * aparelho), e o selo não comemora de novo mesmo quando a resposta do submit_play demora.
+ */
+export function myBadgesQuery(client: ProgressClient | null, session: () => Promise<SessionState>) {
+  return {
+    queryKey: progressKeys.badges,
+    queryFn: async () => {
+      const state = await session();
+      const ids = await listMyBadges(client, state);
+      // A resposta pode chegar depois de uma troca de conta (accountSwitch limpa vh:badges): só grava se o aparelho
+      // ainda é de quem perguntou
+      if (state.status === 'signed-in' && currentUserId() === state.userId) addEarnedBadges(ids);
+      return ids;
+    },
+    retry: retryServer,
+  };
+}
+
 export function useMyBadges(client: ProgressClient | null = supabase) {
+  return useQuery(myBadgesQuery(client, useSession(client)));
+}
+
+export function useMyBadgeCollection(client: ProgressClient | null = supabase) {
   const session = useSession(client);
-  return useQuery({ queryKey: progressKeys.badges, queryFn: async () => listMyBadges(client, await session()), retry: retryServer });
+  return useQuery({
+    queryKey: progressKeys.badgeCollection,
+    queryFn: async () => getMyBadgeCollection(client, await session()),
+    retry: retryServer,
+  });
 }
 
 export function useMyStreak(client: ProgressClient | null = supabase) {

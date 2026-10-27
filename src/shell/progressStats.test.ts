@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { shiftDay } from '../services/history';
-import { formatDuration, lastDays, learnedSongs, stringTrend, tuningAverage } from './progressStats';
+import { formatDuration, lastDays, learnedSongs, markedDays, stringTrend, tuningAverage } from './progressStats';
 
 const TODAY = '2026-10-26';
 // Meio-dia em Brasília: o dia da partida não muda com o fuso de quem roda o teste
@@ -14,6 +14,10 @@ describe('estatísticas do perfil', () => {
 
   it('lastDays: um valor por dia até hoje, 0 sem partida', () => {
     expect(lastDays([{ day: TODAY, seconds: 60 }, { day: '2026-10-24', seconds: 120 }, { day: '2026-10-01', seconds: 9 }], TODAY, 3)).toEqual([120, 0, 60]);
+  });
+
+  it('markedDays: só o dia que o servidor marcou acende (prática soma tempo, não sequência)', () => {
+    expect(markedDays([{ day: TODAY, marked: false }, { day: '2026-10-24', marked: true }], TODAY, 3)).toEqual([true, false, false]);
   });
 
   it('formatDuration', () => {
