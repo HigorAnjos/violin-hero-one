@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clearPlacement,
   createEditor,
+  HIGHEST_STEP,
+  LOWEST_STEP,
+  stepMidi,
   cursorPosition,
   cursorStops,
   deleteNote,
@@ -381,6 +385,19 @@ describe('editor: compasso, armadura e andamento', () => {
     expect(state.doc.notes[0].midi).toBe(66);
     expect(noteName(66, -1)).toBe('Sol♭4');
     expect(letterMidi(state, 'B')).toBe(70); // Si♭
+  });
+
+  it('grau da pauta → altura com a armadura (o toque na pauta)', () => {
+    expect([LOWEST_STEP, HIGHEST_STEP]).toEqual([25, 44]);
+    expect(stepMidi('D major', 31)).toBe(66); // linha de baixo + 1 = Fá, sustenido em Ré maior
+    expect(stepMidi('F major', 34)).toBe(70); // Si♭
+    expect(stepMidi('C major', 30)).toBe(64);
+  });
+
+  it('voltar ao dedilhado sugerido', () => {
+    const state = clearPlacement(setString(insertNote(createEditor(), 69), 1));
+    expect(state.doc.notes[0].placement).toBeUndefined();
+    expect(editorSong(state).measures[0].notes[0]).toMatchObject({ string: 2, finger: 0 });
   });
 
   it('toda tonalidade do seletor tem nome e cabe no editor', () => {

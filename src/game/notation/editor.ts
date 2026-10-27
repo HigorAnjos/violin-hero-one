@@ -158,6 +158,15 @@ export function noteName(midi: number, fifths = 0): string {
   return `${LETTER_SOLFEGE[letter]}${sign}${Math.floor(step / 7)}`;
 }
 
+/** Altura de um grau da pauta (toque nela) com a armadura: o mesmo grau diatônico da partitura do render. */
+export function stepMidi(key: string, step: number): number {
+  return midiOfStep(step, keyAlteration(((step % 7) + 7) % 7, keyFifthsOf(key)));
+}
+
+/** Graus da nota mais grave e da mais aguda do violino (Sol3 e Mi6). */
+export const LOWEST_STEP = stepOf(LOWEST_MIDI, 0);
+export const HIGHEST_STEP = stepOf(HIGHEST_MIDI, 0);
+
 const RANGE = `${noteName(LOWEST_MIDI)} a ${noteName(HIGHEST_MIDI)}`;
 
 /** Motivo para recusar a nota, ou nulo se ela cabe no violino até a 3ª posição. */
