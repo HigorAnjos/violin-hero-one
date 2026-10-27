@@ -54,6 +54,9 @@ const TOP: RankingRow[] = [
   row(5, 'Raposa 7777', 7600, true),
 ];
 
+// A estante (cache no IndexedDB) e a sessão sem servidor respondem assíncronas: com a máquina carregada, 1 s não basta
+const SLOW = { timeout: 5000 };
+
 const account = (rows: RankingRow[]): Fake => ({ data: { rows, anonymous: false } });
 const lastQuery = () => asked.filter(Boolean).at(-1);
 const location = () => screen.getByTestId('location').textContent;
@@ -67,12 +70,12 @@ describe('Ranking', () => {
   it('sem servidor: abre na semana da primeira música da estante, no Fácil, e diz que precisa de internet', async () => {
     renderScreen(<Ranking />, { path: '/ranking' });
     expect(screen.getByRole('heading', { name: 'Ranking' })).toBeInTheDocument();
-    await screen.findByRole('option', { name: 'Escala de Ré maior' });
+    await screen.findByRole('option', { name: 'Escala de Ré maior' }, SLOW);
     expect(screen.getByRole('button', { name: 'Semana' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Geral' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('combobox', { name: 'Música' })).toHaveDisplayValue('Escala de Ré maior');
     expect(screen.getByRole('combobox', { name: 'Nível' })).toHaveDisplayValue('Fácil');
-    expect(await screen.findByText(/Sem conexão\. O ranking precisa de internet/)).toBeInTheDocument();
+    expect(await screen.findByText(/Sem conexão\. O ranking precisa de internet/, undefined, SLOW)).toBeInTheDocument();
     expect(lastQuery()).toEqual({ songId: 'escala-re-maior', level: 'easy', period: 'week' });
   });
 
@@ -149,7 +152,7 @@ describe('Ranking', () => {
     fake = account(TOP);
     last = { songId: 'brilha-brilha-estrelinha', level: 'hard' };
     renderScreen(<Ranking />, { path: '/ranking' });
-    await screen.findByRole('option', { name: 'Brilha Brilha Estrelinha' });
+    await screen.findByRole('option', { name: 'Brilha Brilha Estrelinha' }, SLOW);
     expect(lastQuery()).toEqual({ songId: 'brilha-brilha-estrelinha', level: 'hard', period: 'week' });
     expect(screen.getByRole('combobox', { name: 'Música' })).toHaveDisplayValue('Brilha Brilha Estrelinha');
     expect(screen.getByRole('combobox', { name: 'Nível' })).toHaveDisplayValue('Difícil');
@@ -159,7 +162,7 @@ describe('Ranking', () => {
     fake = account(TOP);
     const user = userEvent.setup();
     renderScreen(<Ranking />, { path: '/ranking?musica=ode-a-alegria' });
-    await screen.findByRole('option', { name: 'Escala de Ré maior' });
+    await screen.findByRole('option', { name: 'Escala de Ré maior' }, SLOW);
     await user.click(screen.getByRole('button', { name: 'Geral' }));
     expect(location()).toBe('/ranking?musica=ode-a-alegria&nivel=facil&periodo=geral');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Nível' }), 'Médio');

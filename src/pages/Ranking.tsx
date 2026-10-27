@@ -163,7 +163,8 @@ const Podium = styled.ol`
   align-items: end;
 `;
 
-const PLACE_HEIGHT = { 1: 12.5, 2: 11.25, 3: 10.25 } as const;
+/** Degraus do pódio (236, 210 e 198 px no design), com folga para o nome não cortar com a fonte de reserva. */
+const PLACE_HEIGHT = { 1: 14, 2: 12.75, 3: 12 } as const;
 
 const Place = styled.li<{ $rank: 1 | 2 | 3; $me: boolean }>`
   height: ${({ $rank }) => PLACE_HEIGHT[$rank]}rem;
@@ -243,7 +244,7 @@ const rowGrid = css`
   padding: 0 0.875rem;
 
   @media (max-height: 500px) {
-    grid-template-columns: 2rem 1.75rem minmax(0, 1fr) 4.5rem 6rem;
+    grid-template-columns: 2rem 2.125rem minmax(0, 1fr) 4.5rem 6rem;
     gap: 0.5rem;
   }
 `;
