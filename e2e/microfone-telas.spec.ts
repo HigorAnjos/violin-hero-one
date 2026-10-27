@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { chooseSong, skipOnboarding } from './choose';
+import { launchWith } from './launch';
 
 // Microfone falso do Chromium e autoplay liberado: o Ouvido de verdade abre sem violino
 test.use({
   permissions: ['microphone'],
-  launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'] },
+  launchOptions: launchWith('--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'),
 });
 
 test.beforeEach(async ({ page }) => {

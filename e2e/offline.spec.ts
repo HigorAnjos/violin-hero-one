@@ -3,13 +3,14 @@ import { ODE } from '../src/game/engine/testing';
 import { DEVICE_DB_NAME, DEVICE_DB_VERSION, SONGS_STORE } from '../src/services/deviceDb';
 import type { CachedSong } from '../src/services/songCache';
 import { chooseSong, skipOnboarding } from './choose';
+import { launchWith } from './launch';
 
 /** As embutidas (src/game/notation/fixedSongs.json; o Playwright não importa JSON sem atributo). */
 const EMBEDDED_TITLES = ['Escala de Ré maior', 'Ode à Alegria', 'Brilha Brilha Estrelinha'];
 
 // O único spec com o service worker ligado (os outros o bloqueiam: o page.route não vê o que ele responde).
 // Sem gesto o Chromium não libera o áudio; a política de autoplay deixa a partida começar sozinha.
-test.use({ serviceWorkers: 'allow', launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } });
+test.use({ serviceWorkers: 'allow', launchOptions: launchWith('--autoplay-policy=no-user-gesture-required') });
 
 /** Uma música do catálogo aberta antes, com internet: o que o cache do aparelho guardou dela. */
 const BAIXADA: CachedSong = {

@@ -2,10 +2,11 @@ import { expect, test, type Page } from '@playwright/test';
 import { simulateGame, type GameResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
 import { blockWebFonts, fallbackFontsReady, fontsReady } from './fonts';
+import { launchWith } from './launch';
 import { expectArrowsAligned, expectFits, LONG_TITLE } from './layout';
 import { openWithState } from './state';
 
-test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } });
+test.use({ launchOptions: launchWith('--autoplay-policy=no-user-gesture-required') });
 
 const SONG = { ...ODE, title: LONG_TITLE };
 

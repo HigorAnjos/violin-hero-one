@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { test, type Browser, type Page } from '@playwright/test';
-import { LINK_EMAIL_SENT } from '../../src/services/account';
+import type { Page } from '@playwright/test';
+import { launchWith } from '../launch';
 import { expectFits, tinyText, tooSmallTargets } from '../layout';
 import { openWithState } from '../state';
-import { expect, linkFromMail, queued, SECONDS, SHORTEST, storedSession } from './aparelho';
+import { createAccountFromPrompt, expect, GENERATED_NAME as GENERATED, queued, SECONDS, SHORTEST, test } from './aparelho';
 
 /**
  * Desafio de ponta a ponta no Supabase local, com dois aparelhos: a conta A cria o desafio com o placar dela, a conta B
@@ -13,19 +13,9 @@ import { expect, linkFromMail, queued, SECONDS, SHORTEST, storedSession } from '
 test.use({
   storageState: { cookies: [], origins: [] },
   // A partida vai direto para /jogo com ?simular: sem o gesto do "Começar", o Chromium não libera o áudio
-  launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },
+  launchOptions: launchWith('--autoplay-policy=no-user-gesture-required'),
 });
 test.beforeEach(({}, info) => test.skip(info.project.name !== 'desktop', 'só no desktop; o 844×390 é conferido no fim'));
-
-const GENERATED = /(Raposa|Pinguim|Gato|Violinista) \d{4}/;
-
-async function newDevice(browser: Browser, baseURL: string | undefined): Promise<Page> {
-  const page = await (await browser.newContext({ baseURL })).newPage();
-  await page.addInitScript(() => localStorage.setItem('vh:onboarded', '1'));
-  await page.goto('/');
-  expect((await storedSession(page)).user.is_anonymous).toBe(true);
-  return page;
-}
 
 /** A mais curta no Fácil, tocada pelo violinista sintético com `errors` notas erradas; a partida sobe pela fila. */
 async function play(page: Page, errors: number) {
@@ -35,31 +25,23 @@ async function play(page: Page, errors: number) {
 }
 
 /** Pelo "Criar conta" da tela do desafio: o pedido de conta (motivo desafio), o link mágico e a volta para `back`. */
-async function createAccount(page: Page, email: string, back: RegExp) {
-  await page.getByRole('link', { name: 'Criar conta' }).click();
-  const prompt = page.getByRole('dialog', { name: /Quer desafiar um amigo/ });
-  await prompt.getByRole('button', { name: 'Usar e-mail' }).click();
-  await prompt.getByLabel('E-mail').fill(email);
-  await prompt.getByRole('button', { name: 'Mandar link' }).click();
-  await expect(prompt.getByRole('status')).toHaveText(LINK_EMAIL_SENT);
-  await page.goto(await linkFromMail(email, 1));
-  await expect(page).toHaveURL(back);
-  expect((await storedSession(page)).user.is_anonymous).toBe(false);
-}
+const createAccount = (page: Page, email: string, back: RegExp) => createAccountFromPrompt(page, /Quer desafiar um amigo/, email, back);
 
 const placar = (page: Page) => page.getByRole('region', { name: 'Placar do desafio' });
 
-test('A cria o desafio, B abre o link, aceita com conta, joga melhor e o resultado aparece para os dois', async ({ browser, baseURL }) => {
+test('A cria o desafio, B abre o link, aceita com conta, joga melhor e o resultado aparece para os dois', async ({ newDevice }) => {
   test.setTimeout((2 * SECONDS + 240) * 1000);
   const tag = randomUUID().slice(0, 8);
   const emails = [`desafio-a-${tag}@t.test`, `desafio-b-${tag}@t.test`];
 
   // A joga com dois erros como convidado; o desafio pede conta, e a partida de antes vira o placar a bater
-  const a = await newDevice(browser, baseURL);
+  const a = await newDevice();
   await play(a, 2);
   await a.goto('/desafio');
   await expect(a.getByText(/Desafiar alguém pede uma conta/)).toBeVisible();
-  // Volta para a montagem com a partida já escolhida (?partida=)
+  // Volta para a montagem com a partida já escolhida (?partida=). O pedido aparece antes de as partidas carregarem: o
+  // link só ganha a partida depois, e clicar antes volta sem ela
+  await expect(a.getByRole('link', { name: 'Criar conta' })).toHaveAttribute('href', /partida%3D[0-9a-f-]{36}/);
   await createAccount(a, emails[0], /\/desafio\?partida=[0-9a-f-]{36}#?$/);
   const choice = a.getByRole('combobox', { name: 'Música e nível' });
   await expect(choice).toContainText(SHORTEST.sheet.title);
@@ -71,7 +53,7 @@ test('A cria o desafio, B abre o link, aceita com conta, joga melhor e o resulta
   expect(path).toMatch(/^\/desafio\/[A-Za-z0-9_-]{12}$/);
 
   // B, em outro aparelho, abre o link: música, nível, pontos, prazo e o nome gerado de A; aceitar pede conta
-  const b = await newDevice(browser, baseURL);
+  const b = await newDevice();
   await b.goto(path);
   const heading = b.getByRole('heading', { level: 1 });
   await expect(heading).toHaveText(new RegExp(`^${GENERATED.source} te desafiou$`));

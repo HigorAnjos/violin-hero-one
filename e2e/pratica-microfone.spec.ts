@@ -1,12 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { PracticeResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
+import { launchWith } from './launch';
 import { openWithState } from './state';
 
 // Ouvido de verdade (microfone falso do Chromium) para a aba escondida fechar o microfone; ?simular toca as notas
 test.use({
   permissions: ['microphone'],
-  launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'] },
+  launchOptions: launchWith('--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'),
 });
 
 /** A aba some e volta, como trocar de app no celular: o MicSession fecha o microfone no 'hidden'. */

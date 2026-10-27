@@ -1,9 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { BadgeId } from '../../src/game/engine/types';
 import { songDurationSeconds } from '../../src/game/notation/song';
-import { DEVICE_DB_NAME, PLAYS_STORE } from '../../src/services/deviceDb';
 import { chooseSong } from '../choose';
-import { CATALOG } from './catalogo';
+import { queued, serverRows, SHORTEST } from './aparelho';
 
 /**
  * A fila de partidas contra o Supabase local: a partida termina sem internet, fica no IndexedDB do aparelho e, quando
@@ -11,39 +10,13 @@ import { CATALOG } from './catalogo';
  */
 const ALL_BADGES: BadgeId[] = ['primeira-musica', 'sem-erros', 'combo-25', 'combo-50', 'combo-100', 'afinacao-de-ouro'];
 
-/** A mais curta da estante no Fácil: a partida toca em tempo real. */
-const SHORTEST = [...CATALOG].sort((a, b) => songDurationSeconds(a.charts.easy) - songDurationSeconds(b.charts.easy))[0];
-
 test.skip(({ isMobile }) => isMobile, 'a partida em tempo real só no desktop');
 
-/** Partidas esperando na fila do aparelho. */
-const queued = (page: Page) =>
-  page.evaluate(
-    ([name, store]) =>
-      new Promise<number>((resolve, reject) => {
-        const open = indexedDB.open(name);
-        open.onerror = () => reject(open.error);
-        open.onsuccess = () => {
-          const count = open.result.transaction(store, 'readonly').objectStore(store).count();
-          count.onsuccess = () => resolve(count.result);
-          count.onerror = () => reject(count.error);
-        };
-      }),
-    [DEVICE_DB_NAME, PLAYS_STORE] as const
-  );
-
-/** As partidas do jogador da sessão com este client_id, pelo PostgREST com o token dele (a RLS decide o que vem). */
+/** As partidas do jogador da sessão com este client_id (a RLS decide o que vem). */
 const playsOnServer = (page: Page, clientId: string) =>
-  page.evaluate(
-    async ([url, key, id]) => {
-      const token = Object.entries(localStorage).find(([k]) => /^sb-.+-auth-token$/.test(k))?.[1];
-      const access = token ? (JSON.parse(token) as { access_token: string }).access_token : '';
-      const res = await fetch(`${url}/rest/v1/plays?select=client_id,song_id,mode,finished,duration_ms&client_id=eq.${id}`, {
-        headers: { apikey: key, Authorization: `Bearer ${access}`, 'Accept-Profile': 'violinhero' },
-      });
-      return (await res.json()) as { client_id: string; song_id: string; mode: string; finished: boolean; duration_ms: number }[];
-    },
-    [process.env.E2E_SUPABASE_URL!, process.env.E2E_SUPABASE_ANON_KEY!, clientId] as const
+  serverRows<{ client_id: string; song_id: string; mode: string; finished: boolean; duration_ms: number }>(
+    page,
+    `plays?select=client_id,song_id,mode,finished,duration_ms&client_id=eq.${clientId}`
   );
 
 test(`sem internet a partida fica na fila; a rede volta e ela chega ao Supabase (${SHORTEST.sheet.title})`, async ({ page, context }) => {
