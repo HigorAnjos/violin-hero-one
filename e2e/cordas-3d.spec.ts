@@ -2,11 +2,12 @@ import { expect, test, type Page } from '@playwright/test';
 import type { GameResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
 import { fontsReady } from './fonts';
+import { launchWith } from './launch';
 import { expectFits, expectVisibleFocus, LONG_TITLE, tinyText, tooSmallTargets } from './layout';
 import { openWithState } from './state';
 
 // Build do e2e (--mode e2e): ?ouvido=simulado e ?simular valem; sem gesto o Chromium não libera o áudio
-test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } });
+test.use({ launchOptions: launchWith('--autoplay-policy=no-user-gesture-required') });
 
 const lastResult = (page: Page) => page.evaluate(() => (window as Window & { __vhResult?: GameResult }).__vhResult);
 

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Page } from '@playwright/test';
+import { launchWith } from '../launch';
 import { expectFits, tinyText, tooSmallTargets } from '../layout';
 import { openWithState } from '../state';
 import { createAccountFromPrompt, expect, GENERATED_NAME as GENERATED, queued, SECONDS, SHORTEST, test } from './aparelho';
@@ -12,7 +13,7 @@ import { createAccountFromPrompt, expect, GENERATED_NAME as GENERATED, queued, S
 test.use({
   storageState: { cookies: [], origins: [] },
   // A partida vai direto para /jogo com ?simular: sem o gesto do "Começar", o Chromium não libera o áudio
-  launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },
+  launchOptions: launchWith('--autoplay-policy=no-user-gesture-required'),
 });
 test.beforeEach(({}, info) => test.skip(info.project.name !== 'desktop', 'só no desktop; o 844×390 é conferido no fim'));
 

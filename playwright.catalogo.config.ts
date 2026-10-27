@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { defineConfig, devices } from '@playwright/test';
 import { SESSION } from './e2e/catalogo/sessao';
+import { launchWith } from './e2e/launch';
 
 /**
  * e2e do catálogo: o app servido com o Supabase local (npm run db:local já subiu, migrou e semeou) no lugar do build
@@ -45,6 +46,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
     serviceWorkers: 'block',
+    // A hora da partida é o relógio do áudio: na placa de som real ele para sob carga (e2e/launch.ts)
+    launchOptions: launchWith(),
   },
   projects: [
     // Um login anônimo para a suíte toda: o Supabase local aceita 30 por hora por IP (auth.rate_limit)
