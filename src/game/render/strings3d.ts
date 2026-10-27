@@ -73,7 +73,8 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
     resolution: Math.min(density, MAX_RESOLUTION),
     autoStart: false,
     sharedTicker: false,
-    preference: 'webgl',
+    // A cena usa meshes WebGL; o fallback automático de canvas não a desenha.
+    preference: ['webgl'],
   });
   if (!(host instanceof HTMLCanvasElement)) host.appendChild(app.canvas);
 
