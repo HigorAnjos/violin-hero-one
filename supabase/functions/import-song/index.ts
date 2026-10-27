@@ -3,8 +3,12 @@
 // (o do seed), importado daqui: nunca vai para o pacote do app. A chave de serviço só existe no ambiente do Supabase.
 //
 // POST multipart/form-data: file (o arquivo), part (opcional: a parte escolhida na 2ª chamada)
-// POST application/json: { song } (melodia do editor) e, para salvar de novo a mesma, { replace: "<id>" }
-// Resposta: 201 { status: "created", song }, 200 { status: "choose-part", parts }, ou { error: { code, message } }
+// POST application/json: { origin: "editor", song } (melodia do editor) e, para salvar de novo a mesma, { replace: "<id>" }
+// Resposta (o contrato de src/services/songImport.ts):
+//   201 { status: "created", sheet, levels, song, hash, part } — sheet como SongSheet do app; song é o chart gravado
+//       (no editor, o do nível que veio; no arquivo, o Fácil, ou o primeiro que coube) e hash a chave dele no cache
+//   200 { status: "choose-part", parts }
+//   4xx/5xx { error: { code, message, detail? } } — 415, 413, 422 recusado; 409 limite; 401 sessão; 500 servidor
 import { createClient } from '@supabase/supabase-js';
 import {
   IMPORT_LIMITS,
@@ -70,13 +74,14 @@ async function readRequest(req: Request): Promise<Request_> {
   if (type.startsWith('application/json')) {
     const text = await req.text();
     if (text.length > IMPORT_LIMITS.fileBytes + MULTIPART_SLACK) throw new ImportError('file_too_large', `${text.length} bytes`);
-    let body: { song?: unknown; replace?: unknown };
+    let body: { origin?: unknown; song?: unknown; replace?: unknown };
     try {
       body = JSON.parse(text);
     } catch {
       throw new ImportError('invalid_song', 'JSON inválido');
     }
     if (!body || typeof body !== 'object' || body.song === undefined) throw new ImportError('invalid_song', 'sem o campo "song"');
+    if (body.origin !== undefined && body.origin !== 'editor') throw new ImportError('invalid_song', `origin ${String(body.origin)}`);
     return { kind: 'editor', song: body.song, replace: typeof body.replace === 'string' ? body.replace : undefined };
   }
   throw new ImportError('unknown_format', `content-type ${type || 'vazio'}`);
@@ -140,7 +145,27 @@ Deno.serve(async (req) => {
     if (error?.code === 'VHLIM') throw new ImportError('limit_reached');
     if (error?.code === 'P0002') throw new ImportError('invalid_song', 'música a regravar não encontrada');
     if (error) throw error;
-    return json(201, { status: 'created', song: saved, part: outcome.song.part });
+    const row = saved as { id: string; title: string; composer: string; bpm: number; time_beats: number; time_unit: number; key: string; duration_seconds: number; origin: string; hashes: Record<string, string> };
+    // o editor continua no nível em que escreveu; o arquivo abre no mais fácil que entrou
+    const wanted = input.kind === 'editor' ? (input.song as { level?: unknown } | null)?.level : 'easy';
+    const level = outcome.song.levels.find((l) => l === wanted) ?? outcome.song.levels[0];
+    return json(201, {
+      status: 'created',
+      sheet: {
+        id: row.id,
+        title: row.title,
+        composer: row.composer,
+        bpm: Number(row.bpm),
+        timeSignature: { beats: row.time_beats, unit: row.time_unit },
+        key: row.key,
+        durationSeconds: Number(row.duration_seconds),
+        origin: row.origin,
+      },
+      levels: outcome.song.levels,
+      song: charts[level],
+      hash: row.hashes[level],
+      part: outcome.song.part,
+    });
   } catch (error) {
     if (error instanceof ImportError) return fail(error);
     console.error('import-song', error);

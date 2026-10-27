@@ -1188,6 +1188,8 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       assert.deepEqual(rows, [{ owner_id: dono, visibility: 'private', catalog_position: null }]);
       const song = await getSong(c, dono, r.id, 'hard');
       assert.match(song.rows[0].hash, /^[0-9a-f]{64}$/);
+      assert.equal(r.hashes.hard, song.rows[0].hash);
+      assert.deepEqual(Object.keys(r.hashes).sort(), ['easy', 'hard', 'medium']);
       assert.deepEqual((await as(c, dono, `select format from ${S}.song_sources where song_id = $1`, [r.id])).rows, [{ format: 'mxl' }]);
     });
 

@@ -101,7 +101,9 @@ begin
     'id', v_song.id, 'title', v_song.title, 'composer', v_song.composer, 'bpm', v_song.bpm,
     'time_beats', v_song.time_beats, 'time_unit', v_song.time_unit, 'key', v_song.key,
     'duration_seconds', v_song.duration_seconds, 'origin', v_song.origin,
-    'levels', (select jsonb_agg(c.level order by c.level) from violinhero.song_charts c where c.song_id = v_song.id));
+    'levels', (select jsonb_agg(c.level order by c.level) from violinhero.song_charts c where c.song_id = v_song.id),
+    -- chave do cache offline de cada nível, a mesma que get_song devolve
+    'hashes', (select jsonb_object_agg(c.level, c.hash) from violinhero.song_charts c where c.song_id = v_song.id));
 end $$;
 
 -- Ranking só de música pública: a do jogador (privada) dá "não encontrada" até para o dono. O resto é o da 0007.

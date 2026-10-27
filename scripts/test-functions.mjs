@@ -93,21 +93,25 @@ describe('Edge Function import-song', { skip: !ready && 'Supabase local não con
       const { status, body } = await call(dono.token, form(name));
       assert.equal(status, 201, JSON.stringify(body));
       assert.equal(body.status, 'created');
-      assert.equal(body.song.title, title);
-      assert.equal(body.song.origin, 'imported');
-      assert.deepEqual(body.song.levels, ['easy', 'medium', 'hard']);
-
-      const { rows } = await db.query(`select owner_id, visibility from ${S}.songs where id = $1`, [body.song.id]);
-      assert.deepEqual(rows, [{ owner_id: dono.id, visibility: 'private' }]);
-      const mine = await dono.client.rpc('get_song', { p_song_id: body.song.id, p_level: 'hard' });
+      const id = body.sheet.id;
+      assert.equal(body.sheet.title, title);
+      assert.equal(body.sheet.origin, 'imported');
+      assert.deepEqual(body.levels, ['easy', 'medium', 'hard']);
+      // o que o songImport.ts lê: o chart do Fácil (Song v1) e o hash dele, o mesmo de get_song
+      assert.deepEqual([body.song.id, body.song.level, body.song.formatVersion], [id, 'easy', 1]);
+      const mine = await dono.client.rpc('get_song', { p_song_id: id, p_level: 'easy' });
       assert.equal(mine.data.length, 1);
-      assert.match(mine.data[0].hash, /^[0-9a-f]{64}$/);
+      assert.equal(body.hash, mine.data[0].hash);
+      assert.deepEqual(mine.data[0].chart, body.song);
+
+      const { rows } = await db.query(`select owner_id, visibility from ${S}.songs where id = $1`, [id]);
+      assert.deepEqual(rows, [{ owner_id: dono.id, visibility: 'private' }]);
 
       const outro = await player();
-      assert.deepEqual((await outro.client.from('songs').select('id').eq('id', body.song.id)).data, []);
-      assert.deepEqual((await outro.client.from('song_charts').select('level').eq('song_id', body.song.id)).data, []);
-      assert.deepEqual((await outro.client.from('song_sources').select('format').eq('song_id', body.song.id)).data, []);
-      assert.deepEqual((await outro.client.rpc('get_song', { p_song_id: body.song.id, p_level: 'easy' })).data, []);
+      assert.deepEqual((await outro.client.from('songs').select('id').eq('id', id)).data, []);
+      assert.deepEqual((await outro.client.from('song_charts').select('level').eq('song_id', id)).data, []);
+      assert.deepEqual((await outro.client.from('song_sources').select('format').eq('song_id', id)).data, []);
+      assert.deepEqual((await outro.client.rpc('get_song', { p_song_id: id, p_level: 'easy' })).data, []);
     });
   }
 
@@ -121,21 +125,32 @@ describe('Edge Function import-song', { skip: !ready && 'Supabase local não con
     assert.equal(second.body.part.id, 'P2');
   });
 
-  it('melodia do editor: grava com origin editor; salvar de novo troca a mesma música', async () => {
+  it('melodia do editor ({ origin: "editor", song }, como o songImport.ts manda): volta o chart do mesmo nível e o hash', async () => {
     const dono = await player();
+    // a Song como o editor salva (songToSave): nível Difícil, corda e dedo dele; o servidor refaz
     const song = {
-      title: 'Do editor', composer: '', key: 'D major', bpm: 80, timeSignature: { beats: 4, unit: 4 },
-      measures: [{ beats: 4, notes: [{ beat: 0, beats: 2, midi: 62 }, { beat: 2, beats: 2, midi: 66 }] }],
+      formatVersion: 1, id: 'rascunho', title: 'Do editor', composer: '', key: 'D major', bpm: 80,
+      timeSignature: { beats: 4, unit: 4 }, level: 'hard',
+      measures: [{ beats: 4, notes: [{ beat: 0, beats: 2, midi: 62, string: 1, finger: 0 }, { beat: 2, beats: 2, midi: 66, string: 1, finger: 2 }] }],
     };
-    const first = await call(dono.token, { song });
+    const first = await call(dono.token, { origin: 'editor', song });
     assert.equal(first.status, 201, JSON.stringify(first.body));
-    assert.equal(first.body.song.origin, 'editor');
-    const again = await call(dono.token, { song: { ...song, title: 'Do editor 2' }, replace: first.body.song.id });
+    const id = first.body.sheet.id;
+    assert.notEqual(id, 'rascunho');
+    assert.deepEqual([first.body.sheet.origin, first.body.song.id, first.body.song.level], ['editor', id, 'hard']);
+    assert.deepEqual(first.body.song.measures[0].notes.map((n) => n.midi), [62, 66]);
+    const mine = await dono.client.rpc('get_song', { p_song_id: id, p_level: 'hard' });
+    assert.equal(first.body.hash, mine.data[0].hash);
+
+    const again = await call(dono.token, { origin: 'editor', song: { ...song, title: 'Do editor 2' }, replace: id });
     assert.equal(again.status, 201);
-    assert.deepEqual([again.body.song.id, again.body.song.title], [first.body.song.id, 'Do editor 2']);
+    assert.deepEqual([again.body.sheet.id, again.body.sheet.title], [id, 'Do editor 2']);
     const outro = await player();
-    const stolen = await call(outro.token, { song, replace: first.body.song.id });
+    const stolen = await call(outro.token, { origin: 'editor', song, replace: id });
+    assert.equal(stolen.status, 422);
     assert.equal(stolen.body.error.code, 'invalid_song');
+    const forged = await call(outro.token, { origin: 'catalog', song });
+    assert.equal(forged.body.error.code, 'invalid_song');
   });
 
   // Com verify_jwt (padrão) o gateway barra token inválido antes da função; a chave anônima passa nele e a função barra
