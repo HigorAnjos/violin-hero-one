@@ -102,6 +102,9 @@ test('ciclo 3: convidado joga, joga offline, cria conta, entra em outro aparelho
     await a.getByRole('button', { name: /Começar/ }).click();
     await a.getByRole('button', { name: /Pular contagem/ }).click();
     await expect(a).toHaveURL(/\/jogo\/3d$/);
+    // O Pixi carrega pedaços ao montar o canvas: no app o service worker já os guardou, no e2e (sem SW) não. Corta a
+    // rede com as cordas já desenhadas, como o jogador que perde o sinal no meio da música
+    await expect(a.getByTestId('cordas-3d').locator('canvas')).toBeVisible();
     await a.context().setOffline(true);
     await expect(a).toHaveURL(/\/(selo-novo|resultado)$/, { timeout: (SECONDS + 20) * 1000 });
     await expect.poll(() => queuedPlays(a), { message: 'a partida espera no aparelho' }).toHaveLength(1);
