@@ -1,8 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
+import { DictationPanel } from '../components/DictationPanel/DictationPanel';
 import { NoteInspector, type InspectedNote } from '../components/NoteInspector/NoteInspector';
 import { NotePalette } from '../components/NotePalette/NotePalette';
 import { ScoreStaff } from '../components/ScoreStaff/ScoreStaff';
@@ -26,6 +27,7 @@ import {
   type EditorNote,
   type EditorState,
 } from '../game/notation/editor';
+import { DEFAULT_DICTATION_GRID, dictationOrigin, type DictationGrid } from '../game/notation/dictation';
 import type { Song } from '../game/notation/song';
 import { STRING_LETTERS, STRING_SOLFEGE } from '../game/notation/violin';
 import { clearDraft } from '../services/editorDraft';
@@ -35,7 +37,8 @@ import { songKeys } from '../services/songs';
 import { modesUrl } from '../shell/choice';
 import { appImporter } from '../shell/editorImporter';
 import { listen as playSong, type Listening } from '../shell/listen';
-import { ROUTES } from '../shell/routes';
+import { micTroubleUrl, ROUTES } from '../shell/routes';
+import { useDictation, type DictationDeps } from '../shell/useDictation';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { keyAction, useScoreEditor, type DraftStatus, type EditorAction } from '../shell/useScoreEditor';
 
@@ -170,18 +173,31 @@ const Tools = styled.div`
   padding-bottom: 0.375rem;
 `;
 
-const Tab = styled.span`
+const Tabs = styled.div`
+  display: flex;
+  gap: 2px;
+`;
+
+const Tab = styled.button`
   min-height: 2.75rem;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0 1rem;
+  border: 0;
   border-radius: ${({ theme }) => `${theme.borderRadius.md} ${theme.borderRadius.md} 0 0`};
-  background-color: ${({ theme }) => theme.colors.surface};
-  box-shadow: inset 0 -3px 0 ${({ theme }) => theme.colors.primary.main};
+  background: transparent;
+  font-family: ${({ theme }) => theme.fonts.ui};
   font-weight: 800;
   font-size: 0.875rem;
-  color: ${({ theme }) => theme.colors.text};
+  color: ${({ theme }) => theme.colors.textMuted};
+  cursor: pointer;
+
+  &[aria-selected='true'] {
+    background-color: ${({ theme }) => theme.colors.surface};
+    box-shadow: inset 0 -3px 0 ${({ theme }) => theme.colors.primary.main};
+    color: ${({ theme }) => theme.colors.text};
+  }
 `;
 
 const Sheet = styled.section`
@@ -364,11 +380,17 @@ const TEXT_FIELDS = new Set(['INPUT', 'SELECT', 'TEXTAREA']);
 export interface ScoreEditorProps {
   importer?: SongImporter;
   listen?: typeof playSong;
+  dictation?: DictationDeps;
 }
 
 /** 4 · Escrever partitura (ScoreEditor.dc): a pauta com teclado e toque, ouvir, rascunho no aparelho e salvar na biblioteca. */
-export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, listen = playSong }) => {
+export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, listen = playSong, dictation: dictationDeps }) => {
   const { state, dispatch, draft } = useScoreEditor();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const onDictationTab = location.pathname.replace(/\/+$/, '') === ROUTES.dictation;
+  const tabUrl = (path: string) => `${path}${location.search}`;
+  const [grid, setGrid] = React.useState<DictationGrid>(DEFAULT_DICTATION_GRID);
   const [importer] = React.useState(() => given ?? appImporter());
   const queryClient = useQueryClient();
   const compact = useMediaQuery(COMPACT_QUERY);
@@ -387,6 +409,38 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
 
   React.useEffect(() => staff.current?.focus({ preventScroll: true }), []);
   React.useEffect(() => () => playing?.stop(), [playing]);
+
+  const dictation = useDictation(
+    {
+      onNote: (note, origin) => dispatch({ type: 'dictated', origin, note }),
+      onTrouble: (problem, cause) => navigate(micTroubleUrl(problem, tabUrl(ROUTES.dictation), cause)),
+      // Terminou: cai na pauta para corrigir (e o MicGuard fecha o microfone)
+      onDone: () => {
+        navigate(tabUrl(ROUTES.editor), { replace: true });
+        staff.current?.focus({ preventScroll: true });
+      },
+    },
+    dictationDeps,
+  );
+  const dictating = dictation.phase.status !== 'idle';
+  const stopDictation = dictation.stop;
+
+  React.useEffect(() => {
+    if (!dictating) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      stopDictation();
+    };
+    window.addEventListener('keydown', onEscape);
+    return () => window.removeEventListener('keydown', onEscape);
+  }, [dictating, stopDictation]);
+
+  const startDictation = () => {
+    playing?.stop();
+    setPlaying(null);
+    void dictation.start({ meta: state.doc.meta, origin: dictationOrigin(state), grid });
+  };
 
   const act = (action: EditorAction) => dispatch(action);
 
@@ -453,21 +507,21 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
           <TitleInput aria-label="Título da música" placeholder="Sem título ✎" maxLength={80} value={meta.title} onChange={(e) => act({ type: 'title', title: e.target.value })} />
         </TitleBlock>
         <Metas>
-          <Meta aria-label="Compasso" value={`${ts.beats}/${ts.unit}`} onChange={(e) => act({ type: 'time', timeSignature: TIME_SIGNATURES.find((t) => `${t.beats}/${t.unit}` === e.target.value)! })}>
+          <Meta aria-label="Compasso" disabled={dictating} value={`${ts.beats}/${ts.unit}`} onChange={(e) => act({ type: 'time', timeSignature: TIME_SIGNATURES.find((t) => `${t.beats}/${t.unit}` === e.target.value)! })}>
             {TIME_SIGNATURES.map((t) => (
               <option key={`${t.beats}/${t.unit}`} value={`${t.beats}/${t.unit}`}>
                 {t.beats}/{t.unit}
               </option>
             ))}
           </Meta>
-          <Meta aria-label="Tonalidade" value={meta.key} onChange={(e) => act({ type: 'key', key: e.target.value })}>
+          <Meta aria-label="Tonalidade" disabled={dictating} value={meta.key} onChange={(e) => act({ type: 'key', key: e.target.value })}>
             {KEY_CHOICES.map((k) => (
               <option key={k.key} value={k.key}>
                 {k.label}
               </option>
             ))}
           </Meta>
-          <Meta aria-label="Andamento" value={meta.bpm} onChange={(e) => act({ type: 'bpm', bpm: Number(e.target.value) })}>
+          <Meta aria-label="Andamento" disabled={dictating} value={meta.bpm} onChange={(e) => act({ type: 'bpm', bpm: Number(e.target.value) })}>
             {bpms.map((b) => (
               <option key={b} value={b}>
                 {unitGlyph} = {b}
@@ -476,7 +530,7 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
           </Meta>
         </Metas>
         <Grow />
-        <Button type="button" $variant="ghost" aria-pressed={playing !== null} disabled={!notes} onClick={() => void toggleListen()}>
+        <Button type="button" $variant="ghost" aria-pressed={playing !== null} disabled={!notes || dictating} onClick={() => void toggleListen()}>
           <span aria-hidden="true">{playing ? '■' : '▶'}</span>
           {playing ? 'Parar' : 'Ouvir'}
         </Button>
@@ -494,9 +548,14 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
       <Body>
         <Main>
           <Tools>
-            <Tab>
-              <span aria-hidden="true">✎</span>Na pauta
-            </Tab>
+            <Tabs role="tablist" aria-label="Jeito de escrever">
+              <Tab type="button" role="tab" aria-selected={onDictationTab} onClick={() => !onDictationTab && navigate(tabUrl(ROUTES.dictation), { replace: true })}>
+                <span aria-hidden="true">🎻</span>Ditar tocando
+              </Tab>
+              <Tab type="button" role="tab" aria-selected={!onDictationTab} onClick={() => onDictationTab && navigate(tabUrl(ROUTES.editor), { replace: true })}>
+                <span aria-hidden="true">✎</span>Na pauta
+              </Tab>
+            </Tabs>
             <NotePalette duration={state.duration} dotted={state.dotted} canUndo={state.past.length > 0} canRedo={state.future.length > 0} onAction={act} />
           </Tools>
           <Sheet aria-label="Partitura em edição">
@@ -516,6 +575,18 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
               {announce}
             </span>
           </Sheet>
+          {onDictationTab && (
+            <DictationPanel
+              phase={dictation.phase}
+              live={dictation.live}
+              grid={grid}
+              onGrid={setGrid}
+              onStart={startDictation}
+              onStop={dictation.stop}
+              fifths={keyFifthsOf(meta.key)}
+              tempo={`${unitGlyph} = ${meta.bpm} · ${ts.beats}/${ts.unit}`}
+            />
+          )}
         </Main>
 
         <Aside aria-label="Detalhes da partitura">

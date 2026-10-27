@@ -74,7 +74,8 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.songs} element={<SongSelect />} />
             <Route path={ROUTES.loading} element={<Loading />} />
             <Route path={ROUTES.library} element={<Library />} />
-            <Route path={ROUTES.editor} element={<ScoreEditor />} />
+            {/* Uma rota só para as abas (/editor e /editor/ditar): trocar de aba não remonta o editor */}
+            <Route path={`${ROUTES.editor}/*`} element={<ScoreEditor />} />
             <Route path={ROUTES.level} element={<OnboardLevel />} />
             <Route path={ROUTES.mic} element={<OnboardMic />} />
             <Route path={ROUTES.strings} element={<OnboardTest />} />

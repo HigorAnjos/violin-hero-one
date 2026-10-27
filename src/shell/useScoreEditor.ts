@@ -1,4 +1,5 @@
 import React from 'react';
+import { writeDictated, type DictatedNote } from '../game/notation/dictation';
 import {
   clearPlacement,
   createEditor,
@@ -39,6 +40,8 @@ export type EditorAction =
   | { type: 'letter'; letter: Letter }
   /** A entrada por API (ditado): a nota no cursor, com a figura escolhida. */
   | { type: 'note'; midi: number }
+  /** Nota que o ditado fechou: no lugar e com a duração que a grade deu, `origin` semínimas depois do começo. */
+  | { type: 'dictated'; origin: number; note: DictatedNote }
   | { type: 'rest' }
   | { type: 'delete' }
   | { type: 'move'; direction: -1 | 1 }
@@ -76,6 +79,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return insertLetter(state, action.letter);
     case 'note':
       return insertNote(state, action.midi);
+    case 'dictated':
+      return writeDictated(state, action.origin, action.note);
     case 'rest':
       return insertRest(state);
     case 'delete':
