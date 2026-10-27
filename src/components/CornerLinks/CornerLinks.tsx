@@ -32,11 +32,28 @@ const Round = styled(Link)`
   }
 `;
 
-/** Os botões redondos do canto da tela inicial (Main.dc): Configurações e Perfil, com o bicho do jogador. */
+/** O troféu do ranking, no âmbar do design. */
+const Trophy = styled.svg`
+  color: ${({ theme }) => theme.colors.warning.text};
+`;
+
+/** Os botões redondos do canto da tela inicial (Main.dc): Ranking, Configurações e Perfil, com o bicho do jogador. */
 export const CornerLinks: React.FC = () => {
   const [animal] = React.useState(() => loadLocalProfile().animal ?? null);
   return (
     <>
+      <Round to={ROUTES.ranking} aria-label="Ranking">
+        <Trophy width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M7 4h10v5a5 5 0 0 1 -10 0z M7 6H3v2a4 4 0 0 0 4 4 M17 6h4v2a4 4 0 0 1 -4 4 M12 14v4 M8 21h8"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </Trophy>
+      </Round>
       <Round to={ROUTES.settings} aria-label="Configurações">
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="2" />

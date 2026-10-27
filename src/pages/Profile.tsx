@@ -523,6 +523,9 @@ export const Profile: React.FC = () => {
             <span aria-hidden="true">◂</span>
             Menu
           </Button>
+          <Button as={Link} to={ROUTES.ranking} $variant="ghost">
+            Ranking
+          </Button>
           <Button as={Link} to={settingsUrl()} $variant="ghost">
             Configurações
           </Button>

@@ -108,8 +108,9 @@ describe('Profile', () => {
     ]);
   });
 
-  it('Menu, Configurações e Tocar', async () => {
+  it('Menu, Ranking, Configurações e Tocar', async () => {
     renderScreen(<Profile />);
+    expect(screen.getByRole('link', { name: 'Ranking' })).toHaveAttribute('href', '/ranking');
     await userEvent.click(screen.getByRole('link', { name: 'Configurações' }));
     expect(screen.getByTestId('location')).toHaveTextContent('/configuracoes');
     expect(screen.getByRole('link', { name: /Menu/ })).toHaveAttribute('href', '/');
