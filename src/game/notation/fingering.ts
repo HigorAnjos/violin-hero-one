@@ -1,7 +1,7 @@
 // Corda e dedo sugeridos: caminho de menor custo (Viterbi) sobre todas as posições possíveis de cada nota.
 // O custo soma o deslocamento da mão entre posições, a troca de corda e a preferência do nível.
-import type { Finger } from './song';
-import { OPEN_STRING_MIDI, type StringIndex } from './violin';
+import type { Finger } from './song.ts';
+import { OPEN_STRING_MIDI, type StringIndex } from './violin.ts';
 
 export type Position = 1 | 2 | 3;
 

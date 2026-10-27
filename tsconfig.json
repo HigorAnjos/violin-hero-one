@@ -13,6 +13,7 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom/vitest"]
   },
   "include": ["src", "e2e", "vite.config.ts", "playwright.config.ts", "playwright.catalogo.config.ts"]
