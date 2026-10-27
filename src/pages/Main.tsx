@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { MenuLink } from '../components/MenuLink/MenuLink';
 import { SessionStatus } from '../components/SessionStatus/SessionStatus';
+import { StreakPill } from '../components/StreakPill/StreakPill';
 import { CornerLinks } from '../components/CornerLinks/CornerLinks';
 import { ViolinArt } from '../components/ViolinArt/ViolinArt';
 import { levelSettings } from '../game/engine/levels';
@@ -155,6 +156,7 @@ export const Main: React.FC = () => {
         />
       </Menu>
       <Controls>
+        <StreakPill />
         <SessionStatus />
         <CornerLinks />
       </Controls>
