@@ -15,6 +15,7 @@ import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
 import { OnboardTest } from './pages/OnboardTest';
 import { Profile } from './pages/Profile';
+import { Ranking } from './pages/Ranking';
 import { Reminder } from './pages/Reminder';
 import { Settings } from './pages/Settings';
 import { isOnboarded } from './services/profile';
@@ -88,6 +89,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.reminder} element={<Reminder />} />
             <Route path={ROUTES.login} element={<Login />} />
             <Route path={ROUTES.account} element={<GuestPrompt />} />
+            <Route path={ROUTES.ranking} element={<Ranking />} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           </React.Suspense>
