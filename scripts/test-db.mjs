@@ -21,9 +21,13 @@ const ZERO = '00000000-0000-0000-0000-000000000000';
  * Função nova só entra aqui junto com o GRANT dela na migração; o resto fica só para o servidor.
  */
 const ALLOWED_FUNCTIONS = [
+  'authenticated violinhero.accept_challenge(text)',
+  'authenticated violinhero.create_challenge(uuid,integer)',
   'authenticated violinhero.ensure_my_profile()',
+  'authenticated violinhero.get_challenge(text)',
   'authenticated violinhero.get_ranking(text,violinhero.chart_level,text,integer)',
   'authenticated violinhero.get_song(text,violinhero.chart_level)',
+  'authenticated violinhero.list_my_challenges()',
   'authenticated violinhero.submit_play(jsonb)',
 ];
 
@@ -826,6 +830,235 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
     it('sem login (anon) NÃO chama get_ranking', async () => {
       const id = await serverSong(c);
       await denied(as(c, null, `select * from ${S}.get_ranking($1, 'easy', 'all', 20)`, [id]));
+    });
+  });
+
+  describe('desafios', () => {
+    const call = (uid, sql, params) => as(c, uid, sql, params).then((res) => res.rows[0].r);
+    const create = (uid, playId, days = 2) => call(uid, `select ${S}.create_challenge($1, $2) as r`, [playId, days]);
+    const read = (uid, code) => call(uid, `select ${S}.get_challenge($1) as r`, [code]);
+    const accept = (uid, code) => call(uid, `select ${S}.accept_challenge($1) as r`, [code]);
+    const mine = (uid) => call(uid, `select ${S}.list_my_challenges() as r`);
+    const needsAccount = (promise) => assert.rejects(promise, (e) => e.code === '28000');
+    /** Conta (não anônima) com bicho e apelido digitado; `name` é o nome público. */
+    async function account(animal = 'fox', nickname = 'Segredo') {
+      const id = await newUser(c, { anonymous: false });
+      await c.query(`update ${S}.profiles set animal = $2, nickname = $3 where id = $1`, [id, animal, nickname]);
+      const { rows: [p] } = await c.query(`select ${S}.ranking_name(animal, nickname_tag) as name from ${S}.profiles where id = $1`, [id]);
+      return { id, name: p.name };
+    }
+    const FOUR = { sequence: Array(4).fill('perfect') };
+    const THREE = { sequence: ['perfect', 'perfect', 'perfect', 'miss'] };
+    const TWO = { sequence: ['perfect', 'perfect', 'miss', 'miss'] };
+    /** Desafio de `who` com 300 pontos a bater numa música de 4 notas (ou a dada). */
+    async function challengeOf(who, { song = null, days = 2 } = {}) {
+      const songId = song ?? (await serverSong(c, { notes: 4, levels: ['easy', 'hard'] }));
+      const play = await submit(c, who.id, playOf(songId, THREE));
+      return { songId, play: play.play_id, challenge: await create(who.id, play.play_id, days) };
+    }
+    /**
+     * O prazo acaba agora. Na transação now() não anda: o desafio passa a ter sido criado ontem, o aceite uma hora
+     * atrás e as partidas que chegaram "agora" um minuto atrás (dentro do prazo); as enviadas depois ficam fora.
+     */
+    async function close(code) {
+      const { rows: [{ id }] } = await c.query(
+        `update ${S}.challenges set created_at = now() - interval '1 day', expires_at = now() - interval '1 second' where code = $1 returning id`, [code]);
+      await c.query(`update ${S}.challenge_entries set accepted_at = now() - interval '1 hour' where challenge_id = $1 and accepted_at = now()`, [id]);
+      await c.query(`update ${S}.plays set created_at = now() - interval '1 minute' where created_at = now()`);
+    }
+
+    it('o link mostra só música, nível, pontos, prazo e o nome gerado: nada de user_id, e-mail, apelido nem partida', async () => {
+      const a = await account('cat', 'NomeDigitado');
+      const { songId, play, challenge } = await challengeOf(a, { days: 3 });
+      assert.match(challenge.code, /^[A-Za-z0-9_-]{12}$/);
+      const visitor = await newUser(c);
+      const seen = await read(visitor, challenge.code);
+      assert.deepEqual(Object.keys(seen).sort(),
+        ['challenger_name', 'closed', 'code', 'entries', 'expires_at', 'level', 'role', 'song_id', 'song_title', 'target_score']);
+      assert.deepEqual([seen.song_id, seen.song_title, seen.level, seen.target_score, seen.challenger_name, seen.role, seen.entries, seen.closed],
+        [songId, 'Teste', 'easy', 300, a.name, 'visitor', null, false]);
+      const days = (new Date(seen.expires_at) - new Date((await c.query('select now() as n')).rows[0].n)) / 86400e3;
+      assert.equal(Math.round(days), 3);
+      const text = JSON.stringify(seen);
+      for (const secret of [a.id, `p-${a.id}@t.test`, 'NomeDigitado', play, '14.5', '3.25']) {
+        assert.ok(!text.includes(secret), `get_challenge mostrou ${secret}`);
+      }
+    });
+
+    it('o código NÃO lista desafios: quem não é parte não lê challenges nem challenge_entries, nem sabendo o código', async () => {
+      const a = await account();
+      const b = await account('cat');
+      const { challenge } = await challengeOf(a);
+      await accept(b.id, challenge.code);
+      for (const outsider of [await newUser(c), (await account('penguin')).id]) {
+        assert.deepEqual((await as(c, outsider, `select code from ${S}.challenges`)).rows, []);
+        assert.deepEqual((await as(c, outsider, `select code from ${S}.challenges where code = $1`, [challenge.code])).rows, []);
+        assert.deepEqual((await as(c, outsider, `select challenge_id from ${S}.challenge_entries`)).rows, []);
+        assert.equal((await read(outsider, challenge.code)).entries, null);
+      }
+      // As partes leem o desafio, mas não o id do desafiante nem a partida dele
+      assert.equal((await as(c, a.id, `select code from ${S}.challenges`)).rows.length, 1);
+      assert.equal((await as(c, b.id, `select code from ${S}.challenges`)).rows.length, 1);
+      await denied(as(c, b.id, `select creator_id from ${S}.challenges`));
+      await denied(as(c, b.id, `select play_id from ${S}.challenges`));
+      // Aceites: cada um só o próprio; o desafiante NÃO lê o user_id de quem aceitou
+      assert.deepEqual((await as(c, b.id, `select user_id from ${S}.challenge_entries`)).rows, [{ user_id: b.id }]);
+      assert.deepEqual((await as(c, a.id, `select user_id from ${S}.challenge_entries`)).rows, []);
+      // Escrever é só das funções
+      await denied(as(c, a.id, `update ${S}.challenges set target_score = 0`));
+      await denied(as(c, b.id, `insert into ${S}.challenge_entries (challenge_id, user_id) select id, $1 from ${S}.challenges`, [b.id]));
+      await denied(as(c, b.id, `delete from ${S}.challenge_entries`));
+    });
+
+    it('código desconhecido não encontra nada; sem login (anon) NÃO chama nenhuma função nem lê as tabelas', async () => {
+      const a = await account();
+      const { play, challenge } = await challengeOf(a);
+      await notFound(read(a.id, 'naoexiste123'));
+      await notFound(accept((await account('cat')).id, 'naoexiste123'));
+      await denied(as(c, null, `select ${S}.get_challenge($1)`, [challenge.code]));
+      await denied(as(c, null, `select ${S}.accept_challenge($1)`, [challenge.code]));
+      await denied(as(c, null, `select ${S}.create_challenge($1, 2)`, [play]));
+      await denied(as(c, null, `select ${S}.list_my_challenges()`));
+      await denied(as(c, null, `select code from ${S}.challenges`));
+    });
+
+    it('aceitar sem conta (anônimo) é recusado; criar também; o próprio desafiante e desafio encerrado não aceitam', async () => {
+      const a = await account();
+      const { songId, challenge } = await challengeOf(a);
+      const guest = await newUser(c);
+      await needsAccount(accept(guest, challenge.code));
+      const guestPlay = await submit(c, guest, playOf(songId, FOUR));
+      await needsAccount(create(guest, guestPlay.play_id));
+      assert.equal((await c.query(`select count(*)::int as n from ${S}.challenge_entries`)).rows[0].n, 0);
+      await invalid(accept(a.id, challenge.code));
+      await close(challenge.code);
+      await invalid(accept((await account('cat')).id, challenge.code));
+    });
+
+    it('quem aceitou vê só a própria linha; outro que aceitou NÃO lê a dele; o desafiante vê todos', async () => {
+      const a = await account();
+      const [b, d] = [await account('cat', 'Bia'), await account('penguin', 'Davi')];
+      const { challenge } = await challengeOf(a);
+      const accepted = await accept(b.id, challenge.code);
+      assert.equal(accepted.role, 'entrant');
+      assert.deepEqual(accepted.entries.map((e) => [e.name, e.is_me]), [[b.name, true]]);
+      // Aceitar de novo devolve o mesmo, sem segunda linha
+      assert.equal((await accept(b.id, challenge.code)).entries.length, 1);
+      await accept(d.id, challenge.code);
+      assert.deepEqual((await read(d.id, challenge.code)).entries.map((e) => e.name), [d.name]);
+      assert.deepEqual((await as(c, d.id, `select user_id from ${S}.challenge_entries`)).rows, [{ user_id: d.id }]);
+      const creator = await read(a.id, challenge.code);
+      assert.equal(creator.role, 'creator');
+      assert.deepEqual(creator.entries.map((e) => e.name).sort(), [b.name, d.name].sort());
+      const text = JSON.stringify(creator);
+      for (const secret of [b.id, d.id, 'Bia', 'Davi', `p-${b.id}@t.test`]) assert.ok(!text.includes(secret), `mostrou ${secret}`);
+    });
+
+    it('partida antes do aceite, depois do prazo, de outra música, de outro nível, prática ou interrompida NÃO conta', async () => {
+      const a = await account();
+      const b = await account('cat');
+      const { songId, challenge } = await challengeOf(a);
+      // Antes do aceite (chegou duas horas antes; o aceite abaixo volta só uma)
+      const before = await submit(c, b.id, playOf(songId, FOUR));
+      await c.query(`update ${S}.plays set created_at = now() - interval '2 hours' where id = $1`, [before.play_id]);
+      await accept(b.id, challenge.code);
+      await submit(c, b.id, playOf(await serverSong(c, { notes: 4 }), FOUR));
+      await submit(c, b.id, playOf(songId, { ...FOUR, level: 'hard' }));
+      await submit(c, b.id, playOf(songId, { mode: 'practice', looped: true, speed: 0.5, sequence: Array(4).fill('perfect'), duration_ms: 30000 }));
+      await submit(c, b.id, playOf(songId, { finished: false, sequence: ['perfect', 'perfect', 'perfect'] }));
+      const open = await read(b.id, challenge.code);
+      assert.deepEqual([open.entries[0].best_score, open.entries[0].result], [null, null]);
+      // Depois do prazo: o desafio acabou antes desta partida chegar
+      await close(challenge.code);
+      await submit(c, b.id, playOf(songId, FOUR));
+      const closed = await read(b.id, challenge.code);
+      assert.deepEqual([closed.closed, closed.entries[0].best_score, closed.entries[0].result], [true, null, 'lost']);
+    });
+
+    it('partida jogada sem rede antes do aceite e enviada depois NÃO conta (played_at antes do aceite)', async () => {
+      const a = await account();
+      const b = await account('cat');
+      const { songId, challenge } = await challengeOf(a);
+      await accept(b.id, challenge.code);
+      // A fila do aparelho sobe agora (created_at = aceite) uma partida tocada 10 minutos antes
+      const queuedPlay = await submit(c, b.id, playOf(songId, { ...FOUR, played_at: new Date(Date.now() - 10 * 60e3).toISOString() }));
+      const { rows: [p] } = await c.query(`select played_at < created_at as before, created_at = now() as arrived_now from ${S}.plays where id = $1`, [queuedPlay.play_id]);
+      assert.deepEqual(p, { before: true, arrived_now: true });
+      const seen = await read(b.id, challenge.code);
+      assert.deepEqual([seen.entries[0].best_score, seen.entries[0].result], [null, null]);
+      // A mesma partida, jogada depois do aceite, conta
+      await submit(c, b.id, playOf(songId, FOUR));
+      assert.deepEqual((await read(b.id, challenge.code)).entries.map((e) => [e.best_score, e.result]), [[400, 'won']]);
+    });
+
+    it('resultado para os dois: venceu assim que passa os pontos; empate e derrota só no fim do prazo', async () => {
+      const a = await account();
+      const [win, tie, lose] = [await account('cat'), await account('penguin'), await account('fox')];
+      const { songId, challenge } = await challengeOf(a);
+      for (const u of [win, tie, lose]) await accept(u.id, challenge.code);
+      await submit(c, win.id, playOf(songId, TWO));
+      await submit(c, win.id, playOf(songId, FOUR));
+      await submit(c, tie.id, playOf(songId, THREE));
+      await submit(c, lose.id, playOf(songId, TWO));
+      const resultOf = async (viewer) => Object.fromEntries((await read(viewer, challenge.code)).entries.map((e) => [e.name, [e.best_score, e.result]]));
+      assert.deepEqual(await resultOf(a.id), { [win.name]: [400, 'won'], [tie.name]: [300, null], [lose.name]: [200, null] });
+      await close(challenge.code);
+      assert.deepEqual(await resultOf(a.id), { [win.name]: [400, 'won'], [tie.name]: [300, 'tie'], [lose.name]: [200, 'lost'] });
+      assert.deepEqual(await resultOf(win.id), { [win.name]: [400, 'won'] });
+      assert.deepEqual(await resultOf(tie.id), { [tie.name]: [300, 'tie'] });
+      assert.deepEqual(await resultOf(lose.id), { [lose.name]: [200, 'lost'] });
+    });
+
+    it('criar: partida alheia, de música importada, que não vale ranking ou prazo fora de 1 a 7 dias é recusado', async () => {
+      const a = await account();
+      const b = await account('cat');
+      const songId = await serverSong(c, { notes: 4 });
+      const other = await submit(c, b.id, playOf(songId, FOUR));
+      await notFound(create(a.id, other.play_id));
+      await notFound(create(a.id, randomUUID()));
+      const own = await serverSong(c, { owner: a.id });
+      await notFound(create(a.id, (await submit(c, a.id, playOf(own))).play_id));
+      const practice = await submit(c, a.id, playOf(songId, { mode: 'practice', looped: true, speed: 0.5, sequence: Array(4).fill('perfect'), duration_ms: 30000 }));
+      await invalid(create(a.id, practice.play_id));
+      await invalid(create(a.id, (await submit(c, a.id, playOf(songId, { finished: false, sequence: ['perfect'] }))).play_id));
+      const good = await submit(c, a.id, playOf(songId, FOUR));
+      await invalid(create(a.id, good.play_id, 0));
+      await invalid(create(a.id, good.play_id, 8));
+      assert.equal((await create(a.id, good.play_id, 7)).target_score, 400);
+    });
+
+    it('limite de 20 abertos por conta; a mesma partida devolve o mesmo desafio; encerrado libera a vaga', async () => {
+      const a = await account();
+      const songId = await serverSong(c, { notes: 4 });
+      const codes = [];
+      for (let i = 0; i < 20; i++) {
+        const { play_id } = await submit(c, a.id, playOf(songId, THREE));
+        codes.push((await create(a.id, play_id)).code);
+      }
+      assert.equal(new Set(codes).size, 20);
+      const { play_id: extra } = await submit(c, a.id, playOf(songId, FOUR));
+      await invalid(create(a.id, extra));
+      // Toque duplo na 20ª: o mesmo desafio, sem erro de limite
+      const last = (await c.query(`select play_id from ${S}.challenges where code = $1`, [codes[19]])).rows[0].play_id;
+      assert.equal((await create(a.id, last)).code, codes[19]);
+      await close(codes[0]);
+      assert.match((await create(a.id, extra)).code, /^[A-Za-z0-9_-]{12}$/);
+      // O limite é por conta: outra conta cria normalmente
+      const b = await account('cat');
+      assert.ok((await challengeOf(b, { song: songId })).challenge.code);
+    });
+
+    it('meus desafios: os que criei e os que aceitei, nunca os de outros', async () => {
+      const a = await account();
+      const b = await account('cat');
+      const d = await account('penguin');
+      const { challenge: mineA } = await challengeOf(a);
+      const { challenge: mineB } = await challengeOf(b);
+      const { challenge: notMine } = await challengeOf(d);
+      await accept(a.id, mineB.code);
+      assert.deepEqual((await mine(a.id)).map((x) => [x.code, x.role]).sort(), [[mineA.code, 'creator'], [mineB.code, 'entrant']].sort());
+      assert.ok(!(await mine(a.id)).some((x) => x.code === notMine.code));
+      assert.deepEqual(await mine(await newUser(c)), []);
     });
   });
 

@@ -13,6 +13,11 @@ import { practiceHardest, Results } from './Results';
 const server = vi.hoisted(() => ({ outcome: undefined as PlayOutcome | undefined }));
 vi.mock('../services/sync', () => ({ usePlayOutcome: (id?: string) => (id === 'c1' ? server.outcome : undefined) }));
 
+// jsdom não desenha canvas: o desenho tem teste próprio (shareCard.test.ts); aqui só o que a tela manda
+const share = vi.hoisted(() => ({ render: vi.fn(), file: vi.fn() }));
+vi.mock('../components/ShareCard/shareCard', () => ({ renderShareCard: share.render }));
+vi.mock('../services/share', () => ({ shareFile: share.file }));
+
 const render = (result = playedResult(), theme = palcoTheme) =>
   renderScreen(<Results />, { path: ROUTES.results, route: ROUTES.results, state: { song: ODE, mode: 'Arcade', result }, theme });
 
@@ -150,5 +155,54 @@ describe('Results', () => {
   it('sem trecho difícil, sem "Praticar compassos"', () => {
     renderScreen(<Results />, { path: ROUTES.results, route: ROUTES.results, state: { song: ODE, mode: 'Partitura', result: playedResult() } });
     expect(screen.queryByRole('link', { name: 'Praticar compassos' })).not.toBeInTheDocument();
+  });
+
+  it('"Desafiar" monta o desafio com a partida que o servidor confirmou; sem resposta, escolhe na tela', () => {
+    server.outcome = { playId: 'p-42', accuracy: 100, record: null, badges: [], streak: null, duplicate: false };
+    const { unmount } = renderScreen(<Results />, {
+      path: ROUTES.results,
+      route: ROUTES.results,
+      state: { song: ODE, mode: 'Arcade', result: playedResult(), clientId: 'c1' },
+    });
+    expect(screen.getByRole('link', { name: /Desafiar/ })).toHaveAttribute('href', '/desafio?partida=p-42');
+    unmount();
+    server.outcome = undefined;
+    render();
+    expect(screen.getByRole('link', { name: /Desafiar/ })).toHaveAttribute('href', '/desafio');
+  });
+
+  it('prática e partida em que a orquestra parou não viram desafio', () => {
+    const { unmount } = render({ ...playedResult(), laps: [], bestLap: null } as ReturnType<typeof playedResult>);
+    expect(screen.queryByRole('link', { name: /Desafiar/ })).not.toBeInTheDocument();
+    unmount();
+    render({ ...playedResult(), status: 'failed' });
+    expect(screen.queryByRole('link', { name: /Desafiar/ })).not.toBeInTheDocument();
+  });
+
+  it('"Compartilhar" desenha o cartão com o tema, a música, os pontos e os selos, e manda o arquivo', async () => {
+    share.render.mockResolvedValue(new File(['png'], 'violin-hero-ode-a-alegria.png', { type: 'image/png' }));
+    share.file.mockResolvedValue('downloaded');
+    render({ ...playedResult(), badges: ['primeira-musica'] });
+    await userEvent.click(screen.getByRole('button', { name: 'Compartilhar' }));
+    expect(share.render).toHaveBeenCalledWith(
+      expect.objectContaining({
+        songTitle: 'Ode à Alegria',
+        mode: 'Arcade',
+        level: 'Fácil',
+        score: playedResult().score,
+        badges: [expect.objectContaining({ label: 'Primeira música' })],
+      }),
+      palcoTheme
+    );
+    expect(share.file).toHaveBeenCalledWith(expect.any(File), { title: 'Ode à Alegria · Violin Hero' });
+    expect(await screen.findByText('Imagem salva no aparelho.')).toBeInTheDocument();
+  });
+
+  it('cartão que falha avisa, sem quebrar a tela', async () => {
+    share.render.mockRejectedValue(new Error('sem canvas'));
+    render();
+    await userEvent.click(screen.getByRole('button', { name: 'Compartilhar' }));
+    expect(await screen.findByText('Não deu para gerar a imagem agora.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Compartilhar' })).toBeEnabled();
   });
 });

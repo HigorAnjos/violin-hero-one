@@ -449,7 +449,8 @@ function lookOf(name: string) {
   return Object.values(ANIMAL_LOOK).find((look) => name.startsWith(`${look.name} `)) ?? null;
 }
 
-const RowAvatar: React.FC<{ name: string; size: number }> = ({ name, size }) => {
+/** Avatar do nome público; o Desafio usa o mesmo. */
+export const RowAvatar: React.FC<{ name: string; size: number }> = ({ name, size }) => {
   const look = lookOf(name);
   return (
     <Avatar $string={look?.string ?? null} $size={size} aria-hidden="true">

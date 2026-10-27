@@ -28,6 +28,9 @@ export const ROUTES = {
   login: '/entrar',
   account: '/conta',
   ranking: '/ranking',
+  challenge: '/desafio',
+  /** O link do desafio: abre para qualquer um (aceitar pede conta). */
+  challengeCode: '/desafio/:codigo',
 } as const;
 
 /** Onde a conta é pedida (GuestPrompt): ranking, desafio ou usar em outro aparelho. Nunca no meio de uma música. */
