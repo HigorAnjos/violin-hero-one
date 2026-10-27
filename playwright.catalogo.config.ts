@@ -10,13 +10,17 @@ import { SESSION } from './e2e/catalogo/sessao';
 const port = Number(process.env.E2E_CATALOG_PORT) || 4183;
 const baseURL = `http://localhost:${port}`;
 
-/** URL e chave anon do Supabase local; uma vez só (os workers herdam o ambiente do processo principal). */
+/**
+ * URL e chave anon do Supabase local, e a URL do banco para o globalSetup; uma vez só (os workers herdam o ambiente
+ * do processo principal).
+ */
 function localSupabase(): { url: string; key: string } {
   if (!process.env.E2E_SUPABASE_URL || !process.env.E2E_SUPABASE_ANON_KEY) {
     const status = JSON.parse(execFileSync('npx', ['supabase', 'status', '-o', 'json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
     if (!status.API_URL || !status.ANON_KEY) throw new Error('Supabase local fora do ar: rode `npm run db:local` antes do e2e do catálogo.');
     process.env.E2E_SUPABASE_URL = status.API_URL;
     process.env.E2E_SUPABASE_ANON_KEY = status.ANON_KEY;
+    process.env.E2E_DB_URL ??= status.DB_URL;
   }
   return { url: process.env.E2E_SUPABASE_URL!, key: process.env.E2E_SUPABASE_ANON_KEY! };
 }
@@ -27,8 +31,8 @@ export default defineConfig({
   testDir: './e2e/catalogo',
   // Pastas próprias: rodando ao lado do e2e comum, um não apaga o print e o trace do outro
   outputDir: 'test-results-catalogo',
-  // A amostra pelo microfone usa os WAV sintéticos, como o e2e comum
-  globalSetup: './e2e/global-setup.ts',
+  // A amostra pelo microfone usa os WAV sintéticos, como o e2e comum; e as contas de e2e velhas saem do banco local
+  globalSetup: './e2e/catalogo/global-setup.ts',
   timeout: 30000,
   // As partidas tocam em tempo real (~5 min de música por nível): em paralelo para caber no job
   fullyParallel: true,
