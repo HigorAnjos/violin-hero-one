@@ -1,7 +1,9 @@
-// MusicXML (partwise) → melodia neutra (Score): a 1ª parte, a 1ª voz, a nota mais aguda de cada acorde.
+// MusicXML (partwise) → melodia neutra (Score): a 1ª voz de uma parte, a nota mais aguda de cada acorde.
 // Os níveis (levels.ts) saem do Score; aqui não há dedilhado nem simplificação.
-import type { TimeSignature } from './song';
-import { child, children, parseXml, textAt, type XmlElement } from './xml';
+// Imports com extensão .ts: a Edge Function import-song (Deno) lê estes mesmos arquivos.
+import { unfoldRepeats, type RepeatMarks } from './repeats.ts';
+import type { TimeSignature } from './song.ts';
+import { child, children, parseXml, textAt, type XmlElement } from './xml.ts';
 
 export interface KeySignature {
   /** Sustenidos (positivo) ou bemóis (negativo) da armadura. */
@@ -32,12 +34,35 @@ export interface Score {
   measures: ScoreMeasure[];
 }
 
+/** Uma parte (instrumento ou voz) da partitura, já como melodia. */
+export interface ScorePart {
+  id: string;
+  name: string;
+  /** Programa General MIDI (0 a 127), quando o arquivo diz; 40 é violino. */
+  instrument?: number;
+  score: Score;
+}
+
+/**
+ * `lenient` (arquivo importado pelo jogador): repetição simples é desdobrada, a 1ª tonalidade e o 1º andamento valem
+ * para a música toda, compasso maior que o do início alarga a fórmula, e sem andamento, armadura ou fórmula valem
+ * 100 bpm, Dó maior e 4/4. Sem `lenient` (catálogo), cada um desses casos é erro: a partitura do catálogo é corrigida
+ * na fonte.
+ */
+export interface MusicXmlOptions {
+  lenient?: boolean;
+}
+
+export const DEFAULT_QUARTER_BPM = 100;
+export const DEFAULT_KEY: KeySignature = { fifths: 0, mode: 'major' };
+const DEFAULT_TIME: TimeSignature = { beats: 4, unit: 4 };
+
 const STEP_SEMITONES: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const UNITS: readonly number[] = [2, 4, 8];
 const EPSILON = 1e-6;
 
 /** Arredonda resíduos de ponto flutuante (tercinas continuam como dízima). */
-const tidy = (value: number) => Math.round(value * 1e9) / 1e9;
+export const tidy = (value: number) => Math.round(value * 1e9) / 1e9;
 
 function num(raw: string | undefined, what: string): number {
   const value = Number(raw);
@@ -73,41 +98,63 @@ function quarterTempo(element: XmlElement): number | undefined {
   return undefined;
 }
 
-export function parseMusicXml(source: string): Score {
-  const root = parseXml(source);
-  if (root.name !== 'score-partwise') throw new RangeError(`MusicXML: esperado <score-partwise>, veio <${root.name}>`);
-  const part = child(root, 'part');
-  if (!part) throw new RangeError('MusicXML: partitura sem <part>');
+/** Compasso lido, em divisões, antes de desdobrar as repetições. */
+interface RawMeasure {
+  where: string;
+  divisions: number;
+  time: TimeSignature;
+  extent: number;
+  notes: { start: number; length: number; midi: number; tieStop: boolean }[];
+  marks: RepeatMarks;
+}
 
-  const title = textAt(root, 'work', 'work-title') ?? textAt(root, 'movement-title') ?? '';
-  const composer = children(child(root, 'identification'), 'creator').find((c) => c.attributes.type === 'composer')?.text ?? '';
+interface RawPart {
+  key?: KeySignature;
+  time?: TimeSignature;
+  tempo?: number;
+  measures: RawMeasure[];
+}
 
+function readPart(part: XmlElement, lenient: boolean): RawPart {
   let divisions = 0;
   let key: KeySignature | undefined;
   let songTime: TimeSignature | undefined;
   let measureTime: TimeSignature | undefined;
   let tempo: number | undefined;
   let voice: string | undefined;
-  const measures: ScoreMeasure[] = [];
+  let ending: number[] | undefined;
+  const measures: RawMeasure[] = [];
 
   for (const [index, measure] of children(part, 'measure').entries()) {
     const where = `compasso ${measure.attributes.number ?? index + 1}`;
-    if (children(measure, 'barline').some((b) => child(b, 'repeat') || child(b, 'ending'))) {
-      throw new RangeError(`MusicXML: ${where}: repetição não suportada, escreva por extenso`);
+    const marks: RepeatMarks = {};
+    let endingStops = false;
+    for (const barline of children(measure, 'barline')) {
+      const repeat = child(barline, 'repeat');
+      const end = child(barline, 'ending');
+      if (!lenient && (repeat || end)) throw new RangeError(`MusicXML: ${where}: repetição não suportada, escreva por extenso`);
+      if (repeat?.attributes.direction === 'forward') marks.forward = true;
+      if (repeat?.attributes.direction === 'backward') marks.backward = true;
+      if (end?.attributes.type === 'start') {
+        ending = (end.attributes.number ?? '').split(/[\s,]+/).filter(Boolean).map(Number).filter(Number.isInteger);
+      } else if (end) endingStops = true;
     }
+    if (ending?.length) marks.endings = ending;
+    if (endingStops) ending = undefined;
+
     // cursor e extensão em divisões; a nota guarda o início em divisões até o fim do compasso
     let cursor = 0;
     let extent = 0;
-    const raw: { start: number; length: number; midi: number; tieStop: boolean }[] = [];
+    const raw: RawMeasure['notes'] = [];
     let last: (typeof raw)[number] | undefined;
 
     for (const element of measure.children) {
       const measureTempo = quarterTempo(element);
       if (measureTempo !== undefined) {
-        if (tempo !== undefined && Math.abs(tempo - measureTempo) > EPSILON) {
+        if (tempo !== undefined && Math.abs(tempo - measureTempo) > EPSILON && !lenient) {
           throw new RangeError(`MusicXML: ${where}: mudança de andamento não cabe no Song v1`);
         }
-        tempo = measureTempo;
+        tempo ??= measureTempo;
       }
       if (element.name === 'attributes') {
         const div = textAt(element, 'divisions');
@@ -115,10 +162,10 @@ export function parseMusicXml(source: string): Score {
         const k = child(element, 'key');
         if (k) {
           const next: KeySignature = { fifths: num(textAt(k, 'fifths'), 'armadura'), mode: textAt(k, 'mode') === 'minor' ? 'minor' : 'major' };
-          if (key && (key.fifths !== next.fifths || key.mode !== next.mode)) {
+          if (key && (key.fifths !== next.fifths || key.mode !== next.mode) && !lenient) {
             throw new RangeError(`MusicXML: ${where}: mudança de tonalidade não suportada`);
           }
-          key = next;
+          key ??= next;
         }
         const time = child(element, 'time');
         if (time) {
@@ -159,28 +206,104 @@ export function parseMusicXml(source: string): Score {
       }
     }
 
+    if (lenient && !measureTime) {
+      measureTime = DEFAULT_TIME;
+      songTime ??= DEFAULT_TIME;
+    }
     if (!songTime || !measureTime) throw new RangeError(`MusicXML: ${where}: sem fórmula de compasso`);
+    if (!divisions) {
+      if (extent === 0) continue;
+      throw new RangeError(`MusicXML: ${where}: sem <divisions>`);
+    }
+    measures.push({ where, divisions, time: measureTime, extent, notes: raw, marks });
+  }
+  return { key, time: songTime, tempo, measures };
+}
+
+/** Score de uma parte lida: tempos na unidade do compasso da música, repetições já desdobradas. */
+function toScore(part: RawPart, header: { title: string; composer: string; tempo?: number }, lenient: boolean): Score {
+  if (!part.key && !lenient) throw new RangeError('MusicXML: sem armadura de clave (<key>)');
+  if (!part.time && !lenient) throw new RangeError('MusicXML: sem fórmula de compasso (<time>)');
+  const tempo = part.tempo ?? header.tempo ?? (lenient ? DEFAULT_QUARTER_BPM : undefined);
+  if (tempo === undefined) throw new RangeError('MusicXML: sem andamento (<sound tempo> ou <metronome>)');
+  const songTime = part.time ?? DEFAULT_TIME;
+  let widest = songTime.beats;
+  const measures: ScoreMeasure[] = [];
+  for (const m of lenient ? unfoldRepeats(part.measures, (r) => r.marks) : part.measures) {
     // tempos na unidade do compasso da música: semínimas × unidade / 4
-    const toBeats = (div: number) => tidy(((div / divisions) * songTime!.unit) / 4);
-    const beats = toBeats(extent);
-    const declared = tidy((measureTime.beats * 4) / measureTime.unit * songTime.unit / 4);
-    if (beats > declared + EPSILON) throw new RangeError(`MusicXML: ${where}: ${beats} tempos não cabem em ${measureTime.beats}/${measureTime.unit}`);
+    const toBeats = (div: number) => tidy(((div / m.divisions) * songTime.unit) / 4);
+    const beats = toBeats(m.extent);
+    const declared = tidy((((m.time.beats * 4) / m.time.unit) * songTime.unit) / 4);
+    if (beats > declared + EPSILON) throw new RangeError(`MusicXML: ${m.where}: ${beats} tempos não cabem em ${m.time.beats}/${m.time.unit}`);
     if (declared > songTime.beats + EPSILON) {
-      throw new RangeError(`MusicXML: ${where}: compasso ${measureTime.beats}/${measureTime.unit} maior que o ${songTime.beats}/${songTime.unit} do início não cabe no Song v1`);
+      if (!lenient) {
+        throw new RangeError(
+          `MusicXML: ${m.where}: compasso ${m.time.beats}/${m.time.unit} maior que o ${songTime.beats}/${songTime.unit} do início não cabe no Song v1`,
+        );
+      }
+      widest = Math.max(widest, Math.ceil(declared - EPSILON));
     }
     if (beats <= 0) continue;
     measures.push({
       beats,
-      notes: raw.map((n) => {
+      notes: m.notes.map((n) => {
         const note: ScoreNote = { beat: toBeats(n.start), beats: toBeats(n.length), midi: n.midi };
         if (n.tieStop) note.tie = true;
         return note;
       }),
     });
   }
+  return {
+    title: header.title,
+    composer: header.composer,
+    key: part.key ?? DEFAULT_KEY,
+    bpm: tidy((tempo * songTime.unit) / 4),
+    timeSignature: { beats: widest, unit: songTime.unit },
+    measures,
+  };
+}
 
-  if (!key) throw new RangeError('MusicXML: sem armadura de clave (<key>)');
-  if (!songTime) throw new RangeError('MusicXML: sem fórmula de compasso (<time>)');
-  if (tempo === undefined) throw new RangeError('MusicXML: sem andamento (<sound tempo> ou <metronome>)');
-  return { title, composer, key, bpm: tidy((tempo * songTime.unit) / 4), timeSignature: songTime, measures };
+/** Título: no catálogo, o da obra; no importado, o do movimento (a canção dentro do ciclo), quando houver. */
+function readHeader(root: XmlElement, lenient: boolean) {
+  if (root.name !== 'score-partwise') throw new RangeError(`MusicXML: esperado <score-partwise>, veio <${root.name}>`);
+  const work = textAt(root, 'work', 'work-title');
+  const movement = textAt(root, 'movement-title');
+  const title = ((lenient ? movement || work : work || movement) ?? '').trim();
+  const composer = (children(child(root, 'identification'), 'creator').find((c) => c.attributes.type === 'composer')?.text ?? '').trim();
+  return { title, composer };
+}
+
+/** A 1ª parte da partitura (o formato do catálogo). */
+export function parseMusicXml(source: string, options: MusicXmlOptions = {}): Score {
+  const root = parseXml(source);
+  const header = readHeader(root, !!options.lenient);
+  const part = child(root, 'part');
+  if (!part) throw new RangeError('MusicXML: partitura sem <part>');
+  return toScore(readPart(part, !!options.lenient), header, !!options.lenient);
+}
+
+/**
+ * Todas as partes, com o nome do <part-list>. Andamento escrito só numa parte (costuma ser a 1ª) vale para todas.
+ * Por padrão `lenient`: é a entrada dos arquivos importados.
+ */
+export function parseMusicXmlParts(source: string, options: MusicXmlOptions = { lenient: true }): ScorePart[] {
+  const lenient = !!options.lenient;
+  const root = parseXml(source);
+  const header = readHeader(root, lenient);
+  const listed = new Map(children(child(root, 'part-list'), 'score-part').map((p) => [p.attributes.id, p]));
+  const raw = children(root, 'part').map((part) => ({ id: part.attributes.id ?? '', part: readPart(part, lenient) }));
+  if (!raw.length) throw new RangeError('MusicXML: partitura sem <part>');
+  const tempo = raw.find((r) => r.part.tempo !== undefined)?.part.tempo;
+  return raw.map(({ id, part }, i) => {
+    const entry = listed.get(id);
+    // <midi-program> conta de 1 a 128
+    const program = Number(textAt(entry, 'midi-instrument', 'midi-program'));
+    const scorePart: ScorePart = {
+      id: id || `P${i + 1}`,
+      name: (textAt(entry, 'part-name') ?? '').replace(/\s+/g, ' ').trim() || `Parte ${i + 1}`,
+      score: toScore(part, { ...header, tempo }, lenient),
+    };
+    if (Number.isInteger(program) && program >= 1 && program <= 128) scorePart.instrument = program - 1;
+    return scorePart;
+  });
 }

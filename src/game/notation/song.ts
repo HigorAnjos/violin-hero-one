@@ -1,6 +1,6 @@
 // Modelo Song: o formato que o conversor grava em song_charts (jsonb) e que o motor, a pista e a
 // partitura leem. Só muda com registro na nota Decisões e com SONG_FORMAT_VERSION novo.
-import { HIGHEST_MIDI, LOWEST_MIDI, OPEN_STRING_MIDI, stringFits, type StringIndex } from './violin';
+import { HIGHEST_MIDI, LOWEST_MIDI, OPEN_STRING_MIDI, stringFits, type StringIndex } from './violin.ts';
 
 export const SONG_FORMAT_VERSION = 1;
 

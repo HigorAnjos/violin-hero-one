@@ -1,6 +1,7 @@
 import type { Plugin } from 'vite';
 
-const CONVERTER_MODULE = /\/src\/game\/notation\/(catalog|musicxml|xml|levels)\.ts$|\.musicxml(\?|$)/;
+const CONVERTER_MODULE =
+  /\/src\/game\/notation\/(catalog|musicxml|xml|levels|repeats|mxl|midi|abc|importScore)\.ts$|\.musicxml(\?|$)|\/node_modules\/@tonejs\/midi\//;
 
 /**
  * O conversor de MusicXML roda no build (songs:fixed), no seed e no banco, nunca no pacote do app:

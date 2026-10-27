@@ -1,0 +1,16 @@
+%abc-2.1
+% Transcrição em ABC da edição de domínio público do Mutopia Project (#529, LilyPond de Taj Morton, 2012).
+% Notas, arcadas e casas de repetição como na fonte; esta transcrição também é de domínio público (CC0).
+X:1
+T:Red Apple Rag
+C:Tradicional
+O:EUA
+S:Mutopia Project #529 (Public Domain)
+M:4/4
+L:1/8
+Q:1/4=120
+K:G
+"G"(uB,A,) |: G,A,B,C DFGA | BdBA GEDB, | "C"(vCB,) (uCD) EGcd | eged c4 |
+"D"(uDE) FG A^cde | fafe dfed | (vgb) (uge) dBAF |[1 (vGF) (uAF) GEDB, :|[2 (vGF) (uAF) GABc ||
+|: "G"vdu g2 vd ug4 | (ubag)b aged | "C"cdcd ecef | gefg agec |
+"D"(vdc) (ude) fdfg | abag fdef | (vgb) (uge) dBAF |[1 (vGF) (uAF) GABc :|[2 (vGF) (uAF) G4 |]

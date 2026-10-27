@@ -1,7 +1,7 @@
 // Os 3 níveis a partir da mesma melodia (Score): ritmo, tonalidade e dedilhado de cada um.
-import { FIRST_POSITION_RULES, fingerMelody, playable, UP_TO_THIRD_RULES, type FingeringRules, type Position } from './fingering';
-import type { KeySignature, Score, ScoreMeasure, ScoreNote } from './musicxml';
-import { parseSong, SONG_FORMAT_VERSION, type Level, type Song } from './song';
+import { FIRST_POSITION_RULES, fingerMelody, playable, UP_TO_THIRD_RULES, type FingeringRules, type Position } from './fingering.ts';
+import type { KeySignature, Score, ScoreMeasure, ScoreNote } from './musicxml.ts';
+import { parseSong, SONG_FORMAT_VERSION, type Level, type Song } from './song.ts';
 
 export interface LevelRules {
   /** Menor figura, em semínimas: ataques fora da grade somem e a nota anterior se estende. Nulo = como escrito. */

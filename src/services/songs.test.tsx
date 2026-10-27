@@ -4,7 +4,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import type { SessionState } from './session';
 import { createSongCache, memorySongStore } from './songCache';
-import { getSong, listCatalog, loadSong, SongError, useCatalog, useSavedSongs, useSong, type SongsClient } from './songs';
+import { getSong, listCatalog, listOwnSongs, loadSong, SongError, useCatalog, useSavedSongs, useSong, type SongsClient } from './songs';
 
 const CHART = {
   formatVersion: 1,
@@ -47,12 +47,14 @@ function fakeClient({ select = { data: [] as unknown, error: null as unknown }, 
   const query = {
     select: vi.fn(),
     eq: vi.fn(),
+    neq: vi.fn(),
     not: vi.fn(),
     order: vi.fn(),
     then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => Promise.resolve(select).then(resolve, reject),
   };
   query.select.mockReturnValue(query);
   query.eq.mockReturnValue(query);
+  query.neq.mockReturnValue(query);
   query.not.mockReturnValue(query);
   query.order.mockReturnValue(query);
   const from = vi.fn().mockReturnValue(query);
@@ -68,6 +70,22 @@ function wrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
+
+describe('listOwnSongs', () => {
+  it('lê as músicas fora do catálogo (a RLS só devolve as do dono), da mais nova para a mais antiga', async () => {
+    const row = { ...SHEET_ROW, id: 'abc', origin: 'imported', song_charts: [{ level: 'hard' }, { level: 'medium' }] };
+    const { client, query } = fakeClient({ select: { data: [row], error: null } });
+    expect(await listOwnSongs(client, SIGNED_IN)).toEqual([{ ...SHEET, id: 'abc', origin: 'imported', levels: ['medium', 'hard'] }]);
+    expect(query.neq).toHaveBeenCalledExactlyOnceWith('origin', 'catalog');
+    expect(query.order).toHaveBeenCalledExactlyOnceWith('created_at', { ascending: false });
+  });
+
+  it('erro do banco vira erro de servidor; sem sessão, offline', async () => {
+    const { client } = fakeClient({ select: { data: null, error: { message: 'boom' } } });
+    await expect(listOwnSongs(client, SIGNED_IN)).rejects.toMatchObject({ kind: 'server' });
+    await expect(listOwnSongs(client, { status: 'offline' })).rejects.toMatchObject({ kind: 'offline' });
+  });
+});
 
 describe('listCatalog', () => {
   it('lê só o catálogo, na ordem da estante, com os níveis de fácil a difícil', async () => {

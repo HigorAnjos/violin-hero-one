@@ -26,9 +26,14 @@ describe('noConverterInApp', () => {
     );
   });
 
-  it.each(['catalog', 'musicxml', 'xml', 'levels'])('%s.ts também conta', (name) => {
+  it.each(['catalog', 'musicxml', 'xml', 'levels', 'repeats', 'mxl', 'midi', 'abc', 'importScore'])('%s.ts também conta', (name) => {
     const error = run({ a: chunk('assets/index.js', [`/app/src/game/notation/${name}.ts`]) });
     expect(error.mock.calls[0][0]).toContain(`notation/${name}.ts`);
+  });
+
+  it('o leitor de MIDI (@tonejs/midi) também derruba o build', () => {
+    const error = run({ a: chunk('assets/index.js', ['/app/node_modules/@tonejs/midi/dist/Midi.js']) });
+    expect(error).toHaveBeenCalledOnce();
   });
 
   it('fingering.ts e editor.ts podem: o dedilhado sugerido do editor roda no app', () => {

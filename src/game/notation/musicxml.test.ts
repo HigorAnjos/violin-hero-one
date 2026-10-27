@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseMusicXml } from './musicxml';
+import { parseMusicXml, parseMusicXmlParts } from './musicxml';
 
 /** Nota com divisions = 4 (semicolcheia = 1). */
 const note = (step: string, octave: number, duration: number, extra = '') =>
@@ -130,5 +130,66 @@ describe('parseMusicXml', () => {
     ['raiz errada', '<score-timewise/>', /score-partwise/],
   ])('rejeita %s', (_, xml, message) => {
     expect(() => parseMusicXml(xml)).toThrow(message);
+  });
+});
+
+const barline = (inner: string, location = 'right') => `<barline location="${location}">${inner}</barline>`;
+const multipart = (...parts: { id: string; name: string; measures: string[] }[]) =>
+  `<?xml version="1.0"?><score-partwise version="4.0"><movement-title>Várias</movement-title><part-list>` +
+  parts.map((p) => `<score-part id="${p.id}"><part-name>${p.name}</part-name></score-part>`).join('') +
+  `</part-list>` +
+  parts.map((p) => `<part id="${p.id}">${p.measures.map((m, i) => `<measure number="${i + 1}">${m}</measure>`).join('')}</part>`).join('') +
+  `</score-partwise>`;
+
+describe('parseMusicXml tolerante (importação)', () => {
+  it('desdobra repetição com 1ª e 2ª casa', () => {
+    const s = parseMusicXml(
+      score(
+        attributes() + tempo(60) + barline('<repeat direction="forward"/>', 'left') + note('D', 4, 16),
+        barline('<ending number="1" type="start"/>', 'left') + note('E', 4, 16) + barline('<ending number="1" type="stop"/><repeat direction="backward"/>'),
+        barline('<ending number="2" type="start"/>', 'left') + note('F#', 4, 16) + barline('<ending number="2" type="discontinue"/>'),
+        note('G', 4, 16),
+      ),
+      { lenient: true },
+    );
+    expect(s.measures.map((m) => m.notes[0].midi)).toEqual([62, 64, 62, 66, 67]);
+  });
+
+  it('mudança de tonalidade e de andamento: valem as primeiras', () => {
+    const s = parseMusicXml(
+      score(attributes(4, 4, 2) + tempo(60) + note('D', 4, 16), `<attributes><key><fifths>-3</fifths></key></attributes>` + tempo(90) + note('E', 4, 16)),
+      { lenient: true },
+    );
+    expect(s.key).toEqual({ fifths: 2, mode: 'major' });
+    expect(s.bpm).toBe(60);
+  });
+
+  it('compasso maior que o do início alarga a fórmula da música', () => {
+    const s = parseMusicXml(
+      score(attributes(2, 4) + tempo(80) + note('D', 4, 8), `<attributes><time><beats>3</beats><beat-type>4</beat-type></time></attributes>` + note('E', 4, 12)),
+      { lenient: true },
+    );
+    expect(s.timeSignature).toEqual({ beats: 3, unit: 4 });
+    expect(s.measures.map((m) => m.beats)).toEqual([2, 3]);
+  });
+
+  it('sem andamento, armadura nem fórmula: 100 bpm, Dó maior e 4/4', () => {
+    const s = parseMusicXml(score('<attributes><divisions>4</divisions></attributes>' + note('C', 5, 16)), { lenient: true });
+    expect(s).toMatchObject({ bpm: 100, key: { fifths: 0, mode: 'major' }, timeSignature: { beats: 4, unit: 4 } });
+  });
+});
+
+describe('parseMusicXmlParts', () => {
+  it('cada parte vira uma melodia com o nome do <part-list>; o andamento da 1ª vale para as outras', () => {
+    const parts = parseMusicXmlParts(
+      multipart(
+        { id: 'P1', name: 'Voice', measures: [attributes() + tempo(72) + note('A', 4, 16)] },
+        { id: 'P2', name: 'Piano', measures: [attributes() + note('C', 3, 16)] },
+      ),
+    );
+    expect(parts.map((p) => [p.id, p.name, p.score.title, p.score.bpm, p.score.measures[0].notes[0].midi])).toEqual([
+      ['P1', 'Voice', 'Várias', 72, 69],
+      ['P2', 'Piano', 'Várias', 72, 48],
+    ]);
   });
 });
