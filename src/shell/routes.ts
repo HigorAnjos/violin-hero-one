@@ -26,6 +26,7 @@ export const ROUTES = {
   reminder: '/lembrete',
   login: '/entrar',
   account: '/conta',
+  ranking: '/ranking',
 } as const;
 
 /** Onde a conta é pedida (GuestPrompt): ranking, desafio ou usar em outro aparelho. Nunca no meio de uma música. */

@@ -97,6 +97,12 @@ describe('Results', () => {
   it('partida de prática: avisa que não vale selo nem recorde', () => {
     render({ ...playedResult(), laps: [], bestLap: null } as ReturnType<typeof playedResult>);
     expect(screen.getByText('Partida de prática: sem selos e sem recorde.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Ver no ranking/ })).not.toBeInTheDocument();
+  });
+
+  it('"Ver no ranking" abre o ranking da semana desta música e deste nível', () => {
+    render();
+    expect(screen.getByRole('link', { name: /Ver no ranking/ })).toHaveAttribute('href', '/ranking?musica=ode-a-alegria&nivel=facil&periodo=semana');
   });
 
   it('com trecho difícil, "Praticar compassos" abre a prática nele, a 70%', async () => {
