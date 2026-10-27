@@ -26,9 +26,14 @@ describe('noConverterInApp', () => {
     );
   });
 
-  it.each(['catalog', 'levels', 'fingering'])('%s.ts também conta', (name) => {
+  it.each(['catalog', 'levels', 'fingering', 'repeats', 'mxl', 'midi', 'abc', 'importScore'])('%s.ts também conta', (name) => {
     const error = run({ a: chunk('assets/index.js', [`/app/src/game/notation/${name}.ts`]) });
     expect(error.mock.calls[0][0]).toContain(`notation/${name}.ts`);
+  });
+
+  it('o leitor de MIDI (@tonejs/midi) também derruba o build', () => {
+    const error = run({ a: chunk('assets/index.js', ['/app/node_modules/@tonejs/midi/dist/Midi.js']) });
+    expect(error).toHaveBeenCalledOnce();
   });
 
   it('partitura importada como ?raw derruba o build', () => {
