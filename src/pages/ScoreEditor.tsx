@@ -56,7 +56,12 @@ const Page = styled(Screen)`
 
 const Header = styled.header`
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+
+  @media (max-height: 500px) {
+    flex-wrap: wrap;
+  }
+
   align-items: center;
   gap: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
 `;
@@ -65,13 +70,7 @@ const TitleBlock = styled.div`
   display: flex;
   flex-direction: column;
   min-width: 0;
-  flex: 0 1 15rem;
-
-  @media (max-height: 500px) {
-    ${Kicker} {
-      display: none;
-    }
-  }
+  flex: 1 1 13rem;
 `;
 
 const TitleInput = styled.input`
@@ -125,13 +124,20 @@ const Grow = styled.span`
   flex: 1;
 `;
 
-const DraftNote = styled.span`
-  font-size: 0.75rem;
-  color: ${({ theme }) => theme.colors.textMuted};
+const KickerRow = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: ${({ theme }) => theme.spacing.xs};
+  white-space: nowrap;
 
   @media (max-height: 500px) {
     display: none;
   }
+`;
+
+const DraftNote = styled.span`
+  font-size: 0.75rem;
+  color: ${({ theme }) => theme.colors.textMuted};
 `;
 
 const Body = styled.div`
@@ -440,7 +446,10 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
           <span aria-hidden="true">◂</span>Biblioteca
         </Button>
         <TitleBlock>
-          <Kicker>Escrever partitura</Kicker>
+          <KickerRow>
+            <Kicker>Escrever partitura</Kicker>
+            <DraftNote role="status">{DRAFT_TEXT[draft]}</DraftNote>
+          </KickerRow>
           <TitleInput aria-label="Título da música" placeholder="Sem título ✎" maxLength={80} value={meta.title} onChange={(e) => act({ type: 'title', title: e.target.value })} />
         </TitleBlock>
         <Metas>
@@ -467,7 +476,6 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
           </Meta>
         </Metas>
         <Grow />
-        <DraftNote role="status">{DRAFT_TEXT[draft]}</DraftNote>
         <Button type="button" $variant="ghost" aria-pressed={playing !== null} disabled={!notes} onClick={() => void toggleListen()}>
           <span aria-hidden="true">{playing ? '■' : '▶'}</span>
           {playing ? 'Parar' : 'Ouvir'}
