@@ -65,7 +65,7 @@ export interface CardCanvas {
 
 const MARGIN = 80;
 const INNER = CARD_WIDTH - 2 * MARGIN;
-/** Largura de cada selo no rodapé: cabe "Afinação de ouro" inteiro. */
+/** Largura de cada selo: cabe "Afinação de ouro" inteiro. */
 const BADGE_SLOT = 160;
 
 /** As fontes do cartão: título no display do tema, números e texto na de interface (no 8-Bits a Pixelify desenha o 5 como S). */
@@ -110,7 +110,7 @@ function text(ctx: CardContext, value: string, x: number, y: number, font: strin
 function drawViolin(ctx: CardContext, theme: Theme) {
   const ink = theme.colors.text;
   ctx.save();
-  ctx.translate(790, 330);
+  ctx.translate(790, 230);
   ctx.rotate((14 * Math.PI) / 180);
   ctx.lineWidth = 6;
   ctx.strokeStyle = ink;
@@ -196,12 +196,12 @@ export function drawShareCard(canvas: CardCanvas, data: ShareCardData, theme: Th
   }
   ctx.fillStyle = art.halo;
   ctx.beginPath();
-  ctx.arc(790, 380, 250, 0, 2 * Math.PI);
+  ctx.arc(790, 280, 190, 0, 2 * Math.PI);
   ctx.fill();
   drawViolin(ctx, theme);
   for (const [x, y, s] of [
     [520, 250, 'G'],
-    [1010, 560, 'A'],
+    [1010, 440, 'A'],
   ] as const) {
     ctx.fillStyle = game.strings[s].main;
     ctx.beginPath();
@@ -242,9 +242,9 @@ export function drawShareCard(canvas: CardCanvas, data: ShareCardData, theme: Th
   }
 
   // Música, modo, nível e nome; os pontos e os números na fonte de interface
-  text(ctx, data.songTitle, MARGIN, 660, fonts.title, colors.text);
-  text(ctx, [data.mode, data.level, data.name].filter(Boolean).join(' · '), MARGIN, 738, fonts.subtitle, colors.textMuted);
-  text(ctx, formatPoints(data.score), MARGIN, 800, fonts.score, colors.text);
+  text(ctx, data.songTitle, MARGIN, 480, fonts.title, colors.text);
+  text(ctx, [data.mode, data.level, data.name].filter(Boolean).join(' · '), MARGIN, 558, fonts.subtitle, colors.textMuted);
+  text(ctx, formatPoints(data.score), MARGIN, 620, fonts.score, colors.text);
   const stats: [string, string][] = [
     ['PRECISÃO', formatPercent(data.accuracy)],
     ['AFINAÇÃO', data.tuning],
@@ -252,25 +252,25 @@ export function drawShareCard(canvas: CardCanvas, data: ShareCardData, theme: Th
   ];
   stats.forEach(([label, value], i) => {
     const x = MARGIN + i * 300;
-    text(ctx, label, x, 960, fonts.label, colors.textMuted, 280);
-    text(ctx, value, x, 990, fonts.stat, colors.text, 280);
+    text(ctx, label, x, 780, fonts.label, colors.textMuted, 280);
+    text(ctx, value, x, 810, fonts.stat, colors.text, 280);
   });
   const bar = (INNER - 3 * 12) / 4;
   (['G', 'D', 'A', 'E'] as const).forEach((s, i) => {
     ctx.fillStyle = game.strings[s].main;
-    ctx.fillRect(MARGIN + i * (bar + 12), 1072, bar, 14);
+    ctx.fillRect(MARGIN + i * (bar + 12), 892, bar, 14);
   });
 
   // Selos abaixo da ilustração, sem disputar espaço com o endereço e o QR.
-  data.badges.slice(0, 3).forEach((badge, i) => drawBadge(ctx, theme, badge, MARGIN + (i + 0.5) * BADGE_SLOT, 540, fonts));
+  data.badges.slice(0, 3).forEach((badge, i) => drawBadge(ctx, theme, badge, MARGIN + (i + 0.5) * BADGE_SLOT, 925, fonts));
 
   // Rodapé: o mesmo endereço no texto e na matriz, com quatro módulos de silêncio.
-  const boxTop = CARD_HEIGHT - MARGIN - 160;
+  const boxTop = CARD_HEIGHT - MARGIN - 230;
   ctx.strokeStyle = colors.primary.main;
   ctx.lineWidth = 3;
-  ctx.strokeRect(MARGIN, boxTop, INNER, 160);
+  ctx.strokeRect(MARGIN, boxTop, INNER, 230);
   const link = data.link ?? `https://${data.site.replace(/^https?:\/\//, '')}`;
-  const textMax = INNER - 64 - 150;
+  const textMax = INNER - 64 - 210;
   text(ctx, 'Consegue me passar?', MARGIN + 32, boxTop + 36, fonts.footer, colors.text, textMax);
   // Reduz só até 12 px para manter o endereço completo visível.
   let size = 34;
@@ -280,13 +280,15 @@ export function drawShareCard(canvas: CardCanvas, data: ShareCardData, theme: Th
   qr.addData(link, 'Byte');
   qr.make();
   const count = qr.getModuleCount();
-  const step = Math.floor(150 / (count + 8));
-  const x = MARGIN + INNER - 155;
-  const y = boxTop + 5;
-  ctx.fillStyle = colors.surface;
-  ctx.fillRect(x, y, 150, 150);
-  ctx.fillStyle = ensureContrast(colors.text, [colors.surface], 4.5);
-  const offset = Math.floor((150 - count * step) / 2);
+  const step = Math.floor(210 / (count + 8));
+  const x = MARGIN + INNER - 220;
+  const y = boxTop + 10;
+  const background = theme.mode === 'dark' ? colors.text : colors.surface;
+  const modules = theme.mode === 'dark' ? colors.surface : colors.text;
+  ctx.fillStyle = background;
+  ctx.fillRect(x, y, 210, 210);
+  ctx.fillStyle = ensureContrast(modules, [background], 4.5);
+  const offset = Math.floor((210 - count * step) / 2);
   for (let row = 0; row < count; row++) {
     for (let col = 0; col < count; col++) {
       if (qr.isDark(row, col)) ctx.fillRect(x + offset + col * step, y + offset + row * step, step, step);

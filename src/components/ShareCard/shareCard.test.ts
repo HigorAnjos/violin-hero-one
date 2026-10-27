@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import qrcode from 'qrcode-generator';
-import { contrast } from '../../assets/styles/themes/color';
-import { cadernoTheme, type Theme } from '../../assets/styles/themes';
+import { contrast, parseHex } from '../../assets/styles/themes/color';
+import { cadernoTheme, getTheme, type Theme } from '../../assets/styles/themes';
 import { palcoTheme } from '../../assets/styles/themes/palco';
-import { pixelTheme } from '../../assets/styles/themes/specials';
+import { neonTheme, pixelTheme } from '../../assets/styles/themes/specials';
 import { CARD_HEIGHT, CARD_WIDTH, cardFileName, cardFonts, drawShareCard, renderShareCard, type CardCanvas, type CardContext, type ShareCardData } from './shareCard';
 
 /** Contexto 2D de mentira: grava cada texto com a fonte e a cor do momento. Largura = 0,5 × tamanho por letra. */
@@ -72,6 +72,8 @@ const THEMES = [
   ['Caderno', cadernoTheme],
   ['Palco', palcoTheme],
   ['8-Bits', pixelTheme],
+  ['Neon', neonTheme],
+  ['Tokyo Night', getTheme('tokyo-night')],
 ] as [string, Theme][];
 
 describe('cartão para compartilhar', () => {
@@ -84,18 +86,21 @@ describe('cartão para compartilhar', () => {
       qr.addData(expected, 'Byte');
       qr.make();
       const count = qr.getModuleCount();
-      const step = Math.floor(150 / (count + 8));
-      const offset = Math.floor((150 - count * step) / 2);
-      const background = rects.findIndex((r) => r.x === 845 && r.y === 1115 && r.w === 150 && r.h === 150);
+      const step = Math.floor(210 / (count + 8));
+      expect(step).toBeGreaterThanOrEqual(5);
+      const offset = Math.floor((210 - count * step) / 2);
+      const background = rects.findIndex((r) => r.x === 780 && r.y === 1050 && r.w === 210 && r.h === 210);
       expect(background).toBeGreaterThan(0);
       const modules = rects.slice(background + 1);
       const expectedRects = [];
       for (let row = 0; row < count; row++) for (let col = 0; col < count; col++) {
-        if (qr.isDark(row, col)) expectedRects.push({ x: 845 + offset + col * step, y: 1115 + offset + row * step, w: step, h: step });
+        if (qr.isDark(row, col)) expectedRects.push({ x: 780 + offset + col * step, y: 1050 + offset + row * step, w: step, h: step });
       }
       expect(modules.map(({ x, y, w, h }) => ({ x, y, w, h }))).toEqual(expectedRects);
       expect(offset).toBeGreaterThanOrEqual(4 * step);
       expect(contrast(modules[0].color, rects[background].color)).toBeGreaterThanOrEqual(4.5);
+      // Todos os canais do fundo são mais claros: impede QR invertido inclusive nos temas escuros.
+      expect(parseHex(rects[background].color).every((channel, i) => channel > parseHex(modules[0].color)[i])).toBe(true);
       expect(texts.some((t) => t.text === expected)).toBe(true);
     }
   });
