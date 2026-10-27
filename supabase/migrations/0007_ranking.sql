@@ -9,11 +9,9 @@ language sql stable set search_path = '' as $$
   select date_trunc('week', violinhero.local_day(p_at))::date
 $$;
 
--- A melhor partida de cada jogador numa música e nível, com o desempate por chegada (created_at)
-create index plays_ranking_all_idx on violinhero.plays (song_id, level, user_id, ranking_points desc, created_at)
-  where counts_for_record;
-create index plays_ranking_user_week_idx on violinhero.plays (song_id, level, week, user_id, ranking_points desc, created_at)
-  where counts_for_record;
+-- Sem índice novo: o plays_ranking_song_idx da 0005 (song_id, level, week, ranking_points) já atende a semana e o
+-- geral. Com 120 mil partidas, o planejador lê só as linhas da música e do nível por ele e ordena o resto em memória
+-- (0,8 ms na semana, 6 ms no geral); índices por jogador ficaram fora do plano e só pesariam em cada submit_play.
 
 /**
  * Ranking de uma música num nível: `p_period` 'week' (semana corrente) ou 'all' (geral). Uma linha por conta,
