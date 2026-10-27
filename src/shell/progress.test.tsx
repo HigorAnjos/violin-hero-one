@@ -4,8 +4,8 @@ import React from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { BADGES_STORAGE_KEY } from '../services/badges';
 import { PROFILE_STORAGE_KEY } from '../services/profile';
-import type { ProgressClient } from '../services/progress';
-import { loadLocalProgress, mergeRecords, useProgress } from './progress';
+import type { PlayOutcome, ProgressClient } from '../services/progress';
+import { badgesToShow, loadLocalProgress, mergeRecords, useBadgeCollection, useProgress } from './progress';
 import { loadRecords, RECORDS_STORAGE_KEY } from './records';
 
 afterEach(() => localStorage.clear());
@@ -97,5 +97,64 @@ describe('useProgress', () => {
     expect(result.current.records.map((r) => r.songId)).toEqual(['minueto', 'ode']);
     expect(result.current.records[0].accuracy).toBe(91.5);
     expect(result.current.badges).toEqual(['primeira-musica', 'combo-25']);
+  });
+});
+
+const outcome = (badges: PlayOutcome['badges'], duplicate = false): PlayOutcome => ({ playId: 'p', accuracy: 100, record: null, badges, streak: null, duplicate });
+
+describe('badgesToShow', () => {
+  it('sem resposta do servidor, os do aparelho', () => {
+    expect(badgesToShow(['primeira-musica', 'combo-25'], undefined)).toEqual(['primeira-musica', 'combo-25']);
+  });
+
+  it('com resposta (e no reenvio), só os que o servidor confirmou e o aparelho ainda não tinha comemorado', () => {
+    expect(badgesToShow(['primeira-musica', 'combo-25'], outcome(['combo-25']))).toEqual(['combo-25']);
+    expect(badgesToShow(['primeira-musica'], outcome(['primeira-musica', 'combo-25']))).toEqual(['primeira-musica']);
+    expect(badgesToShow(['primeira-musica'], outcome(['primeira-musica'], true))).toEqual(['primeira-musica']);
+    expect(badgesToShow(['sem-erros'], outcome([]))).toEqual([]);
+  });
+});
+
+/** Cliente cujas queries encadeiam (neq, eq, not, order, limit) e respondem pela tabela. */
+function chainClient(tables: Record<string, unknown[]>): ProgressClient {
+  const session = { user: { id: 'u1', is_anonymous: true } };
+  const query = (table: string) => {
+    const result = Promise.resolve({ data: tables[table] ?? [], error: null });
+    const chain: Record<string, unknown> = { then: result.then.bind(result) };
+    for (const m of ['select', 'neq', 'eq', 'not', 'order', 'limit']) chain[m] = () => chain;
+    return chain;
+  };
+  return {
+    auth: { getSession: async () => ({ data: { session }, error: null }), signInAnonymously: async () => ({ data: { session }, error: null }) },
+    from: query,
+    rpc: async () => ({ data: null, error: null }),
+  } as unknown as ProgressClient;
+}
+
+describe('useBadgeCollection', () => {
+  it('sem servidor: os selos do aparelho, sem data', () => {
+    localStorage.setItem(BADGES_STORAGE_KEY, JSON.stringify(['combo-25', 'primeira-musica']));
+    const { result } = renderHook(() => useBadgeCollection(null), { wrapper });
+    expect(result.current.confirmed).toBe(false);
+    expect(result.current.earned).toEqual([
+      { id: 'primeira-musica', source: 'device' },
+      { id: 'combo-25', source: 'device' },
+    ]);
+  });
+
+  it('com sessão: data e partida do servidor, os do aparelho que faltam e o melhor combo e afinação', async () => {
+    localStorage.setItem(BADGES_STORAGE_KEY, JSON.stringify(['combo-25']));
+    const client = chainClient({
+      badges_earned: [{ badge_id: 'sem-erros', earned_at: '2026-10-20T15:00:00Z', play: { song_id: 'minueto', level: 'easy', song: { title: 'Minueto' } } }],
+      plays: [{ max_combo: 31, mean_abs_cents: '12.5' }],
+    });
+    const { result } = renderHook(() => useBadgeCollection(client), { wrapper });
+    await waitFor(() => expect(result.current.confirmed).toBe(true));
+    expect(result.current.earned).toEqual([
+      { id: 'sem-erros', source: 'server', earned: { id: 'sem-erros', earnedAt: '2026-10-20T15:00:00Z', play: { songId: 'minueto', songTitle: 'Minueto', level: 'easy' } } },
+      { id: 'combo-25', source: 'device' },
+    ]);
+    expect(result.current.bestCombo).toBe(31);
+    expect(result.current.bestCents).toBe(12.5);
   });
 });
