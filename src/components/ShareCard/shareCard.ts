@@ -223,11 +223,16 @@ export function drawShareCard(canvas: CardCanvas, data: ShareCardData, theme: Th
     const label = 'Novo recorde!';
     const width = ctx.measureText(label).width + 36;
     ctx.fillStyle = colors.primary.main;
-    ctx.beginPath();
-    ctx.arc(MARGIN + 22, 190, 22, Math.PI / 2, (3 * Math.PI) / 2);
-    ctx.arc(MARGIN + width - 22, 190, 22, -Math.PI / 2, Math.PI / 2);
-    ctx.closePath();
-    ctx.fill();
+    // Pílula redonda; no 8-Bits, de cantos retos como o resto do tema
+    if (theme.borderRadius.pill === '0') {
+      ctx.fillRect(MARGIN, 168, width, 44);
+    } else {
+      ctx.beginPath();
+      ctx.arc(MARGIN + 22, 190, 22, Math.PI / 2, (3 * Math.PI) / 2);
+      ctx.arc(MARGIN + width - 22, 190, 22, -Math.PI / 2, Math.PI / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.fillStyle = colors.primary.text;
     ctx.fillText(label, MARGIN + 18, 177);
   }
