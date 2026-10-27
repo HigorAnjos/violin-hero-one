@@ -17,6 +17,7 @@ import { OnboardTest } from './pages/OnboardTest';
 import { Badges } from './pages/Badges';
 import { Profile } from './pages/Profile';
 import { Ranking } from './pages/Ranking';
+import { Challenge, ChallengeInvite } from './pages/Challenge';
 import { Reminder } from './pages/Reminder';
 import { Settings } from './pages/Settings';
 import { isOnboarded } from './services/profile';
@@ -92,6 +93,8 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.login} element={<Login />} />
             <Route path={ROUTES.account} element={<GuestPrompt />} />
             <Route path={ROUTES.ranking} element={<Ranking />} />
+            <Route path={ROUTES.challenge} element={<Challenge />} />
+            <Route path={ROUTES.challengeCode} element={<ChallengeInvite />} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           </React.Suspense>
