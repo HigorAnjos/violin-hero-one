@@ -87,13 +87,13 @@ describe('useProgress', () => {
       records: [{ song_id: 'minueto', level: 'medium', score: 5400, accuracy: '91.5' }],
       badges_earned: [{ badge_id: 'primeira-musica' }],
       streaks: { current_days: 4, best_days: 9, last_day: today },
-      play_days: [{ day: today, seconds: 600 }],
+      play_days: [{ day: today, seconds: 600, plays: 1 }],
       plays: [{ played_at: new Date().toISOString(), string_cents: ['3.5', null, '-2', '8'] }],
     });
     const { result } = renderHook(() => useProgress(client), { wrapper });
     await waitFor(() => expect(result.current.streakDays).toBe(4));
     await waitFor(() => expect(result.current.history).not.toBeNull());
-    expect(result.current.history).toEqual({ days: [{ day: today, seconds: 600 }], plays: [{ playedAt: expect.any(String), stringCents: [3.5, null, -2, 8] }] });
+    expect(result.current.history).toEqual({ days: [{ day: today, seconds: 600, marked: true }], plays: [{ playedAt: expect.any(String), stringCents: [3.5, null, -2, 8] }] });
     expect(result.current.records.map((r) => r.songId)).toEqual(['minueto', 'ode']);
     expect(result.current.records[0].accuracy).toBe(91.5);
     expect(result.current.badges).toEqual(['primeira-musica', 'combo-25']);
@@ -132,10 +132,11 @@ function chainClient(tables: Record<string, unknown[]>): ProgressClient {
 }
 
 describe('useBadgeCollection', () => {
-  it('sem servidor: os selos do aparelho, sem data', () => {
+  it('sem servidor: os selos do aparelho, sem data', async () => {
     localStorage.setItem(BADGES_STORAGE_KEY, JSON.stringify(['combo-25', 'primeira-musica']));
     const { result } = renderHook(() => useBadgeCollection(null), { wrapper });
-    expect(result.current.confirmed).toBe(false);
+    expect(result.current.status).toBe('pending');
+    await waitFor(() => expect(result.current.status).toBe('device'));
     expect(result.current.earned).toEqual([
       { id: 'primeira-musica', source: 'device' },
       { id: 'combo-25', source: 'device' },
@@ -149,7 +150,7 @@ describe('useBadgeCollection', () => {
       plays: [{ max_combo: 31, mean_abs_cents: '12.5' }],
     });
     const { result } = renderHook(() => useBadgeCollection(client), { wrapper });
-    await waitFor(() => expect(result.current.confirmed).toBe(true));
+    await waitFor(() => expect(result.current.status).toBe('server'));
     expect(result.current.earned).toEqual([
       { id: 'sem-erros', source: 'server', earned: { id: 'sem-erros', earnedAt: '2026-10-20T15:00:00Z', play: { songId: 'minueto', songTitle: 'Minueto', level: 'easy' } } },
       { id: 'combo-25', source: 'device' },

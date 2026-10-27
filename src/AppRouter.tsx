@@ -14,6 +14,7 @@ import { MicTrouble } from './pages/MicTrouble';
 import { OnboardLevel } from './pages/OnboardLevel';
 import { OnboardMic } from './pages/OnboardMic';
 import { OnboardTest } from './pages/OnboardTest';
+import { Badges } from './pages/Badges';
 import { Profile } from './pages/Profile';
 import { Reminder } from './pages/Reminder';
 import { Settings } from './pages/Settings';
@@ -85,6 +86,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.results} element={<Results />} />
             <Route path={ROUTES.settings} element={<Settings />} />
             <Route path={ROUTES.profile} element={<Profile />} />
+            <Route path={ROUTES.badges} element={<Badges />} />
             <Route path={ROUTES.reminder} element={<Reminder />} />
             <Route path={ROUTES.login} element={<Login />} />
             <Route path={ROUTES.account} element={<GuestPrompt />} />

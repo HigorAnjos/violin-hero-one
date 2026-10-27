@@ -49,8 +49,8 @@ export interface Collection {
   earned: CollectedBadge[];
   bestCombo: number | null;
   bestCents: number | null;
-  /** O servidor respondeu: a coleção é a da conta. */
-  confirmed: boolean;
+  /** server: a coleção da conta; device: o servidor não respondeu (sem rede), só o aparelho; pending: perguntando. */
+  status: 'pending' | 'server' | 'device';
 }
 
 /** A coleção da tela de selos: os do servidor com data e partida, mais os do aparelho que ainda não subiram. */
@@ -64,8 +64,9 @@ export function useBadgeCollection(client: ProgressClient | null = supabase): Co
       if (e) return [{ id: b.id, source: 'server', earned: e }];
       return local.includes(b.id) ? [{ id: b.id, source: 'device' }] : [];
     });
-    return { earned, bestCombo: server.data?.bestCombo ?? null, bestCents: server.data?.bestCents ?? null, confirmed: server.isSuccess };
-  }, [local, server.data, server.isSuccess]);
+    const status = server.isSuccess ? 'server' : server.isError ? 'device' : 'pending';
+    return { earned, bestCombo: server.data?.bestCombo ?? null, bestCents: server.data?.bestCents ?? null, status };
+  }, [local, server.data, server.isSuccess, server.isError]);
 }
 
 /** Do aparelho: vh:profile, vh:recordes e vh:badges. */
