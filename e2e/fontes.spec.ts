@@ -9,6 +9,46 @@ test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required']
 
 const SONG = { ...ODE, title: LONG_TITLE };
 
+test('8-Bits desenha o 5 de Combo 25 com a fonte de interface', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('vh:theme', '8-bits'));
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openWithState(page, '/selo-novo', { song: SONG, result: { ...bigResult(0), badges: ['combo-25'] } });
+  const combo = page.getByRole('heading', { name: 'Selo novo: Combo 25' });
+  await expect(combo).toBeVisible();
+  await fontsReady(page, '8-bits');
+  const widths = await combo.evaluate(async (heading) => {
+    const style = getComputedStyle(heading);
+    if (!style.fontFamily.startsWith('"Nunito Digits"')) throw new Error(`Pilha inesperada: ${style.fontFamily}`);
+    await document.fonts.load(`${style.fontWeight} ${style.fontSize} Nunito`, '5');
+    await document.fonts.load(`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`, '5');
+    const context = document.createElement('canvas').getContext('2d')!;
+    const measure = (family: string, glyph: string) => {
+      context.font = `${style.fontWeight} ${style.fontSize} ${family}`;
+      return context.measureText(glyph).width;
+    };
+    const ink = (family: string) => {
+      // Amplia o mesmo glifo para evitar coincidências de arredondamento no tamanho de 24 px.
+      context.font = `${style.fontWeight} 100px ${family}`;
+      const glyph = context.measureText('5');
+      return glyph.actualBoundingBoxLeft + glyph.actualBoundingBoxRight;
+    };
+    return {
+      digit: measure(style.fontFamily, '5'),
+      ui: measure('Nunito', '5'),
+      ink: ink(style.fontFamily),
+      uiInk: ink('Nunito'),
+      pixelInk: ink('"Pixelify Sans"'),
+      letter: measure(style.fontFamily, 'S'),
+      pixelLetter: measure('"Pixelify Sans"', 'S'),
+    };
+  });
+  expect(widths.digit).toBeCloseTo(widths.ui, 2);
+  expect(widths.ink).toBeCloseTo(widths.uiInk, 2);
+  // Em certos tamanhos os avanços coincidem; o contorno do glifo ainda distingue as fontes.
+  expect(Math.abs(widths.ink - widths.pixelInk), JSON.stringify(widths)).toBeGreaterThan(0.1);
+  expect(widths.letter).toBeCloseTo(widths.pixelLetter, 2);
+});
+
 /** Partida de verdade com os números inchados: pontuação de 7 dígitos e combo de 5. */
 function bigResult(errors: number, noFail = true): GameResult {
   const result = simulateGame({ song: ODE, startAt: 1, noFail }, { errors, seed: 2 }).result;
