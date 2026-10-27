@@ -214,7 +214,11 @@ export function editorFromSong(song: Song): EditorState {
 export function editorFromDoc(raw: unknown): EditorState {
   const doc = raw as EditorDoc;
   if (!doc || typeof doc !== 'object' || !doc.meta || !Array.isArray(doc.notes)) throw new TypeError('rascunho sem documento');
-  const state = createEditor(doc.meta, Number(doc.measures) || STARTING_MEASURES);
+  const { id, title, composer, key, bpm, timeSignature: ts } = doc.meta;
+  keyFifthsOf(String(key));
+  if (!TIME_SIGNATURES.some((t) => t.beats === ts?.beats && t.unit === ts?.unit)) throw new RangeError('rascunho com compasso fora da lista');
+  const meta = { id: String(id), title: String(title ?? ''), composer: String(composer ?? ''), key, bpm: Number(bpm), timeSignature: { beats: ts.beats, unit: ts.unit } };
+  const state = createEditor(meta, Number(doc.measures) || STARTING_MEASURES);
   const outside = doc.notes.map((n) => rangeProblem(Number(n.midi))).find(Boolean);
   if (outside) throw new RangeError(`rascunho inválido: ${outside}`);
   const notes = normalize(
