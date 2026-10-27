@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import cases from './badgeCases.json';
 import { BADGES, badgesFor, newBadges } from './badges';
 
 const base = { status: 'finished' as const, counts: { perfect: 10, great: 0, good: 0, miss: 0 }, maxCombo: 10, meanAbsCents: 4 };
@@ -43,4 +44,20 @@ describe('selos do ciclo 1', () => {
   it('newBadges deixa de fora os já conquistados', () => {
     expect(newBadges(base, ['primeira-musica'])).toEqual(['sem-erros', 'afinacao-de-ouro']);
   });
+});
+
+// Os mesmos casos rodam no test:db contra violinhero.submit_play: uma regra só dos dois lados
+describe('selos: casos compartilhados com o servidor (badgeCases.json)', () => {
+  for (const c of cases.cases) {
+    it(c.name, () => {
+      const result = {
+        status: c.finished ? ('finished' as const) : ('failed' as const),
+        counts: c.counts,
+        maxCombo: c.maxCombo,
+        meanAbsCents: c.meanAbsCents,
+        practice: 'practice' in c && c.practice,
+      };
+      expect(badgesFor(result)).toEqual(c.badges);
+    });
+  }
 });

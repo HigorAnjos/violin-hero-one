@@ -27,10 +27,20 @@ export const BADGES: readonly Badge[] = [
   },
 ];
 
-type BadgeInput = Pick<GameResult, 'status' | 'counts' | 'maxCombo' | 'meanAbsCents'>;
+type BadgeInput = Pick<GameResult, 'status' | 'counts' | 'maxCombo' | 'meanAbsCents'> & {
+  /** Prática (ou partida que virou prática) não conquista selo. */
+  practice?: boolean;
+};
 
-/** Selos que a partida merece, na ordem de BADGES. Cálculo local; o servidor confere no ciclo 3. */
+/** Duas casas, como o servidor guarda (plays.mean_abs_cents): a régua do ouro é a mesma dos dois lados. */
+export const roundCents = (cents: number) => Math.round(cents * 100) / 100;
+
+/**
+ * Selos que a partida merece, na ordem de BADGES. É a mesma regra de violinhero.submit_play (0006): os casos de
+ * badgeCases.json rodam aqui e no test:db. Com sessão, vale o que o servidor respondeu.
+ */
 export function badgesFor(result: BadgeInput): BadgeId[] {
+  if (result.practice) return [];
   const finished = result.status === 'finished';
   const { perfect, great, good, miss } = result.counts;
   const hits = perfect + great + good;
@@ -42,7 +52,7 @@ export function badgesFor(result: BadgeInput): BadgeId[] {
   if (
     finished &&
     result.meanAbsCents !== null &&
-    result.meanAbsCents <= GOLD_TUNING_CENTS &&
+    roundCents(result.meanAbsCents) <= GOLD_TUNING_CENTS &&
     hits >= GOLD_TUNING_HIT_RATE * total
   ) {
     earned.push('afinacao-de-ouro');
