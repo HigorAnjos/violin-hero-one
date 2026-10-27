@@ -26,6 +26,7 @@ const SCREENS = [
     ready: (p: Page) => expect(p.getByRole('switch', { name: /Padrões para daltonismo/ })).toBeVisible(),
   },
   { name: 'perfil', path: '/perfil', ready: (p: Page) => expect(p.getByRole('region', { name: 'Conquistas' })).toBeVisible() },
+  { name: 'selos', path: '/selos', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Seus selos' })).toBeVisible() },
   { name: 'lembrete', path: '/lembrete', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Lembrete de prática' })).toBeVisible() },
 ];
 
