@@ -1,5 +1,5 @@
 // Os 3 níveis a partir da mesma melodia (Score): ritmo, tonalidade e dedilhado de cada um.
-import { fingerMelody, playable, type FingeringRules, type Position } from './fingering';
+import { FIRST_POSITION_RULES, fingerMelody, playable, UP_TO_THIRD_RULES, type FingeringRules, type Position } from './fingering';
 import type { KeySignature, Score, ScoreMeasure, ScoreNote } from './musicxml';
 import { parseSong, SONG_FORMAT_VERSION, type Level, type Song } from './song';
 
@@ -15,13 +15,12 @@ export const LEVEL_RULES: Record<Level, LevelRules> = {
   easy: {
     gridQuarters: 0.5,
     comfortableKey: true,
-    // corda solta vale mais que ir e voltar de corda (2 travessias) para fugir do 4º dedo
-    fingering: { maxPosition: 1, openCost: -3, positionCost: 0, shiftCost: 0, crossCost: 1 },
+    fingering: FIRST_POSITION_RULES,
   },
   medium: {
     gridQuarters: 0.25,
     comfortableKey: false,
-    fingering: { maxPosition: 3, openCost: -1, positionCost: 2, shiftCost: 3, crossCost: 1 },
+    fingering: UP_TO_THIRD_RULES,
   },
   hard: {
     gridQuarters: null,

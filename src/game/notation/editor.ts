@@ -1,8 +1,8 @@
 // Editor de partitura (ScoreEditor.dc): as operações sobre uma música em edição, puras e sem tela. A fonte da verdade
 // é a melodia em semínimas desde o começo da música; a Song sai dela a cada passo (compassos sempre cheios, pausa no
 // vão, nota que passa da barra vira ligadura) com o dedilhado sugerido. O ditado entra pelo mesmo insertNote da tela.
-import { fingerMelody, placements } from './fingering';
-import { LEVEL_RULES } from './levels';
+// levels.ts não: ele e o conversor ficam fora do pacote do app (noConverterInApp); as regras vêm do fingering.ts
+import { FIRST_POSITION_RULES, fingerMelody, placements, UP_TO_THIRD_RULES } from './fingering';
 import { SONG_FORMAT_VERSION, songProblems, type Finger, type Level, type Song, type SongNote, type TimeSignature } from './song';
 import { HIGHEST_MIDI, LOWEST_MIDI, type StringIndex } from './violin';
 
@@ -605,9 +605,9 @@ function pieces(doc: EditorDoc): Piece[] {
 function suggestion(list: readonly Piece[]) {
   const notes = list.map((p) => ({ midi: p.midi, tie: p.tie }));
   try {
-    return fingerMelody(notes, LEVEL_RULES.easy.fingering);
+    return fingerMelody(notes, FIRST_POSITION_RULES);
   } catch {
-    return fingerMelody(notes, LEVEL_RULES.medium.fingering);
+    return fingerMelody(notes, UP_TO_THIRD_RULES);
   }
 }
 

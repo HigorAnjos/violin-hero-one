@@ -31,6 +31,11 @@ export interface FingeringRules {
   crossCost: number;
 }
 
+/** Fácil: só a 1ª posição; corda solta vale mais que ir e voltar de corda (2 travessias) para fugir do 4º dedo. */
+export const FIRST_POSITION_RULES: FingeringRules = { maxPosition: 1, openCost: -3, positionCost: 0, shiftCost: 0, crossCost: 1 };
+/** Médio: até a 3ª, subindo só quando compensa. */
+export const UP_TO_THIRD_RULES: FingeringRules = { maxPosition: 3, openCost: -1, positionCost: 2, shiftCost: 3, crossCost: 1 };
+
 const STRINGS: readonly StringIndex[] = [0, 1, 2, 3];
 
 /** Todas as formas de tocar a nota até `maxPosition`. */
