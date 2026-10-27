@@ -68,7 +68,8 @@ end $$;
 
 /**
  * Melhor pontuação que conta para o desafio de `p_user`: partida que vale ranking, na música e no nível do desafio,
- * que chegou ao servidor entre o aceite e o prazo (created_at; o relógio do aparelho não decide).
+ * jogada depois do aceite (played_at, que submit_play já limita a now()) e que chegou ao servidor até o prazo
+ * (created_at; o relógio do aparelho não estica o prazo). Partida feita sem rede antes de aceitar não conta.
  */
 create function violinhero.challenge_best(p_challenge violinhero.challenges, p_user uuid, p_accepted_at timestamptz)
 returns int
@@ -76,7 +77,8 @@ language sql stable set search_path = '' as $$
   select max(p.score)
     from violinhero.plays p
    where p.user_id = p_user and p.song_id = p_challenge.song_id and p.level = p_challenge.level
-     and p.counts_for_record and p.created_at >= p_accepted_at and p.created_at <= p_challenge.expires_at
+     and p.counts_for_record and p.played_at >= p_accepted_at and p.created_at >= p_accepted_at
+     and p.created_at <= p_challenge.expires_at
 $$;
 
 /**

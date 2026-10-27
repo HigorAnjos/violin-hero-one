@@ -975,6 +975,22 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       assert.deepEqual([closed.closed, closed.entries[0].best_score, closed.entries[0].result], [true, null, 'lost']);
     });
 
+    it('partida jogada sem rede antes do aceite e enviada depois NÃO conta (played_at antes do aceite)', async () => {
+      const a = await account();
+      const b = await account('cat');
+      const { songId, challenge } = await challengeOf(a);
+      await accept(b.id, challenge.code);
+      // A fila do aparelho sobe agora (created_at = aceite) uma partida tocada 10 minutos antes
+      const queuedPlay = await submit(c, b.id, playOf(songId, { ...FOUR, played_at: new Date(Date.now() - 10 * 60e3).toISOString() }));
+      const { rows: [p] } = await c.query(`select played_at < created_at as before, created_at = now() as arrived_now from ${S}.plays where id = $1`, [queuedPlay.play_id]);
+      assert.deepEqual(p, { before: true, arrived_now: true });
+      const seen = await read(b.id, challenge.code);
+      assert.deepEqual([seen.entries[0].best_score, seen.entries[0].result], [null, null]);
+      // A mesma partida, jogada depois do aceite, conta
+      await submit(c, b.id, playOf(songId, FOUR));
+      assert.deepEqual((await read(b.id, challenge.code)).entries.map((e) => [e.best_score, e.result]), [[400, 'won']]);
+    });
+
     it('resultado para os dois: venceu assim que passa os pontos; empate e derrota só no fim do prazo', async () => {
       const a = await account();
       const [win, tie, lose] = [await account('cat'), await account('penguin'), await account('fox')];
