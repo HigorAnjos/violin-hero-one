@@ -40,6 +40,11 @@ const Intro = styled.div`
   }
 `;
 
+const HeaderActions = styled.div`
+  display: flex;
+  gap: ${({ theme }) => theme.spacing.sm};
+`;
+
 const Toolbar = styled.div`
   display: flex;
   align-items: center;
@@ -259,9 +264,14 @@ export const Library: React.FC = () => {
           <Kicker>{shelf.status === 'ready' ? kicker : 'Carregando…'}</Kicker>
           <ScreenTitle>Biblioteca</ScreenTitle>
         </Intro>
-        <Button as={Link} to={ROUTES.home} $variant="ghost">
-          <span aria-hidden="true">◂</span>Menu
-        </Button>
+        <HeaderActions>
+          <Button as={Link} to={ROUTES.editor} $variant="ghost">
+            <span aria-hidden="true">✎</span>Escrever música
+          </Button>
+          <Button as={Link} to={ROUTES.home} $variant="ghost">
+            <span aria-hidden="true">◂</span>Menu
+          </Button>
+        </HeaderActions>
       </Header>
 
       {shelf.status === 'ready' && shelf.fallback && <OfflineBanner reason={shelf.reason} count={songs.length} saved={saved > 0} />}

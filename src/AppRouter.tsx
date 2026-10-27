@@ -19,6 +19,7 @@ import { Profile } from './pages/Profile';
 import { Ranking } from './pages/Ranking';
 import { Challenge, ChallengeInvite } from './pages/Challenge';
 import { Reminder } from './pages/Reminder';
+import { ScoreEditor } from './pages/ScoreEditor';
 import { Settings } from './pages/Settings';
 import { isOnboarded } from './services/profile';
 import type { AppUpdate } from './shell/appUpdate';
@@ -73,6 +74,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.songs} element={<SongSelect />} />
             <Route path={ROUTES.loading} element={<Loading />} />
             <Route path={ROUTES.library} element={<Library />} />
+            <Route path={ROUTES.editor} element={<ScoreEditor />} />
             <Route path={ROUTES.level} element={<OnboardLevel />} />
             <Route path={ROUTES.mic} element={<OnboardMic />} />
             <Route path={ROUTES.strings} element={<OnboardTest />} />

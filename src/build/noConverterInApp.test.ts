@@ -26,9 +26,14 @@ describe('noConverterInApp', () => {
     );
   });
 
-  it.each(['catalog', 'levels', 'fingering'])('%s.ts também conta', (name) => {
+  it.each(['catalog', 'musicxml', 'xml', 'levels'])('%s.ts também conta', (name) => {
     const error = run({ a: chunk('assets/index.js', [`/app/src/game/notation/${name}.ts`]) });
     expect(error.mock.calls[0][0]).toContain(`notation/${name}.ts`);
+  });
+
+  it('fingering.ts e editor.ts podem: o dedilhado sugerido do editor roda no app', () => {
+    const error = run({ a: chunk('assets/index.js', ['/app/src/game/notation/fingering.ts', '/app/src/game/notation/editor.ts']) });
+    expect(error).not.toHaveBeenCalled();
   });
 
   it('partitura importada como ?raw derruba o build', () => {
