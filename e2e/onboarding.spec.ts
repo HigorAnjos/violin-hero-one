@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './microphone';
 import { fontsReady } from './fonts';
+import { expectFits, tinyText } from './layout';
 
 // O Chromium do teste nega o microfone: todo problema vira "bloqueado"; os outros estados usam o
 // mesmo cartão e ficam com os testes unitários
@@ -91,9 +92,11 @@ test('celular: primeiro jogo após onboarding desenha Cordas 3D e avança', asyn
   await expect(page.locator('[data-judgment]').first()).toBeVisible({ timeout: 15000 });
 });
 
-test('WebGL indisponível oferece Arcade após onboarding', async ({ micPage }) => {
+for (const tema of ['caderno', 'palco', '8-bits'] as const) {
+test(`${tema}: WebGL indisponível oferece Arcade após onboarding`, async ({ micPage }) => {
   test.setTimeout(60000);
   const page = await micPage('cordas-soltas');
+  await page.addInitScript((id) => localStorage.setItem('vh:theme', id), tema);
   await page.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...args: unknown[]) {
@@ -103,8 +106,12 @@ test('WebGL indisponível oferece Arcade após onboarding', async ({ micPage }) 
   });
   await completeOnboarding(page);
   await expect(page.getByRole('alert')).toHaveText(/Não deu para desenhar as Cordas 3D neste aparelho./, { timeout: 15000 });
+  await fontsReady(page, tema);
+  await expectFits(page);
+  expect(await tinyText(page)).toEqual([]);
   expect(await tooSmallTargets(page)).toEqual([]);
   await page.getByRole('button', { name: 'Tocar no Arcade' }).click();
   await expect(page).toHaveURL(/\/contagem$/);
   await expect(page).toHaveURL(/\/jogo$/, { timeout: 15000 });
 });
+}
