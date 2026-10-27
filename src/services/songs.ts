@@ -117,6 +117,24 @@ export async function listCatalog(client: SongsClient | null, session: SessionSt
   });
 }
 
+/**
+ * As músicas do jogador (importadas e do editor), da mais nova para a mais antiga. A RLS só devolve as dele: fora do
+ * catálogo, toda música é privada do dono.
+ */
+export async function listOwnSongs(client: SongsClient | null, session: SessionState): Promise<CatalogEntry[]> {
+  const db = requireSession(client, session);
+  const { data, error } = await db
+    .from('songs')
+    .select(`${SHEET_COLUMNS}, song_charts(level)`)
+    .neq('origin', 'catalog')
+    .order('created_at', { ascending: false });
+  if (error) throw new SongError('server', error);
+  return ((data ?? []) as CatalogRow[]).map((row) => {
+    const levels = new Set((row.song_charts ?? []).map((c) => c.level));
+    return { ...toSheet(row), levels: LEVELS.filter((l) => levels.has(l)) };
+  });
+}
+
 /** Ficha + chart de um nível por get_song, que aplica no servidor quem pode ler a música. */
 export async function getSong(client: SongsClient | null, session: SessionState, id: string, level: Level): Promise<LoadedSong> {
   const db = requireSession(client, session);
@@ -162,6 +180,7 @@ export async function loadSong(
 
 export const songKeys = {
   catalog: ['songs', 'catalog'] as const,
+  mine: ['songs', 'mine'] as const,
   song: (id: string, level: Level) => ['songs', 'song', id, level] as const,
   saved: ['songs', 'saved'] as const,
 };
@@ -180,6 +199,17 @@ export function useCatalog(client: SongsClient | null = supabase) {
   return useQuery({
     queryKey: songKeys.catalog,
     queryFn: async () => listCatalog(client, await session()),
+    staleTime: 5 * 60_000,
+    retry: retryUnlessFinal,
+  });
+}
+
+/** A estante do dono (importadas e do editor); useImportSong a atualiza quando uma música entra. */
+export function useOwnSongs(client: SongsClient | null = supabase) {
+  const session = useSession(client);
+  return useQuery({
+    queryKey: songKeys.mine,
+    queryFn: async () => listOwnSongs(client, await session()),
     staleTime: 5 * 60_000,
     retry: retryUnlessFinal,
   });
