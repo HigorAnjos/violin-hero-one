@@ -54,6 +54,19 @@ describe('ScoreStaff', () => {
     expect(staffLabel(song)).toBe('Partitura de 4 compassos, 8 notas');
   });
 
+  it('colcheias do mesmo tempo saem ligadas por barra, sem bandeirinha; vizinhas apertadas revezam a altura do dedo', () => {
+    const state = [62, 64, 66, 67].reduce((s, m) => insertNote(s, m), setDuration(createEditor(), 0.5));
+    const { container } = render(
+      <ThemeProvider theme={cadernoTheme}>
+        <ScoreStaff song={editorSong(state)} cursor={state.cursor} selectedAt={null} onTap={vi.fn()} />
+      </ThemeProvider>,
+    );
+    expect(container.querySelectorAll('[data-testid="nota"] path')).toHaveLength(0);
+    expect(container.querySelectorAll('g[aria-hidden="true"] > line[stroke-width="5"]')).toHaveLength(2);
+    const fingerYs = screen.getAllByTestId('nota').map((n) => Number(n.querySelector('circle')!.getAttribute('cy')));
+    expect(new Set(fingerYs).size).toBe(2);
+  });
+
   it('o toque vira tempo e grau na escala do viewBox', () => {
     const { container, onTap } = renderStaff(cadernoTheme);
     const svg = container.querySelector('svg')!;

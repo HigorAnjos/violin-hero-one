@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hitTest, measureBox, prefixWidth, staffHeight, stepY, STAFF_WIDTH, SYSTEM_HEIGHT, xAt } from './staffGeometry';
+import { beamGroups, hitTest, measureBox, prefixWidth, readableSize, staffHeight, staggeredFingers, stepY, STAFF_WIDTH, SYSTEM_HEIGHT, xAt } from './staffGeometry';
 
 describe('geometria da pauta do editor', () => {
   it('4 compassos por sistema, dividindo a largura que sobra depois da clave e da armadura', () => {
@@ -36,6 +36,28 @@ describe('geometria da pauta do editor', () => {
         expect(Math.floor(hit.at * 2) / 2).toBeCloseTo(at);
       }
     }
+  });
+
+  it('texto nunca abaixo de 12,5 px na tela: com o desenho encolhido, o tamanho no viewBox cresce', () => {
+    expect(readableSize(13, 1)).toBe(13);
+    expect(readableSize(12, 0.9)).toBeCloseTo(12.5 / 0.9);
+    expect(readableSize(12, 0.9) * 0.9).toBeGreaterThanOrEqual(12.5);
+    expect(readableSize(12, 0)).toBe(12.5);
+  });
+
+  it('dedos apertados revezam fileira; folgados e em outro sistema ficam em cima', () => {
+    const p = (x: number, system = 0) => ({ x, system });
+    expect(staggeredFingers([p(0), p(10), p(20), p(30), p(80), p(85, 1)], 21)).toEqual([false, true, false, true, false, false]);
+  });
+
+  it('barra liga colcheias seguidas do mesmo tempo; pausa, outro tempo ou outro compasso cortam', () => {
+    const n = (at: number, quarters: number, flags = 1, measure = Math.floor(at / 4)) => ({ at, quarters, flags, measure });
+    // 4/4: ♪♪ | ♪ (pausa) ♪ | ♩ | ♬♬♬♬ ... no tempo 4 duas semicolcheias + colcheia
+    const notes = [n(0, 0.5), n(0.5, 0.5), n(1, 0.5), n(2, 1, 0), n(3, 0.25, 2), n(3.25, 0.25, 2), n(3.5, 0.5), n(4, 0.5), n(4.5, 0.5)];
+    expect(beamGroups(notes, 4, 1)).toEqual([[0, 1], [4, 5, 6], [7, 8]]);
+    // 6/8: o tempo é a semínima pontuada, três colcheias juntas
+    const six = [n(0, 0.5, 1, 0), n(0.5, 0.5, 1, 0), n(1, 0.5, 1, 0), n(1.5, 0.5, 1, 0), n(2, 0.5, 1, 0)];
+    expect(beamGroups(six, 3, 1.5)).toEqual([[0, 1, 2], [3, 4]]);
   });
 
   it('toque fora da pauta fica dentro do violino e dos compassos que existem', () => {

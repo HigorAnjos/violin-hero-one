@@ -15,10 +15,16 @@ describe('TrackPreview', () => {
     expect(window.notes.map((n) => n.at)).toEqual([0, 1, 2, 3, 4]);
   });
 
+  it('com o cursor no vazio depois da música, mostra o fim dela', () => {
+    const window = previewWindow(scale(), 14);
+    expect(window.first).toBe(1);
+    expect(window.notes).toHaveLength(5);
+  });
+
   it('cada nota na raia da corda, na cor dela', () => {
     render(
       <ThemeProvider theme={cadernoTheme}>
-        <TrackPreview song={scale()} cursor={0} />
+        <TrackPreview song={scale()} anchor={0} />
       </ThemeProvider>,
     );
     expect(screen.getByRole('img', { name: 'Prévia na pista: compassos 1 e 2' })).toBeInTheDocument();

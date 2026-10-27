@@ -523,7 +523,7 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
           {!compact && (
             <PreviewPanel aria-label="Prévia na pista">
               <span>Prévia na pista</span>
-              <TrackPreview song={song} cursor={state.cursor} />
+              <TrackPreview song={song} anchor={selected?.at ?? state.cursor} />
             </PreviewPanel>
           )}
           <Notices aria-label="Avisos">

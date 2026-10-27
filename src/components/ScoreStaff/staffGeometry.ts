@@ -5,7 +5,8 @@ import { HIGHEST_STEP, LOWEST_STEP } from '../../game/notation/editor';
  * grau), a linha de cima em y 44 de cada sistema e o dedo numa bolinha abaixo. Tudo em unidades do viewBox.
  */
 export const STAFF_WIDTH = 848;
-export const SYSTEM_HEIGHT = 168;
+/** Cabe a fileira de baixo dos dedos revezados (colcheias apertadas) antes do sistema seguinte. */
+export const SYSTEM_HEIGHT = 184;
 export const MEASURES_PER_SYSTEM = 4;
 export const TOP_LINE_Y = 44;
 export const STEP_PX = 6;
@@ -49,6 +50,57 @@ export function xAt(at: number, barQuarters: number, fifths: number): { x: numbe
   const box = measureBox(measure, fifths);
   const local = at - measure * barQuarters;
   return { x: box.x + MEASURE_LEAD + (local / barQuarters) * (box.width - MEASURE_LEAD - MEASURE_TAIL), system: box.system };
+}
+
+/** Menor texto da pauta na tela, em px: o viewBox escala o desenho, então o tamanho no SVG se corrige pela escala. */
+export const MIN_TEXT_PX = 12.5;
+
+/** Tamanho no viewBox que dá pelo menos MIN_TEXT_PX na tela quando o desenho aparece em `scale` (px por unidade). */
+export const readableSize = (size: number, scale: number) => Math.max(size, MIN_TEXT_PX / (scale > 0 ? scale : 1));
+
+/**
+ * Quais bolinhas de dedo descem para a segunda fileira: a que fica a menos de `gap` da anterior no mesmo sistema,
+ * se a anterior está na de cima. Assim duas vizinhas apertadas nunca se encostam.
+ */
+export function staggeredFingers(places: readonly { x: number; system: number }[], gap: number): boolean[] {
+  const low: boolean[] = [];
+  places.forEach((p, i) => {
+    const before = places[i - 1];
+    low.push(Boolean(before && before.system === p.system && !low[i - 1] && p.x - before.x < gap));
+  });
+  return low;
+}
+
+/** O que a barra de colcheia precisa saber de cada nota (StaffNote do render). */
+export interface BeamCandidate {
+  /** Início, em semínimas desde o começo. */
+  at: number;
+  quarters: number;
+  flags: number;
+  measure: number;
+}
+
+/**
+ * Grupos de colcheias e semicolcheias ligadas por barra (índices em `notes`): seguidas, sem pausa no meio, no mesmo
+ * tempo do compasso (a semínima; a semínima pontuada no 6/8) e no mesmo compasso. Nota sozinha fica com a bandeirinha.
+ */
+export function beamGroups(notes: readonly BeamCandidate[], barQuarters: number, beatQuarters: number): number[][] {
+  const groups: number[][] = [];
+  let current: number[] = [];
+  const close = () => {
+    if (current.length > 1) groups.push(current);
+    current = [];
+  };
+  const beatOf = (n: BeamCandidate) => Math.floor((n.at - n.measure * barQuarters) / beatQuarters + 1e-6);
+  notes.forEach((note, i) => {
+    if (note.flags === 0) return close();
+    const last = current.length ? notes[current[current.length - 1]] : null;
+    const glued = last && Math.abs(last.at + last.quarters - note.at) < 1e-6 && last.measure === note.measure && beatOf(last) === beatOf(note);
+    if (!glued) close();
+    current.push(i);
+  });
+  close();
+  return groups;
 }
 
 /** Do toque (em unidades do viewBox) ao tempo e ao grau: o compasso sob o dedo e o grau mais perto, dentro do violino. */

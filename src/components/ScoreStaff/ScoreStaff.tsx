@@ -4,7 +4,22 @@ import { barQuarters } from '../../game/notation/editor';
 import type { Song } from '../../game/notation/song';
 import { STRING_LETTERS } from '../../game/notation/violin';
 import { keySignature, ledgerSteps, staffLayout, type StaffNote, type StaffRest } from '../../game/render/staff';
-import { FINGER_Y, hitTest, measureBox, staffHeight, stepY, STAFF_WIDTH, systemCount, systemTop, TOP_LINE_Y, xAt } from './staffGeometry';
+import {
+  beamGroups,
+  FINGER_Y,
+  hitTest,
+  measureBox,
+  readableSize,
+  staffHeight,
+  staggeredFingers,
+  stepY,
+  STAFF_WIDTH,
+  systemCount,
+  systemTop,
+  TOP_LINE_Y,
+  xAt,
+} from './staffGeometry';
+import { useDrawingScale } from './useDrawingScale';
 
 const Svg = styled.svg`
   display: block;
@@ -44,6 +59,8 @@ export const ScoreStaff: React.FC<ScoreStaffProps> = ({ song, cursor, selectedAt
   const height = staffHeight(measures);
   const ink = theme.colors.text;
   const square = theme.game.noteShape === 'square';
+  const scale = useDrawingScale(svg, STAFF_WIDTH);
+  const label = readableSize(12, scale);
 
   React.useEffect(() => {
     const line = cursorLine.current;
@@ -98,7 +115,7 @@ export const ScoreStaff: React.FC<ScoreStaffProps> = ({ song, cursor, selectedAt
     const last = m === measures - 1;
     return (
       <g key={m}>
-        <text x={box.x + 4} y={top - 10} fontFamily={theme.fonts.ui} fontWeight={700} fontSize={12} fill={theme.colors.textMuted}>
+        <text x={box.x + 4} y={top - 10} fontFamily={theme.fonts.ui} fontWeight={700} fontSize={label} fill={theme.colors.textMuted}>
           {m + 1}
         </text>
         <line x1={box.x + box.width} x2={box.x + box.width} y1={top} y2={top + 48} stroke={ink} strokeWidth={last ? 3 : 1.5} />
@@ -108,15 +125,62 @@ export const ScoreStaff: React.FC<ScoreStaffProps> = ({ song, cursor, selectedAt
 
   const place = (at: number) => xAt(at * q, bar, fifths);
 
-  const noteMarks = layout.notes.map((n: StaffNote) => {
+  // Colcheias do mesmo tempo ligadas por barra: haste para o lado da maioria, barra reta na ponta da mais afastada
+  const ts = song.timeSignature;
+  const beatQuarters = ts.unit === 8 && ts.beats % 3 === 0 && ts.beats > 3 ? 1.5 : q;
+  const groups = beamGroups(
+    layout.notes.map((n) => ({ at: n.at * q, quarters: n.beats * q, flags: n.stem ? n.flags : 0, measure: n.measure })),
+    bar,
+    beatQuarters,
+  );
+  const beamed = new Map<number, { up: boolean; end: number }>();
+  const beams = groups.map((group) => {
+    const members = group.map((i) => layout.notes[i]);
+    const up = members.reduce((sum, n) => sum + n.step, 0) / members.length < 34;
+    const { system } = place(members[0].at);
+    const ys = members.map((n) => stepY(n.step, system));
+    const end = up ? Math.min(...ys) - STEM : Math.max(...ys) + STEM;
+    group.forEach((i) => beamed.set(i, { up, end }));
+    const stemXs = members.map((n) => place(n.at).x + (up ? 6.2 : -6.2));
+    const dir = up ? 1 : -1;
+    const secondary = members.flatMap((n, k) => {
+      if (n.flags < 2) return [];
+      const next = members[k + 1];
+      if (next && next.flags >= 2) return [[stemXs[k], stemXs[k + 1]]];
+      const previous = members[k - 1];
+      if (previous && previous.flags >= 2) return [];
+      // Semicolcheia entre colcheias: um toco virado para a vizinha
+      return [next ? [stemXs[k], stemXs[k] + 8] : [stemXs[k] - 8, stemXs[k]]];
+    });
+    return (
+      <g key={group[0]} aria-hidden="true">
+        <line x1={stemXs[0]} x2={stemXs[stemXs.length - 1]} y1={end} y2={end} stroke={ink} strokeWidth={5} />
+        {secondary.map(([a, b], k) => (
+          <line key={k} x1={a} x2={b} y1={end + dir * 7} y2={end + dir * 7} stroke={ink} strokeWidth={5} />
+        ))}
+      </g>
+    );
+  });
+
+  // O dedo numa bolinha legível no tamanho da tela; vizinhas apertadas se revezam em duas alturas
+  const radius = Math.max(9, label * 0.75);
+  const fingerLow = staggeredFingers(
+    layout.notes.map((n) => place(n.at)),
+    2 * radius + 3,
+  );
+
+  const noteMarks = layout.notes.map((n: StaffNote, i) => {
     const { x, system } = place(n.at);
     const y = stepY(n.step, system);
     const selected = selectedAt !== null && Math.abs(n.at * q - selectedAt) < 1e-6;
     const color = selected ? theme.colors.primary.main : ink;
-    const stemX = n.stemUp ? x + 6.2 : x - 6.2;
-    const stemEnd = n.stemUp ? y - STEM : y + STEM;
+    const beam = beamed.get(i);
+    const stemUp = beam ? beam.up : n.stemUp;
+    const stemX = stemUp ? x + 6.2 : x - 6.2;
+    const stemEnd = beam ? beam.end : stemUp ? y - STEM : y + STEM;
     const letter = STRING_LETTERS[n.string];
     const string = theme.game.strings[letter];
+    const fingerY = systemTop(system) + FINGER_Y + (fingerLow[i] ? 2 * radius + 2 : 0);
     return (
       <g key={n.index} data-testid="nota" data-selected={selected || undefined} aria-hidden="true">
         {ledgerSteps(n.step).map((s) => (
@@ -132,16 +196,17 @@ export const ScoreStaff: React.FC<ScoreStaffProps> = ({ song, cursor, selectedAt
         ) : (
           <ellipse cx={x} cy={y} rx={6.8} ry={4.9} transform={`rotate(-20 ${x} ${y})`} fill={n.hollow ? theme.colors.surface : color} stroke={color} strokeWidth={2} />
         )}
-        {n.stem && <line x1={stemX} x2={stemX} y1={n.stemUp ? y - 1 : y + 1} y2={stemEnd} stroke={color} strokeWidth={1.6} />}
+        {n.stem && <line x1={stemX} x2={stemX} y1={stemUp ? y - 1 : y + 1} y2={stemEnd} stroke={color} strokeWidth={1.6} />}
         {n.stem &&
-          Array.from({ length: n.flags }, (_, i) => {
-            const dir = n.stemUp ? 1 : -1;
-            const y0 = stemEnd + dir * i * 7;
-            return <path key={i} d={`M${stemX} ${y0} c1 ${dir * 7} 10 ${dir * 8} 8 ${dir * 19}`} fill="none" stroke={color} strokeWidth={2} />;
+          !beam &&
+          Array.from({ length: n.flags }, (_, k) => {
+            const dir = stemUp ? 1 : -1;
+            const y0 = stemEnd + dir * k * 7;
+            return <path key={k} d={`M${stemX} ${y0} c1 ${dir * 7} 10 ${dir * 8} 8 ${dir * 19}`} fill="none" stroke={color} strokeWidth={2} />;
           })}
         {n.dotted && <circle cx={x + 11} cy={n.step % 2 === 0 ? y - 3 : y} r={2.2} fill={color} />}
-        <circle cx={x} cy={systemTop(system) + FINGER_Y} r={9} fill={string.main} />
-        <text x={x} y={systemTop(system) + FINGER_Y + 4} textAnchor="middle" fontFamily={theme.fonts.ui} fontWeight={800} fontSize={12} fill={string.text}>
+        <circle cx={x} cy={fingerY} r={radius} fill={string.main} />
+        <text x={x} y={fingerY} textAnchor="middle" dominantBaseline="central" fontFamily={theme.fonts.ui} fontWeight={800} fontSize={label} fill={string.text}>
           {n.finger}
         </text>
       </g>
@@ -190,6 +255,7 @@ export const ScoreStaff: React.FC<ScoreStaffProps> = ({ song, cursor, selectedAt
       {bars}
       {rests}
       {ties}
+      {beams}
       {noteMarks}
       <line
         ref={cursorLine}

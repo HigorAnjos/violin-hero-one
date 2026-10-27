@@ -6,6 +6,20 @@ import { expectFits, tinyText, tooSmallTargets } from './layout';
 // O e2e roda sem backend: ?importacao=simulada troca a Edge Function (floor ciclo4-import-funcao) pelo fake
 const EDITOR = '/editor?importacao=simulada';
 
+/**
+ * Texto em SVG no tamanho em que aparece: o font-size do viewBox vezes a escala do desenho (CTM). O tinyText lê só o
+ * font-size calculado e não vê a pauta encolhida no celular.
+ */
+async function tinySvgText(page: Page, min = 12) {
+  return page.evaluate((limit) => {
+    return [...document.querySelectorAll<SVGTextElement>('main svg text')]
+      .filter((el) => el.textContent?.trim() && el.getClientRects().length > 0)
+      .map((el) => ({ text: el.textContent!.trim(), size: parseFloat(getComputedStyle(el).fontSize) * (el.getScreenCTM()?.a ?? 1) }))
+      .filter(({ size }) => size < limit - 0.01)
+      .map(({ text, size }) => `"${text}": ${size.toFixed(1)}px`);
+  }, min);
+}
+
 const staff = (page: Page) => page.getByRole('group', { name: /Pauta/ });
 const notes = (page: Page) => page.getByTestId('nota');
 
@@ -76,8 +90,9 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
       if (fonte === 'reserva') await blockWebFonts(page);
       await page.goto(EDITOR);
       await staff(page).focus();
-      await page.keyboard.type('defgabcdefg');
-      await expect(notes(page)).toHaveCount(11);
+      // Semínimas e colcheias: os dedos ficam mais apertados nas colcheias
+      await page.keyboard.type('defgabcd4efgabcd');
+      await expect(notes(page)).toHaveCount(15);
       await (fonte === 'real' ? fontsReady(page, tema) : fallbackFontsReady(page, tema));
       await expect(page.locator('html')).toHaveAttribute('data-theme', tema);
       // No celular deitado a tela rola na vertical (a pauta e o painel da nota não cabem juntos em 390 px)
@@ -85,6 +100,7 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
       else await expectFits(page);
       expect(await tooSmallTargets(page)).toEqual([]);
       expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);
+      expect(await tinySvgText(page), 'texto da pauta e da prévia abaixo de 12 px na tela').toEqual([]);
     });
   }
 }
