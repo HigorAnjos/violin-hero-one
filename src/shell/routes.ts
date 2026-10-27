@@ -8,6 +8,8 @@ export const ROUTES = {
   songs: '/tocar/musica',
   loading: '/tocar/carregando',
   library: '/biblioteca',
+  /** Escrever partitura (a música fica privada de quem escreveu). */
+  editor: '/editor',
   level: '/primeira-vez/nivel',
   mic: '/primeira-vez/microfone',
   strings: '/primeira-vez/cordas',

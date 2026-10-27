@@ -77,6 +77,12 @@ describe('Library', () => {
     expect(cards()).toHaveLength(FIXED_SONGS.length);
   });
 
+  it('"Escrever música" abre o editor de partitura', async () => {
+    renderLibrary();
+    await userEvent.click(screen.getByRole('link', { name: /Escrever música/ }));
+    expect(screen.getByTestId('location')).toHaveTextContent(ROUTES.editor);
+  });
+
   it('as baixadas aparecem com o selo, com e sem internet', async () => {
     const cache = createSongCache(memorySongStore());
     await cache.remember({ sheet: SHEET, song: fakeChart('greensleeves', 'medium'), hash: 'a'.repeat(64) }, 'medium');
