@@ -18,7 +18,7 @@ import type { LoopRange } from '../game/synth';
 import { useEar } from '../shell/Ear';
 import type { PracticeStart } from '../shell/gameSession';
 import { METRONOME_DEFAULT } from '../shell/metronome';
-import { gameRoute } from '../shell/play';
+import { DEFAULT_MODE, gameRoute } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 import { useGame, type GameDeps } from '../shell/useGame';
 import { pauseSettings, useEscapePause, usePlayScreen } from '../shell/usePlayScreen';
@@ -285,7 +285,7 @@ export const Practice: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
           <Button type="button" $variant="ghost" onClick={() => game.practice.stop()} disabled={phase !== 'playing' && phase !== 'paused'}>
             <span aria-hidden="true">◂</span>Sair da prática
           </Button>
-          <Button type="button" $variant="ghost" onClick={() => navigate(ROUTES.countdown, { replace: true, state: { song: play.song, mode: 'Arcade', next: gameRoute('Arcade') } })}>
+          <Button type="button" $variant="ghost" onClick={() => navigate(ROUTES.countdown, { replace: true, state: { song: play.song, mode: DEFAULT_MODE, next: gameRoute(DEFAULT_MODE) } })}>
             Tocar a música inteira
           </Button>
           <Button type="button" $variant="ghost" onClick={pause} disabled={phase !== 'playing'} aria-label="Pausar">

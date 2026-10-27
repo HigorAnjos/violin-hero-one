@@ -42,6 +42,13 @@ describe('Main', () => {
     expect(menu().getByRole('link', { name: 'Afinar Lá 440' })).toBeInTheDocument();
   });
 
+  it('Afinar mantém Cordas 3D como modo padrão', async () => {
+    renderScreen(<Main />);
+    await userEvent.click(menu().getByRole('link', { name: 'Afinar Lá 442' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/afinar');
+    expect(JSON.parse(screen.getByTestId('location').getAttribute('data-state')!)).toMatchObject({ mode: 'Cordas 3D' });
+  });
+
   it('Tocar leva à escolha de modo; Biblioteca, à biblioteca', async () => {
     renderScreen(<Main />);
     await userEvent.click(menu().getByRole('link', { name: /^Tocar/ }));
