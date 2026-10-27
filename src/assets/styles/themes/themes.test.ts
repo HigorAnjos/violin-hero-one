@@ -60,7 +60,7 @@ describe('catálogo de temas', () => {
 
   it('8-Bits: fonte pixel, cantos retos e notas quadradas; o resto do catálogo não', () => {
     const pixel = getTheme('8-bits');
-    expect(pixel.fonts.display).toMatch(/^'Pixelify Sans'/);
+    expect(pixel.fonts.display.split(', ').slice(0, 2)).toEqual(["'Nunito Digits'", "'Pixelify Sans'"]);
     // Texto corrido na Nunito: na Pixelify pequena o 5 se lê como S
     expect(pixel.fonts.ui).toBe(base.fonts.ui);
     expect(pixel.fonts.music).toBe(base.fonts.music);
