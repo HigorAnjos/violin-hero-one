@@ -1,10 +1,13 @@
-import { QueryClient } from '@tanstack/react-query';
+import { renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ODE } from '../game/engine/testing';
 import { createPlaySync, memoryPlayQueueStore } from '../services/playQueue';
+import { progressKeys } from '../services/progress';
 import type { SessionState } from '../services/session';
 import { songKeys } from '../services/songs';
-import { forgetUserQueries, playedChart, reconnect } from './deviceSync';
+import { forgetUserQueries, playedChart, reconnect, useDeviceSync } from './deviceSync';
 
 const SIGNED_IN: SessionState = { status: 'signed-in', userId: 'u1', anonymous: true };
 
@@ -68,6 +71,22 @@ describe('forgetUserQueries', () => {
     }
     forgetUserQueries(queryClient);
     expect(queryClient.getQueryCache().getAll().map((q) => q.queryKey)).toEqual([songKeys.catalog]);
+  });
+});
+
+describe('useDeviceSync', () => {
+  it('partida que o servidor aceitou invalida o progresso (selos, sequência, recordes)', async () => {
+    const t = setup();
+    t.goOnline();
+    t.queryClient.setQueryData(progressKeys.badges, []);
+    t.queryClient.setQueryData(progressKeys.streak, null);
+    const wrapper = ({ children }: { children: React.ReactNode }) => React.createElement(QueryClientProvider, { client: t.queryClient }, children);
+    const view = renderHook(() => useDeviceSync(t.sync), { wrapper });
+    await t.sync.enqueue({ payload: { client_id: 'a' } as never, chartHash: 'h', checkChart: false });
+    await t.sync.flush();
+    await waitFor(() => expect(t.queryClient.getQueryState(progressKeys.badges)?.isInvalidated).toBe(true));
+    expect(t.queryClient.getQueryState(progressKeys.streak)?.isInvalidated).toBe(true);
+    view.unmount();
   });
 });
 

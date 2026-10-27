@@ -64,6 +64,8 @@ export function useDeviceSync(sync: PlaySync = playSync): void {
     const run = () => void reconnect(queryClient, sync).finally(schedule);
     const onVisible = () => document.visibilityState === 'visible' && run();
     const offOnline = onlineManager.subscribe((online) => online && run());
+    // Partida que o servidor aceitou: selos, sequência e recordes da conta mudaram
+    const offOutcome = sync.subscribe(() => void queryClient.invalidateQueries({ queryKey: progressKeys.all }));
     addEventListener('focus', run);
     document.addEventListener('visibilitychange', onVisible);
     void sync.flush().catch(() => undefined).finally(schedule);
@@ -71,6 +73,7 @@ export function useDeviceSync(sync: PlaySync = playSync): void {
       alive = false;
       clearTimeout(timer);
       offOnline();
+      offOutcome();
       removeEventListener('focus', run);
       document.removeEventListener('visibilitychange', onVisible);
       setDeviceData(null);
