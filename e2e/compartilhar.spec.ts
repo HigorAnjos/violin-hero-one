@@ -13,6 +13,33 @@ const RESULT = { ...simulateGame({ song: ODE, startAt: 1 }, { errors: 0, seed: 2
 /** Largura e altura de um PNG (cabeçalho IHDR). */
 const pngSize = (png: Buffer) => [png.readUInt32BE(16), png.readUInt32BE(20)];
 
+for (const tema of ['caderno', 'palco', '8-bits', 'neon']) {
+  test(`${tema}: QR do PNG inteiro decodifica a 1080 e 540 px`, async ({ page }) => {
+    await page.addInitScript((id) => localStorage.setItem('vh:theme', id), tema);
+    await withoutFileShare(page);
+    await openWithState(page, '/resultado', { song: ODE, mode: 'Arcade', result: RESULT });
+    await page.addScriptTag({ path: 'node_modules/jsqr/dist/jsQR.js' });
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Compartilhar' }).click();
+    const png = await readFile(await (await download).path());
+    const decoded = await page.evaluate(async (base64) => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${base64}`;
+      await img.decode();
+      const decode = (window as unknown as { jsQR: (pixels: Uint8ClampedArray, width: number, height: number, options: { inversionAttempts: string }) => { data: string } | null }).jsQR;
+      return [1080, 540].map((width) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = width * 1350 / 1080;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        return decode(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' })?.data;
+      });
+    }, png.toString('base64'));
+    expect(decoded).toEqual([`https://${new URL(page.url()).host}`, `https://${new URL(page.url()).host}`]);
+  });
+}
+
 /** Sem Web Share de arquivo (o Chromium do Linux não tem): o Compartilhar baixa o PNG. */
 async function withoutFileShare(page: Page) {
   await page.addInitScript(() => Object.defineProperty(navigator, 'canShare', { value: () => false, configurable: true }));
