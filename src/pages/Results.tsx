@@ -20,7 +20,7 @@ import {
 } from '../components/ResultSummary/summary';
 import { formatPercent, formatPoints } from '../components/ScoreCard/ScoreCard';
 import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
-import { renderShareCard, type ShareCardData } from '../components/ShareCard/shareCard';
+import type { ShareCardData } from '../components/ShareCard/shareCard';
 import { JUDGMENT_LABEL, JUDGMENTS } from '../game/engine';
 import { STRING_LETTERS } from '../game/notation/violin';
 import type { PracticeStart } from '../shell/gameSession';
@@ -517,6 +517,7 @@ export const Results: React.FC = () => {
       site: window.location.host,
     };
     try {
+      const { renderShareCard } = await import('../components/ShareCard/shareCard');
       setShared(await shareFile(await renderShareCard(card, theme), { title: `${song.title} · Violin Hero` }));
     } catch {
       setShared('failed');

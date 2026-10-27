@@ -41,7 +41,11 @@ const MAX_RESOLUTION = 2;
 
 async function loadFonts(theme: Theme): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts) return;
-  await Promise.allSettled([document.fonts.load(`800 64px ${theme.fonts.display}`), document.fonts.load(`800 16px ${theme.fonts.ui}`)]);
+  // O espaço carrega as letras; os dígitos também carregam faces com unicode-range restrito antes do atlas.
+  await Promise.allSettled([
+    document.fonts.load(`800 64px ${theme.fonts.display}`, ' 0123456789ºª'),
+    document.fonts.load(`800 16px ${theme.fonts.ui}`),
+  ]);
 }
 
 /**

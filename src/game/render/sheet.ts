@@ -41,7 +41,7 @@ async function loadFonts(theme: Theme): Promise<void> {
   await Promise.allSettled([
     document.fonts.load(`700 24px ${theme.fonts.ui}`),
     document.fonts.load(`400 24px ${theme.fonts.ui}`),
-    document.fonts.load(`800 24px ${theme.fonts.display}`),
+    document.fonts.load(`800 24px ${theme.fonts.display}`, ' 0123456789ºª'),
     document.fonts.load(`40px ${theme.fonts.music}`, '𝄞♯♭♮'),
   ]);
 }
