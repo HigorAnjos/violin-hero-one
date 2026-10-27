@@ -8,9 +8,11 @@ import {
   accountSession,
   createAccountFromPrompt,
   expect,
+  expectSeeEachOther,
   linkFromMail,
   myRankingName,
   newDevice,
+  openRanking,
   queued,
   queuedPlays,
   SECONDS,
@@ -163,12 +165,13 @@ test('ciclo 3: convidado joga, joga offline, cria conta, entra em outro aparelho
     await b.goto(RANKING);
     await expect(b.getByText(/Você está jogando sem conta/)).toBeVisible();
     await createAccountFromPrompt(b, 'Quer aparecer no ranking?', emails[1], BACK_TO_RANKING);
-    // A segue no ranking desde o passo c: recarrega para ver quem entrou depois
-    await a.reload();
+    // A segue no ranking desde o passo c: abre de novo para ver quem entrou depois
+    const lines = [await openRanking(a, RANKING), await openRanking(b, RANKING)];
+    expectSeeEachOther(lines[0], lines[1]);
     names.push(await myRankingName(a), await myRankingName(b));
-    expect(names[1]).not.toBe(names[0]);
-    await expect(b.getByText(names[0], { exact: true })).toBeVisible();
-    await expect(a.getByText(names[1], { exact: true })).toBeVisible();
+    // O nome pode repetir entre contas: na tela, basta que o do outro esteja lá
+    await expect(b.getByText(names[0], { exact: true }).first()).toBeVisible();
+    await expect(a.getByText(names[1], { exact: true }).first()).toBeVisible();
     for (const page of [a, b]) {
       await expect(page.locator('main')).not.toContainText('@');
       await expect(page.locator('main')).not.toContainText(/ciclo3-[ab]-/);

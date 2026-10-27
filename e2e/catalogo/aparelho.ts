@@ -116,6 +116,35 @@ export async function createAccountFromPrompt(page: Page, dialog: string | RegEx
   await accountSession(page);
 }
 
+/** Uma linha do get_ranking como o servidor manda (sem id nem e-mail). */
+export interface RankingLine {
+  rank: number;
+  ranking_name: string;
+  points: number;
+  accuracy: number;
+  is_me: boolean;
+}
+
+/** Abre o ranking em `url` e devolve as linhas que o servidor mandou para esta página. */
+export async function openRanking(page: Page, url: string): Promise<RankingLine[]> {
+  const answer = page.waitForResponse((r) => r.url().includes('/rpc/get_ranking') && r.ok());
+  await page.goto(url);
+  return (await answer).json();
+}
+
+/**
+ * Cada jogador está na lista do outro: a linha "você" de um aparece, na mesma posição, na lista do outro sem a marca.
+ * Pela posição e não só pelo nome: o nome gerado (bicho + 4 dígitos) pode repetir entre contas.
+ */
+export function expectSeeEachOther(one: RankingLine[], two: RankingLine[]) {
+  const meOne = one.find((r) => r.is_me);
+  const meTwo = two.find((r) => r.is_me);
+  expect(meOne, 'a primeira está no ranking').toBeDefined();
+  expect(meTwo, 'a segunda está no ranking').toBeDefined();
+  expect(one.find((r) => r.rank === meTwo!.rank)).toEqual({ ...meTwo, is_me: false });
+  expect(two.find((r) => r.rank === meOne!.rank)).toEqual({ ...meOne, is_me: false });
+}
+
 /** O nome que o ranking dá ao jogador da página (a linha ou o lugar no pódio marcado como dele). */
 export async function myRankingName(page: Page): Promise<string> {
   const mine = page.locator('[aria-current="true"]');

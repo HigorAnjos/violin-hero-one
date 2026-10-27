@@ -1,7 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { test, type Page } from '@playwright/test';
 import { expectFits, tinyText, tooSmallTargets } from '../layout';
-import { createAccountFromPrompt, expect, myRankingName as myName, newDevice, playShortest, SECONDS, SHORTEST } from './aparelho';
+import {
+  createAccountFromPrompt,
+  expect,
+  expectSeeEachOther,
+  myRankingName as myName,
+  newDevice,
+  openRanking,
+  playShortest,
+  SECONDS,
+  SHORTEST,
+} from './aparelho';
 
 /**
  * Ranking de ponta a ponta no Supabase local: dois convidados jogam a mesma música, cada um cria conta pelo convite do
@@ -35,12 +45,12 @@ test('duas contas jogam a mesma música e uma vê a outra no ranking com o nome 
   await playShortest(two);
   await createAccountFromRanking(two, emails[1]);
   const nameB = await myName(two);
-  expect(nameB).not.toBe(nameA);
 
-  // Cada um vê o outro pelo nome gerado, sem "você", e nenhum e-mail na tela
-  await expect(two.getByText(nameA, { exact: true })).toBeVisible();
-  await one.reload();
-  await expect(one.getByText(nameB, { exact: true })).toBeVisible();
+  // Cada um vê o outro (a mesma linha, na mesma posição) pelo nome gerado, sem "você", e nenhum e-mail na tela. O
+  // nome pode repetir entre contas: na tela, basta que o do outro esteja lá
+  expectSeeEachOther(await openRanking(one, RANKING), await openRanking(two, RANKING));
+  await expect(two.getByText(nameA, { exact: true }).first()).toBeVisible();
+  await expect(one.getByText(nameB, { exact: true }).first()).toBeVisible();
   expect(await myName(one)).toBe(nameA);
   for (const page of [one, two]) {
     await expect(page.locator('main')).not.toContainText('@');
@@ -53,7 +63,7 @@ test('duas contas jogam a mesma música e uma vê a outra no ranking com o nome 
     for (const size of [{ width: 1280, height: 720 }, { width: 844, height: 390 }]) {
       await one.setViewportSize(size);
       await one.reload();
-      await expect(one.getByText(nameB, { exact: true })).toBeVisible();
+      await expect(one.getByText(nameB, { exact: true }).first()).toBeVisible();
       await expect(one.locator('html')).toHaveAttribute('data-theme', theme);
       await expectFits(one);
       // Nada do pódio sobra para fora do degrau (o nome some atrás do avatar quando o degrau é baixo)
