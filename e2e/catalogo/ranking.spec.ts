@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { test, type Browser, type Page } from '@playwright/test';
-import { LINK_EMAIL_SENT } from '../../src/services/account';
+import { test, type Page } from '@playwright/test';
 import { expectFits, tinyText, tooSmallTargets } from '../layout';
-import { expect, linkFromMail, playShortest, SECONDS, SHORTEST, storedSession } from './aparelho';
+import { createAccountFromPrompt, expect, myRankingName as myName, newDevice, playShortest, SECONDS, SHORTEST } from './aparelho';
 
 /**
  * Ranking de ponta a ponta no Supabase local: dois convidados jogam a mesma música, cada um cria conta pelo convite do
@@ -14,39 +13,11 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.beforeEach(({}, info) => test.skip(info.project.name !== 'desktop', 'só no desktop'));
 
 const RANKING = `/ranking?musica=${SHORTEST.sheet.id}&nivel=facil&periodo=semana`;
-const GENERATED = /^(Raposa|Pinguim|Gato|Violinista) \d{4}$/;
-
-/** Aparelho novo: contexto próprio, convidado anônimo do primeiro toque. */
-async function newDevice(browser: Browser, baseURL: string | undefined): Promise<Page> {
-  const page = await (await browser.newContext({ baseURL })).newPage();
-  await page.addInitScript(() => localStorage.setItem('vh:onboarded', '1'));
-  await page.goto('/');
-  expect((await storedSession(page)).user.is_anonymous).toBe(true);
-  return page;
-}
-
 /** Pelo convite do ranking: cria a conta com o link mágico e volta para o ranking. */
 async function createAccountFromRanking(page: Page, email: string) {
   await page.goto(RANKING);
   await expect(page.getByText(/Você está jogando sem conta/)).toBeVisible();
-  await page.getByRole('link', { name: 'Criar conta' }).click();
-  const prompt = page.getByRole('dialog', { name: 'Quer aparecer no ranking?' });
-  await prompt.getByRole('button', { name: 'Usar e-mail' }).click();
-  await prompt.getByLabel('E-mail').fill(email);
-  await prompt.getByRole('button', { name: 'Mandar link' }).click();
-  await expect(prompt.getByRole('status')).toHaveText(LINK_EMAIL_SENT);
-  await page.goto(await linkFromMail(email, 1));
-  await expect(page).toHaveURL(new RegExp(`/ranking\\?musica=${SHORTEST.sheet.id}`));
-  expect((await storedSession(page)).user.is_anonymous).toBe(false);
-}
-
-/** O nome que o ranking dá ao jogador da página (a linha ou o lugar no pódio marcado como dele). */
-async function myName(page: Page): Promise<string> {
-  const mine = page.locator('[aria-current="true"]');
-  await expect(mine).toContainText('· você');
-  const name = (await mine.textContent())?.match(/(Raposa|Pinguim|Gato|Violinista) \d{4} · você/)?.[0].replace(' · você', '');
-  expect(name).toMatch(GENERATED);
-  return name!;
+  await createAccountFromPrompt(page, 'Quer aparecer no ranking?', email, new RegExp(`/ranking\\?musica=${SHORTEST.sheet.id}`));
 }
 
 test('duas contas jogam a mesma música e uma vê a outra no ranking com o nome gerado, sem e-mail', async ({ browser, baseURL }) => {
@@ -54,13 +25,13 @@ test('duas contas jogam a mesma música e uma vê a outra no ranking com o nome 
   const emails = [`ranking-a-${randomUUID().slice(0, 8)}@t.test`, `ranking-b-${randomUUID().slice(0, 8)}@t.test`];
 
   // Convidado A joga; no ranking vê o convite (anônimo não aparece) e cria a conta: a partida de antes já vale
-  const one = await newDevice(browser, baseURL);
+  const one = await newDevice(browser, { baseURL });
   await playShortest(one);
   await createAccountFromRanking(one, emails[0]);
   const nameA = await myName(one);
 
   // Convidado B, em outro aparelho, joga a mesma música e cria a conta
-  const two = await newDevice(browser, baseURL);
+  const two = await newDevice(browser, { baseURL });
   await playShortest(two);
   await createAccountFromRanking(two, emails[1]);
   const nameB = await myName(two);
