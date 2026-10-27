@@ -5,6 +5,7 @@ import { Badge, badgeColor } from '../components/Badge/Badge';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countIn';
 import {
+  badgeInfo,
   centsText,
   featuredBadges,
   hardestStretch,
@@ -19,14 +20,17 @@ import {
 } from '../components/ResultSummary/summary';
 import { formatPercent, formatPoints } from '../components/ScoreCard/ScoreCard';
 import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
+import type { ShareCardData } from '../components/ShareCard/shareCard';
 import { JUDGMENT_LABEL, JUDGMENTS } from '../game/engine';
 import { STRING_LETTERS } from '../game/notation/violin';
 import type { PracticeStart } from '../shell/gameSession';
-import { rankingUrl } from '../shell/choice';
+import { newChallengeUrl, rankingUrl } from '../shell/choice';
 import { gameRoute, readResultState } from '../shell/play';
 import { badgesToShow } from '../shell/progress';
 import type { RecordCheck } from '../shell/records';
 import { ROUTES } from '../shell/routes';
+import { useMyPublicName } from '../services/publicName';
+import { shareFile, type ShareOutcome } from '../services/share';
 import { usePlayOutcome } from '../services/sync';
 
 const STAR = 'M17 2l4.5 9.4 10.3 1.2-7.6 7 2.1 10.2L17 24.7l-9.3 5.1 2.1-10.2-7.6-7 10.3-1.2z';
@@ -422,6 +426,31 @@ const RankingLink = styled(Button)`
   }
 `;
 
+/** Desafiar e Ver no ranking, juntos à direita das estrelas. */
+const ScoreLinks = styled.span`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.sm};
+`;
+
+/** Compartilhar no cabeçalho; no celular deitado devolve o que os 44 px crescem além do título, como o selo. */
+const ShareButton = styled(Button)`
+  flex: none;
+
+  @media (max-height: 500px) {
+    margin: -0.5rem 0;
+    padding: 0 0.75rem;
+  }
+`;
+
+const SHARE_STATUS: Record<ShareOutcome, string> = {
+  shared: '',
+  cancelled: '',
+  copied: '',
+  downloaded: 'Imagem salva no aparelho.',
+  failed: 'Não deu para gerar a imagem agora.',
+};
+
 const Footer = styled.footer`
   display: flex;
   align-items: center;
@@ -451,6 +480,9 @@ export const Results: React.FC = () => {
   const state = readResultState(useLocation().state);
   // Quando o servidor responde, vale o que ele confirmou; sem servidor (ou no reenvio, que não traz o anterior), o local
   const outcome = usePlayOutcome(state?.clientId);
+  const publicName = useMyPublicName();
+  const [sharing, setSharing] = React.useState(false);
+  const [shared, setShared] = React.useState<ShareOutcome | null>(null);
   if (!state) return <Navigate to={ROUTES.home} replace />;
   const confirmed = outcome && !outcome.duplicate ? outcome : undefined;
   const { song, result, mode } = state;
@@ -464,6 +496,35 @@ export const Results: React.FC = () => {
   const hard = hardestStretch(perMeasure);
   const firstBadge = featuredBadges(earned).featured;
   const judgmentColor = (j: (typeof JUDGMENTS)[number]) => theme.game.judgments[j];
+  // Desafio sai de partida que vale ranking: inteira e fora da prática
+  const challengeable = !practiced && result.status === 'finished';
+
+  // O cartão é desenhado no aparelho, com o tema e as fontes do app, e vai pela folha de compartilhar (ou baixa o PNG)
+  const share = async () => {
+    setSharing(true);
+    setShared(null);
+    const card: ShareCardData = {
+      songTitle: song.title,
+      mode,
+      level: LEVEL_NAMES[song.level],
+      score: result.score,
+      accuracy: result.accuracy,
+      tuning: tuningStat(result),
+      maxCombo: result.maxCombo,
+      badges: earned.map(badgeInfo),
+      name: publicName,
+      record: !!record?.improved,
+      site: window.location.host,
+    };
+    try {
+      const { renderShareCard } = await import('../components/ShareCard/shareCard');
+      setShared(await shareFile(await renderShareCard(card, theme), { title: `${song.title} · Violin Hero` }));
+    } catch {
+      setShared('failed');
+    } finally {
+      setSharing(false);
+    }
+  };
 
   return (
     <Screen $gap="1.375rem" data-testid="resultado">
@@ -474,6 +535,12 @@ export const Results: React.FC = () => {
           </Kicker>
           <ScreenTitle>{song.title}</ScreenTitle>
         </div>
+        <ShareButton type="button" $variant="ghost" disabled={sharing} onClick={() => void share()}>
+          {sharing ? 'Gerando…' : 'Compartilhar'}
+        </ShareButton>
+        <span className="sr-only" role="status">
+          {shared ? SHARE_STATUS[shared] : ''}
+        </span>
         {firstBadge ? (
           <NewBadgeLink to={ROUTES.badges} aria-label={`Selo conquistado nesta partida: ${firstBadge.label}. Ver seus selos`} $color={badgeColor(theme, firstBadge.kind)}>
             <Badge kind={firstBadge.kind} label={firstBadge.label} size={34} decorative />
@@ -499,9 +566,16 @@ export const Results: React.FC = () => {
                 ))}
               </Stars>
               {!practiced && (
-                <RankingLink as={Link} to={rankingUrl({ songId: song.id, level: song.level, period: 'week' })} $variant="link">
-                  Ver no ranking <span aria-hidden="true">▸</span>
-                </RankingLink>
+                <ScoreLinks>
+                  {challengeable && (
+                    <RankingLink as={Link} to={newChallengeUrl(outcome?.playId)} $variant="link">
+                      Desafiar <span aria-hidden="true">▸</span>
+                    </RankingLink>
+                  )}
+                  <RankingLink as={Link} to={rankingUrl({ songId: song.id, level: song.level, period: 'week' })} $variant="link">
+                    Ver no ranking <span aria-hidden="true">▸</span>
+                  </RankingLink>
+                </ScoreLinks>
               )}
             </StarsRow>
             <ScoreRow>

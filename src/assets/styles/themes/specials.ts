@@ -50,7 +50,7 @@ export const NEON: Palette = {
   art: { wood: '#c9773d', ebony: '#05040b', halo: '#2a1f4a' },
 };
 
-const pixelFont = "'Pixelify Sans', 'Pixelify Sans Fallback', ui-monospace, monospace";
+const pixelFont = "'Nunito Digits', 'Pixelify Sans', 'Pixelify Sans Fallback', ui-monospace, monospace";
 
 /**
  * Os especiais mudam estrutura, não só cor: por isso vivem fora de THEMES e têm seção própria no seletor. A cor sai do

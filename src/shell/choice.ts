@@ -51,6 +51,21 @@ export function parseRankingUrl(search: URLSearchParams): RankingChoice {
   return { ...(songId && { songId }), ...(level && { level }), ...(period && { period }) };
 }
 
+/** Montar um desafio; `playId` é a partida (que vale ranking) que a tela já deixa escolhida. */
+export function newChallengeUrl(playId?: string): string {
+  return playId ? `${ROUTES.challenge}?${new URLSearchParams({ partida: playId })}` : ROUTES.challenge;
+}
+
+/** O link de um desafio, dentro do app. */
+export function challengeUrl(code: string): string {
+  return `${ROUTES.challenge}/${encodeURIComponent(code)}`;
+}
+
+/** O mesmo link, completo, para mandar para fora (WhatsApp, cartão). */
+export function challengeLink(code: string, origin: string = window.location.origin): string {
+  return `${origin}${challengeUrl(code)}`;
+}
+
 /** Escolha de modo; `songId` vem de quem já escolheu a música (Biblioteca) e segue para a seleção. */
 export function modesUrl(mode?: GameMode, songId?: string): string {
   const params = new URLSearchParams();
