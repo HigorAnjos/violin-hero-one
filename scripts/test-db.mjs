@@ -1228,6 +1228,38 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       await assert.rejects(importSong(dono, { levels: ['hard'] }), (e) => e.code === 'VHLIM');
     });
 
+    it('apagar música mantém selos e sequência, remove partidas e recorde, sem afetar outro jogador nem catálogo', async () => {
+      const dono = await newUser(c);
+      const outro = await newUser(c);
+      const { id } = await importSong(dono, { levels: ['easy'] });
+      const ownPlay = await submit(c, dono, playOf(id));
+      assert.ok(ownPlay.badges.length > 0);
+      const catalog = await serverSong(c);
+      await submit(c, outro, playOf(catalog));
+      const snapshot = async (user) => ({
+        badges: (await as(c, user, `select badge_id, earned_at from ${S}.badges_earned order by badge_id`)).rows,
+        days: (await as(c, user, `select * from ${S}.play_days order by day`)).rows,
+        streaks: (await as(c, user, `select * from ${S}.streaks`)).rows,
+        plays: (await as(c, user, `select id from ${S}.plays order by id`)).rows,
+        records: (await as(c, user, `select * from ${S}.records order by song_id, level`)).rows,
+      });
+      const before = await snapshot(dono);
+      const otherBefore = await snapshot(outro);
+      assert.equal((await as(c, outro, `delete from ${S}.songs where id = $1 returning id`, [id])).rows.length, 0);
+      assert.equal((await as(c, dono, `delete from ${S}.songs where id = $1 returning id`, [catalog])).rows.length, 0);
+      assert.equal((await as(c, dono, `delete from ${S}.songs where id = $1 returning id`, [id])).rows.length, 1);
+      const after = await snapshot(dono);
+      assert.deepEqual(after.badges, before.badges);
+      assert.deepEqual(after.days, before.days);
+      assert.deepEqual(after.streaks, before.streaks);
+      assert.deepEqual(after.plays, []);
+      assert.deepEqual(after.records, []);
+      assert.deepEqual((await as(c, dono, `select play_id from ${S}.badges_earned`)).rows.map(r => r.play_id), ownPlay.badges.map(() => null));
+      assert.deepEqual(await snapshot(outro), otherBefore);
+      assert.deepEqual((await as(c, outro, `select badge_id from ${S}.badges_earned where user_id = $1`, [dono])).rows, []);
+      assert.equal((await c.query(`select count(*)::int as n from ${S}.songs where id = $1`, [catalog])).rows[0].n, 1);
+    });
+
     it('regravar do editor troca os charts sem gastar vaga; música alheia, importada ou inexistente não se regrava', async () => {
       const dono = await newUser(c);
       const editor = { origin: 'editor', source: { format: 'song', file_name: 'editor.json', content: '{}' } };

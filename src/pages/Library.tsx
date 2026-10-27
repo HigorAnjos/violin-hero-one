@@ -16,6 +16,8 @@ import { LibraryEmpty } from './LibraryEmpty';
 import { deleteOwnSong, songKeys, useOwnSongs, useSavedSongs } from '../services/songs';
 import { songCache } from '../services/songCache';
 import { DEV_TOOLS } from '../shell/devTools';
+import { rgba } from '../assets/styles/themes/color';
+import { progressKeys } from '../services/progress';
 
 export const SORTS = {
   shelf: { label: 'Ordem da estante', compare: () => 0 },
@@ -242,7 +244,11 @@ const SongCard: React.FC<{ song: ShelfSong & { origin?: string }; offline: boole
           <Levels>{song.levels.map((l) => LEVEL_NAMES[l]).join(' · ')}</Levels>
         </CardBody>
       </Card>
-      {onDelete && <Button $variant="ghost" onClick={onDelete} aria-label={`Apagar ${song.title}`}>Apagar</Button>}
+      {onDelete && (
+        <Button $variant="ghost" onClick={onDelete} aria-label={`Apagar ${song.title}`}>
+          Apagar
+        </Button>
+      )}
     </li>
   );
 };
@@ -257,32 +263,36 @@ export const Library: React.FC = () => {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
   const dialog = React.useRef<HTMLDialogElement>(null);
-  React.useEffect(() => { if (deleting) dialog.current?.showModal(); }, [deleting]);
+  React.useEffect(() => {
+    if (deleting) dialog.current?.showModal();
+  }, [deleting]);
   const remove = async () => {
     if (!deleting || busy) return;
-    setBusy(true); setError('');
+    setBusy(true);
+    setError('');
     try {
       const simulated = DEV_TOOLS && new URLSearchParams(window.location.search).get('importacao') === 'simulada';
       if (!simulated) await deleteOwnSong(deleting.id);
-      await songCache?.forget?.(deleting.id);
+      await songCache?.forget(deleting.id);
       queries.removeQueries({ queryKey: ['songs', 'song', deleting.id] });
-      await Promise.all([songKeys.mine, songKeys.saved].map(queryKey => queries.invalidateQueries({ queryKey })));
+      await Promise.all([songKeys.mine, songKeys.saved, progressKeys.all].map((queryKey) => queries.invalidateQueries({ queryKey })));
       setDeleting(null);
-    } catch(e) { setError(e instanceof Error ? e.message : 'Não foi possível apagar agora.'); }
-    finally { setBusy(false); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível apagar agora.');
+    } finally {
+      setBusy(false);
+    }
   };
   const [query, setQuery] = React.useState('');
   const [onlyApp, setOnlyApp] = React.useState(false);
   const [sort, setSort] = React.useState<SortKey>('shelf');
 
-  const mine = own.data ?? (kept.data ?? []).filter(s => s.sheet.origin !== 'catalog').map(s => ({...s.sheet, levels:s.levels}));
-  const byId = new Map<string, ShelfSong & {origin?: string}>((shelf.status === 'ready' ? shelf.songs : []).map(s => [s.id,s]));
-  for (const song of mine) byId.set(song.id,{...song, embedded:false, saved:!!kept.data?.some(s=>s.sheet.id === song.id)});
+  const mine = own.data ?? (kept.data ?? []).filter((s) => s.sheet.origin !== 'catalog').map((s) => ({ ...s.sheet, levels: s.levels }));
+  const byId = new Map<string, ShelfSong & { origin?: string }>((shelf.status === 'ready' ? shelf.songs : []).map((s) => [s.id, s]));
+  for (const song of mine) byId.set(song.id, { ...song, embedded: false, saved: !!kept.data?.some((s) => s.sheet.id === song.id) });
   const songs = [...byId.values()];
   const empty = shelf.status === 'ready' && !shelf.fallback && songs.length === 0;
-  const visible = songs
-    .filter((s) => (!onlyApp || s.embedded) && matchesSearch(query, s.title, s.composer))
-    .sort(SORTS[sort].compare);
+  const visible = songs.filter((s) => (!onlyApp || s.embedded) && matchesSearch(query, s.title, s.composer)).sort(SORTS[sort].compare);
   const embedded = songs.filter((s) => s.embedded).length;
   const saved = savedCount(songs);
   const kicker = [`${songs.length} músicas`, `${embedded} no app`, saved ? `${saved} ${saved === 1 ? 'baixada' : 'baixadas'}` : ''].filter(Boolean).join(' · ');
@@ -295,7 +305,9 @@ export const Library: React.FC = () => {
           <ScreenTitle>Biblioteca</ScreenTitle>
         </Intro>
         <HeaderActions>
-          <Button as={Link} to={ROUTES.import} $variant="ghost">Importar música</Button>
+          <Button as={Link} to={ROUTES.import} $variant="ghost">
+            Importar música
+          </Button>
           <Button as={Link} to={ROUTES.editor} $variant="ghost">
             <span aria-hidden="true">✎</span>Escrever música
           </Button>
@@ -338,7 +350,19 @@ export const Library: React.FC = () => {
           ) : visible.length ? (
             <Grid aria-label="Músicas">
               {visible.map((song) => (
-                <SongCard key={song.id} song={song} offline={shelf.fallback} onDelete={song.origin && song.origin !== 'catalog' ? () => {setError(''); setDeleting(song);} : undefined} />
+                <SongCard
+                  key={song.id}
+                  song={song}
+                  offline={shelf.fallback}
+                  onDelete={
+                    song.origin && song.origin !== 'catalog'
+                      ? () => {
+                          setError('');
+                          setDeleting(song);
+                        }
+                      : undefined
+                  }
+                />
               ))}
             </Grid>
           ) : (
@@ -346,20 +370,47 @@ export const Library: React.FC = () => {
           )}
         </>
       )}
-      {deleting && <DeleteDialog ref={dialog} aria-labelledby="apagar-titulo" onCancel={e => {if(busy) e.preventDefault(); else setDeleting(null);}}>
-        <h2 id="apagar-titulo">Apagar música?</h2><p>Apagar “{deleting.title}” da sua Biblioteca e deste aparelho? Esta ação não pode ser desfeita.</p>
-        {error && <p role="alert">{error}</p>}
-        <Button autoFocus $variant="ghost" disabled={busy} onClick={() => setDeleting(null)}>Cancelar</Button>
-        <Button disabled={busy} onClick={() => void remove()}>{busy ? 'Apagando…' : 'Apagar música'}</Button>
-      </DeleteDialog>}
+      {deleting && (
+        <DeleteDialog
+          ref={dialog}
+          aria-labelledby="apagar-titulo"
+          onCancel={(e) => {
+            if (busy) e.preventDefault();
+            else setDeleting(null);
+          }}
+        >
+          <h2 id="apagar-titulo">Apagar música?</h2>
+          <p>
+            Apagar “{deleting.title}” da sua Biblioteca e deste aparelho? As partidas e o recorde desta música também serão apagados. Seus selos e sua sequência ficam. Esta ação
+            não pode ser desfeita.
+          </p>
+          {error && <p role="alert">{error}</p>}
+          <Button autoFocus $variant="ghost" disabled={busy} onClick={() => setDeleting(null)}>
+            Cancelar
+          </Button>
+          <Button disabled={busy} onClick={() => void remove()}>
+            {busy ? 'Apagando…' : 'Apagar música'}
+          </Button>
+        </DeleteDialog>
+      )}
     </Screen>
   );
 };
 
 const DeleteDialog = styled.dialog`
-  margin:auto; max-width:min(32rem, calc(100vw - 2rem)); padding:1.5rem;
-  color:${({theme})=>theme.colors.text}; background:${({theme})=>theme.colors.surface};
-  border:2px solid ${({theme})=>theme.colors.surfaceBorder};
-  p {margin:1rem 0;} button {margin-right:0.5rem;}
-  &::backdrop {background:rgb(0 0 0 / 65%);}
+  margin: auto;
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 1.5rem;
+  color: ${({ theme }) => theme.colors.text};
+  background: ${({ theme }) => theme.colors.surface};
+  border: 2px solid ${({ theme }) => theme.colors.surfaceBorder};
+  p {
+    margin: 1rem 0;
+  }
+  button {
+    margin-right: 0.5rem;
+  }
+  &::backdrop {
+    background: ${({ theme }) => rgba(theme.colors.background, 0.6)};
+  }
 `;

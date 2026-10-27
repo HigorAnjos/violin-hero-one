@@ -38,6 +38,14 @@ const FROM_SERVER: Collection = {
 const cell = (label: string) => screen.getByRole('img', { name: new RegExp(`^Selo ${label}`) }).closest('li')!;
 
 describe('Badges', () => {
+  it('partida apagada: o selo continua conquistado, com a data e sem link da partida', () => {
+    fake = { ...FROM_SERVER, earned: [{ id: 'primeira-musica', source: 'server', earned: { id: 'primeira-musica', earnedAt: '2026-10-20T15:00:00Z', play: null } }] };
+    renderScreen(<Badges />);
+    const badge = within(cell('Primeira música'));
+    expect(badge.getByText('Ganho em 20/10/2026')).toBeInTheDocument();
+    expect(badge.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Selos conquistados' })).toHaveAttribute('aria-valuenow', '1');
+  });
   for (const theme of [cadernoTheme, palcoTheme, pixelTheme]) {
     it(`${theme.name}: ganhos com data e partida, a ganhar com o que falta e o progresso`, () => {
       fake = FROM_SERVER;
