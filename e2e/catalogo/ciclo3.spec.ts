@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { BADGES } from '../../src/game/engine/badges';
 import type { BadgeId, GameResult } from '../../src/game/engine/types';
 import { LOGIN_LINK_SENT } from '../../src/services/account';
@@ -11,14 +11,14 @@ import {
   expectSeeEachOther,
   linkFromMail,
   myRankingName,
-  newDevice,
-  openRanking,
   queued,
   queuedPlays,
+  rankingLines,
   SECONDS,
   serverRows,
   SHORTEST,
   storedSession,
+  test,
 } from './aparelho';
 
 /**
@@ -61,19 +61,11 @@ async function playFromMenu(page: Page) {
   await untilTheEnd(page);
 }
 
-test('ciclo 3: convidado joga, joga offline, cria conta, entra em outro aparelho, vê o outro no ranking e desafia', async ({
-  browser,
-  baseURL,
-  viewport,
-  isMobile,
-  hasTouch,
-  deviceScaleFactor,
-}) => {
+test('ciclo 3: convidado joga, joga offline, cria conta, entra em outro aparelho, vê o outro no ranking e desafia', async ({ newDevice }) => {
   test.setTimeout((4 * SECONDS + 360) * 1000);
-  const device = { baseURL, viewport, isMobile, hasTouch, deviceScaleFactor };
   const tag = randomUUID().slice(0, 8);
   const emails = [`ciclo3-a-${tag}@t.test`, `ciclo3-b-${tag}@t.test`];
-  const a = await newDevice(browser, device);
+  const a = await newDevice();
   const guestId = (await storedSession(a)).user.id;
   const badges = new Set<BadgeId>();
   let best = 0;
@@ -135,7 +127,7 @@ test('ciclo 3: convidado joga, joga offline, cria conta, entra em outro aparelho
   });
 
   await test.step('d. outro aparelho entra na mesma conta e vê o mesmo progresso (Perfil, Selos)', async () => {
-    const other = await newDevice(browser, device);
+    const other = await newDevice();
     await other.goto('/entrar');
     await other.getByRole('button', { name: 'Entrar com e-mail' }).click();
     await other.getByLabel('E-mail').fill(emails[0]);
@@ -154,10 +146,9 @@ test('ciclo 3: convidado joga, joga offline, cria conta, entra em outro aparelho
       const cell = other.getByRole('listitem').filter({ has: other.getByRole('img', { name: `Selo ${label}`, exact: true }) });
       await expect(cell).toContainText(`${SHORTEST.sheet.title} (Fácil)`);
     }
-    await other.context().close();
   });
 
-  const b = await newDevice(browser, device);
+  const b = await newDevice();
   const names: string[] = [];
   await test.step('e. uma segunda conta joga a mesma música e nível; as duas se veem no ranking só pelo nome gerado', async () => {
     // Tudo o que o ranking manda para cada aparelho, para conferir que nenhum e-mail vem do servidor
@@ -168,9 +159,9 @@ test('ciclo 3: convidado joga, joga offline, cria conta, entra em outro aparelho
     await b.goto(RANKING);
     await expect(b.getByText(/Você está jogando sem conta/)).toBeVisible();
     await createAccountFromPrompt(b, 'Quer aparecer no ranking?', emails[1], BACK_TO_RANKING);
-    // A segue no ranking desde o passo c: abre de novo para ver quem entrou depois
-    const lines = [await openRanking(a, RANKING), await openRanking(b, RANKING)];
-    expectSeeEachOther(lines[0], lines[1]);
+    expectSeeEachOther(await rankingLines(a), await rankingLines(b));
+    // A segue no ranking desde o passo c: recarrega para ver quem entrou depois
+    await a.reload();
     names.push(await myRankingName(a), await myRankingName(b));
     // O nome pode repetir entre contas: na tela, basta que o do outro esteja lá
     await expect(b.getByText(names[0], { exact: true }).first()).toBeVisible();

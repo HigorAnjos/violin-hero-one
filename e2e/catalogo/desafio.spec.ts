@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { expectFits, tinyText, tooSmallTargets } from '../layout';
 import { openWithState } from '../state';
-import { createAccountFromPrompt, expect, GENERATED_NAME as GENERATED, newDevice, queued, SECONDS, SHORTEST } from './aparelho';
+import { createAccountFromPrompt, expect, GENERATED_NAME as GENERATED, queued, SECONDS, SHORTEST, test } from './aparelho';
 
 /**
  * Desafio de ponta a ponta no Supabase local, com dois aparelhos: a conta A cria o desafio com o placar dela, a conta B
@@ -28,13 +28,13 @@ const createAccount = (page: Page, email: string, back: RegExp) => createAccount
 
 const placar = (page: Page) => page.getByRole('region', { name: 'Placar do desafio' });
 
-test('A cria o desafio, B abre o link, aceita com conta, joga melhor e o resultado aparece para os dois', async ({ browser, baseURL }) => {
+test('A cria o desafio, B abre o link, aceita com conta, joga melhor e o resultado aparece para os dois', async ({ newDevice }) => {
   test.setTimeout((2 * SECONDS + 240) * 1000);
   const tag = randomUUID().slice(0, 8);
   const emails = [`desafio-a-${tag}@t.test`, `desafio-b-${tag}@t.test`];
 
   // A joga com dois erros como convidado; o desafio pede conta, e a partida de antes vira o placar a bater
-  const a = await newDevice(browser, { baseURL });
+  const a = await newDevice();
   await play(a, 2);
   await a.goto('/desafio');
   await expect(a.getByText(/Desafiar alguém pede uma conta/)).toBeVisible();
@@ -50,7 +50,7 @@ test('A cria o desafio, B abre o link, aceita com conta, joga melhor e o resulta
   expect(path).toMatch(/^\/desafio\/[A-Za-z0-9_-]{12}$/);
 
   // B, em outro aparelho, abre o link: música, nível, pontos, prazo e o nome gerado de A; aceitar pede conta
-  const b = await newDevice(browser, { baseURL });
+  const b = await newDevice();
   await b.goto(path);
   const heading = b.getByRole('heading', { level: 1 });
   await expect(heading).toHaveText(new RegExp(`^${GENERATED.source} te desafiou$`));

@@ -1,16 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { expectFits, tinyText, tooSmallTargets } from '../layout';
 import {
   createAccountFromPrompt,
   expect,
   expectSeeEachOther,
   myRankingName as myName,
-  newDevice,
-  openRanking,
+  rankingLines,
   playShortest,
   SECONDS,
   SHORTEST,
+  test,
 } from './aparelho';
 
 /**
@@ -30,26 +30,27 @@ async function createAccountFromRanking(page: Page, email: string) {
   await createAccountFromPrompt(page, 'Quer aparecer no ranking?', email, new RegExp(`/ranking\\?musica=${SHORTEST.sheet.id}`));
 }
 
-test('duas contas jogam a mesma música e uma vê a outra no ranking com o nome gerado, sem e-mail', async ({ browser, baseURL }) => {
+test('duas contas jogam a mesma música e uma vê a outra no ranking com o nome gerado, sem e-mail', async ({ newDevice }) => {
   test.setTimeout((2 * SECONDS + 200) * 1000);
   const emails = [`ranking-a-${randomUUID().slice(0, 8)}@t.test`, `ranking-b-${randomUUID().slice(0, 8)}@t.test`];
 
   // Convidado A joga; no ranking vê o convite (anônimo não aparece) e cria a conta: a partida de antes já vale
-  const one = await newDevice(browser, { baseURL });
+  const one = await newDevice();
   await playShortest(one);
   await createAccountFromRanking(one, emails[0]);
   const nameA = await myName(one);
 
   // Convidado B, em outro aparelho, joga a mesma música e cria a conta
-  const two = await newDevice(browser, { baseURL });
+  const two = await newDevice();
   await playShortest(two);
   await createAccountFromRanking(two, emails[1]);
   const nameB = await myName(two);
 
   // Cada um vê o outro (a mesma linha, na mesma posição) pelo nome gerado, sem "você", e nenhum e-mail na tela. O
   // nome pode repetir entre contas: na tela, basta que o do outro esteja lá
-  expectSeeEachOther(await openRanking(one, RANKING), await openRanking(two, RANKING));
+  expectSeeEachOther(await rankingLines(one), await rankingLines(two));
   await expect(two.getByText(nameA, { exact: true }).first()).toBeVisible();
+  await one.reload();
   await expect(one.getByText(nameB, { exact: true }).first()).toBeVisible();
   expect(await myName(one)).toBe(nameA);
   for (const page of [one, two]) {
