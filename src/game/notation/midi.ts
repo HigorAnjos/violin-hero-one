@@ -2,11 +2,15 @@
 // import-song) e nos testes: o conversor não entra no pacote do app.
 // MIDI não tem compasso escrito nem ligadura: a grade vem da fórmula de compasso do arquivo e a nota que cruza a barra
 // vira duas, a segunda ligada. Tempos arredondados para 1/24 de semínima (cobre fusa e tercina de semicolcheia).
-import { Midi } from '@tonejs/midi';
+import * as tonejs from '@tonejs/midi';
 import { DEFAULT_KEY, DEFAULT_QUARTER_BPM, tidy, type KeySignature, type ScoreMeasure, type ScoreNote, type ScorePart } from './musicxml.ts';
 import type { TimeSignature } from './song.ts';
 
-export const isMidi = (bytes: Uint8Array) => bytes.length >= 4 && String.fromCharCode(...bytes.subarray(0, 4)) === 'MThd';
+// O pacote é CommonJS: Node e Vite dão o Midi como export nomeado; o Deno (npm:) só pelo default
+const Midi = tonejs.Midi ?? (tonejs as unknown as { default: typeof tonejs }).default.Midi;
+type Midi = InstanceType<typeof tonejs.Midi>;
+
+export const isMidi =(bytes: Uint8Array) => bytes.length >= 4 && String.fromCharCode(...bytes.subarray(0, 4)) === 'MThd';
 
 /** Armaduras como o @tonejs/midi as nomeia (o tom maior da armadura, mesmo em menor), de -7 a 7. */
 const KEYS = ['Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F', 'C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#'];
