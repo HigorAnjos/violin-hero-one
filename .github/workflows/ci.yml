@@ -58,7 +58,8 @@ jobs:
       - name: carrega as imagens do cache
         if: steps.supabase-images.outputs.cache-hit == 'true'
         run: docker load -i ~/supabase-images/images.tar
-      # Sobe o Supabase, migra, semeia o catálogo e roda o test:db; os containers ficam de pé para o e2e
+      # Sobe o Supabase (com o edge runtime, que serve a função import-song e baixa as dependências npm: dela na 1ª
+      # chamada), migra, semeia o catálogo e roda o test:db e o test:functions; os containers ficam de pé para o e2e
       - run: npm run db:local
       - name: guarda as imagens para o próximo run
         if: steps.supabase-images.outputs.cache-hit != 'true'

@@ -18,6 +18,7 @@
     "songs:fixed": "node scripts/fixed-songs.mjs",
     "icons": "node scripts/pwa-icons.mjs",
     "test:db": "node --test scripts/test-db.mjs",
+    "test:functions": "node --test scripts/test-functions.mjs",
     "db:local": "node scripts/db-local.mjs",
     "test:e2e": "playwright test",
     "test:e2e:catalogo": "playwright test -c playwright.catalogo.config.ts"
