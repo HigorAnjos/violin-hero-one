@@ -5,6 +5,7 @@ import type { Level, Song } from '../game/notation/song';
 import { addEarnedBadges } from './badges';
 import { ensureSession, type AuthClient, type SessionState } from './session';
 import { supabase } from './supabase';
+import { currentUserId } from './user';
 
 /** Mesmos valores do enum violinhero.play_mode. */
 export type PlayMode = 'arcade' | 'sheet' | 'practice' | 'strings3d';
@@ -310,8 +311,11 @@ export function myBadgesQuery(client: ProgressClient | null, session: () => Prom
   return {
     queryKey: progressKeys.badges,
     queryFn: async () => {
-      const ids = await listMyBadges(client, await session());
-      addEarnedBadges(ids);
+      const state = await session();
+      const ids = await listMyBadges(client, state);
+      // A resposta pode chegar depois de uma troca de conta (accountSwitch limpa vh:badges): só grava se o aparelho
+      // ainda é de quem perguntou
+      if (state.status === 'signed-in' && currentUserId() === state.userId) addEarnedBadges(ids);
       return ids;
     },
     retry: retryServer,

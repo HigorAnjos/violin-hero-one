@@ -7,6 +7,7 @@ import { createPlaySync, memoryPlayQueueStore } from '../services/playQueue';
 import { loadEarnedBadges } from '../services/badges';
 import { progressKeys, type ProgressClient } from '../services/progress';
 import type { SessionState } from '../services/session';
+import { rememberUser } from '../services/user';
 import { songKeys } from '../services/songs';
 import { forgetUserQueries, playedChart, reconnect, useDeviceSync } from './deviceSync';
 
@@ -91,6 +92,7 @@ describe('useDeviceSync', () => {
 
   it('os selos da conta entram em vh:badges na abertura e depois de cada partida aceita', async () => {
     localStorage.clear();
+    rememberUser('u1');
     const t = setup();
     t.goOnline();
     await t.session();
