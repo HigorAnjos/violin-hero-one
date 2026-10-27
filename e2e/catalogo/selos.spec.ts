@@ -3,14 +3,13 @@ import { BADGES } from '../../src/game/engine/badges';
 import type { BadgeId, GameResult } from '../../src/game/engine/types';
 import { songDurationSeconds } from '../../src/game/notation/song';
 import { chooseSong } from '../choose';
-import { CATALOG } from './catalogo';
+import { serverRows, SHORTEST } from './aparelho';
 
 /**
  * Selos e sequência contra o Supabase local, com um jogador novo (sem selo nenhum no servidor): a partida inteira
  * comemora o selo que o servidor confirmou, a coleção mostra a data e a partida, a tela inicial mostra a sequência e,
  * de outro aparelho (sem vh:badges), o mesmo selo não comemora de novo.
  */
-const SHORTEST = [...CATALOG].sort((a, b) => songDurationSeconds(a.charts.easy) - songDurationSeconds(b.charts.easy))[0];
 const TITLE = new RegExp(`^${SHORTEST.sheet.title.replace(/[()]/g, '\\$&')}$`);
 
 test.skip(({ isMobile }) => isMobile, 'a partida em tempo real só no desktop');
@@ -18,18 +17,7 @@ test.skip(({ isMobile }) => isMobile, 'a partida em tempo real só no desktop');
 test.use({ storageState: { cookies: [], origins: [] } });
 
 /** Selos do jogador da sessão, pelo PostgREST com o token dele (a RLS só devolve os dele). */
-const serverBadges = (page: Page) =>
-  page.evaluate(
-    async ([url, key]) => {
-      const token = Object.entries(localStorage).find(([k]) => /^sb-.+-auth-token$/.test(k))?.[1];
-      const access = token ? (JSON.parse(token) as { access_token: string }).access_token : '';
-      const res = await fetch(`${url}/rest/v1/badges_earned?select=badge_id`, {
-        headers: { apikey: key, Authorization: `Bearer ${access}`, 'Accept-Profile': 'violinhero' },
-      });
-      return ((await res.json()) as { badge_id: BadgeId }[]).map((r) => r.badge_id);
-    },
-    [process.env.E2E_SUPABASE_URL!, process.env.E2E_SUPABASE_ANON_KEY!] as const
-  );
+const serverBadges = async (page: Page) => (await serverRows<{ badge_id: BadgeId }>(page, 'badges_earned?select=badge_id')).map((r) => r.badge_id);
 
 async function playShortest(page: Page) {
   await chooseSong(page, TITLE, 'Arcade', 'easy');

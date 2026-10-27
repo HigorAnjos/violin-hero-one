@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { launchWith } from './launch';
 
 // Microfone falso do Chromium (um bipe): prova que o Ouvido de verdade abre no build de produção
 test.use({
   permissions: ['microphone'],
-  launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
+  launchOptions: launchWith('--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'),
 });
 
 test('o Ouvido de verdade abre e o onboarding passa do microfone para as cordas', async ({ page }) => {
