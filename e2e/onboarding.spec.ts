@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './microphone';
 import { fontsReady } from './fonts';
 
 // O Chromium do teste nega o microfone: todo problema vira "bloqueado"; os outros estados usam o
@@ -64,4 +65,46 @@ test('reduzir movimento desliga a pulsação da contagem', async ({ page }) => {
   await page.goto('/contagem');
   const animation = await page.getByRole('timer').evaluate((el) => getComputedStyle(el).animationName);
   expect(animation).toBe('none');
+});
+
+
+async function completeOnboarding(page: Page) {
+  await page.goto('/primeira-vez/nivel');
+  await page.getByRole('button', { name: /Continuar/ }).click();
+  await page.getByRole('button', { name: /Permitir microfone/ }).click();
+  await expect(page).toHaveURL(/\/primeira-vez\/cordas$/);
+  await expect(page.getByRole('status').filter({ hasText: /de 4 cordas/ })).toHaveText('4 de 4 cordas · tudo certo!', { timeout: 30000 });
+  await page.getByRole('button', { name: /Continuar/ }).click();
+  await expect(page).toHaveURL(/\/contagem$/);
+}
+
+test('celular: primeiro jogo após onboarding desenha Cordas 3D e avança', async ({ micPage }, testInfo) => {
+  test.skip(testInfo.project.name !== 'celular', 'fluxo no celular 844×390');
+  test.setTimeout(60000);
+  const page = await micPage('cordas-soltas');
+  await completeOnboarding(page);
+  await expect(page).toHaveURL(/\/jogo\/3d$/, { timeout: 15000 });
+  const canvas = page.getByTestId('cordas-3d').locator('canvas');
+  await expect(canvas).toBeVisible();
+  expect((await canvas.boundingBox())?.width).toBeGreaterThan(300);
+  expect((await canvas.screenshot()).byteLength).toBeGreaterThan(5000);
+  await expect(page.locator('[data-judgment]').first()).toBeVisible({ timeout: 15000 });
+});
+
+test('WebGL indisponível oferece Arcade após onboarding', async ({ micPage }) => {
+  test.setTimeout(60000);
+  const page = await micPage('cordas-soltas');
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...args: unknown[]) {
+      if (type === 'webgl' || type === 'webgl2') return null;
+      return Reflect.apply(original, this, [type, ...args]);
+    } as typeof original;
+  });
+  await completeOnboarding(page);
+  await expect(page.getByRole('alert')).toHaveText(/Não deu para desenhar as Cordas 3D neste aparelho./, { timeout: 15000 });
+  expect(await tooSmallTargets(page)).toEqual([]);
+  await page.getByRole('button', { name: 'Tocar no Arcade' }).click();
+  await expect(page).toHaveURL(/\/contagem$/);
+  await expect(page).toHaveURL(/\/jogo$/, { timeout: 15000 });
 });
