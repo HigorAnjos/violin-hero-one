@@ -9,8 +9,8 @@ import { micFailure, useEar, type MicProblem } from './Ear';
 import { loadMetronome } from './metronome';
 import type { MicTrouble } from '../game/audio';
 
-/** Folga entre o microfone aberto e o primeiro clique da contagem. */
-const LEAD_SECONDS = 0.15;
+/** Folga entre o microfone aberto e o primeiro clique da contagem (a mesma da contagem do jogo). */
+const LEAD_SECONDS = 0.05;
 /** De quanto em quanto a tela olha o relógio (contagem) e agenda o metrônomo. */
 const TICK_MS = 50;
 /** Metrônomo agendado até este tanto à frente. */
