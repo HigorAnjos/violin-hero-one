@@ -9,6 +9,35 @@ test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required']
 
 const SONG = { ...ODE, title: LONG_TITLE };
 
+test('8-Bits desenha o 5 de Combo 25 com a fonte de interface', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('vh:theme', '8-bits'));
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openWithState(page, '/selo-novo', { song: SONG, result: { ...bigResult(0), badges: ['combo-25'] } });
+  const combo = page.getByRole('heading', { name: 'Selo novo: Combo 25' });
+  await expect(combo).toBeVisible();
+  await fontsReady(page, '8-bits');
+  const widths = await combo.evaluate(async (heading) => {
+    const style = getComputedStyle(heading);
+    await document.fonts.load(`${style.fontWeight} ${style.fontSize} Nunito`, '5');
+    await document.fonts.load(`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`, '5');
+    const context = document.createElement('canvas').getContext('2d')!;
+    const measure = (family: string, glyph: string) => {
+      context.font = `${style.fontWeight} ${style.fontSize} ${family}`;
+      return context.measureText(glyph).width;
+    };
+    return {
+      digit: measure(style.fontFamily, '5'),
+      ui: measure('Nunito', '5'),
+      pixel: measure('"Pixelify Sans"', '5'),
+      letter: measure(style.fontFamily, 'S'),
+      pixelLetter: measure('"Pixelify Sans"', 'S'),
+    };
+  });
+  expect(widths.digit).toBeCloseTo(widths.ui, 2);
+  expect(Math.abs(widths.digit - widths.pixel)).toBeGreaterThan(0.1);
+  expect(widths.letter).toBeCloseTo(widths.pixelLetter, 2);
+});
+
 /** Partida de verdade com os números inchados: pontuação de 7 dígitos e combo de 5. */
 function bigResult(errors: number, noFail = true): GameResult {
   const result = simulateGame({ song: ODE, startAt: 1, noFail }, { errors, seed: 2 }).result;
