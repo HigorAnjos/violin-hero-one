@@ -67,7 +67,9 @@ const Header = styled.header`
       font-size: 1.25rem;
     }
 
-    [role='status'] {
+    /* O selo novo (ou "Seus selos") mantém os 44 px de toque; a margem negativa devolve o que eles crescem além do título */
+    > a {
+      margin: -0.5rem 0;
       padding-top: 0.125rem;
       padding-bottom: 0.125rem;
     }
