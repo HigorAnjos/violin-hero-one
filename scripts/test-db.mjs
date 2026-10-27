@@ -18,6 +18,7 @@ const ZERO = '00000000-0000-0000-0000-000000000000';
  */
 const ALLOWED_FUNCTIONS = [
   'authenticated violinhero.ensure_my_profile()',
+  'authenticated violinhero.get_ranking(text,violinhero.chart_level,text,integer)',
   'authenticated violinhero.get_song(text,violinhero.chart_level)',
   'authenticated violinhero.submit_play(jsonb)',
 ];
@@ -634,6 +635,124 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       await denied(as(c, null, `select ${S}.submit_play($1)`, [JSON.stringify(playOf(id))]));
       await denied(as(c, null, `select ${S}.ensure_my_profile()`));
       for (const table of PROGRESS_TABLES) await denied(as(c, null, `select * from ${S}.${table}`));
+    });
+  });
+
+  describe('ranking', () => {
+    const ranking = (uid, id, { period = 'all', limit = 20, level = 'easy' } = {}) =>
+      as(c, uid, `select * from ${S}.get_ranking($1, $2, $3, $4)`, [id, level, period, limit]);
+    const rowsOf = async (...args) => (await ranking(...args)).rows.map((r) => [r.rank, r.ranking_name, r.points, r.is_me]);
+    /** Conta (não anônima) com bicho, apelido digitado e o nome público que o ranking mostra. */
+    async function account(animal = 'fox', nickname = 'Segredo') {
+      const id = await newUser(c, { anonymous: false });
+      await c.query(`update ${S}.profiles set animal = $2, nickname = $3 where id = $1`, [id, animal, nickname]);
+      const { rows: [p] } = await c.query(`select ${S}.ranking_name(animal, nickname_tag) as name from ${S}.profiles where id = $1`, [id]);
+      return { id, name: p.name };
+    }
+    const FOUR = { sequence: Array(4).fill('perfect') };
+    const TWO = { sequence: ['perfect', 'perfect', 'miss', 'miss'] };
+
+    it('uma linha por conta com a melhor partida (não a soma), nome gerado e empate para quem chegou primeiro', async () => {
+      const id = await serverSong(c, { notes: 4 });
+      const [a, b, d] = [await account('fox'), await account('cat'), await account('penguin')];
+      await submit(c, a.id, playOf(id, TWO));
+      await submit(c, a.id, playOf(id, FOUR));
+      await submit(c, a.id, playOf(id, TWO));
+      await submit(c, b.id, playOf(id, FOUR));
+      await submit(c, d.id, playOf(id, TWO));
+      // Na mesma transação now() não anda: b chegou antes de a
+      await c.query(`update ${S}.plays set created_at = now() - interval '1 minute' where user_id = $1`, [b.id]);
+      assert.deepEqual(await rowsOf(a.id, id), [[1, b.name, 400, false], [2, a.name, 400, true], [3, d.name, 200, false]]);
+      assert.match(a.name, /^Raposa \d{4}$/);
+      assert.equal(Number((await ranking(d.id, id)).rows[2].accuracy), 50);
+    });
+
+    it('NÃO devolve user_id, e-mail, apelido digitado, partidas nem afinação de ninguém', async () => {
+      const id = await serverSong(c);
+      const other = await account('cat', 'NomeDigitado');
+      const me = await account('fox', 'MeuApelido');
+      await submit(c, other.id, playOf(id));
+      await submit(c, me.id, playOf(id));
+      const res = await ranking(me.id, id);
+      assert.deepEqual(res.fields.map((f) => f.name), ['rank', 'ranking_name', 'points', 'accuracy', 'is_me']);
+      const seen = JSON.stringify(res.rows);
+      for (const secret of [other.id, me.id, `p-${other.id}@t.test`, 'NomeDigitado', 'MeuApelido', '3.25', '14.5']) {
+        assert.ok(!seen.includes(secret), `ranking mostrou ${secret}`);
+      }
+      // E a tabela continua fechada: só as próprias partidas
+      const { rows } = await as(c, me.id, `select user_id from ${S}.plays`);
+      assert.deepEqual(rows.map((r) => r.user_id), [me.id]);
+    });
+
+    it('anônimo NÃO aparece (mas vê o ranking); ao virar conta (mesmo id) entra com as partidas de antes', async () => {
+      const id = await serverSong(c);
+      const conta = await account();
+      const anon = await newUser(c);
+      await submit(c, conta.id, playOf(id));
+      await submit(c, anon, playOf(id));
+      assert.deepEqual(await rowsOf(anon, id), [[1, conta.name, 100, false]]);
+      await c.query(`update ${S}.plays set created_at = now() - interval '1 minute' where user_id = $1`, [conta.id]);
+      await c.query(`update auth.users set is_anonymous = false, email = $2 where id = $1`, [anon, `r-${anon}@t.test`]);
+      assert.deepEqual((await rowsOf(anon, id)).map((r) => r[3]), [false, true]);
+    });
+
+    it('prática, partida interrompida e partida forjada recusada NÃO entram', async () => {
+      const id = await serverSong(c, { notes: 4 });
+      const u = await account();
+      await submit(c, u.id, playOf(id, { mode: 'practice', looped: true, speed: 0.5, sequence: Array(8).fill('perfect'), duration_ms: 30000 }));
+      await submit(c, u.id, playOf(id, { finished: false, sequence: ['perfect', 'perfect'] }));
+      await invalid(submit(c, u.id, { ...playOf(id, FOUR), score: 999990 }));
+      assert.deepEqual(await rowsOf(u.id, id), []);
+      assert.deepEqual(await rowsOf(u.id, id, { period: 'week' }), []);
+    });
+
+    it('semana: vira na segunda 00:00 de Brasília; partida da semana passada fica só no geral', async () => {
+      const { rows: [w] } = await c.query(
+        `select ${S}.ranking_week('2026-10-26T02:59:59Z')::text as sunday, ${S}.ranking_week('2026-10-26T03:00:00Z')::text as monday`);
+      assert.deepEqual(w, { sunday: '2026-10-19', monday: '2026-10-26' });
+      const id = await serverSong(c);
+      const [old, now] = [await account('cat'), await account('fox')];
+      await submit(c, old.id, playOf(id, { played_at: new Date(Date.now() - 8 * 86400e3).toISOString() }));
+      await submit(c, now.id, playOf(id));
+      const { rows } = await c.query(`select count(*)::int as n from ${S}.plays where week <> ${S}.ranking_week(played_at)`);
+      assert.equal(rows[0].n, 0);
+      assert.deepEqual((await rowsOf(now.id, id, { period: 'week' })).map((r) => r[1]), [now.name]);
+      assert.deepEqual((await rowsOf(now.id, id)).map((r) => r[1]).sort(), [old.name, now.name].sort());
+    });
+
+    it('fora do topo, a linha do próprio jogador vem no fim; ninguém de fora do topo além dele', async () => {
+      const id = await serverSong(c, { notes: 4 });
+      const [a, b, me] = [await account('fox'), await account('cat'), await account('penguin')];
+      await submit(c, a.id, playOf(id, FOUR));
+      await submit(c, b.id, playOf(id, { sequence: ['perfect', 'perfect', 'perfect', 'miss'] }));
+      await submit(c, me.id, playOf(id, TWO));
+      assert.deepEqual(await rowsOf(me.id, id, { limit: 1 }), [[1, a.name, 400, false], [3, me.name, 200, true]]);
+      assert.deepEqual((await rowsOf(a.id, id, { limit: 1 })).map((r) => r[0]), [1]);
+    });
+
+    it('nível pesa os pontos e cada nível tem o seu ranking', async () => {
+      const id = await serverSong(c, { levels: ['easy', 'hard'] });
+      const u = await account();
+      await submit(c, u.id, playOf(id, { level: 'hard' }));
+      assert.deepEqual(await rowsOf(u.id, id), []);
+      assert.deepEqual((await rowsOf(u.id, id, { level: 'hard' })).map((r) => r[2]), [150]);
+    });
+
+    it('importada alheia, música ou nível inexistente dão o mesmo "não encontrada"; período inválido é recusado', async () => {
+      const dono = await account();
+      const u = await account('cat');
+      const own = await serverSong(c, { owner: dono.id });
+      await submit(c, dono.id, playOf(own));
+      assert.equal((await rowsOf(dono.id, own)).length, 1);
+      await notFound(ranking(u.id, own));
+      await notFound(ranking(u.id, 'nao-existe'));
+      await notFound(ranking(u.id, await serverSong(c), { level: 'hard' }));
+      await invalid(ranking(u.id, await serverSong(c), { period: 'month' }));
+    });
+
+    it('sem login (anon) NÃO chama get_ranking', async () => {
+      const id = await serverSong(c);
+      await denied(as(c, null, `select * from ${S}.get_ranking($1, 'easy', 'all', 20)`, [id]));
     });
   });
 
