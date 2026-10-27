@@ -2,6 +2,7 @@ import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { test as base, type Browser, type Page } from '@playwright/test';
 import { takePath, type TakeName } from './audio/takes';
+import { FAKE_AUDIO_OUTPUT } from './launch';
 
 const BUILT_ASSETS = path.resolve(import.meta.dirname, '../dist/assets');
 
@@ -38,7 +39,7 @@ export function microphoneArgs(take: TakeName, { loop = true }: MicrophoneOption
     '--autoplay-policy=no-user-gesture-required',
     // Saída falsa no relógio do sistema, o mesmo do arquivo: com a placa de som real o AudioContext deriva do WAV
     // sob carga (até 300 ms numa música) e os julgamentos saem adiantados; também não toca nada nos alto-falantes
-    '--disable-audio-output',
+    FAKE_AUDIO_OUTPUT,
   ];
 }
 

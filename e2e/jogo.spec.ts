@@ -3,12 +3,13 @@ import { simulateGame, type GameResult } from '../src/game/engine';
 import { ODE } from '../src/game/engine/testing';
 import { chooseSong, skipOnboarding } from './choose';
 import { fontsReady } from './fonts';
+import { launchWith } from './launch';
 import { expectFits, expectVisibleFocus, tinyText, tooSmallTargets } from './layout';
 import { openWithState } from './state';
 
 // Build do e2e (--mode e2e): ?ouvido=simulado e ?simular valem. Sem gesto o Chromium não libera o áudio;
 // a política de autoplay deixa abrir /jogo direto pela URL.
-test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } });
+test.use({ launchOptions: launchWith('--autoplay-policy=no-user-gesture-required') });
 
 const played = (errors: number, noFail = true): GameResult => simulateGame({ song: ODE, startAt: 1, noFail }, { errors, seed: 2 }).result;
 

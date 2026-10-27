@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { launchWith } from './e2e/launch';
 
 // Cada worktree pode subir a própria prévia (E2E_PORT): com a porta fixa, um floor reaproveitaria o build de outro
 const port = Number(process.env.E2E_PORT) || 4173;
@@ -23,6 +24,8 @@ export default defineConfig({
     trace: 'retain-on-failure',
     // O page.route não vê o que o service worker responde (fontes, áudio): só o offline.spec liga o SW
     serviceWorkers: 'block',
+    // A hora da partida é o relógio do áudio: na placa de som real ele para sob carga (e2e/launch.ts)
+    launchOptions: launchWith(),
   },
   projects: [
     {
