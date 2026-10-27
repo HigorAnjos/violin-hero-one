@@ -27,7 +27,8 @@ test('8-Bits desenha o 5 de Combo 25 com a fonte de interface', async ({ page })
       return context.measureText(glyph).width;
     };
     const ink = (family: string) => {
-      context.font = `${style.fontWeight} ${style.fontSize} ${family}`;
+      // Amplia o mesmo glifo para evitar coincidências de arredondamento no tamanho de 24 px.
+      context.font = `${style.fontWeight} 100px ${family}`;
       const glyph = context.measureText('5');
       return glyph.actualBoundingBoxLeft + glyph.actualBoundingBoxRight;
     };
@@ -44,7 +45,7 @@ test('8-Bits desenha o 5 de Combo 25 com a fonte de interface', async ({ page })
   expect(widths.digit).toBeCloseTo(widths.ui, 2);
   expect(widths.ink).toBeCloseTo(widths.uiInk, 2);
   // Em certos tamanhos os avanços coincidem; o contorno do glifo ainda distingue as fontes.
-  expect(Math.abs(widths.ink - widths.pixelInk)).toBeGreaterThan(0.1);
+  expect(Math.abs(widths.ink - widths.pixelInk), JSON.stringify(widths)).toBeGreaterThan(0.1);
   expect(widths.letter).toBeCloseTo(widths.pixelLetter, 2);
 });
 
