@@ -42,7 +42,7 @@ const ERRORS: Record<string,string> = {
   unknown_format:'Formato não reconhecido. Escolha MusicXML, MIDI ou ABC.',
   no_violin_part:'Nenhuma parte deste arquivo cabe no violino.',
   out_of_range:'A partitura tem notas fora da extensão do violino (Sol3 a Mi6).',
-  too_large:'Arquivo grande demais. O limite é 1 MB.',
+  file_too_large:'Arquivo grande demais. O limite é 1 MB.',
   limit_reached:'Você atingiu o limite de 50 músicas. Apague alguma na Biblioteca para importar outra.',
   unauthorized:'Sua sessão expirou. Reconecte-se e tente de novo; não precisa criar uma conta.',
 };
@@ -77,13 +77,14 @@ export const ImportSong: React.FC<{ importer?: SongImporter }> = ({ importer: gi
     setError(''); setResult(null); setFile(selected);
     if (!part) setPartName('Parte única');
     if (!/\.(musicxml|xml|mxl|mid|midi|abc)$/i.test(selected.name)) { setError(ERRORS.unknown_format); return; }
-    if (selected.size > 1024 * 1024) { setError(ERRORS.too_large); return; }
+    if (selected.size > 1024 * 1024) { setError(ERRORS.file_too_large); return; }
     if (!navigator.onLine) { setError(OFFLINE); return; }
     lock.current = true; setBusy(true);
     try {
       const next = await importAndKeep(importer, selected, part, songCache);
       setResult(next);
       if (next.status === 'created') {
+        if (next.part) setPartName(next.part.name);
         await Promise.all([songKeys.mine,songKeys.saved].map(queryKey => queryClient.invalidateQueries({queryKey})));
       }
     } catch(e) { setError(importMessage(e)); }

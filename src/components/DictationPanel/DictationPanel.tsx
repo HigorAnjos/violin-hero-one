@@ -135,6 +135,7 @@ const Help = styled.div`
   min-width: 0;
 
   > p {
+    letter-spacing: normal;
     font-size: 0.875rem;
     line-height: 1.25rem;
   }
