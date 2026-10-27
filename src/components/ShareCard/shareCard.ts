@@ -1,4 +1,6 @@
 import type { Theme } from '../../assets/styles/themes';
+import { ensureContrast } from '../../assets/styles/themes/color';
+import qrcode from 'qrcode-generator';
 import type { Badge } from '../../game/engine';
 import { badgeColor } from '../Badge/Badge';
 import { formatPercent, formatPoints } from '../ScoreCard/ScoreCard';
@@ -23,6 +25,8 @@ export interface ShareCardData {
   record: boolean;
   /** Onde jogar (o endereço do app, sem caminho). */
   site: string;
+  /** Link completo do desafio, quando houver. */
+  link?: string;
 }
 
 /** Só o que o desenho usa do contexto 2D: o teste troca por um gravador. */
@@ -257,17 +261,37 @@ export function drawShareCard(canvas: CardCanvas, data: ShareCardData, theme: Th
     ctx.fillRect(MARGIN + i * (bar + 12), 1072, bar, 14);
   });
 
-  // Rodapé: o convite e os selos da partida
+  // Selos abaixo da ilustração, sem disputar espaço com o endereço e o QR.
+  data.badges.slice(0, 3).forEach((badge, i) => drawBadge(ctx, theme, badge, MARGIN + (i + 0.5) * BADGE_SLOT, 540, fonts));
+
+  // Rodapé: o mesmo endereço no texto e na matriz, com quatro módulos de silêncio.
   const boxTop = CARD_HEIGHT - MARGIN - 160;
   ctx.strokeStyle = colors.primary.main;
   ctx.lineWidth = 3;
   ctx.strokeRect(MARGIN, boxTop, INNER, 160);
-  const shown = data.badges.slice(0, 3);
-  const badgesWidth = shown.length * BADGE_SLOT;
-  const textMax = INNER - 64 - badgesWidth;
+  const link = data.link ?? `https://${data.site.replace(/^https?:\/\//, '')}`;
+  const textMax = INNER - 64 - 150;
   text(ctx, 'Consegue me passar?', MARGIN + 32, boxTop + 36, fonts.footer, colors.text, textMax);
-  text(ctx, data.site, MARGIN + 32, boxTop + 84, fonts.footerBold, colors.info.text, textMax);
-  shown.forEach((badge, i) => drawBadge(ctx, theme, badge, MARGIN + INNER - 32 - badgesWidth + (i + 0.5) * BADGE_SLOT, boxTop + 22, fonts));
+  // Reduz só até 12 px para manter o endereço completo visível.
+  let size = 34;
+  do { ctx.font = `800 ${size}px ${theme.fonts.ui}`; } while (ctx.measureText(link).width > textMax && --size >= 12);
+  text(ctx, link, MARGIN + 32, boxTop + 84, `800 ${Math.max(12, size)}px ${theme.fonts.ui}`, colors.text, textMax);
+  const qr = qrcode(0, 'M');
+  qr.addData(link, 'Byte');
+  qr.make();
+  const count = qr.getModuleCount();
+  const step = Math.floor(150 / (count + 8));
+  const x = MARGIN + INNER - 155;
+  const y = boxTop + 5;
+  ctx.fillStyle = colors.surface;
+  ctx.fillRect(x, y, 150, 150);
+  ctx.fillStyle = ensureContrast(colors.text, [colors.surface], 4.5);
+  const offset = Math.floor((150 - count * step) / 2);
+  for (let row = 0; row < count; row++) {
+    for (let col = 0; col < count; col++) {
+      if (qr.isDark(row, col)) ctx.fillRect(x + offset + col * step, y + offset + row * step, step, step);
+    }
+  }
 }
 
 /** O nome do arquivo: a música sem acento nem espaço. */
