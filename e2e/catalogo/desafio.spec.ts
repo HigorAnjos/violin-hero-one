@@ -39,7 +39,9 @@ test('A cria o desafio, B abre o link, aceita com conta, joga melhor e o resulta
   await play(a, 2);
   await a.goto('/desafio');
   await expect(a.getByText(/Desafiar alguém pede uma conta/)).toBeVisible();
-  // Volta para a montagem com a partida já escolhida (?partida=)
+  // Volta para a montagem com a partida já escolhida (?partida=). O pedido aparece antes de as partidas carregarem: o
+  // link só ganha a partida depois, e clicar antes volta sem ela
+  await expect(a.getByRole('link', { name: 'Criar conta' })).toHaveAttribute('href', /partida%3D[0-9a-f-]{36}/);
   await createAccount(a, emails[0], /\/desafio\?partida=[0-9a-f-]{36}#?$/);
   const choice = a.getByRole('combobox', { name: 'Música e nível' });
   await expect(choice).toContainText(SHORTEST.sheet.title);
