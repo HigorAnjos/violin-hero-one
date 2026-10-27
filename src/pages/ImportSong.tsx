@@ -15,6 +15,11 @@ import { modesUrl } from '../shell/choice';
 import { ROUTES } from '../shell/routes';
 
 const Header = styled.header`display:flex; align-items:center; justify-content:space-between; gap:1rem;`;
+const Steps = styled.ol`
+  display:flex; flex-wrap:wrap; gap:1rem; list-style:none; padding:0; font-size:0.75rem;
+  color:${({theme})=>theme.colors.textMuted};
+  [aria-current='step'] {font-weight:800; color:${({theme})=>theme.colors.text};}
+`;
 const Body = styled.div`
   display:grid; grid-template-columns:22.5rem minmax(0,1fr); gap:1.5rem; min-height:0;
   @media(max-height:500px), (max-width:750px) { grid-template-columns:minmax(0,1fr); gap:0.75rem; }
@@ -95,7 +100,7 @@ export const ImportSong: React.FC<{ importer?: SongImporter }> = ({ importer: gi
   const libraryUrl = `${ROUTES.library}${location.search}`;
   return <Screen>
     <Header><div><Kicker>Biblioteca</Kicker><ScreenTitle>Importar música</ScreenTitle></div><Button as={Link} to={libraryUrl} $variant="ghost">Biblioteca</Button></Header>
-    <ol aria-label="Etapas"><li aria-current={!result ? 'step' : undefined}>1 · Arquivo</li><li aria-current={result?.status === 'choose-part' ? 'step' : undefined}>2 · Escolher parte</li><li aria-current={saved ? 'step' : undefined}>3 · Pronta para tocar</li></ol>
+    <Steps aria-label="Etapas"><li aria-current={!result ? 'step' : undefined}>1 · Arquivo</li><li aria-current={result?.status === 'choose-part' ? 'step' : undefined}>2 · Escolher parte</li><li aria-current={saved ? 'step' : undefined}>3 · Pronta para tocar</li></Steps>
     {!online && <p role="status">{OFFLINE}</p>}
     <Body>
       <Panel aria-label="Origem">
