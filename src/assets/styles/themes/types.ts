@@ -73,6 +73,10 @@ export interface Theme {
     /** Texto do julgamento, escrito sobre a pista. */
     judgments: Record<Judgment, string>;
     orchestra: Record<OrchestraSection, string>;
+    /** Forma da nota na pista, na partitura e nas Cordas 3D: `square` só no 8-Bits. */
+    noteShape: 'round' | 'square';
+    /** Brilho em volta das notas e das linhas da pista, de 0 (nenhum) a 1 (o Neon). */
+    glow: number;
   };
   art: ArtColors;
   /** `music`: clave e acidentes da partitura (Noto Music, servida pelo app). */

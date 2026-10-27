@@ -1,12 +1,31 @@
-import { Texture, TextureSource } from 'pixi.js';
+import { Texture, TextureSource, type Graphics } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
-import { cadernoTheme } from '../../assets/styles/themes';
+import { cadernoTheme, getTheme, type Theme } from '../../assets/styles/themes';
+import { noteLabel } from './look';
 import { palcoTheme } from '../../assets/styles/themes/palco';
 import { scheduleNotes } from '../engine';
 import type { EngineNote, Judgment } from '../engine/types';
 import { FIXED_SONGS } from '../notation/songs';
 import { LEAD_SECONDS } from './layout';
-import { TrackScene, type JudgmentEvent, type TextureBaker } from './scene';
+import { playedString } from './present';
+import { dashedTarget, playedTarget, TrackScene, type JudgmentEvent, type TextureBaker } from './scene';
+
+describe('alvos da nota errada', () => {
+  // Centro e raio da arte (RING_R = 64): perto do canto só o quadrado tem traço; no meio de um lado, os dois
+  const corner = { x: 64 + 0.95 * 64 - 4, y: 64 + 0.95 * 64 - 4 };
+  const side = { x: 64, y: 4 };
+
+  it.each([
+    ['ALVO (tracejado)', dashedTarget],
+    ['VOCÊ', playedTarget],
+  ])('%s: quadrado no 8-Bits, redondo nos outros temas', (_name, shape) => {
+    const square = shape(0xff0000, true);
+    const round = shape(0xff0000, false);
+    expect(square.containsPoint(corner)).toBe(true);
+    expect(round.containsPoint(corner)).toBe(false);
+    expect(square.containsPoint(side) && round.containsPoint(side)).toBe(true);
+  });
+});
 
 function fakeBaker() {
   const generateTexture = vi.fn(() => new Texture({ source: new TextureSource({ width: 8, height: 8 }) }));
@@ -92,6 +111,45 @@ describe('TrackScene', () => {
     expect(s.feedbackVisible()).toBe(false);
   });
 
+  it('nota errada: × na nota, ALVO na corda dela e VOCÊ na corda tocada; somem depois de um tempo', () => {
+    const { s } = scene();
+    const note = notes.find((n) => n.string === 2)!;
+    const at = note.time + 0.3;
+    // Tocou Mi6 (88) no lugar de uma nota da corda Lá: não cabe na Lá, só na Mi
+    s.judge({ ...judgment(note, 'miss', 'wrong-note'), playedMidi: 88 }, at);
+    s.update(at);
+    expect(s.errorView()).toEqual({ aim: 2, you: 3, crossed: 1 });
+    s.update(at + 2);
+    expect(s.errorView().aim).toBeNull();
+  });
+
+  it('não tocada também leva ×, mas sem ALVO / VOCÊ', () => {
+    const { s } = scene();
+    s.judge(judgment(notes[0], 'miss', 'not-played'), notes[0].time + 0.3);
+    s.update(notes[0].time + 0.3);
+    expect(s.errorView()).toEqual({ aim: null, you: null, crossed: 1 });
+  });
+
+  it('a corda tocada: a do alvo se a nota cabe nele, senão a mais aguda em que cabe', () => {
+    expect(playedString(71, 2)).toBe(2);
+    expect(playedString(88, 2)).toBe(3);
+    expect(playedString(60, 3)).toBe(0);
+    expect(playedString(40, 3)).toBe(0);
+    expect(playedString(100, 0)).toBe(3);
+  });
+
+  it('o rótulo central segue a fila: cada julgamento fica ao menos 250 ms, na ordem, mesmo vindo juntos', () => {
+    const { s } = scene();
+    s.judge(judgment(notes[0], 'perfect'), START);
+    s.judge(judgment(notes[1], 'miss', 'not-played'), START + 0.02);
+    s.judge(judgment(notes[2], 'good', 'late'), START + 0.04);
+    const at = (t: number) => {
+      s.update(START + t);
+      return s.feedbackShown();
+    };
+    expect([at(0.05), at(0.24), at(0.26), at(0.49), at(0.51), at(0.9), at(2)]).toEqual(['perfect', 'perfect', 'miss', 'miss', 'good', 'good', null]);
+  });
+
   it('setNotes: a volta seguinte entra na pista, e as notas que ficam guardam o acerto', () => {
     const { s } = scene();
     const now = notes[0].time + 0.02;
@@ -148,6 +206,72 @@ describe('TrackScene', () => {
 
   it('destroy libera as texturas assadas', () => {
     const { s } = scene();
+    const baked = s.bakedTextures();
+    s.destroy();
+    expect(baked.every((t) => t.destroyed)).toBe(true);
+  });
+});
+
+/** As 4 primeiras texturas assadas são as notas G D A E: largura da arte e quantos traços ela tem. */
+function gems(theme: Theme, options: { patterns?: boolean } = {}) {
+  const drawn: { width: number; instructions: number }[] = [];
+  const generateTexture = vi.fn(({ target }: { target: Graphics }) => {
+    // Só as Graphics: o texto não se mede no jsdom
+    if (drawn.length < 4) drawn.push({ width: target.getLocalBounds().width, instructions: target.context.instructions.length });
+    return new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+  });
+  new TrackScene({ resolution: 1, generateTexture } as unknown as TextureBaker, { theme, notes, reducedMotion: false, ...options });
+  return drawn.slice(0, 4);
+}
+
+describe('TrackScene: especiais e acessibilidade', () => {
+  it('Neon: halo em volta da nota (a arte passa do tamanho da nota); Caderno e 8-Bits sem halo', () => {
+    const plain = gems(cadernoTheme)[0].width;
+    expect(gems(getTheme('8-bits'))[0].width).toBeCloseTo(plain, 0);
+    expect(gems(getTheme('neon'))[0].width).toBeGreaterThan(plain * 1.2);
+  });
+
+  it('modo daltônico: G lisa e D, A, E com padrão próprio por cima da cor', () => {
+    const off = gems(cadernoTheme);
+    const on = gems(cadernoTheme, { patterns: true });
+    expect(on[0].instructions).toBe(off[0].instructions);
+    for (const i of [1, 2, 3]) expect(on[i].instructions).toBeGreaterThan(off[i].instructions);
+  });
+
+  it('nome das notas: aparece em cima de cada nota só quando ligado', () => {
+    const { baker } = fakeBaker();
+    const off = new TrackScene(baker, { theme: cadernoTheme, notes, reducedMotion: false });
+    const on = new TrackScene(baker, { theme: cadernoTheme, notes, reducedMotion: false, noteNames: true });
+    for (const s of [off, on]) {
+      s.layout(640, 550);
+      s.update(START + 0.5);
+    }
+    expect(on.visibleNotes()).toBeGreaterThan(0);
+    expect(on.visibleNames()).toBe(on.visibleNotes());
+    expect(off.visibleNames()).toBe(0);
+  });
+
+  it('setLook (Pausa): reassa só as 4 notas e os nomes, e libera as notas antigas', () => {
+    const { baker, generateTexture } = fakeBaker();
+    const s = new TrackScene(baker, { theme: cadernoTheme, notes, reducedMotion: false });
+    s.layout(640, 550);
+    const before = s.bakedTextures();
+    const calls = generateTexture.mock.calls.length;
+    s.setLook({ patterns: true, noteNames: true });
+    const names = new Set(notes.map((n) => noteLabel(n.midi))).size;
+    expect(generateTexture.mock.calls.length).toBe(calls + 4 + names);
+    expect(before.slice(0, 4).every((t) => t.destroyed)).toBe(true);
+    s.update(START + 0.5);
+    expect(s.visibleNames()).toBe(s.visibleNotes());
+    s.setLook({ patterns: true, noteNames: true });
+    expect(generateTexture.mock.calls.length).toBe(calls + 4 + names);
+  });
+
+  it('nomes assados uma vez por nome e liberados no destroy', () => {
+    const { baker } = fakeBaker();
+    const s = new TrackScene(baker, { theme: cadernoTheme, notes, reducedMotion: false, noteNames: true });
+    const names = new Set(notes.map((n) => noteLabel(n.midi)));
+    expect(s.bakedTextures().length).toBe(new TrackScene(fakeBaker().baker, { theme: cadernoTheme, notes, reducedMotion: false }).bakedTextures().length + names.size);
     const baked = s.bakedTextures();
     s.destroy();
     expect(baked.every((t) => t.destroyed)).toBe(true);

@@ -1,8 +1,12 @@
 import { LEVELS, parseSong, type Level, type Song } from '../game/notation/song';
+import { BY_USER, deviceDb, SONGS_STORE, type DeviceDb } from './deviceDb';
 import type { LoadedSong, SongSheet } from './songs';
+import { currentUserId } from './user';
 
 /** Música aberta com rede, guardada no aparelho por (id, nível) para tocar sem internet. */
 export interface CachedSong {
+  /** Dono: a música guardada de um usuário não aparece para outro no mesmo aparelho. */
+  userId: string;
   id: string;
   level: Level;
   /** Hash do chart no servidor: igual ao guardado, nada é regravado. */
@@ -17,10 +21,12 @@ export interface CachedSong {
 
 /** Onde as músicas ficam: o IndexedDB no app, a memória nos testes. */
 export interface SongStore {
-  get(id: string, level: Level): Promise<CachedSong | undefined>;
+  get(userId: string, id: string, level: Level): Promise<CachedSong | undefined>;
   put(entry: CachedSong): Promise<void>;
-  delete(id: string, level: Level): Promise<void>;
-  all(): Promise<CachedSong[]>;
+  delete(userId: string, id: string, level: Level): Promise<void>;
+  all(userId: string): Promise<CachedSong[]>;
+  /** Apaga tudo do usuário (troca de conta). */
+  clear(userId: string): Promise<void>;
 }
 
 /** Música que toca sem internet: a ficha e os níveis guardados, de fácil a difícil. */
@@ -40,42 +46,48 @@ export interface SongCache {
 /** Cada chart tem dezenas de KB: 40 níveis guardados cabem com folga em qualquer aparelho. */
 export const SONG_CACHE_LIMIT = 40;
 
-export function createSongCache(store: SongStore, { limit = SONG_CACHE_LIMIT, now = Date.now } = {}): SongCache {
-  async function evict() {
-    const all = await store.all();
+/** `user`: o dono da vez; sem usuário conhecido (antes da primeira sessão), o balde vazio ''. */
+export function createSongCache(
+  store: SongStore,
+  { limit = SONG_CACHE_LIMIT, now = Date.now, user = (): string => currentUserId() ?? '' } = {}
+): SongCache {
+  async function evict(userId: string) {
+    const all = await store.all(userId);
     if (all.length <= limit) return;
     const oldest = all.sort((a, b) => a.openedAt - b.openedAt).slice(0, all.length - limit);
-    await Promise.all(oldest.map((e) => store.delete(e.id, e.level)));
+    await Promise.all(oldest.map((e) => store.delete(userId, e.id, e.level)));
   }
 
   return {
     async remember({ sheet, song, hash }, level) {
       const at = now();
-      const current = await store.get(sheet.id, level);
+      const userId = user();
+      const current = await store.get(userId, sheet.id, level);
       if (current?.hash === hash) {
         await store.put({ ...current, openedAt: at });
         return 'unchanged';
       }
-      await store.put({ id: sheet.id, level, hash, sheet, song, savedAt: at, openedAt: at });
-      await evict();
+      await store.put({ userId, id: sheet.id, level, hash, sheet, song, savedAt: at, openedAt: at });
+      await evict(userId);
       return 'saved';
     },
 
     async find(id, level) {
-      const entry = await store.get(id, level);
+      const userId = user();
+      const entry = await store.get(userId, id, level);
       if (!entry) return undefined;
       try {
         return { sheet: entry.sheet, song: parseSong(entry.song), hash: entry.hash };
       } catch {
         // Gravada por uma versão do app com outro formato de partitura: some, e volta na próxima vez com rede
-        await store.delete(id, level);
+        await store.delete(userId, id, level);
         return undefined;
       }
     },
 
     async list() {
       const byId = new Map<string, { sheet: SongSheet; openedAt: number; levels: Set<Level> }>();
-      for (const entry of await store.all()) {
+      for (const entry of await store.all(user())) {
         const song = byId.get(entry.id);
         if (!song) byId.set(entry.id, { sheet: entry.sheet, openedAt: entry.openedAt, levels: new Set([entry.level]) });
         else {
@@ -91,45 +103,35 @@ export function createSongCache(store: SongStore, { limit = SONG_CACHE_LIMIT, no
 
 export function memorySongStore(): SongStore {
   const entries = new Map<string, CachedSong>();
-  const key = (id: string, level: Level) => `${id}\u0000${level}`;
+  const key = (userId: string, id: string, level: Level) => `${userId}\u0000${id}\u0000${level}`;
   return {
-    get: async (id, level) => entries.get(key(id, level)),
-    put: async (entry) => void entries.set(key(entry.id, entry.level), entry),
-    delete: async (id, level) => void entries.delete(key(id, level)),
-    all: async () => [...entries.values()],
+    get: async (userId, id, level) => entries.get(key(userId, id, level)),
+    put: async (entry) => void entries.set(key(entry.userId, entry.id, entry.level), entry),
+    delete: async (userId, id, level) => void entries.delete(key(userId, id, level)),
+    all: async (userId) => [...entries.values()].filter((e) => e.userId === userId),
+    clear: async (userId) => {
+      for (const [k, e] of entries) if (e.userId === userId) entries.delete(k);
+    },
   };
 }
 
-export const SONG_DB_NAME = 'violin-hero';
-export const SONG_DB_STORE = 'songs';
-
-const done = <T>(request: IDBRequest<T>) =>
-  new Promise<T>((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-
-/** O IndexedDB do aparelho, aberto só no primeiro uso. Sem ele (aba anônima de alguns navegadores), cada leitura falha e quem chama segue sem cache. */
-export function indexedDbSongStore(factory: IDBFactory): SongStore {
-  let opening: Promise<IDBDatabase> | null = null;
-  const db = () => {
-    if (!opening) {
-      const request = factory.open(SONG_DB_NAME, 1);
-      request.onupgradeneeded = () => request.result.createObjectStore(SONG_DB_STORE, { keyPath: ['id', 'level'] });
-      opening = done(request);
-      opening.catch(() => (opening = null));
-    }
-    return opening;
-  };
-  const run = async <T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) => IDBRequest<T>) =>
-    done(action((await db()).transaction(SONG_DB_STORE, mode).objectStore(SONG_DB_STORE)));
+/** O store do IndexedDB do aparelho (deviceDb.ts). */
+export function indexedDbSongStore(factory: IDBFactory | DeviceDb): SongStore {
+  const run = typeof factory === 'function' ? factory : deviceDb(factory);
   return {
-    get: (id, level) => run('readonly', (s) => s.get([id, level]) as IDBRequest<CachedSong | undefined>),
-    put: async (entry) => void (await run('readwrite', (s) => s.put(entry))),
-    delete: async (id, level) => void (await run('readwrite', (s) => s.delete([id, level]))),
-    all: () => run('readonly', (s) => s.getAll() as IDBRequest<CachedSong[]>),
+    get: (userId, id, level) => run(SONGS_STORE, 'readonly', (s) => s.get([userId, id, level]) as IDBRequest<CachedSong | undefined>),
+    put: async (entry) => void (await run(SONGS_STORE, 'readwrite', (s) => s.put(entry))),
+    delete: async (userId, id, level) => void (await run(SONGS_STORE, 'readwrite', (s) => s.delete([userId, id, level]))),
+    all: (userId) => run(SONGS_STORE, 'readonly', (s) => s.index(BY_USER).getAll(userId) as IDBRequest<CachedSong[]>),
+    clear: async (userId) => {
+      const keys = await run(SONGS_STORE, 'readonly', (s) => s.index(BY_USER).getAllKeys(userId));
+      await Promise.all(keys.map((k) => run(SONGS_STORE, 'readwrite', (s) => s.delete(k))));
+    },
   };
 }
 
-/** O cache do app; null onde não há IndexedDB (testes em jsdom). */
-export const songCache: SongCache | null = typeof indexedDB === 'undefined' ? null : createSongCache(indexedDbSongStore(indexedDB));
+/** O store do app; null onde não há IndexedDB (testes em jsdom). A troca de conta apaga por ele. */
+export const songStore: SongStore | null = typeof indexedDB === 'undefined' ? null : indexedDbSongStore(indexedDB);
+
+/** O cache do app, sempre do usuário da vez (user.ts). */
+export const songCache: SongCache | null = songStore ? createSongCache(songStore) : null;

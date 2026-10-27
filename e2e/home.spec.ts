@@ -2,8 +2,10 @@ import { expect, test } from '@playwright/test';
 import { skipOnboarding } from './choose';
 import { fontsReady } from './fonts';
 
-test('primeira vez: a raiz leva ao onboarding', async ({ page }) => {
+test('primeira vez: a raiz leva às boas-vindas e "Começar a tocar" ao onboarding, sem cadastro', async ({ page }) => {
   await page.goto('/');
+  await expect(page).toHaveURL(/\/entrar$/);
+  await page.getByRole('link', { name: /Começar a tocar/ }).click();
   await expect(page).toHaveURL(/\/primeira-vez\/nivel$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Quanto você já toca?');
 });
@@ -32,10 +34,14 @@ test.describe('depois da primeira vez', () => {
     await expect(page.getByRole('status').filter({ hasText: 'Offline' })).toBeVisible();
   });
 
-  test('trocar para o tema Palco', async ({ page }) => {
-    const palco = page.getByRole('group', { name: 'Tema' }).getByRole('button', { name: 'Palco' });
+  test('trocar para o tema Palco pelas Configurações › Visual, e ele fica na volta', async ({ page }) => {
+    await page.getByRole('link', { name: 'Configurações' }).click();
+    await page.getByRole('link', { name: 'Visual' }).click();
+    const palco = page.getByRole('radiogroup', { name: 'Temas' }).getByRole('radio', { name: /^Palco/ });
     await palco.click();
-    await expect(palco).toHaveAttribute('aria-pressed', 'true');
+    await expect(palco).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'palco');
+    await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'palco');
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isReadyMode, levelFromSlug, loadingUrl, modeFromSlug, modesUrl, parseSongChoice, READY_MODES, readyMode, songsUrl } from './choice';
+import { isReadyMode, levelFromSlug, loadingUrl, menuMode, modeFromSlug, modesUrl, parseRankingUrl, parseSongChoice, rankingUrl, READY_MODES, readyMode, songsUrl } from './choice';
 import { GAME_MODES } from './play';
 import { needsMicrophone } from './routes';
 
@@ -13,19 +13,21 @@ describe('escolha na URL', () => {
     expect(loadingUrl({ mode: 'Partitura', songId: 'a', level: 'easy' })).toBe('/tocar/carregando?modo=partitura&musica=a&nivel=facil');
   });
 
-  it('os quatro modos têm tela e passam pela URL; sem modo, Arcade', () => {
+  it('os quatro modos têm tela e passam pela URL; sem modo, Cordas 3D', () => {
     expect(READY_MODES).toEqual(GAME_MODES);
     for (const mode of GAME_MODES) {
       expect(isReadyMode(mode)).toBe(true);
       expect(parseSongChoice(search(loadingUrl({ mode, songId: 'a', level: 'easy' })))?.mode).toBe(mode);
     }
-    expect(readyMode(null)).toBe('Arcade');
+    expect(readyMode(null)).toBe('Cordas 3D');
+    expect(menuMode('Prática')).toBe('Cordas 3D');
+    expect(menuMode('Partitura')).toBe('Partitura');
     expect(modeFromSlug('cordas-3d')).toBe('Cordas 3D');
   });
 
-  it('sem música não há escolha; modo e nível estranhos viram Arcade e Fácil', () => {
+  it('sem música não há escolha; modo e nível estranhos viram Cordas 3D e Fácil', () => {
     expect(parseSongChoice(search('/tocar/carregando?modo=arcade'))).toBeNull();
-    expect(parseSongChoice(search('/x?musica=a&modo=guitarra&nivel=expert'))).toEqual({ songId: 'a', mode: 'Arcade', level: 'easy' });
+    expect(parseSongChoice(search('/x?musica=a&modo=guitarra&nivel=expert'))).toEqual({ songId: 'a', mode: 'Cordas 3D', level: 'easy' });
     expect(modeFromSlug('pratica')).toBe('Prática');
     expect(levelFromSlug('dificil')).toBe('hard');
   });
@@ -38,5 +40,15 @@ describe('escolha na URL', () => {
     expect(songsUrl('Arcade')).toBe('/tocar/musica?modo=arcade');
     expect(songsUrl('Arcade', 'aleluia')).toBe('/tocar/musica?modo=arcade&musica=aleluia');
     for (const path of ['/tocar', '/tocar/musica', '/tocar/carregando', '/biblioteca']) expect(needsMicrophone(path)).toBe(false);
+  });
+
+  it('ranking: ida e volta da música, do nível e do período; o que falta ou é desconhecido fica para a tela', () => {
+    const url = rankingUrl({ songId: 'ode-a-alegria', level: 'hard', period: 'all' });
+    expect(url).toBe('/ranking?musica=ode-a-alegria&nivel=dificil&periodo=geral');
+    expect(parseRankingUrl(new URL(url, 'http://x').searchParams)).toEqual({ songId: 'ode-a-alegria', level: 'hard', period: 'all' });
+    expect(rankingUrl()).toBe('/ranking');
+    expect(rankingUrl({ period: 'week' })).toBe('/ranking?periodo=semana');
+    expect(parseRankingUrl(new URLSearchParams('nivel=expert&periodo=mes'))).toEqual({});
+    expect(needsMicrophone('/ranking')).toBe(false);
   });
 });

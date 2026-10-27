@@ -10,6 +10,8 @@ import type { SheetClock } from './sheetLayout';
 import { Strings3DScene } from './strings3dScene';
 
 export interface Strings3DOptions {
+  /** Modo daltônico: padrão de cada corda nas caixas. Fixo na vida das cordas. */
+  patterns?: boolean;
   /** Fixo durante a música: trocar de tema é destruir as cordas e criar outras. */
   theme: Theme;
   notes: readonly EngineNote[];
@@ -35,6 +37,8 @@ export interface Strings3D {
   onJudgment(event: JudgmentEvent): void;
   /** Troca as notas (a prática: volta nova, troca de andamento), como na pista. */
   setNotes(notes: readonly EngineNote[]): void;
+  /** Modo daltônico, mudado na Pausa (o nome das notas é só da pista). */
+  setLook(options: { patterns?: boolean }): void;
   resize(width: number, height: number): void;
   destroy(): void;
 }
@@ -69,7 +73,8 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
     resolution: Math.min(density, MAX_RESOLUTION),
     autoStart: false,
     sharedTicker: false,
-    preference: 'webgl',
+    // A cena usa meshes WebGL; o fallback automático de canvas não a desenha.
+    preference: ['webgl'],
   });
   if (!(host instanceof HTMLCanvasElement)) host.appendChild(app.canvas);
 
@@ -80,6 +85,7 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
     bars: options.bars,
     reducedMotion: options.reducedMotion ?? prefersReducedMotion(),
     leadSeconds: options.leadSeconds,
+    patterns: options.patterns,
   });
   app.stage.addChild(scene);
   scene.layout(options.width, options.height);
@@ -106,6 +112,11 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
     },
     setNotes(notes) {
       if (!destroyed) scene.setNotes(notes);
+    },
+    setLook({ patterns }) {
+      if (destroyed) return;
+      scene.setPatterns(patterns ?? false);
+      app.render();
     },
     resize(width, height) {
       if (destroyed) return;

@@ -5,6 +5,7 @@ import { Button } from '../components/Button/Button';
 import { Kicker, Lead } from '../components/Screen/Screen';
 import { EMBEDDED_SHELF } from '../services/shelf';
 import { loadingUrl, songsUrl } from '../shell/choice';
+import { DEFAULT_MODE } from '../shell/play';
 
 const Box = styled.section`
   flex-grow: 1;
@@ -151,7 +152,7 @@ export const LibraryEmpty: React.FC = () => {
       <Heading id="biblioteca-vazia">Sua biblioteca ainda está vazia</Heading>
       <Text>Toque uma das músicas grátis abaixo. Elas vêm no app e funcionam até sem internet. Os selos vêm jogando.</Text>
       <Actions>
-        <Button as={Link} to={loadingUrl({ mode: 'Arcade', songId: first.id, level: 'easy' })}>
+        <Button as={Link} to={loadingUrl({ mode: DEFAULT_MODE, songId: first.id, level: 'easy' })}>
           Tocar a primeira grátis <span aria-hidden="true">▸</span>
         </Button>
       </Actions>
@@ -160,7 +161,7 @@ export const LibraryEmpty: React.FC = () => {
         <ul aria-labelledby="gratis">
           {EMBEDDED_SHELF.map((song, i) => (
             <li key={song.id}>
-              <Mini to={songsUrl('Arcade', song.id)}>
+              <Mini to={songsUrl(DEFAULT_MODE, song.id)}>
                 <i style={{ backgroundColor: game.strings[SWATCH[i % SWATCH.length]].main }} aria-hidden="true" />
                 <span>
                   <b>{song.title}</b>

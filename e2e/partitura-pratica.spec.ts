@@ -20,10 +20,10 @@ async function checkScreen(page: Page) {
   expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);
 }
 
-for (const tema of ['caderno', 'palco'] as const) {
+for (const tema of ['caderno', 'palco', '8-bits'] as const) {
   for (const fonte of ['real', 'reserva'] as const) {
     test.describe(`${tema}, fonte ${fonte}`, () => {
-      const ready = async (page: Page) => (fonte === 'real' ? fontsReady(page) : fallbackFontsReady(page));
+      const ready = async (page: Page) => (fonte === 'real' ? fontsReady(page, tema) : fallbackFontsReady(page, tema));
 
       test.beforeEach(async ({ page }) => {
         if (fonte === 'reserva') await blockWebFonts(page);
@@ -94,6 +94,34 @@ test('joga uma música inteira em Partitura com ?simular', async ({ page }) => {
   expect(result?.counts.miss).toBe(0);
   if (page.url().endsWith('/selo-novo')) await page.getByRole('link', { name: /Ver resultado/ }).click();
   await expect(page.getByTestId('resultado')).toContainText('Partitura');
+});
+
+test('travadas da thread principal não viram "não tocada": o quadro de depois vem antes das leituras da fila', async ({ page }) => {
+  test.setTimeout(90000);
+  // A cada 2,5 s um quadro trava 800 ms antes do jogo rodar nele, como o aparelho lento montando a partitura; o ouvido
+  // simulado (setInterval) só entrega as leituras de durante a travada depois desse quadro
+  await page.addInitScript(() => {
+    const w = window as Window & { __vhStalls?: number };
+    const raf = window.requestAnimationFrame.bind(window);
+    let due = performance.now() + 2500;
+    w.__vhStalls = 0;
+    window.requestAnimationFrame = (callback) =>
+      raf((time) => {
+        if (performance.now() >= due) {
+          const end = performance.now() + 800;
+          while (performance.now() < end);
+          due = performance.now() + 2500;
+          w.__vhStalls! += 1;
+        }
+        callback(time);
+      });
+  });
+  await page.goto('/jogo/partitura?ouvido=simulado&musica=escala-re-maior');
+  await expect(page).toHaveURL(/\/(selo-novo|resultado)$/, { timeout: 70000 });
+  const result = await lastResult(page);
+  expect(await page.evaluate(() => (window as Window & { __vhStalls?: number }).__vhStalls)).toBeGreaterThan(3);
+  expect(result?.status).toBe('finished');
+  expect(result?.judgments.filter((j) => j.judgment === 'miss').map((j) => `${j.index}:${j.issue}`)).toEqual([]);
 });
 
 test('prática com laço e velocidade do início ao fim com ?simular', async ({ page }) => {

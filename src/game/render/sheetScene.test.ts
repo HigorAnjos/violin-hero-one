@@ -1,12 +1,12 @@
-import { Texture, TextureSource } from 'pixi.js';
+import { Graphics, Texture, TextureSource, type Container } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
-import { cadernoTheme } from '../../assets/styles/themes';
+import { cadernoTheme, getTheme, type Theme } from '../../assets/styles/themes';
 import { palcoTheme } from '../../assets/styles/themes/palco';
 import { n, ODE } from '../engine/testing';
 import type { Issue, Judgment } from '../engine/types';
 import type { Song } from '../notation/song';
 import type { TextureBaker, JudgmentEvent } from './scene';
-import { PASSED_ALPHA, sheetLayout, steadyClock, type BeatSegment, type SheetClock } from './sheetLayout';
+import { MIN_GAP_SPACES, PASSED_ALPHA, sheetLayout, steadyClock, type BeatSegment, type SheetClock } from './sheetLayout';
 import { SheetScene } from './sheetScene';
 
 function fakeBaker() {
@@ -251,5 +251,157 @@ describe('SheetScene', () => {
   it('ignora julgamento de nota que não existe', () => {
     const { s } = scene();
     expect(() => s.judge(judgment(9999, 'perfect'))).not.toThrow();
+  });
+
+  it('laço A–B: banda, linhas de A e B com bandeirinha e o arco de volta; o A da volta nova cai no B da anterior', () => {
+    // Laço nos compassos 2–3 (tempos 4 a 12), com as voltas já na linha do tempo
+    const jump = START + 12 * SPB;
+    const lap = 8 * SPB;
+    const segments: BeatSegment[] = [{ time: START, beat: 0, spb: SPB, endTime: jump, endBeat: 12 }];
+    for (let k = 0; k < 6; k++) segments.push({ time: jump + k * lap, beat: 4, spb: SPB, endTime: jump + (k + 1) * lap, endBeat: 12 });
+    let loop: { startMeasure: number; endMeasure: number } | null = { startMeasure: 1, endMeasure: 2 };
+    const { baker, generateTexture } = fakeBaker();
+    const s = new SheetScene(baker, { theme: cadernoTheme, song: ODE, clock: { segments: () => segments, currentLoop: () => loop }, reducedMotion: false });
+    const theme = generateTexture.mock.calls.length;
+    s.layout(W, H);
+    const baked = generateTexture.mock.calls.length;
+    // As bandeirinhas "A · 2" e "B · 3" e as só com a letra da faixa compacta (texto e caixa de cada uma)
+    expect(baked - theme).toBe(8);
+
+    // Primeira passada, antes de A: a linha de A à frente, e o B lá na frente com o arco voltando
+    s.update(START + 2 * SPB);
+    let view = s.loopView();
+    expect(view.a).toHaveLength(1);
+    expect(view.a[0]).toBeGreaterThan(needleX);
+    expect(view.arcs).toHaveLength(1);
+    expect(view.bands[0][0]).toBeCloseTo(view.a[0]);
+
+    // Um tempo antes do salto: B à frente da agulha, e o A da volta seguinte na mesma linha
+    s.update(jump - SPB);
+    view = s.loopView();
+    const b = view.b.find((x) => x > needleX)!;
+    expect(b).toBeGreaterThan(needleX);
+    expect(b).toBeLessThan(needleX + pxPerBeat);
+    expect(view.a.some((x) => Math.abs(x - b) < 0.5)).toBe(true);
+    expect(view.arcs.some((x) => Math.abs(x - b) < 0.5)).toBe(true);
+    // A banda cobre a passada até B e continua na volta seguinte
+    expect(view.bands.some(([, end]) => Math.abs(end - b) < 0.5)).toBe(true);
+    expect(view.bands.some(([start]) => Math.abs(start - b) < 0.5)).toBe(true);
+
+    // Os quadros não assam nada: as bandeirinhas são do laço, não do quadro
+    for (let t = 0; t < 2; t += 1 / 60) s.update(jump + t);
+    expect(generateTexture.mock.calls.length).toBe(baked);
+
+    // Laço desligado: na próxima consulta ao relógio, nada marcado
+    loop = null;
+    s.update(jump + 3);
+    expect(s.loopView()).toEqual({ a: [], b: [], bands: [], arcs: [] });
+    s.destroy();
+  });
+
+  it('nota errada: cabeça vazada na altura tocada e "VOCÊ" no nome; a não tocada só leva o ×', () => {
+    const { s } = scene();
+    const at = START + 0.2;
+    // Ode começa em Fá♯5 (78) na corda Mi; tocou Lá5 (81), dois graus acima
+    s.judge({ ...judgment(0, 'miss', 'wrong-note'), playedMidi: 81 }, at);
+    s.judge(judgment(1, 'miss', 'not-played'), START + SPB + 0.2);
+    s.update(START + SPB + 0.2);
+    const l = sheetLayout(W, H, 2);
+    const [wrong] = s.wrongView(0);
+    expect(wrong.you).toBe(true);
+    expect(wrong.ghostY).toBeLessThan(l.middleY);
+    expect(s.wrongView(1)).toEqual([{ ghostY: null, you: false }]);
+    expect(s.noteView(1)[0].marked).toBe(true);
+  });
+
+  it('a nota errada julgada só quando a janela fecha (0,9 s depois) ainda leva a marca, também no laço', () => {
+    const { s } = scene();
+    s.judge({ ...judgment(0, 'miss', 'wrong-note'), playedMidi: 81 }, START + 0.9);
+    s.update(START + 0.9);
+    expect(s.noteView(0)[0].marked).toBe(true);
+    expect(s.wrongView(0)[0].ghostY).not.toBeNull();
+
+    // Laço de um compasso (2,4 s): a volta seguinte da mesma nota não herda a marca
+    const lap = 4 * SPB;
+    const segments: BeatSegment[] = Array.from({ length: 4 }, (_, k) => ({ time: START + k * lap, beat: 0, spb: SPB, endTime: START + (k + 1) * lap, endBeat: 4 }));
+    const looped = scene({ segments: () => segments }).s;
+    looped.judge(judgment(1, 'miss', 'not-played'), START + lap + SPB + 0.9);
+    looped.update(START + lap + SPB + 0.9);
+    const copies = looped.noteView(1);
+    expect(copies.filter((c) => c.marked)).toHaveLength(1);
+    expect(copies.find((c) => c.marked)!.x).toBeLessThan(needleX);
+  });
+
+  it('sem laço no relógio (a partida comum), nada de A e B', () => {
+    const { s } = scene();
+    s.update(START + 3);
+    expect(s.loopView()).toEqual({ a: [], b: [], bands: [], arcs: [] });
+  });
+
+  it.each([
+    ['tela 5b', W, H],
+    ['celular deitado (844×390)', 810, 184],
+    ['compacta', 810, 112],
+  ])('%s: semicolcheia e pausa curta não colam na vizinha, e cada nota passa na agulha na hora dela', (_name, width, height) => {
+    // Fá♯5 e Sol5 a uma semicolcheia; semínima pontuada e pausa de semicolcheia; colcheia e pausa de colcheia
+    const tight: Song = {
+      ...ODE,
+      id: 'apertada',
+      measures: [
+        { beats: 4, notes: [n(0, 1, 76, 3, 0), n(1.75, 0.25, 78, 3, 1), n(2, 1, 79, 3, 2), n(3, 0.75, 81, 3, 3)] },
+        { beats: 4, notes: [n(0, 0.5, 76, 3, 0), n(1, 3, 74, 2, 3)] },
+      ],
+    };
+    const { baker } = fakeBaker();
+    const s = new SheetScene(baker, { theme: cadernoTheme, song: tight, clock: steadyClock(START, 100), reducedMotion: false });
+    s.layout(width, height);
+    const l = sheetLayout(width, height, 2);
+    s.update(START);
+    const xs = [...s.notesX(), ...s.restView().map((r) => r.x)].sort((a, b) => a - b);
+    expect(xs.length).toBeGreaterThan(5);
+    const gaps = xs.slice(1).map((x, i) => x - xs[i]);
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(MIN_GAP_SPACES * l.space - 1e-6);
+    tight.measures[0].notes.forEach((note, i) => {
+      s.update(START + note.beat * SPB);
+      expect(s.noteView(i)[0].x).toBeCloseTo(l.needleX);
+    });
+  });
+});
+
+describe('SheetScene: especiais', () => {
+  /** A primeira textura assada é a cabeça cheia da corda G: largura e altura da arte. */
+  function head(theme: Theme) {
+    let size: { width: number; height: number } | null = null;
+    const generateTexture = vi.fn(({ target }: { target: Container }) => {
+      if (!size && target instanceof Graphics) size = target.getLocalBounds().rectangle;
+      return new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    });
+    new SheetScene({ resolution: 1, generateTexture } as unknown as TextureBaker, { theme, song: ODE, clock: steadyClock(START, 100), reducedMotion: false });
+    return size!;
+  }
+
+  it('8-Bits: cabeça quadrada (quase tão alta quanto larga); Caderno, elipse', () => {
+    const round = head(cadernoTheme);
+    const square = head(getTheme('8-bits'));
+    expect(round.height / round.width).toBeLessThan(0.8);
+    expect(square.height / square.width).toBeGreaterThan(0.85);
+  });
+
+  it('8-Bits: a cabeça vazada da nota errada fica reta como a cabeça; no Caderno, inclinada como ela', () => {
+    for (const [theme, straight] of [
+      [getTheme('8-bits'), true],
+      [cadernoTheme, false],
+    ] as const) {
+      const { baker } = fakeBaker();
+      const s = new SheetScene(baker, { theme, song: ODE, clock: steadyClock(START, 100), reducedMotion: false });
+      s.layout(W, H);
+      const { head, ghost } = s.headRotations();
+      expect(ghost).toBe(head);
+      expect(ghost === 0).toBe(straight);
+    }
+  });
+
+  it('Neon: halo em volta da cabeça', () => {
+    expect(head(getTheme('neon')).width).toBeGreaterThan(head(cadernoTheme).width * 1.3);
   });
 });

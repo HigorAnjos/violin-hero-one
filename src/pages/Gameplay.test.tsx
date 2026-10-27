@@ -43,13 +43,13 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const track = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), setNotes: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
+const track = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), setNotes: vi.fn(), setLook: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
 
-function setup(search = '', state: PlayState = { song: FAST, mode: 'Arcade' }) {
+function setup(search = '', state: PlayState = { song: FAST, mode: 'Arcade' }, overrides: Partial<GameDeps> = {}) {
   const ear: FakeEar = createFakeEar();
   const context = fakeContext();
   ear.provideAudio({ context, source: {}, stream: null } as unknown as EarAudio);
-  const deps: Partial<GameDeps> = { loadTrack: vi.fn(async () => track), orchestra: null, clicks: () => () => undefined };
+  const deps: Partial<GameDeps> = { loadTrack: vi.fn(async () => track), orchestra: null, clicks: () => () => undefined, ...overrides };
   renderScreen(<Gameplay deps={deps} />, { ear, path: `${ROUTES.game}${search}`, route: ROUTES.game, state, theme: palcoTheme });
   const run = (seconds: number) =>
     act(() => {
@@ -64,6 +64,13 @@ function setup(search = '', state: PlayState = { song: FAST, mode: 'Arcade' }) {
 }
 
 describe('Gameplay', () => {
+  it('falha ao desenhar mantém a partida avançando até o resultado', async () => {
+    const { deps, run } = setup('?simular=0', undefined, { loadTrack: vi.fn().mockRejectedValue(new Error('cena indisponível')) });
+    await waitFor(() => expect(deps.loadTrack).toHaveBeenCalled());
+    run(12);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(new RegExp(`${ROUTES.badge}|${ROUTES.results}`)), { timeout: 3000 });
+  });
+
   it('monta placar, afinação, partitura e a pista sob demanda', async () => {
     const { deps } = setup();
     expect(await screen.findByRole('region', { name: 'Placar' })).toBeInTheDocument();
@@ -150,6 +157,20 @@ describe('Gameplay', () => {
     ear.failNextStart('NotAllowedError');
     renderScreen(<Gameplay deps={{ loadTrack: vi.fn(), orchestra: null }} />, { ear, path: ROUTES.game, route: ROUTES.game });
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/microfone\/problema\?motivo=sem-permissao/));
+  });
+
+  it('opções guardadas chegam na pista; mudar na pausa guarda e aplica na hora', async () => {
+    localStorage.setItem('vh:ajustes', JSON.stringify({ noteNames: true }));
+    const { deps } = setup();
+    await waitFor(() => expect(deps.loadTrack).toHaveBeenCalled());
+    expect(vi.mocked(deps.loadTrack!).mock.calls[0][1]).toMatchObject({ noteNames: true, patterns: false });
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Padrões para daltonismo' }));
+    expect(track.setLook).toHaveBeenLastCalledWith({ patterns: true, noteNames: true });
+    expect(JSON.parse(localStorage.getItem('vh:ajustes')!)).toMatchObject({ colorblind: true, noteNames: true });
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Mostrar linha de afinação' }));
+    expect(screen.getByRole('region', { name: 'Afinação' }).querySelector('polyline')).toBeNull();
   });
 
   it('sair para músicas na pausa', async () => {

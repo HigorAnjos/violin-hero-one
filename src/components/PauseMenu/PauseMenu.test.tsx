@@ -83,4 +83,20 @@ describe('PauseMenu', () => {
     fireEvent.change(screen.getByRole('slider', { name: /Volume do metrônomo/ }), { target: { value: '40' } });
     expect(onMetronome).toHaveBeenCalledWith(0.4);
   });
+
+  it('linha de afinação, nome das notas e padrões para daltonismo', async () => {
+    const onPrefs = vi.fn();
+    renderScreen(<PauseMenu {...props({ prefs: { tuningLine: true, noteNames: false, colorblind: false }, onPrefs })} />);
+    expect(screen.getByRole('checkbox', { name: 'Mostrar linha de afinação' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Mostrar nome das notas' })).not.toBeChecked();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Mostrar linha de afinação' }));
+    expect(onPrefs).toHaveBeenLastCalledWith({ tuningLine: false });
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Padrões para daltonismo' }));
+    expect(onPrefs).toHaveBeenLastCalledWith({ colorblind: true });
+  });
+
+  it('sem onPrefs, sem as caixas', () => {
+    renderScreen(<PauseMenu {...props()} />);
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
 });

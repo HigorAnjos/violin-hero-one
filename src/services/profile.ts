@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PLAYER_LEVELS, type PlayerLevel } from '../game/engine/levels';
+import { clearProfilePending, markProfilePending } from './profilePending';
 import { ensureSession, type AuthClient, type SessionState } from './session';
 import { supabase } from './supabase';
 
@@ -85,12 +86,16 @@ export function useSaveStartProfile(client: ProfileClient | null = supabase) {
   return useMutation({
     mutationFn: async (profile: StartProfile) => {
       saveLocalProfile(profile);
+      // Fica pendente até o servidor gravar: sem rede agora, sobe na próxima sincronização do perfil
+      markProfilePending(profile);
       const session = await queryClient.fetchQuery({
         queryKey: ['session'],
         queryFn: () => ensureSession(client),
         staleTime: Infinity,
       });
-      return syncProfile(client, session, profile);
+      const synced = await syncProfile(client, session, profile);
+      if (synced) clearProfilePending(profile);
+      return synced;
     },
   });
 }

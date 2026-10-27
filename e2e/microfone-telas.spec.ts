@@ -34,7 +34,7 @@ test('nenhuma tela de menu deixa o microfone aberto', async ({ page }) => {
 
   // Modo, música e carregando também são menu: o microfone só abre no afinar
   await page.getByRole('navigation', { name: 'Menu principal' }).getByRole('link', { name: /^Tocar/ }).click();
-  await page.getByRole('button', { name: /Continuar com Arcade/ }).click();
+  await page.getByRole('button', { name: /Continuar com Cordas 3D/ }).click();
   await expect(page.getByRole('radiogroup', { name: 'Músicas' })).toBeVisible();
   expect(await liveTracks(page)).toBe(0);
   await page.getByRole('radio', { name: /Ode/ }).click();

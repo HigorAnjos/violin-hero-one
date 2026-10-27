@@ -47,6 +47,13 @@ function setup(search = '', state: PlayState = { song: FAST }) {
 }
 
 describe('Practice', () => {
+  it('Tocar a música inteira conta para Cordas 3D', async () => {
+    setup();
+    await userEvent.click(screen.getByRole('button', { name: 'Tocar a música inteira' }));
+    expect(screen.getByTestId('location')).toHaveTextContent(ROUTES.countdown);
+    expect(JSON.parse(screen.getByTestId('location').getAttribute('data-state')!)).toMatchObject({ song: FAST, mode: 'Cordas 3D', next: ROUTES.strings3d });
+  });
+
   it('sem trecho escolhido: a música inteira a 70%, na faixa de partitura', async () => {
     const { deps } = setup();
     await waitFor(() => expect(deps.loadSheet).toHaveBeenCalled());

@@ -2,7 +2,8 @@ import React from 'react';
 import styled from 'styled-components';
 import { MenuLink } from '../components/MenuLink/MenuLink';
 import { SessionStatus } from '../components/SessionStatus/SessionStatus';
-import { ThemeSwitch } from '../components/ThemeSwitch/ThemeSwitch';
+import { StreakPill } from '../components/StreakPill/StreakPill';
+import { CornerLinks } from '../components/CornerLinks/CornerLinks';
 import { ViolinArt } from '../components/ViolinArt/ViolinArt';
 import { levelSettings } from '../game/engine/levels';
 import { FIXED_SONGS, findFixedSong } from '../game/notation/songs';
@@ -10,7 +11,7 @@ import { loadA4 } from '../services/playerAudio';
 import { loadLocalProfile } from '../services/profile';
 import { useShelf } from '../services/shelf';
 import { modesUrl } from '../shell/choice';
-import type { PlayState } from '../shell/play';
+import { DEFAULT_MODE, type PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 
 const Page = styled.main`
@@ -149,14 +150,15 @@ export const Main: React.FC = () => {
         <MenuLink to={ROUTES.library} label="Biblioteca" detail={count} />
         <MenuLink
           to={ROUTES.calibration}
-          state={{ song: first.song, mode: 'Arcade' } satisfies PlayState}
+          state={{ song: first.song, mode: DEFAULT_MODE } satisfies PlayState}
           label="Afinar"
           detail={`Lá ${a4}`}
         />
       </Menu>
       <Controls>
+        <StreakPill />
         <SessionStatus />
-        <ThemeSwitch />
+        <CornerLinks />
       </Controls>
     </Page>
   );

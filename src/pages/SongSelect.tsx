@@ -13,7 +13,7 @@ import { levelSettings, type PlayerLevel } from '../game/engine/levels';
 import type { Level } from '../game/notation/song';
 import { loadLocalProfile } from '../services/profile';
 import { EMBEDDED_SHELF, savedCount, usePlayableSong, useShelf, type ShelfSong } from '../services/shelf';
-import { isReadyMode, loadingUrl, modeFromSlug, modesUrl, readyMode } from '../shell/choice';
+import { isReadyMode, loadingUrl, menuMode, modeFromSlug, modesUrl, readyMode } from '../shell/choice';
 import type { GameMode } from '../shell/play';
 
 const DEFAULT_LEVEL: PlayerLevel = 'beginner';
@@ -287,7 +287,7 @@ export const SongSelect: React.FC = () => {
         </Intro>
         <Tools>
           <Search label="Buscar música" value={query} onChange={setQuery} />
-          <Button as={Link} to={modesUrl(mode === 'Prática' ? 'Arcade' : mode, selected?.id)} $variant="ghost">
+          <Button as={Link} to={modesUrl(menuMode(mode), selected?.id)} $variant="ghost">
             <span aria-hidden="true">◂</span>Voltar
           </Button>
         </Tools>

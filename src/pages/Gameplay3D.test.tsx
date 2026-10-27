@@ -39,13 +39,13 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const strings = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), setNotes: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
+const strings = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), setNotes: vi.fn(), setLook: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
 
-function setup(search = '', state: PlayState = { song: FAST, mode: 'Cordas 3D' }) {
+function setup(search = '', state: PlayState = { song: FAST, mode: 'Cordas 3D' }, overrides: Partial<GameDeps> = {}) {
   const ear: FakeEar = createFakeEar();
   const context = fakeContext();
   ear.provideAudio({ context, source: {}, stream: null } as unknown as EarAudio);
-  const deps: Partial<GameDeps> = { loadTrack: vi.fn(), loadStrings3D: vi.fn(async () => strings), orchestra: null, clicks: () => () => undefined };
+  const deps: Partial<GameDeps> = { loadTrack: vi.fn(), loadStrings3D: vi.fn(async () => strings), orchestra: null, clicks: () => () => undefined, ...overrides };
   renderScreen(<Gameplay3D deps={deps} />, { ear, path: `${ROUTES.strings3d}${search}`, route: ROUTES.strings3d, state, theme: palcoTheme });
   const run = (seconds: number) =>
     act(() => {
@@ -60,6 +60,15 @@ function setup(search = '', state: PlayState = { song: FAST, mode: 'Cordas 3D' }
 }
 
 describe('Gameplay3D', () => {
+  it('falha da cena pausa o áudio e oferece Arcade com a mesma música', async () => {
+    const { context } = setup('', { song: FAST, mode: 'Cordas 3D', noFail: true }, { loadStrings3D: vi.fn().mockRejectedValue(new Error('WebGL indisponível')) });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não deu para desenhar as Cordas 3D neste aparelho.');
+    expect(context.suspend).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Tocar no Arcade' }));
+    expect(screen.getByTestId('location')).toHaveTextContent(ROUTES.countdown);
+    expect(JSON.parse(screen.getByTestId('location').getAttribute('data-state')!)).toMatchObject({ song: FAST, mode: 'Arcade', next: '/jogo', noFail: true });
+  });
+
   it('monta placar, afinação, partitura e as cordas 3D sob demanda, nunca a pista', async () => {
     const { deps } = setup();
     expect(await screen.findByRole('region', { name: 'Placar' })).toBeInTheDocument();

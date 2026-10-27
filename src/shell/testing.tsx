@@ -9,7 +9,7 @@ import { EarProvider, unwiredEar, type Ear } from './Ear';
 /** Mostra a rota atual: os testes conferem a navegação sem depender das outras telas. */
 export const LocationProbe: React.FC = () => {
   const location = useLocation();
-  return <div data-testid="location">{location.pathname + location.search}</div>;
+  return <div data-testid="location" data-state={JSON.stringify(location.state)}>{location.pathname + location.search}</div>;
 };
 
 interface Options {

@@ -26,6 +26,27 @@ export function loadRecord(songId: string, level: Level): number | null {
   return load()[keyOf(songId, level)] ?? null;
 }
 
+export interface RecordEntry {
+  songId: string;
+  level: Level;
+  score: number;
+  /** Só o recorde do servidor sabe a precisão; o do aparelho guarda só a pontuação. */
+  accuracy?: number;
+}
+
+const LEVELS: readonly Level[] = ['easy', 'medium', 'hard'];
+
+/** Todos os recordes do aparelho, do maior para o menor; chave com nível desconhecido fica de fora. */
+export function loadRecords(): RecordEntry[] {
+  return Object.entries(load())
+    .map(([key, score]) => {
+      const cut = key.lastIndexOf(':');
+      return { songId: key.slice(0, cut), level: key.slice(cut + 1) as Level, score };
+    })
+    .filter((r) => r.songId && LEVELS.includes(r.level))
+    .sort((a, b) => b.score - a.score);
+}
+
 /** Só partida inteira a 100%, sem laço e que chegou ao fim conta para recorde (a prática, não). */
 export function countsForRecord(result: GameResult | PracticeResult): boolean {
   return result.status === 'finished' && !('laps' in result);

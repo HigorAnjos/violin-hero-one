@@ -97,8 +97,8 @@ describe('SongSelect', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/tocar?modo=partitura');
   });
 
-  it('modo desconhecido pela URL vira Arcade', () => {
+  it('modo desconhecido pela URL vira Cordas 3D', () => {
     renderSongs(`${ROUTES.songs}?modo=guitarra`);
-    expect(screen.getByText('Passo 2 de 3 · Modo Arcade')).toBeInTheDocument();
+    expect(screen.getByText('Passo 2 de 3 · Modo Cordas 3D')).toBeInTheDocument();
   });
 });

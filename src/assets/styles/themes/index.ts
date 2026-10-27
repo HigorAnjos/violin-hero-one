@@ -1,15 +1,23 @@
+import { buildTheme } from './build';
 import { cadernoTheme } from './caderno';
+import { OMARCHY_PALETTES } from './omarchy';
 import { palcoTheme } from './palco';
+import { neonTheme, pixelTheme } from './specials';
 import type { Theme } from './types';
 
 export type { Theme, StringName, Judgment } from './types';
 export { cadernoTheme } from './caderno';
 
-/** Catálogo: o Caderno (padrão) primeiro. Aqui "cor muda, estrutura nunca". */
-export const THEMES: Theme[] = [cadernoTheme, palcoTheme];
+/** Catálogo: o Caderno (padrão) e o Palco primeiro, depois as paletas do Omarchy. Aqui "cor muda, estrutura nunca". */
+export const THEMES: Theme[] = [
+  cadernoTheme,
+  palcoTheme,
+  ...OMARCHY_PALETTES.filter((p) => p.mode === 'light').map(buildTheme),
+  ...OMARCHY_PALETTES.filter((p) => p.mode === 'dark').map(buildTheme),
+];
 
-/** Temas que mudam estrutura também (8-Bits, Neon). Seção própria no seletor; chegam depois. */
-export const SPECIAL_THEMES: Theme[] = [];
+/** Temas que mudam estrutura também (8-Bits, Neon). Seção própria no seletor. */
+export const SPECIAL_THEMES: Theme[] = [pixelTheme, neonTheme];
 
 export const DEFAULT_THEME = cadernoTheme;
 

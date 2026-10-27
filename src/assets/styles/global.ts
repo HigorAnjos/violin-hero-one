@@ -17,6 +17,8 @@ export const GlobalStyles = createGlobalStyle`
     color: ${({ theme }) => theme.colors.text};
     font-family: ${({ theme }) => theme.fonts.ui};
     font-variant-numeric: tabular-nums;
+    /* A Pixelify Sans do 8-Bits junta "fi" num glifo que se lê como "A" ("ConAgurações") */
+    font-variant-ligatures: ${({ theme }) => (theme.special === 'pixel' ? 'none' : 'normal')};
     min-height: 100vh;
     /* Aviso de versão nova no pé da janela (UpdateNotice): as telas de menu encolhem e nada fica embaixo dele */
     padding-bottom: var(--update-notice-space, 0px);

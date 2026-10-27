@@ -5,6 +5,7 @@ import {
   clearLatency,
   latencySeconds,
   latencyToMs,
+  latestLatency,
   loadLatency,
   msToLatency,
   saveLatency,
@@ -115,6 +116,18 @@ describe('audioDeviceKey', () => {
     expect(audioDeviceKey({} as MediaStream, { sinkId: { type: 'none' } } as unknown as BaseAudioContext)).toBe(
       DEFAULT_DEVICE_KEY,
     );
+  });
+});
+
+describe('latestLatency', () => {
+  it('a medida mais recente de qualquer par; nenhuma, null', () => {
+    const storage = new MemoryStorage();
+    expect(latestLatency(storage)).toBeNull();
+    saveLatency(entry, 'a>b', storage);
+    saveLatency({ ...entry, latencySeconds: 0.142, measuredAt: '2026-10-26T16:05:00.000Z' }, 'c>d', storage);
+    saveLatency({ ...entry, measuredAt: '' }, 'e', storage);
+    expect(latestLatency(storage)?.latencySeconds).toBe(0.142);
+    expect(latestLatency(throwing)).toBeNull();
   });
 });
 

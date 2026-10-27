@@ -1,4 +1,5 @@
 import React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import styled, { css, keyframes, useTheme } from 'styled-components';
 import { Badge, badgeColor } from '../components/Badge/Badge';
@@ -6,7 +7,10 @@ import { Button } from '../components/Button/Button';
 import { badgeInfo, featuredBadges, nextCombo } from '../components/ResultSummary/summary';
 import { SongKicker } from '../components/Screen/Screen';
 import { STRING_LETTERS } from '../game/notation/violin';
+import type { SessionState } from '../services/session';
+import { usePlayOutcome } from '../services/sync';
 import { readResultState } from '../shell/play';
+import { badgesToShow } from '../shell/progress';
 import { ROUTES } from '../shell/routes';
 
 const spin = keyframes`to { transform: rotate(360deg); }`;
@@ -222,19 +226,58 @@ const Actions = styled.div`
   }
 `;
 
+const Waiting = styled.p`
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: ${({ theme }) => theme.colors.textMuted};
+`;
+
 const CONFETTI = Array.from({ length: 26 }, (_, i) => {
   const seed = (i * 97 + 31) % 101;
   return { x: 2 + ((i * 211) % 1220) / 12.8, round: i % 3 === 0, duration: 3.2 + (seed % 20) / 10, delay: (seed % 30) / 10 };
 });
 
-/** 7a · Selo conquistado: aparece antes do resultado só quando a partida deu selo novo. */
+/** Quanto a tela espera a resposta do servidor antes de comemorar o selo local. */
+export const OUTCOME_WAIT_MS = 1500;
+
+/**
+ * Com sessão e rede, a fila costuma responder em instantes: a tela segura a comemoração até lá (no máximo
+ * OUTCOME_WAIT_MS) para não mostrar um selo que o servidor diz que o jogador já tinha. Sem sessão ou sem rede, não espera.
+ */
+function useOutcomeWait(clientId: string | undefined, answered: boolean): boolean {
+  const queryClient = useQueryClient();
+  const [expired, setExpired] = React.useState(false);
+  const signedIn = queryClient.getQueryData<SessionState>(['session'])?.status === 'signed-in';
+  const waiting = Boolean(clientId) && !answered && signedIn && navigator.onLine !== false && !expired;
+  React.useEffect(() => {
+    if (!waiting) return;
+    const timer = setTimeout(() => setExpired(true), OUTCOME_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, [waiting]);
+  return waiting;
+}
+
+/**
+ * 7a · Selo conquistado: aparece antes do resultado só quando a partida deu selo novo. Com resposta do servidor, os
+ * selos são os que ele confirmou (badgesToShow); sem ela, os do aparelho.
+ */
 export const BadgeEarned: React.FC = () => {
   const theme = useTheme();
   const state = readResultState(useLocation().state);
-  if (!state || !state.result.badges.length) return <Navigate to={ROUTES.results} replace state={state} />;
+  const outcome = usePlayOutcome(state?.clientId);
+  const waiting = useOutcomeWait(state?.clientId, outcome !== undefined);
+  if (waiting) {
+    return (
+      <Page aria-busy="true">
+        <Waiting role="status">Conferindo seus selos…</Waiting>
+      </Page>
+    );
+  }
+  const earned = state ? badgesToShow(state.result.badges, outcome) : [];
+  if (!state || !earned.length) return <Navigate to={ROUTES.results} replace state={state} />;
   const { song, result } = state;
-  const { featured, others: rest } = featuredBadges(result.badges);
-  const badge = featured ?? badgeInfo(result.badges[0]);
+  const { featured, others: rest } = featuredBadges(earned);
+  const badge = featured ?? badgeInfo(earned[0]);
   const others = rest.map((b) => b.label);
   const color = badgeColor(theme, badge.kind);
   const next = badge.kind === 'combo' ? nextCombo(result.maxCombo) : null;

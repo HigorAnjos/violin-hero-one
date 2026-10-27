@@ -22,9 +22,12 @@ import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Sc
 import { JUDGMENT_LABEL, JUDGMENTS } from '../game/engine';
 import { STRING_LETTERS } from '../game/notation/violin';
 import type { PracticeStart } from '../shell/gameSession';
+import { rankingUrl } from '../shell/choice';
 import { gameRoute, readResultState } from '../shell/play';
+import { badgesToShow } from '../shell/progress';
 import type { RecordCheck } from '../shell/records';
 import { ROUTES } from '../shell/routes';
+import { usePlayOutcome } from '../services/sync';
 
 const STAR = 'M17 2l4.5 9.4 10.3 1.2-7.6 7 2.1 10.2L17 24.7l-9.3 5.1 2.1-10.2-7.6-7 10.3-1.2z';
 /** Régua da afinação por corda: ±20 ¢. */
@@ -64,7 +67,9 @@ const Header = styled.header`
       font-size: 1.25rem;
     }
 
-    [role='status'] {
+    /* O selo novo (ou "Seus selos") mantém os 44 px de toque; a margem negativa devolve o que eles crescem além do título */
+    > a {
+      margin: -0.5rem 0;
       padding-top: 0.125rem;
       padding-bottom: 0.125rem;
     }
@@ -101,6 +106,13 @@ const NewBadge = styled.div<{ $color: string }>`
     font-weight: 800;
     font-size: 1.0625rem;
   }
+`;
+
+/** O selo novo leva à coleção. */
+const NewBadgeLink = styled(NewBadge).attrs({ as: Link })`
+  min-height: 2.75rem;
+  color: inherit;
+  text-decoration: none;
 `;
 
 const Body = styled.div`
@@ -390,6 +402,26 @@ const Timeline = styled.div`
   }
 `;
 
+/** Estrelas e, do lado, o link do ranking. */
+const StarsRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${({ theme }) => theme.spacing.sm};
+`;
+
+/**
+ * Do resultado para o ranking da música e do nível jogados (na semana). A margem negativa devolve o que os 44 px de
+ * toque crescem além das estrelas: a linha não fica mais alta (no celular deitado o resultado já ocupa a tela toda).
+ */
+const RankingLink = styled(Button)`
+  margin: -0.3125rem 0;
+
+  @media (max-height: 500px) {
+    margin: -0.8125rem 0;
+  }
+`;
+
 const Footer = styled.footer`
   display: flex;
   align-items: center;
@@ -417,14 +449,20 @@ export function recordText(record: RecordCheck, score: number): string {
 export const Results: React.FC = () => {
   const theme = useTheme();
   const state = readResultState(useLocation().state);
+  // Quando o servidor responde, vale o que ele confirmou; sem servidor (ou no reenvio, que não traz o anterior), o local
+  const outcome = usePlayOutcome(state?.clientId);
   if (!state) return <Navigate to={ROUTES.home} replace />;
-  const { song, result, mode, record } = state;
+  const confirmed = outcome && !outcome.duplicate ? outcome : undefined;
+  const { song, result, mode } = state;
+  const record = confirmed ? (confirmed.record ?? undefined) : state.record;
+  // O reenvio traz os selos daquela partida: valem como a primeira resposta
+  const earned = badgesToShow(result.badges, outcome);
   const practiced = 'laps' in result;
   const total = result.judgments.length;
   const starCount = stars(result.accuracy);
   const perMeasure = measureAccuracy(result);
   const hard = hardestStretch(perMeasure);
-  const firstBadge = featuredBadges(result.badges).featured;
+  const firstBadge = featuredBadges(earned).featured;
   const judgmentColor = (j: (typeof JUDGMENTS)[number]) => theme.game.judgments[j];
 
   return (
@@ -436,25 +474,36 @@ export const Results: React.FC = () => {
           </Kicker>
           <ScreenTitle>{song.title}</ScreenTitle>
         </div>
-        {firstBadge && (
-          <NewBadge role="status" aria-label={`Selo conquistado nesta partida: ${firstBadge.label}`} $color={badgeColor(theme, firstBadge.kind)}>
+        {firstBadge ? (
+          <NewBadgeLink to={ROUTES.badges} aria-label={`Selo conquistado nesta partida: ${firstBadge.label}. Ver seus selos`} $color={badgeColor(theme, firstBadge.kind)}>
             <Badge kind={firstBadge.kind} label={firstBadge.label} size={34} decorative />
             <span>
               <small>SELO NOVO!</small>
               <b>{firstBadge.label}</b>
             </span>
-          </NewBadge>
+          </NewBadgeLink>
+        ) : (
+          <Button as={Link} to={ROUTES.badges} $variant="ghost">
+            Seus selos
+          </Button>
         )}
       </Header>
 
       <Body>
         <div>
           <Panel aria-label="Pontuação">
-            <Stars width="190" height="34" viewBox="0 0 190 34" role="img" aria-label={`${starCount} de 5 estrelas`}>
-              {[0, 1, 2, 3, 4].map((i) => (
-                <path key={i} transform={`translate(${i * 38} 0)`} d={STAR} fill={i < starCount ? theme.colors.warning.main : theme.colors.surfaceBorder} />
-              ))}
-            </Stars>
+            <StarsRow>
+              <Stars width="190" height="34" viewBox="0 0 190 34" role="img" aria-label={`${starCount} de 5 estrelas`}>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <path key={i} transform={`translate(${i * 38} 0)`} d={STAR} fill={i < starCount ? theme.colors.warning.main : theme.colors.surfaceBorder} />
+                ))}
+              </Stars>
+              {!practiced && (
+                <RankingLink as={Link} to={rankingUrl({ songId: song.id, level: song.level, period: 'week' })} $variant="link">
+                  Ver no ranking <span aria-hidden="true">▸</span>
+                </RankingLink>
+              )}
+            </StarsRow>
             <ScoreRow>
               <Score>{formatPoints(result.score)}</Score>
               {record?.improved && <RecordPill role="status">{recordText(record, result.score)}</RecordPill>}

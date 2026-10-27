@@ -24,9 +24,12 @@ export interface ResultState extends PlayState {
   result: GameResult;
   /** O recorde local antes desta partida; ausente quando ela não vale recorde (prática, laço, velocidade < 100%). */
   record?: RecordCheck;
+  /** A partida na fila de envio (playQueue): o Resultado troca o recorde e os selos pelos do servidor quando ele responde. */
+  clientId?: string;
 }
 
-export const DEFAULT_MODE: GameMode = 'Arcade';
+/** Modo marcado de início e o que vale quando a URL ou a navegação não dizem (decisão do Higor). */
+export const DEFAULT_MODE: GameMode = 'Cordas 3D';
 
 const MODE_ROUTE: Record<GameMode, string> = { Arcade: ROUTES.game, Partitura: ROUTES.sheet, Prática: ROUTES.practice, 'Cordas 3D': ROUTES.strings3d };
 
@@ -43,7 +46,7 @@ export function readPlayState(raw: unknown): Required<Pick<PlayState, 'song' | '
   return { ...state, song: state.song ?? FIXED_SONGS[0].song, mode: isGameMode(state.mode) ? state.mode : DEFAULT_MODE };
 }
 
-export function readResultState(raw: unknown): (ReturnType<typeof readPlayState> & Pick<ResultState, 'result' | 'record'>) | null {
+export function readResultState(raw: unknown): (ReturnType<typeof readPlayState> & Pick<ResultState, 'result' | 'record' | 'clientId'>) | null {
   const state = raw && typeof raw === 'object' ? (raw as Partial<ResultState>) : null;
   return state?.result ? { ...readPlayState(state), result: state.result } : null;
 }
