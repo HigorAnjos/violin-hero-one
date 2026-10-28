@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { THEME_STORAGE_KEY } from '../assets/styles/themes';
 import { levelSettings } from '../game/engine/levels';
 import { findFixedSong, FIXED_SONGS } from '../game/notation/songs';
@@ -9,6 +9,9 @@ import { PROFILE_STORAGE_KEY } from '../services/profile';
 import { renderScreen } from '../shell/testing';
 import { ThemeChoiceProvider } from '../shell/ThemeChoice';
 import { Main as MainScreen } from './Main';
+
+// Sem banco: com o .env.local da máquina, a tela ia à rede de verdade e estourava os 5 s do teste
+vi.mock('../services/supabase', () => ({ supabase: null, supabaseUrl: '', supabaseAnonKey: '' }));
 
 const Main = () => (
   <ThemeChoiceProvider>
