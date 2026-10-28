@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { BrowserContext, Page } from '@playwright/test';
+import type { BrowserContext, BrowserContextOptions, Page, PlaywrightWorkerArgs } from '@playwright/test';
 import { BADGES } from '../../src/game/engine/badges';
 import type { BadgeId } from '../../src/game/engine/types';
 import type { Song } from '../../src/game/notation/song';
@@ -15,7 +15,7 @@ import { expect, queued, serverRows, storedSession, test } from './aparelho';
  * gravadas pela mesma função e tocam, e apagar uma importada não leva os selos ganhos nela. Os detalhes de cada tela
  * (layout, temas, erros por código) ficam em e2e/importar, e2e/editor e e2e/ditado.
  *
- * Cada teste usa um jogador novo, nunca a sessão da suíte (sessao.setup.ts): música dela apareceria na Biblioteca e
+ * Os jogadores daqui são novos, nunca a sessão da suíte (sessao.setup.ts): música dela apareceria na Biblioteca e
  * na seleção dos outros specs (titulo-longo e partidas contam as 10 do catálogo). O newDevice herda o storageState
  * do projeto: sem o test.use abaixo, todo "aparelho novo" seria a mesma sessão da suíte.
  */
@@ -195,11 +195,8 @@ test.describe('ciclo 4: as 5 partituras reais e a privacidade', () => {
   });
 });
 
-test('ciclo 4: a escala escrita no editor é salva pela função e tocada inteira', async ({ newDevice }, info) => {
-  test.setTimeout(3 * 60 * 1000);
-  const page = await newDevice();
-  await localFunctions(page.context());
-  const title = `Escala escrita ${info.project.name}`;
+/** c. A escala escrita no editor, salva pela função de verdade, sai no banco como música do editor e toca inteira. */
+async function writeScale(page: Page, title: string) {
   await page.goto('/editor');
   await page.getByRole('textbox', { name: 'Título da música' }).fill(title);
   await page.getByRole('group', { name: /Pauta/ }).focus();
@@ -218,7 +215,7 @@ test('ciclo 4: a escala escrita no editor é salva pela função e tocada inteir
   const seconds = Math.ceil((8 * 60) / saved[0].chart.bpm);
   await playWhole(page, title, seconds);
   expect(await serverRows(page, `plays?select=song_id,level,finished&song_id=eq.${id}`)).toEqual([{ song_id: id, level: 'easy', finished: true }]);
-});
+}
 
 /** As músicas que o salvar deixou no aparelho (IndexedDB): a Song e o nível que o editor mandou para a função. */
 async function savedSongs(page: Page): Promise<CachedSong[]> {
@@ -237,37 +234,20 @@ async function savedSongs(page: Page): Promise<CachedSong[]> {
   );
 }
 
-test('ciclo 4: ditar a escala com o WAV no microfone, salvar e achar as mesmas notas na Song do banco', async ({
-  playwright,
-  baseURL,
-  viewport,
-  deviceScaleFactor,
-  isMobile,
-  hasTouch,
-  userAgent,
-  locale,
-}, info) => {
-  test.setTimeout(2 * 60 * 1000);
-  // Navegador próprio (o WAV é do navegador) e jogador novo, como em todo teste daqui
+/**
+ * d. A escala ditada pelo WAV no lugar do microfone, salva pela função: as mesmas 15 notas na Song gravada no banco.
+ * Navegador próprio (o WAV é do navegador), com a sessão do aparelho em `options.storageState` (o mesmo jogador).
+ */
+async function dictateScale(playwright: PlaywrightWorkerArgs['playwright'], options: BrowserContextOptions, title: string) {
   const browser = await playwright.chromium.launch({ args: microphoneArgs('escala-re-maior', { loop: false }) });
   try {
-    const context = await browser.newContext({
-      baseURL,
-      viewport,
-      deviceScaleFactor,
-      isMobile,
-      hasTouch,
-      userAgent,
-      locale,
-      permissions: ['microphone'],
-    });
+    const context = await browser.newContext({ ...options, permissions: ['microphone'] });
     await context.addInitScript(() => localStorage.setItem('vh:onboarded', '1'));
     await localFunctions(context);
     const page = await context.newPage();
     // O WAV começa ao abrir o microfone, com o primeiro tempo 2,1 s depois: em 2/4 a ♩ = 60 a contagem de 1 compasso
     // dura 2 s e o ditado começa junto com a escala (como no e2e/ditado.spec.ts)
     await warmAudio(page, CATALOG_ASSETS);
-    const title = `Escala ditada ${info.project.name}`;
     await page.goto('/editor/ditar');
     await page.getByRole('combobox', { name: 'Compasso' }).selectOption('2/4');
     await page.getByRole('combobox', { name: 'Andamento' }).selectOption('60');
@@ -292,13 +272,13 @@ test('ciclo 4: ditar a escala com o WAV no microfone, salvar e achar as mesmas n
   } finally {
     await browser.close();
   }
-});
+}
 
-test('ciclo 4: apagar uma importada tira da Biblioteca e do servidor; os selos ganhos nela ficam', async ({ newDevice }) => {
-  test.setTimeout(4 * 60 * 1000);
-  // Jogador novo: os selos dele são só os desta música (a sessão da suíte ganha selos em outros specs ao mesmo tempo)
-  const page = await newDevice();
-  await localFunctions(page.context());
+/**
+ * e. Apagar uma importada tira da Biblioteca e do servidor; os selos ganhos nela ficam. Primeiro passo do jogador: os
+ * selos dele são só os desta música (a primeira partida inteira dá selo).
+ */
+async function deleteImported(page: Page) {
   await page.goto('/importar');
   await importOnScreen(page, SHORT_SCORE.file);
   const id = await playNowId(page);
@@ -330,4 +310,29 @@ test('ciclo 4: apagar uma importada tira da Biblioteca e do servidor; os selos g
     const label = BADGES.find((b) => b.id === badge)!.label;
     await expect(page.getByRole('listitem').filter({ has: page.getByRole('img', { name: `Selo ${label}`, exact: true }) })).toContainText('Ganho em');
   }
+}
+
+// Um jogador só para apagar, escrever e ditar: cada aparelho novo é um login anônimo a mais na rodada (o limite por
+// hora por IP do Supabase local está em supabase/config.toml)
+test('ciclo 4: apagar uma importada mantém os selos; a escala escrita e a ditada são salvas pela função', async ({
+  newDevice,
+  playwright,
+  baseURL,
+  viewport,
+  deviceScaleFactor,
+  isMobile,
+  hasTouch,
+  userAgent,
+  locale,
+}, info) => {
+  test.setTimeout(6 * 60 * 1000);
+  const page = await newDevice();
+  await localFunctions(page.context());
+  await test.step('e. apagar uma importada: some da Biblioteca e do servidor, os selos ficam no Perfil e em Selos', () => deleteImported(page));
+  await test.step('c. escrever a escala no editor, salvar e jogar inteira', () => writeScale(page, `Escala escrita ${info.project.name}`));
+  await test.step('d. ditar a escala com o WAV no microfone e conferir as notas na Song do banco', async () => {
+    const storageState = await page.context().storageState();
+    const options = { baseURL, viewport, deviceScaleFactor, isMobile, hasTouch, userAgent, locale, storageState };
+    await dictateScale(playwright, options, `Escala ditada ${info.project.name}`);
+  });
 });
