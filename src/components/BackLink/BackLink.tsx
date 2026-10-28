@@ -13,9 +13,13 @@ export const navigationPageInsets = css`
 
 export const NavigationScreen = styled(Screen)`${navigationPageInsets}`;
 
+const ReturnButton = styled(Button)`
+  align-self: flex-start;
+`;
+
 /** Primeiro nível volta ao Menu; telas filhas nomeiam e abrem sua mãe, sempre no cabeçalho à direita. */
 export const BackLink = ({ to = '/', label = 'Menu' }: { to?: string; label?: string }) => (
-  <Button as={Link} to={to} $variant="ghost" data-back="">
+  <ReturnButton as={Link} to={to} $variant="ghost" data-back="">
     <span aria-hidden="true">◂</span>{label}
-  </Button>
+  </ReturnButton>
 );
