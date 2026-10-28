@@ -70,6 +70,16 @@ describe('SongSelect', () => {
     expect(await details().findByText(/\d+ notas/, undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 
+  it('a música do jogador (importada ou escrita) vem depois do catálogo e abre escolhida pelo link da Biblioteca', async () => {
+    db.client = fakeCatalogClient({ own: [{ id: 'importada-1', title: 'Minha importada', origin: 'imported' }] }).client;
+    renderSongs(`${ROUTES.songs}?modo=arcade&musica=importada-1`);
+    await waitFor(() => expect(screen.getAllByRole('radio')).toHaveLength(CATALOG_ORDER.length + 1));
+    expect(screen.getAllByRole('radio').at(-1)).toHaveAccessibleName('Minha importada');
+    expect(screen.getByRole('radio', { name: 'Minha importada' })).toHaveAttribute('aria-checked', 'true');
+    expect(details().getByRole('heading', { name: 'Minha importada' })).toBeInTheDocument();
+    expect(details().getByRole('link', { name: /Tocar/ })).toHaveAttribute('href', expect.stringContaining('musica=importada-1'));
+  });
+
   it('setas andam pela lista', async () => {
     db.client = fakeCatalogClient().client;
     renderSongs(`${ROUTES.songs}?modo=arcade&musica=${CATALOG_ORDER[0]}`);

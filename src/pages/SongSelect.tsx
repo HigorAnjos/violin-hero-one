@@ -12,7 +12,9 @@ import { SongDetails } from '../components/SongDetails/SongDetails';
 import { levelSettings, type PlayerLevel } from '../game/engine/levels';
 import type { Level } from '../game/notation/song';
 import { loadLocalProfile } from '../services/profile';
-import { EMBEDDED_SHELF, savedCount, usePlayableSong, useShelf, type ShelfSong } from '../services/shelf';
+import { EMBEDDED_SHELF, savedCount, usePlayableSong, useShelf, type Shelf, type ShelfSong } from '../services/shelf';
+import type { SavedSong } from '../services/songCache';
+import { useOwnSongs, useSavedSongs, type CatalogEntry } from '../services/songs';
 import { isReadyMode, loadingUrl, menuMode, modeFromSlug, modesUrl, readyMode } from '../shell/choice';
 import type { GameMode } from '../shell/play';
 
@@ -255,16 +257,34 @@ const Details: React.FC<{ song: ShelfSong; mode: GameMode; settings: ReturnType<
   );
 };
 
-/** 3 · Seleção de música: a estante (catálogo ou as embutidas), busca, dificuldade e Tocar. */
+/**
+ * A estante com as músicas do jogador (importadas e escritas) no fim, como na Biblioteca. Só aqui: a estante do
+ * ranking e do desafio fica sem elas (música do jogador é privada). Sem catálogo, as dele já vêm entre as baixadas.
+ */
+export function withOwnSongs(shelf: readonly ShelfSong[], own: readonly CatalogEntry[], saved: readonly SavedSong[] = []): ShelfSong[] {
+  const ids = new Set(shelf.map((s) => s.id));
+  const savedIds = new Set(saved.map((s) => s.sheet.id));
+  const mine = own
+    .filter((s) => !ids.has(s.id))
+    .map(({ id, title, composer, bpm, key, durationSeconds, levels }) => ({ id, title, composer, bpm, key, durationSeconds, levels, embedded: false, saved: savedIds.has(id) }));
+  return [...shelf, ...mine];
+}
+
+/** 3 · Seleção de música: a estante (catálogo ou as embutidas) e as do jogador, busca, dificuldade e Tocar. */
 export const SongSelect: React.FC = () => {
   const [search, setSearch] = useSearchParams();
   const mode = readyMode(modeFromSlug(search.get('modo')));
-  const shelf = useShelf();
+  const catalog = useShelf();
+  const own = useOwnSongs();
+  const kept = useSavedSongs();
+  // Com o catálogo, espera a lista do jogador: senão a música pedida pela Biblioteca some e a tela escolhe outra
+  const shelf: Shelf = catalog.status === 'ready' && !catalog.fallback && own.isPending ? { status: 'loading' } : catalog;
   const [query, setQuery] = React.useState('');
   const [settings] = React.useState(() => levelSettings(loadLocalProfile().level ?? DEFAULT_LEVEL));
 
   // Estante vazia (catálogo sem músicas): as embutidas, como no "Grátis para começar" da biblioteca vazia
-  const songs = shelf.status !== 'ready' ? [] : shelf.songs.length ? shelf.songs : [...EMBEDDED_SHELF];
+  const shelfSongs = shelf.status !== 'ready' ? [] : shelf.songs.length ? shelf.songs : [...EMBEDDED_SHELF];
+  const songs = shelf.status === 'ready' && !shelf.fallback ? withOwnSongs(shelfSongs, own.data ?? [], kept.data) : shelfSongs;
   const visible = songs.filter((s) => matchesSearch(query, s.title, s.composer));
   const wanted = search.get('musica');
   const selected = songs.find((s) => s.id === wanted) ?? songs.find((s) => s.id === settings.firstSongId) ?? songs[0];
