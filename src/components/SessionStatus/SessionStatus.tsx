@@ -1,8 +1,10 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useQuery } from '@tanstack/react-query';
 import { ensureSession, type SessionState } from '../../services/session';
 import { supabase } from '../../services/supabase';
+import { accountUrl, ROUTES } from '../../shell/routes';
 
 type Tone = 'on' | 'off';
 
@@ -47,12 +49,37 @@ export const SessionBadge: React.FC<{ state: SessionState | undefined }> = ({ st
   );
 };
 
+const AccountLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 ${({ theme }) => theme.spacing.md};
+  background-color: ${({ theme }) => theme.colors.primary.main};
+  border: 2px solid ${({ theme }) => theme.colors.primary.main};
+  border-radius: ${({ theme }) => theme.borderRadius.pill};
+  color: ${({ theme }) => theme.colors.primary.text};
+  font-weight: 800;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+`;
+
 /** Garante a sessão (anônima se preciso) e mostra o estado. Falha de rede vira "Offline", sem erro na tela. */
-export const SessionStatus: React.FC<{ client?: Parameters<typeof ensureSession>[0] }> = ({ client = supabase }) => {
+export const SessionStatus: React.FC<{ client?: Parameters<typeof ensureSession>[0]; accountLink?: boolean }> = ({
+  client = supabase,
+  accountLink = false,
+}) => {
   const { data, isError } = useQuery({
     queryKey: ['session'],
     queryFn: () => ensureSession(client),
     staleTime: Infinity,
   });
-  return <SessionBadge state={isError ? { status: 'offline' } : data} />;
+  const state = isError ? { status: 'offline' as const } : data;
+  const guest = state?.status === 'signed-in' && state.anonymous;
+  return (
+    <>
+      <SessionBadge state={state} />
+      {/* O convidado cria a conta (ou entra na que já tem) pela GuestPrompt, sem perder o que jogou */}
+      {accountLink && guest && <AccountLink to={accountUrl('aparelho', ROUTES.home)}>Entrar ou criar conta</AccountLink>}
+    </>
+  );
 };
