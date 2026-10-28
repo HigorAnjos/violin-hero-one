@@ -150,6 +150,16 @@ describe('ScoreEditor', () => {
     expect(location()).toBe('/tocar?musica=escrita-1');
   });
 
+  it('salvar logo depois de escrever: o rascunho que ia ser gravado não volta depois do salvar', async () => {
+    renderEditor();
+    screen.getByRole('group', { name: /Pauta/ }).focus();
+    await userEvent.keyboard('defgabcd');
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar na biblioteca' }));
+    await screen.findByRole('link', { name: /Jogar agora/ });
+    await act(async () => void (await new Promise((r) => setTimeout(r, 450))));
+    expect(loadDraft()).toBeNull();
+  });
+
   it('mudar depois de salvar volta o botão Salvar', async () => {
     renderEditor();
     await userEvent.keyboard('d');
