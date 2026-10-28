@@ -1,5 +1,5 @@
 import React from 'react';
-import { BackLink } from '../components/BackLink/BackLink';
+import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink';
 import { Link } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
 import { Badge, badgeColor } from '../components/Badge/Badge';
@@ -19,18 +19,17 @@ const Page = styled.main`
   display: flex;
   flex-direction: column;
   gap: 1.125rem;
-  padding: 1.75rem 3rem;
   overflow: hidden;
 
   @media (max-height: 500px) {
     gap: 0.5rem;
-    padding: 0.625rem max(1rem, env(safe-area-inset-right)) 0.625rem max(1rem, env(safe-area-inset-left));
   }
+  ${navigationPageInsets}
 `;
 
 const Header = styled.header`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1.25rem;
 
   > div {

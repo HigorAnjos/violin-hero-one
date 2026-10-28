@@ -43,6 +43,22 @@ test('os retornos nomeiam e abrem o Menu ou a tela mãe', async ({ page }) => {
   await expect(page).toHaveURL(/\/tocar\?modo=partitura/);
 });
 
+for (const theme of ['caderno', 'palco', '8-bits']) {
+  test(`${theme}: retornos têm o mesmo topo e recuo da direita`, async ({ page }) => {
+    await page.addInitScript((id) => localStorage.setItem('vh:theme', id), theme);
+    const compact = page.viewportSize()!.height < 500;
+    for (const path of ['/configuracoes', '/configuracoes?secao=jogo', '/configuracoes?secao=lembrete', '/tocar', '/tocar/musica', '/biblioteca', '/perfil', '/selos', '/ranking', '/lembrete']) {
+      await page.goto(path);
+      const back = page.locator('[data-back]');
+      await expect(back).toBeVisible();
+      await fontsReady(page, theme);
+      const bounds = await back.boundingBox();
+      expect({ top: Math.round(bounds!.y), right: Math.round(page.viewportSize()!.width - bounds!.x - bounds!.width) }, path).toEqual(compact ? { top: 12, right: 16 } : { top: 32, right: 48 });
+      await expectFits(page);
+    }
+  });
+}
+
 for (const tema of ['caderno', 'palco', '8-bits'] as const) {
   for (const fonte of ['real', 'reserva'] as const) {
     test.describe(`${tema}, fonte ${fonte}`, () => {

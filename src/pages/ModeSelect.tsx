@@ -4,17 +4,17 @@ import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
 import { ModeCard } from '../components/ModeCard/ModeCard';
 import { useRadioGroup } from '../components/RadioGroup/useRadioGroup';
-import { Kicker, Lead, Screen, ScreenTitle } from '../components/Screen/Screen';
+import { Kicker, Lead, ScreenTitle } from '../components/Screen/Screen';
 import { isReadyMode, menuMode, modeFromSlug, READY_MODES, songsUrl } from '../shell/choice';
 import type { GameMode } from '../shell/play';
-import { BackLink } from '../components/BackLink/BackLink';
+import { BackLink, NavigationScreen as Screen } from '../components/BackLink/BackLink';
 
 /** Os modos do cartão que já têm tela; um modo sem tela aparece "em breve". A Prática não é cartão. */
 const PLAYABLE = READY_MODES.filter((mode) => mode !== 'Prática');
 
 const Header = styled.header`
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.lg};
 `;

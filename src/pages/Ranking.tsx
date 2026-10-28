@@ -1,5 +1,5 @@
 import React from 'react';
-import { BackLink } from '../components/BackLink/BackLink';
+import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { css } from 'styled-components';
@@ -32,18 +32,17 @@ const Page = styled.main`
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
-  padding: 1.625rem 2.5rem;
   overflow: hidden;
 
   @media (max-height: 500px) {
     gap: 0.5rem;
-    padding: 0.625rem max(1rem, env(safe-area-inset-right)) 0.625rem max(1rem, env(safe-area-inset-left));
   }
+  ${navigationPageInsets}
 `;
 
 const Header = styled.header`
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1.25rem;
 
@@ -62,7 +61,7 @@ const Header = styled.header`
   }
 
   @media (max-height: 500px) {
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
 
     > div:first-child ${Kicker} {

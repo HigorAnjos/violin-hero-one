@@ -1,10 +1,10 @@
 import React from 'react';
-import { BackLink } from '../components/BackLink/BackLink';
+import { BackLink, NavigationScreen as Screen } from '../components/BackLink/BackLink';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { LEVEL_NAMES } from '../components/CountIn/countIn';
 import { OfflineBanner } from '../components/OfflineBanner/OfflineBanner';
-import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
+import { clampLines, Kicker, ScreenTitle } from '../components/Screen/Screen';
 import { matchesSearch, SearchField } from '../components/SearchField/SearchField';
 import { SongCover } from '../components/SongCover/SongCover';
 import { offlineTag, songMeta } from '../components/SongCover/songFacts';
@@ -22,7 +22,7 @@ type SortKey = keyof typeof SORTS;
 
 const Header = styled.header`
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.lg};
 `;

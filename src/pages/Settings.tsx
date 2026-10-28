@@ -1,5 +1,5 @@
 import React from 'react';
-import { BackLink } from '../components/BackLink/BackLink';
+import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink';
 import { Reminder } from './Reminder';
 import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
@@ -26,14 +26,13 @@ const Page = styled.main`
   display: grid;
   grid-template-columns: 13.75rem minmax(0, 1fr);
   gap: 2rem;
-  padding: 2rem 3rem;
   overflow: hidden;
 
   @media (max-height: 500px) {
     grid-template-columns: 10rem minmax(0, 1fr);
     gap: 1rem;
-    padding: 0.75rem max(1rem, env(safe-area-inset-right)) 0.75rem max(1rem, env(safe-area-inset-left));
   }
+  ${navigationPageInsets}
 `;
 
 const Nav = styled.nav`
@@ -323,7 +322,7 @@ const BackCorner = styled.div`
   top: 2rem;
   right: 3rem;
   @media (max-height: 500px) {
-    top: 0.5rem;
+    top: 0.75rem;
     right: 1rem;
   }
 `;
