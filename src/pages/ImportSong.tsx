@@ -2,6 +2,7 @@ import React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
+import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countIn';
 import { Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
@@ -203,9 +204,7 @@ export const ImportSong: React.FC<{ importer?: SongImporter }> = ({ importer: gi
           <Kicker>Biblioteca</Kicker>
           <ScreenTitle>Importar música</ScreenTitle>
         </div>
-        <Button as={Link} to={libraryUrl} $variant="ghost">
-          Biblioteca
-        </Button>
+        <BackLink to={libraryUrl} label="Biblioteca" />
       </Header>
       <Steps aria-label="Etapas">
         <li aria-current={!result ? 'step' : undefined}>
