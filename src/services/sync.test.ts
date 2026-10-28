@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { createPlaySync, memoryPlayQueueStore, PlaySyncError } from './playQueue';
 import type { PlayOutcome, PlayPayload } from './progress';
+import { createRecordingUploads, memoryRecordingQueueStore, memoryUploadTarget, RecordingUploadError } from './recordingUpload';
 import type { SessionState } from './session';
 import { memorySongStore } from './songCache';
 import { createDeviceData, usePlayOutcome } from './sync';
@@ -24,8 +25,28 @@ function setup(user = 'anon') {
     online: () => true,
   });
   const songs = memorySongStore();
-  return { sync, store, songs, submit, data: createDeviceData(sync, songs), setSession: (s: SessionState) => (session = s), setOwner: (u: string) => (owner = u) };
+  const target = memoryUploadTarget();
+  const uploads = createRecordingUploads({
+    store: memoryRecordingQueueStore(),
+    user: () => owner,
+    session: async () => session,
+    target: () => target,
+    online: () => true,
+  });
+  return {
+    sync,
+    store,
+    songs,
+    submit,
+    uploads,
+    target,
+    data: createDeviceData(sync, songs, undefined, uploads),
+    setSession: (s: SessionState) => (session = s),
+    setOwner: (u: string) => (owner = u),
+  };
 }
+
+const recording = (id: string) => ({ id, blob: new Blob(['som']), mimeType: 'audio/mp4', durationMs: 1000, meta: {} });
 
 const play = (id: string) => ({ payload: { client_id: id, song_id: 'ode', level: 'easy' } as PlayPayload, chartHash: 'h', checkChart: false });
 
@@ -53,6 +74,29 @@ describe('DeviceData da sincronização', () => {
     t.data.use('conta');
     expect(currentUserId()).toBe('conta');
     localStorage.removeItem(USER_STORAGE_KEY);
+  });
+
+  it('gravação que não subiu segura a troca de conta, conta no pendente e some no forget', async () => {
+    const t = setup();
+    t.target.fail('offline');
+    await t.uploads.enqueue(recording('e1'));
+    await t.sync.enqueue(play('a'));
+    expect(await t.data.pending('anon')).toBe(2);
+    await expect(t.data.flush('anon')).rejects.toBeInstanceOf(RecordingUploadError);
+    // A partida subiu mesmo com a gravação presa
+    expect(await t.sync.pending('anon')).toBe(0);
+    await t.data.forget('anon');
+    expect(await t.data.pending('anon')).toBe(0);
+    expect(t.target.files.size).toBe(0);
+  });
+
+  it('flush sobe a gravação na conta do dono', async () => {
+    const t = setup();
+    t.target.fail('offline');
+    await t.uploads.enqueue(recording('e1'));
+    t.target.fail(null);
+    await t.data.flush('anon');
+    expect([...t.target.files.keys()]).toEqual(['anon/e1']);
   });
 });
 
