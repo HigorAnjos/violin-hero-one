@@ -1,5 +1,7 @@
 // Aplica as migrações pendentes de supabase/migrations/ em ordem, cada uma em transação,
-// registrando em violinhero.schema_migrations (independente do CLI da Supabase).
+// registrando em violinhero.schema_migrations (independente do CLI da Supabase). Depois, as de
+// supabase/storage/ (bucket e policies do Storage), registradas como storage/<arquivo>, só quando o
+// Storage existe: no Supabase local sem o container do Storage elas ficam para quando ele subir.
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +9,9 @@ import dotenv from 'dotenv';
 import pg from 'pg';
 
 dotenv.config({ path: '.env.local', quiet: true });
-const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'migrations');
+const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase');
+const dir = join(root, 'migrations');
+const storageDir = join(root, 'storage');
 
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_URL vazio: copie .env.example para .env.local e preencha.');
@@ -28,15 +32,20 @@ try {
   const cliDone = cli.rows[0].exists
     ? new Set((await client.query('select version from supabase_migrations.schema_migrations')).rows.map((r) => r.version))
     : new Set();
-  const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+  const sqlIn = (d) => readdirSync(d).filter((f) => f.endsWith('.sql')).sort();
+  const files = sqlIn(dir);
   for (const f of files) if (cliDone.has(f.split('_')[0])) done.add(f);
+  const pending = files.map((f) => ({ name: f, path: join(dir, f) }));
+  const storage = await client.query(`select to_regclass('storage.objects') is not null as exists`);
+  if (storage.rows[0].exists) pending.push(...sqlIn(storageDir).map((f) => ({ name: `storage/${f}`, path: join(storageDir, f) })));
+  else console.log('Storage ausente neste banco: supabase/storage fica para quando ele existir.');
   let applied = 0;
-  for (const f of files) {
+  for (const { name: f, path } of pending) {
     if (done.has(f)) continue;
     process.stdout.write(`→ ${f} ... `);
     try {
       await client.query('begin');
-      await client.query(readFileSync(join(dir, f), 'utf8'));
+      await client.query(readFileSync(path, 'utf8'));
       await client.query('insert into violinhero.schema_migrations (name) values ($1)', [f]);
       await client.query('commit');
       console.log('ok');
