@@ -249,6 +249,10 @@ async function dictateScale(playwright: PlaywrightWorkerArgs['playwright'], opti
     // dura 2 s e o ditado começa junto com a escala (como no e2e/ditado.spec.ts)
     await warmAudio(page, CATALOG_ASSETS);
     await page.goto('/editor/ditar');
+    // A escala escrita no passo c foi salva: o rascunho dela não volta (o storageState leva o localStorage do jogador),
+    // senão o ditado entra depois das 8 notas dela
+    await expect(page.getByRole('region', { name: 'Ditado pelo microfone' })).toBeVisible();
+    await expect(page.getByTestId('nota')).toHaveCount(0);
     await page.getByRole('combobox', { name: 'Compasso' }).selectOption('2/4');
     await page.getByRole('combobox', { name: 'Andamento' }).selectOption('60');
     await page.getByRole('textbox', { name: 'Título da música' }).fill(title);
