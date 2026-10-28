@@ -27,12 +27,30 @@ const SCREENS = [
   },
   { name: 'perfil', path: '/perfil', ready: (p: Page) => expect(p.getByRole('region', { name: 'Conquistas' })).toBeVisible() },
   { name: 'selos', path: '/selos', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Seus selos' })).toBeVisible() },
-  { name: 'lembrete', path: '/lembrete', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Lembrete de prática' })).toBeVisible() },
+  { name: 'lembrete', path: '/configuracoes?secao=lembrete', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Lembrete de prática' })).toBeVisible() },
 ];
 
 test.beforeEach(async ({ page }) => {
   await skipOnboarding(page);
   await seedProgress(page);
+});
+
+test('Lembrete antigo redireciona e o horário permanece em 24 h', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('vh:lembrete', JSON.stringify({ enabled: true, time: '19:30', days: [1, 3, 5] }));
+  });
+  await page.context().grantPermissions(['notifications']);
+  await page.goto('/lembrete');
+  await expect(page).toHaveURL(/\/configuracoes\?secao=lembrete$/);
+  await expect(page.getByRole('link', { name: 'Lembrete de prática' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('combobox', { name: 'Hora', exact: true })).toHaveValue('19');
+  await expect(page.getByRole('combobox', { name: 'Minuto' })).toHaveValue('30');
+  await page.getByRole('combobox', { name: 'Hora', exact: true }).selectOption('23');
+  await page.getByRole('combobox', { name: 'Minuto' }).selectOption('55');
+  await expect(page.getByLabel('Como o lembrete aparece no celular')).toContainText('23:55');
+  await expectFits(page);
+  await page.getByRole('link', { name: 'Menu', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
 });
 
 for (const tema of ['caderno', 'palco', '8-bits'] as const) {
