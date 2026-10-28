@@ -30,7 +30,6 @@ import {
 import { DEFAULT_DICTATION_GRID, dictationOrigin, type DictationGrid } from '../game/notation/dictation';
 import type { Song } from '../game/notation/song';
 import { STRING_LETTERS, STRING_SOLFEGE } from '../game/notation/violin';
-import { clearDraft } from '../services/editorDraft';
 import { songCache } from '../services/songCache';
 import { saveAndKeep, type SongImporter } from '../services/songImport';
 import { songKeys } from '../services/songs';
@@ -385,7 +384,7 @@ export interface ScoreEditorProps {
 
 /** 4 · Escrever partitura (ScoreEditor.dc): a pauta com teclado e toque, ouvir, rascunho no aparelho e salvar na biblioteca. */
 export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, listen = playSong, dictation: dictationDeps }) => {
-  const { state, dispatch, draft } = useScoreEditor();
+  const { state, dispatch, draft, discardDraft } = useScoreEditor();
   const location = useLocation();
   const navigate = useNavigate();
   const onDictationTab = location.pathname.replace(/\/+$/, '') === ROUTES.dictation;
@@ -481,7 +480,7 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
     setSaving({ status: 'saving' });
     try {
       const result = await saveAndKeep(importer, chart, songCache);
-      clearDraft();
+      discardDraft(doc);
       void queryClient.invalidateQueries({ queryKey: songKeys.saved });
       void queryClient.invalidateQueries({ queryKey: songKeys.mine });
       setSaving({ status: 'saved', id: result.song.id, doc });

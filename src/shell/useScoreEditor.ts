@@ -33,7 +33,7 @@ import {
 } from '../game/notation/editor';
 import type { Finger, TimeSignature } from '../game/notation/song';
 import type { StringIndex } from '../game/notation/violin';
-import { loadDraft, saveDraft } from '../services/editorDraft';
+import { clearDraft, loadDraft, saveDraft } from '../services/editorDraft';
 
 /** Tudo que a tela do editor faz com a partitura: teclado, paleta, toque e painel da nota viram uma ação destas. */
 export type EditorAction =
@@ -184,19 +184,34 @@ export function useScoreEditor() {
   const first = React.useRef(true);
   /** Documento mudado e ainda não gravado: sair da tela ou do app grava na hora. */
   const pending = React.useRef<EditorState['doc'] | null>(null);
+  const current = React.useRef(state.doc);
 
   React.useEffect(() => {
+    current.current = state.doc;
     if (first.current) {
       first.current = false;
       return;
     }
-    pending.current = state.doc;
+    const doc = state.doc;
+    pending.current = doc;
     const timer = setTimeout(() => {
+      // Salvo na biblioteca antes do instante: discardDraft já tirou o rascunho
+      if (pending.current !== doc) return;
       pending.current = null;
-      setDraft(saveDraft(state.doc) ? 'saved' : 'unsaved');
+      setDraft(saveDraft(doc) ? 'saved' : 'unsaved');
     }, DRAFT_DELAY_MS);
     return () => clearTimeout(timer);
   }, [state.doc]);
+
+  /**
+   * A música foi salva na biblioteca: o rascunho sai, inclusive o que ainda ia ser gravado (salvar logo depois de
+   * escrever o traria de volta, e o próximo ditado entraria depois dele). Se a pessoa mudou algo durante o salvar, fica.
+   */
+  const discardDraft = React.useCallback((saved: EditorState['doc']) => {
+    if (current.current !== saved) return;
+    pending.current = null;
+    clearDraft();
+  }, []);
 
   React.useEffect(() => {
     const flush = () => {
@@ -210,5 +225,5 @@ export function useScoreEditor() {
     };
   }, []);
 
-  return { state, dispatch, draft };
+  return { state, dispatch, draft, discardDraft };
 }

@@ -73,6 +73,28 @@ describe('useScoreEditor', () => {
     expect(loadDraft()?.doc.meta.title).toBe('Depois');
   });
 
+  it('descartar o rascunho do que foi salvo cancela a gravação que ainda vinha', () => {
+    vi.useFakeTimers();
+    const { result, unmount } = renderHook(() => useScoreEditor());
+    act(() => result.current.dispatch({ type: 'note', midi: 62 }));
+    act(() => result.current.discardDraft(result.current.state.doc));
+    act(() => void vi.advanceTimersByTime(500));
+    expect(loadDraft()).toBeNull();
+    unmount();
+    expect(loadDraft()).toBeNull();
+  });
+
+  it('o que mudou durante o salvar continua no rascunho', () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => useScoreEditor());
+    act(() => result.current.dispatch({ type: 'note', midi: 62 }));
+    const saved = result.current.state.doc;
+    act(() => result.current.dispatch({ type: 'note', midi: 64 }));
+    act(() => result.current.discardDraft(saved));
+    act(() => void vi.advanceTimersByTime(500));
+    expect(loadDraft()?.doc.notes.map((n) => n.midi)).toEqual([62, 64]);
+  });
+
   it('sair da tela antes do instante grava na hora', () => {
     vi.useFakeTimers();
     const { result, unmount } = renderHook(() => useScoreEditor());
