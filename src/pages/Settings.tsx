@@ -1,4 +1,6 @@
 import React from 'react';
+import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink';
+import { Reminder } from './Reminder';
 import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { A4Picker } from '../components/A4Picker/A4Picker';
@@ -24,14 +26,13 @@ const Page = styled.main`
   display: grid;
   grid-template-columns: 13.75rem minmax(0, 1fr);
   gap: 2rem;
-  padding: 2rem 3rem;
   overflow: hidden;
 
   @media (max-height: 500px) {
     grid-template-columns: 10rem minmax(0, 1fr);
     gap: 1rem;
-    padding: 0.75rem max(1rem, env(safe-area-inset-right)) 0.75rem max(1rem, env(safe-area-inset-left));
   }
+  ${navigationPageInsets}
 `;
 
 const Nav = styled.nav`
@@ -102,16 +103,22 @@ const Content = styled.div`
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
   align-content: start;
-  /* Espaço para o anel de foco dos controles na borda */
-  padding: 0.25rem;
+  /* Cabeçalho de voltar e espaço para o anel de foco dos controles na borda. */
+  padding: 4rem 0.25rem 0.25rem;
 
   > [data-wide] {
     grid-column: 1 / -1;
   }
 
+  &[data-reminder] {
+    grid-template-rows: minmax(0, 1fr);
+    align-content: stretch;
+  }
+
   @media (max-height: 500px) {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
+    padding-top: 3.25rem;
   }
 `;
 
@@ -130,6 +137,7 @@ export const SETTINGS_SECTIONS = [
   { id: 'visual', label: 'Visual' },
   { id: 'acessibilidade', label: 'Acessibilidade' },
   { id: 'conta', label: 'Conta' },
+  { id: 'lembrete', label: 'Lembrete de prática' },
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number]['id'];
@@ -249,7 +257,7 @@ function usePrefs(): [PlayPrefs, (change: Partial<PlayPrefs>) => void] {
 const GameSection: React.FC = () => {
   const [prefs, change] = usePrefs();
   return (
-    <SettingsPanel title="Na pista">
+    <SettingsPanel title="Na pista" wide>
       <Toggle label="Mostrar linha de afinação" hint="O traço dos últimos 2 segundos no cartão de afinação" checked={prefs.tuningLine} onChange={(tuningLine) => change({ tuningLine })} />
       <Toggle label="Mostrar nome das notas" hint="Dó, Ré, Mi em cima de cada nota da pista" checked={prefs.noteNames} onChange={(noteNames) => change({ noteNames })} />
     </SettingsPanel>
@@ -291,15 +299,9 @@ export const Settings: React.FC = () => {
             {s.label}
           </Link>
         ))}
-        <Link to={ROUTES.reminder}>Lembrete de prática</Link>
-        <Link to={ROUTES.profile}>Perfil</Link>
-        <span />
-        <Button as={Link} to={ROUTES.home} $variant="ghost" data-back="">
-          <span aria-hidden="true">◂</span>
-          Voltar
-        </Button>
       </Nav>
-      <Content>
+      <BackCorner><BackLink /></BackCorner>
+      <Content data-reminder={section === 'lembrete' ? '' : undefined}>
         {section === 'audio' && <AudioSection />}
         {section === 'jogo' && <GameSection />}
         {section === 'visual' && (
@@ -309,7 +311,18 @@ export const Settings: React.FC = () => {
         )}
         {section === 'acessibilidade' && <AccessibilitySection />}
         {section === 'conta' && <AccountPanel back={settingsUrl('conta')} />}
+        {section === 'lembrete' && <Reminder />}
       </Content>
     </Page>
   );
 };
+
+const BackCorner = styled.div`
+  position: absolute;
+  top: 2rem;
+  right: 3rem;
+  @media (max-height: 500px) {
+    top: 0.75rem;
+    right: 1rem;
+  }
+`;

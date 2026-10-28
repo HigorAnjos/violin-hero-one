@@ -1,20 +1,20 @@
 import React from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
 import { ModeCard } from '../components/ModeCard/ModeCard';
 import { useRadioGroup } from '../components/RadioGroup/useRadioGroup';
-import { Kicker, Lead, Screen, ScreenTitle } from '../components/Screen/Screen';
+import { Kicker, Lead, ScreenTitle } from '../components/Screen/Screen';
 import { isReadyMode, menuMode, modeFromSlug, READY_MODES, songsUrl } from '../shell/choice';
 import type { GameMode } from '../shell/play';
-import { ROUTES } from '../shell/routes';
+import { BackLink, NavigationScreen as Screen } from '../components/BackLink/BackLink';
 
 /** Os modos do cartão que já têm tela; um modo sem tela aparece "em breve". A Prática não é cartão. */
 const PLAYABLE = READY_MODES.filter((mode) => mode !== 'Prática');
 
 const Header = styled.header`
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.lg};
 `;
@@ -91,9 +91,7 @@ export const ModeSelect: React.FC = () => {
           <ScreenTitle>Escolha o modo</ScreenTitle>
           <Lead>Mesma música, mesmas cores de corda, mesmo placar. Muda só a forma de ler.</Lead>
         </Intro>
-        <Button as={Link} to={ROUTES.home} $variant="ghost">
-          <span aria-hidden="true">◂</span>Voltar
-        </Button>
+        <BackLink />
       </Header>
 
       <Cards role="radiogroup" aria-label="Modo de jogo">

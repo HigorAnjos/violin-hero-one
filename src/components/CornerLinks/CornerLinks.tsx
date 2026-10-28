@@ -57,7 +57,8 @@ export const CornerLinks: React.FC = () => {
       <Round to={ROUTES.settings} aria-label="Configurações">
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="2" />
-          <path d="M12 2v3 M12 19v3 M2 12h3 M19 12h3 M4.9 4.9l2.1 2.1 M17 17l2.1 2.1 M4.9 19.1L7 17 M17 7l2.1-2.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <title>Engrenagem</title>
+          <path d="M9 2h6l.5 3 1.5.9 2.9-1 3 5.2-2.4 2v1.8l2.4 2-3 5.2-2.9-1-1.5.9-.5 3H9l-.5-3-1.5-.9-2.9 1-3-5.2 2.4-2v-1.8l-2.4-2 3-5.2 2.9 1L8.5 5Z" transform="translate(1 0) scale(.92)" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
         </svg>
       </Round>
       <Round to={ROUTES.profile} aria-label="Perfil" data-avatar="" data-animal={animal ? '' : undefined}>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { css } from 'styled-components';
@@ -18,7 +19,7 @@ import { useShelf } from '../services/shelf';
 import { playSync } from '../services/sync';
 import { modesUrl, parseRankingUrl, rankingUrl } from '../shell/choice';
 import { useProgress } from '../shell/progress';
-import { accountUrl, ROUTES } from '../shell/routes';
+import { accountUrl } from '../shell/routes';
 import { useSession } from '../shell/useAccount';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { goalFor } from './Profile';
@@ -31,18 +32,17 @@ const Page = styled.main`
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
-  padding: 1.625rem 2.5rem;
   overflow: hidden;
 
   @media (max-height: 500px) {
     gap: 0.5rem;
-    padding: 0.625rem max(1rem, env(safe-area-inset-right)) 0.625rem max(1rem, env(safe-area-inset-left));
   }
+  ${navigationPageInsets}
 `;
 
 const Header = styled.header`
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1.25rem;
 
@@ -61,7 +61,7 @@ const Header = styled.header`
   }
 
   @media (max-height: 500px) {
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
 
     > div:first-child ${Kicker} {
@@ -570,10 +570,7 @@ export const Ranking: React.FC = () => {
               ))}
             </Select>
           </label>
-          <Button as={Link} to={ROUTES.home} $variant="ghost">
-            <span aria-hidden="true">◂</span>
-            Menu
-          </Button>
+          <BackLink />
         </Controls>
       </Header>
 

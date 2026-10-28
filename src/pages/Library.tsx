@@ -1,16 +1,15 @@
 import React from 'react';
+import { BackLink, NavigationScreen as Screen } from '../components/BackLink/BackLink';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countIn';
 import { OfflineBanner } from '../components/OfflineBanner/OfflineBanner';
-import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
+import { clampLines, Kicker, ScreenTitle } from '../components/Screen/Screen';
 import { matchesSearch, SearchField } from '../components/SearchField/SearchField';
 import { SongCover } from '../components/SongCover/SongCover';
 import { offlineTag, songMeta } from '../components/SongCover/songFacts';
 import { savedCount, useShelf, type ShelfSong } from '../services/shelf';
 import { modesUrl } from '../shell/choice';
-import { ROUTES } from '../shell/routes';
 import { LibraryEmpty } from './LibraryEmpty';
 
 export const SORTS = {
@@ -23,7 +22,7 @@ type SortKey = keyof typeof SORTS;
 
 const Header = styled.header`
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.lg};
 `;
@@ -259,9 +258,7 @@ export const Library: React.FC = () => {
           <Kicker>{shelf.status === 'ready' ? kicker : 'Carregando…'}</Kicker>
           <ScreenTitle>Biblioteca</ScreenTitle>
         </Intro>
-        <Button as={Link} to={ROUTES.home} $variant="ghost">
-          <span aria-hidden="true">◂</span>Menu
-        </Button>
+        <BackLink />
       </Header>
 
       {shelf.status === 'ready' && shelf.fallback && <OfflineBanner reason={shelf.reason} count={songs.length} saved={saved > 0} />}
