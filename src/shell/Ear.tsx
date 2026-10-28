@@ -1,5 +1,5 @@
 import React from 'react';
-import { micTrouble, type MicTrouble, type PitchListener } from '../game/audio';
+import { micTrouble, type MicTrouble, type PitchListener, type Recorder } from '../game/audio';
 
 export type LevelListener = (dbfs: number) => void;
 
@@ -31,6 +31,8 @@ export interface Ear {
   /** Lá de referência da detecção, em Hz; vale na hora. */
   setA4(a4: number): void;
   onClosed(listener: (reason: EarClosedReason) => void): () => void;
+  /** Grava o que o Ouvido está ouvindo (entrega de tarefa). Só o microfone de verdade; lança RecordingError. */
+  record?(): Recorder;
 }
 
 /** Os três estados da tela MicTrouble (5e). */

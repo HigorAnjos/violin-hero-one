@@ -1,5 +1,5 @@
 import React from 'react';
-import { audioDeviceKey, latencySeconds, latencyToMs } from '../game/audio';
+import { audioDeviceKey, latencySeconds, latencyToMs, RecordingError, type Recorder, type Recording } from '../game/audio';
 import { centsBetween } from '../game/audio/tuning';
 import { scheduleClicks } from '../game/audio/latency/click';
 import type { EngineNote, GameResult, Judgment, LapSummary, LevelSettings, PerformanceOptions } from '../game/engine';
@@ -121,14 +121,31 @@ export interface GameOptions {
   trackOptions: Omit<TrackOptions, 'notes' | 'width' | 'height'>;
   box: () => { x: number; y: number; width: number; height: number };
   onBeat?: (beat: number) => void;
-  onFinish: (result: GameResult) => void;
+  /** `recording`: só com `record`; a gravação da partida ou por que ela não saiu. */
+  onFinish: (result: GameResult, recording?: Recording | RecordingError) => void;
   onMicError: (error: unknown) => void;
   /** A prática dentro da partida (lida na montagem): trecho, laço A–B e velocidade. Sempre sem falha. */
   practice?: PracticeStart | null;
   /** Folgas e descida da pista do nível do jogador (lido na montagem); padrão: as do motor. */
   level?: Pick<LevelSettings, 'toleranceCents' | 'windows' | 'trackLeadSeconds'>;
+  /** Grava o microfone do começo ao fim (entrega de tarefa), com a pausa da partida; lido na montagem. */
+  record?: boolean;
   deps?: Partial<GameDeps>;
 }
+
+/** O gravador que o Ouvido deu, ou por que não deu (simulado, navegador sem formato). */
+function startRecorder(ear: Ear): Recorder | RecordingError {
+  if (!ear.record) return new RecordingError('unsupported');
+  try {
+    return ear.record();
+  } catch (error) {
+    return error instanceof RecordingError ? error : new RecordingError('failed');
+  }
+}
+
+/** Fecha a gravação no fim da música: o arquivo, ou o erro (interrompida, falhou). */
+const stopRecorder = (recorder: Recorder): Promise<Recording | RecordingError> =>
+  recorder.stop().catch((error: unknown) => (error instanceof RecordingError ? error : new RecordingError('failed')));
 
 /** O erro fica à vista este tempo depois do julgamento, se nada vier depois. */
 const EXPLAIN_SECONDS = 2.5;
@@ -181,13 +198,22 @@ export function useGame(options: GameOptions) {
   const [practiced, setPracticed] = React.useState(false);
   const [latencyMs, setLatencyMs] = React.useState<number | null>(null);
   const [prefs, setPrefs] = React.useState(loadPlayPrefs);
-  const live = React.useRef<{ session: GameSession | null; latency: number; paused: boolean; closes: number; prefs: PlayPrefs; surface: Track | Sheet | Strings3D | null }>({
+  const live = React.useRef<{
+    session: GameSession | null;
+    latency: number;
+    paused: boolean;
+    closes: number;
+    prefs: PlayPrefs;
+    surface: Track | Sheet | Strings3D | null;
+    recorder: Recorder | null;
+  }>({
     session: null,
     latency: 0,
     paused: false,
     closes: 0,
     prefs,
     surface: null,
+    recorder: null,
   });
 
   const follow = React.useCallback(() => {
@@ -211,6 +237,8 @@ export function useGame(options: GameOptions) {
     let session: GameSession | null = null;
     const offs: (() => void)[] = [];
     const laps: LapSummary[] = [];
+    let recorder: Recorder | null = null;
+    let recordFailure: RecordingError | undefined;
 
     const target = () => (session ? (session.engine.notes[session.engine.state.judged] ?? null) : null);
 
@@ -266,7 +294,13 @@ export function useGame(options: GameOptions) {
       if (event.type === 'gameover') level = 0;
       setPhase('over');
       const result = event.result;
-      setTimeout(() => alive && opts.current.onFinish(result), FINISH_DELAY_MS);
+      // A gravação fecha no fim da música, não na troca de tela: o atraso de ver o último julgamento fica fora dela
+      const recorded = recorder ? stopRecorder(recorder) : null;
+      setTimeout(() => {
+        if (!alive) return;
+        if (!recorded) return opts.current.onFinish(result, recordFailure);
+        void recorded.then((recording) => alive && opts.current.onFinish(result, recording));
+      }, FINISH_DELAY_MS);
     };
 
     const frame = () => {
@@ -300,6 +334,11 @@ export function useGame(options: GameOptions) {
         onEvent,
       });
       shared.session = session;
+      if (opts.current.record) {
+        const started = startRecorder(ear);
+        if (started instanceof RecordingError) recordFailure = started;
+        else recorder = shared.recorder = started;
+      }
       follow();
       offs.push(
         ear.onPitch((reading) => {
@@ -363,6 +402,7 @@ export function useGame(options: GameOptions) {
           if (!alive || view !== '3d') return;
           live.current.paused = true;
           void session?.pause();
+          recorder?.pause();
           setSceneFailed(true);
         });
     };
@@ -392,8 +432,11 @@ export function useGame(options: GameOptions) {
       if (isRehearsalEar(ear)) ear.follow(null);
       track?.destroy();
       session?.destroy();
+      // Saiu antes do fim (abandonou): a gravação vai fora; já fechada no fim, nada muda
+      recorder?.discard();
       shared.session = null;
       shared.surface = null;
+      shared.recorder = null;
     };
   }, [ear, song, a4, noFail, performance, follow]);
 
@@ -402,6 +445,7 @@ export function useGame(options: GameOptions) {
     if (!session || live.current.paused) return;
     live.current.paused = true;
     void session.pause();
+    live.current.recorder?.pause();
     setPhase((p) => (p === 'playing' ? 'paused' : p));
   }, []);
 
@@ -434,6 +478,7 @@ export function useGame(options: GameOptions) {
     }
     setCounting(null);
     await session.resume();
+    live.current.recorder?.resume();
     live.current.paused = false;
     follow();
     setPhase('playing');
