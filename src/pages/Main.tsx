@@ -157,7 +157,7 @@ export const Main: React.FC = () => {
       </Menu>
       <Controls>
         <StreakPill />
-        <SessionStatus />
+        <SessionStatus accountLink />
         <CornerLinks />
       </Controls>
     </Page>
