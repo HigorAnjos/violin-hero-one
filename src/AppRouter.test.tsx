@@ -39,6 +39,12 @@ const renderApp = (path = '/') => {
 };
 
 describe('AppRouter', () => {
+  it('o endereço antigo do Lembrete redireciona para a seção de Configurações', async () => {
+    renderApp('/lembrete');
+    expect(await screen.findByRole('heading', { name: 'Lembrete de prática' })).toBeInTheDocument();
+    expect(window.location.pathname + window.location.search).toBe('/configuracoes?secao=lembrete');
+    expect(screen.getByRole('navigation', { name: 'Seções de configuração' })).toBeInTheDocument();
+  });
   afterEach(() => {
     window.localStorage.clear();
     server.level = null;

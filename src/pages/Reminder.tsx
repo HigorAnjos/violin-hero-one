@@ -1,7 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { Button } from '../components/Button/Button';
 import { Kicker } from '../components/Screen/Screen';
 import { Toggle } from '../components/Toggle/Toggle';
 import {
@@ -18,27 +16,25 @@ import {
   type Weekday,
 } from '../services/reminder';
 import { REMINDER_CHANGED } from '../shell/useReminderTimer';
-import { settingsUrl } from './Settings';
 
-const Page = styled.main`
-  height: 100vh;
-  height: 100dvh;
+const Page = styled.section`
+  grid-column: 1 / -1;
+  min-width: 0;
+  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 26rem);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
-  gap: 3rem;
-  padding: 2rem 4rem;
-  overflow: hidden;
+  gap: 1rem;
 
   @media (max-height: 500px) {
     gap: 1rem;
-    padding: 0.75rem max(1rem, env(safe-area-inset-right)) 0.75rem max(1rem, env(safe-area-inset-left));
-    grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
+    grid-template-columns: minmax(0, 0.5fr) minmax(0, 1fr);
   }
 `;
 
 /** A tela de bloqueio do celular, em miniatura: a hora e a notificação como ela vai chegar. */
 const Preview = styled.figure`
+  min-width: 0;
   justify-self: center;
   width: min(100%, 24rem);
   display: flex;
@@ -119,6 +115,7 @@ const Notice = styled.div`
 `;
 
 const Card = styled.section`
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -153,7 +150,7 @@ const Card = styled.section`
   }
 `;
 
-const Row = styled.label`
+const Row = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -162,7 +159,8 @@ const Row = styled.label`
   font-size: 0.875rem;
   color: ${({ theme }) => theme.colors.text};
 
-  input {
+  select {
+    min-width: 2.75rem;
     min-height: 2.75rem;
     padding: 0 0.625rem;
     border: 1px solid ${({ theme }) => theme.colors.surfaceBorder};
@@ -172,7 +170,7 @@ const Row = styled.label`
     font-variant-numeric: tabular-nums;
   }
 
-  input:disabled {
+  select:disabled {
     color: ${({ theme }) => theme.colors.textMuted};
   }
 `;
@@ -272,12 +270,20 @@ export const Reminder: React.FC = () => {
       </Preview>
 
       <Card aria-labelledby="lembrete-titulo">
-        <Kicker>Configurações</Kicker>
+        <Kicker>Notificação</Kicker>
         <h1 id="lembrete-titulo">Lembrete de prática</h1>
         <Toggle label="Lembrar de praticar" hint={reminder.enabled ? `${daysLabel(reminder.days)} às ${reminder.time}` : 'Desligado'} checked={reminder.enabled} onChange={(on) => void toggle(on)} />
         <Row>
           Horário
-          <input type="time" value={reminder.time} required disabled={!reminder.enabled} onChange={(e) => e.target.value && update({ ...reminder, time: e.target.value })} />
+          <span>
+            <select aria-label="Hora" value={reminder.time.slice(0, 2)} disabled={!reminder.enabled} onChange={(e) => update({ ...reminder, time: `${e.target.value}:${reminder.time.slice(3)}` })}>
+              {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((hour) => <option key={hour}>{hour}</option>)}
+            </select>
+            <span aria-hidden="true"> : </span>
+            <select aria-label="Minuto" value={reminder.time.slice(3)} disabled={!reminder.enabled} onChange={(e) => update({ ...reminder, time: `${reminder.time.slice(0, 2)}:${e.target.value}` })}>
+              {Array.from(new Set([...Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0')), reminder.time.slice(3)])).sort().map((minute) => <option key={minute}>{minute}</option>)}
+            </select>
+          </span>
         </Row>
         <Days role="group" aria-label="Dias da semana">
           {WEEK.map((w) => (
@@ -294,10 +300,6 @@ export const Reminder: React.FC = () => {
           <Note>{SUPPORT_NOTE[support]}</Note>
         )}
         {reminder.enabled && !reminder.days.length && <Note $tone="warning">Escolha pelo menos um dia.</Note>}
-        <Button as={Link} to={settingsUrl()} $variant="ghost">
-          <span aria-hidden="true">◂</span>
-          Voltar
-        </Button>
       </Card>
     </Page>
   );

@@ -1,10 +1,11 @@
 import React from 'react';
+import { BackLink, NavigationScreen as Screen } from '../components/BackLink/BackLink';
 import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
 import { OfflineBanner } from '../components/OfflineBanner/OfflineBanner';
 import { useRadioGroup } from '../components/RadioGroup/useRadioGroup';
-import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
+import { clampLines, Kicker, ScreenTitle } from '../components/Screen/Screen';
 import { matchesSearch, SearchField } from '../components/SearchField/SearchField';
 import { SongCover } from '../components/SongCover/SongCover';
 import { offlineTag, songMeta } from '../components/SongCover/songFacts';
@@ -28,7 +29,7 @@ export function startingLevel(levels: readonly Level[], preferred: Level): Level
 
 const Header = styled.header`
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.lg};
 `;
@@ -287,9 +288,7 @@ export const SongSelect: React.FC = () => {
         </Intro>
         <Tools>
           <Search label="Buscar música" value={query} onChange={setQuery} />
-          <Button as={Link} to={modesUrl(menuMode(mode), selected?.id)} $variant="ghost">
-            <span aria-hidden="true">◂</span>Voltar
-          </Button>
+          <BackLink to={modesUrl(menuMode(mode), selected?.id)} label="Modos" />
         </Tools>
       </Header>
 

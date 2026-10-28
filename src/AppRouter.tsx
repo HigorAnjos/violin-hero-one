@@ -19,9 +19,8 @@ import { Badges } from './pages/Badges';
 import { Profile } from './pages/Profile';
 import { Ranking } from './pages/Ranking';
 import { Challenge, ChallengeInvite } from './pages/Challenge';
-import { Reminder } from './pages/Reminder';
 import { ScoreEditor } from './pages/ScoreEditor';
-import { Settings } from './pages/Settings';
+import { Settings, settingsUrl } from './pages/Settings';
 import { isOnboarded } from './services/profile';
 import type { AppUpdate } from './shell/appUpdate';
 import { useAccountWatch } from './shell/accountSwitch';
@@ -94,7 +93,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.settings} element={<Settings />} />
             <Route path={ROUTES.profile} element={<Profile />} />
             <Route path={ROUTES.badges} element={<Badges />} />
-            <Route path={ROUTES.reminder} element={<Reminder />} />
+            <Route path={ROUTES.reminder} element={<Navigate to={settingsUrl('lembrete')} replace />} />
             <Route path={ROUTES.login} element={<Login />} />
             <Route path={ROUTES.account} element={<GuestPrompt />} />
             <Route path={ROUTES.ranking} element={<Ranking />} />

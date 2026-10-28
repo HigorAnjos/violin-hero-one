@@ -23,7 +23,8 @@ describe('Reminder', () => {
     renderScreen(<Reminder />);
     expect(screen.getByRole('heading', { name: 'Lembrete de prática' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: /Lembrar de praticar/ })).not.toBeChecked();
-    expect(screen.getByLabelText('Horário')).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Hora' })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Minuto' })).toBeDisabled();
     expect(screen.getByRole('note', { name: 'Notificação do Violin Hero' })).toHaveTextContent('Hora do violino');
     expect(Fake.requestPermission).not.toHaveBeenCalled();
   });
@@ -58,11 +59,14 @@ describe('Reminder', () => {
     await userEvent.click(days.getByRole('button', { name: 'segunda' }));
     expect(days.getByRole('button', { name: 'domingo' })).toHaveAttribute('aria-pressed', 'true');
     expect(loadReminder().days).toEqual([0, 2, 3, 4, 5]);
-    fireEvent.change(screen.getByLabelText('Horário'), { target: { value: '07:15' } });
+    fireEvent.change(screen.getByLabelText('Hora'), { target: { value: '07' } });
+    fireEvent.change(screen.getByLabelText('Minuto'), { target: { value: '15' } });
     expect(loadReminder().time).toBe('07:15');
-    // Campo apagado não grava hora vazia
-    fireEvent.change(screen.getByLabelText('Horário'), { target: { value: '' } });
-    expect(loadReminder().time).toBe('07:15');
+    expect(within(screen.getByLabelText('Hora')).getAllByRole('option').map((o) => o.textContent)).toEqual(Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')));
+    expect(within(screen.getByLabelText('Minuto')).getAllByRole('option')).toHaveLength(12);
+    fireEvent.change(screen.getByLabelText('Hora'), { target: { value: '23' } });
+    expect(loadReminder().time).toBe('23:15');
+    expect(screen.getByLabelText('Como o lembrete aparece no celular')).toHaveTextContent('23:15');
   });
 
   it('desligar não pede nada', async () => {

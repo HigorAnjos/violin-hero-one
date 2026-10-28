@@ -1,4 +1,5 @@
 import React from 'react';
+import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { ANIMAL_LOOK } from '../components/AvatarPicker/AvatarPicker';
@@ -25,18 +26,17 @@ const Page = styled.main`
   display: flex;
   flex-direction: column;
   gap: 1.125rem;
-  padding: 1.75rem 3rem;
   overflow: hidden;
 
   @media (max-height: 500px) {
     gap: 0.5rem;
-    padding: 0.625rem max(1rem, env(safe-area-inset-right)) 0.625rem max(1rem, env(safe-area-inset-left));
   }
+  ${navigationPageInsets}
 `;
 
 const Header = styled.header`
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 1.25rem;
 
   > nav {
@@ -519,16 +519,13 @@ export const Profile: React.FC = () => {
           </Bar>
         </Who>
         <nav aria-label="Perfil">
-          <Button as={Link} to={ROUTES.home} $variant="ghost">
-            <span aria-hidden="true">◂</span>
-            Menu
-          </Button>
           <Button as={Link} to={ROUTES.ranking} $variant="ghost">
             Ranking
           </Button>
           <Button as={Link} to={settingsUrl()} $variant="ghost">
             Configurações
           </Button>
+          <BackLink />
         </nav>
       </Header>
 

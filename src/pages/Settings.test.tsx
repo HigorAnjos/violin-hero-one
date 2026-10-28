@@ -38,7 +38,9 @@ describe('Settings', () => {
     expect(screen.getByRole('heading', { name: 'Configurações' })).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Seções de configuração' });
     expect(within(nav).getByRole('link', { name: 'Áudio e latência' })).toHaveAttribute('aria-current', 'page');
-    for (const name of ['Jogo', 'Visual', 'Acessibilidade', 'Lembrete de prática', 'Perfil']) expect(within(nav).getByRole('link', { name })).toBeInTheDocument();
+    for (const name of ['Jogo', 'Visual', 'Acessibilidade', 'Lembrete de prática']) expect(within(nav).getByRole('link', { name })).toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: 'Perfil' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Menu' })).toHaveAttribute('href', '/');
     expect(screen.getByRole('region', { name: 'Latência' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Afinação' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Som' })).toBeInTheDocument();
@@ -88,9 +90,19 @@ describe('Settings', () => {
 
   it('Jogo: linha de afinação e nome das notas', async () => {
     renderSettings(`${ROUTES.settings}?secao=jogo`);
+    expect(screen.getByRole('region', { name: 'Na pista' })).toHaveAttribute('data-wide');
     await userEvent.click(screen.getByRole('switch', { name: /Mostrar linha de afinação/ }));
     await userEvent.click(screen.getByRole('switch', { name: /Mostrar nome das notas/ }));
     expect(loadPlayPrefs()).toMatchObject({ tuningLine: false, noteNames: true });
+  });
+
+  it('Lembrete abre no painel mantendo a navegação e a prévia', async () => {
+    renderSettings();
+    await userEvent.click(screen.getByRole('link', { name: 'Lembrete de prática' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/configuracoes?secao=lembrete');
+    expect(screen.getByRole('link', { name: 'Lembrete de prática' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('heading', { name: 'Lembrete de prática' })).toBeInTheDocument();
+    expect(screen.getByRole('note', { name: 'Notificação do Violin Hero' })).toBeInTheDocument();
   });
 
   it('Acessibilidade: padrões para daltonismo', async () => {
