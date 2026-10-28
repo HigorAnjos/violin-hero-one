@@ -520,13 +520,13 @@ export const Profile: React.FC = () => {
           </Bar>
         </Who>
         <nav aria-label="Perfil">
-          <BackLink />
           <Button as={Link} to={ROUTES.ranking} $variant="ghost">
             Ranking
           </Button>
           <Button as={Link} to={settingsUrl()} $variant="ghost">
             Configurações
           </Button>
+          <BackLink />
         </nav>
       </Header>
 

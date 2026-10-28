@@ -278,10 +278,10 @@ export const Badges: React.FC = () => {
           </Progress>
         </div>
         <nav aria-label="Selos">
-          <BackLink to={ROUTES.profile} label="Perfil" />
           <Button as={Link} to={modesUrl()}>
             Tocar
           </Button>
+          <BackLink to={ROUTES.profile} label="Perfil" />
         </nav>
       </Header>
       <Lead>Todo selo é ganho tocando: aparece no fim da partida em que você conseguiu. Prática não vale selo.</Lead>

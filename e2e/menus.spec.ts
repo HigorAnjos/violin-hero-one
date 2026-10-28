@@ -30,10 +30,12 @@ test('os retornos nomeiam e abrem o Menu ou a tela mãe', async ({ page }) => {
     const back = page.getByRole('link', { name: 'Menu', exact: true });
     await expect(back).toHaveText('◂Menu');
     await expect(back).toHaveAttribute('href', '/');
+    if (path === '/perfil') await expect(page.getByRole('navigation', { name: 'Perfil' }).getByRole('link').last()).toHaveAttribute('data-back', '');
     await back.click();
     await expect(page).toHaveURL(/\/$/);
   }
   await page.goto('/selos');
+  await expect(page.getByRole('navigation', { name: 'Selos' }).getByRole('link').last()).toHaveAttribute('data-back', '');
   await page.getByRole('link', { name: 'Perfil', exact: true }).click();
   await expect(page).toHaveURL(/\/perfil$/);
   await page.goto('/tocar/musica?modo=partitura');
