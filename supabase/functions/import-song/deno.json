@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.118.0",
+    "@tonejs/midi": "npm:@tonejs/midi@2.0.28"
+  },
+  "lock": false
+}

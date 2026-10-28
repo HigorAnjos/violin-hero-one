@@ -4,6 +4,8 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BADGES_STORAGE_KEY } from '../services/badges';
 import type { DeviceData } from '../services/deviceData';
+import { DRAFT_STORAGE_KEY, loadDraft, saveDraft } from '../services/editorDraft';
+import { createEditor, insertNote } from '../game/notation/editor';
 import { isOnboarded, loadLocalProfile, ONBOARDED_STORAGE_KEY, PROFILE_STORAGE_KEY } from '../services/profile';
 import type { SessionState } from '../services/session';
 import { ODE } from '../game/engine/testing';
@@ -82,6 +84,21 @@ describe('adoptUser', () => {
     expect(client.rpc).not.toHaveBeenCalled();
     // Já passou pelo onboarding neste aparelho: o convidado novo cai na tela inicial
     expect(isOnboarded()).toBe(true);
+  });
+
+  it('troca de A para B: o rascunho do editor de A sai do aparelho', async () => {
+    deviceOf('anon-1');
+    saveDraft(insertNote(createEditor({ title: 'Segredo' }), 62).doc, 'anon-1');
+    await adoptUser(profileRpc(), session('conta-1'), fakeDevice().data);
+    expect(loadDraft('anon-1')).toBeNull();
+    expect(Object.keys(localStorage).filter((k) => k.startsWith(DRAFT_STORAGE_KEY))).toEqual([]);
+  });
+
+  it('primeira sessão: o rascunho escrito antes dela passa a ser do primeiro dono', async () => {
+    saveDraft(insertNote(createEditor({ title: 'Antes do login' }), 62).doc, null);
+    await adoptUser(profileRpc(), session('u1', true), fakeDevice().data);
+    expect(loadDraft('u1')?.doc.meta.title).toBe('Antes do login');
+    expect(loadDraft(null)).toBeNull();
   });
 
   it('forget falhou (IndexedDB): o aparelho segue do anterior, com o que é dele, e a próxima sessão tenta de novo', async () => {

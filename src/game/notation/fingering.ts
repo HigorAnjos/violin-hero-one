@@ -1,7 +1,7 @@
 // Corda e dedo sugeridos: caminho de menor custo (Viterbi) sobre todas as posições possíveis de cada nota.
 // O custo soma o deslocamento da mão entre posições, a troca de corda e a preferência do nível.
-import type { Finger } from './song';
-import { OPEN_STRING_MIDI, type StringIndex } from './violin';
+import type { Finger } from './song.ts';
+import { OPEN_STRING_MIDI, type StringIndex } from './violin.ts';
 
 export type Position = 1 | 2 | 3;
 
@@ -30,6 +30,11 @@ export interface FingeringRules {
   /** Custo por corda atravessada entre notas. */
   crossCost: number;
 }
+
+/** Fácil: só a 1ª posição; corda solta vale mais que ir e voltar de corda (2 travessias) para fugir do 4º dedo. */
+export const FIRST_POSITION_RULES: FingeringRules = { maxPosition: 1, openCost: -3, positionCost: 0, shiftCost: 0, crossCost: 1 };
+/** Médio: até a 3ª, subindo só quando compensa. */
+export const UP_TO_THIRD_RULES: FingeringRules = { maxPosition: 3, openCost: -1, positionCost: 2, shiftCost: 3, crossCost: 1 };
 
 const STRINGS: readonly StringIndex[] = [0, 1, 2, 3];
 

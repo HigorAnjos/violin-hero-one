@@ -20,6 +20,12 @@ describe('rotas', () => {
     }
   });
 
+  it('no editor, só a aba Ditar tocando ouve o violino', () => {
+    expect(needsMicrophone(ROUTES.dictation)).toBe(true);
+    expect(needsMicrophone(`${ROUTES.dictation}/`)).toBe(true);
+    expect(needsMicrophone(ROUTES.editor)).toBe(false);
+  });
+
   it('ida e volta da tela de problema no microfone, com a causa', () => {
     const url = micTroubleUrl('no-sound', ROUTES.strings, 'in-use');
     expect(url).toBe('/microfone/problema?motivo=sem-som&depois=%2Fprimeira-vez%2Fcordas&causa=in-use');

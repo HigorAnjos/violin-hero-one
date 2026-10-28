@@ -8,6 +8,11 @@ export const ROUTES = {
   songs: '/tocar/musica',
   loading: '/tocar/carregando',
   library: '/biblioteca',
+  import: '/importar',
+  /** Escrever partitura (a música fica privada de quem escreveu). */
+  editor: '/editor',
+  /** A aba "Ditar tocando" do editor: a única do editor que abre o microfone. */
+  dictation: '/editor/ditar',
   level: '/primeira-vez/nivel',
   mic: '/primeira-vez/microfone',
   strings: '/primeira-vez/cordas',
@@ -67,6 +72,7 @@ export const MIC_ROUTES: ReadonlySet<string> = new Set([
   ROUTES.gameOver,
   ROUTES.badge,
   ROUTES.results,
+  ROUTES.dictation,
 ]);
 
 export function needsMicrophone(pathname: string): boolean {

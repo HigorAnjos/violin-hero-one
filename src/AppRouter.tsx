@@ -7,6 +7,7 @@ import { Main } from './pages/Main';
 import { ModeSelect } from './pages/ModeSelect';
 import { GuestPrompt } from './pages/GuestPrompt';
 import { Library } from './pages/Library';
+import { ImportSong } from './pages/ImportSong';
 import { Loading } from './pages/Loading';
 import { Login } from './pages/Login';
 import { SongSelect } from './pages/SongSelect';
@@ -18,6 +19,7 @@ import { Badges } from './pages/Badges';
 import { Profile } from './pages/Profile';
 import { Ranking } from './pages/Ranking';
 import { Challenge, ChallengeInvite } from './pages/Challenge';
+import { ScoreEditor } from './pages/ScoreEditor';
 import { Settings, settingsUrl } from './pages/Settings';
 import { isOnboarded } from './services/profile';
 import type { AppUpdate } from './shell/appUpdate';
@@ -72,6 +74,9 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.songs} element={<SongSelect />} />
             <Route path={ROUTES.loading} element={<Loading />} />
             <Route path={ROUTES.library} element={<Library />} />
+            <Route path={ROUTES.import} element={<ImportSong />} />
+            {/* Uma rota só para as abas (/editor e /editor/ditar): trocar de aba não remonta o editor */}
+            <Route path={`${ROUTES.editor}/*`} element={<ScoreEditor />} />
             <Route path={ROUTES.level} element={<OnboardLevel />} />
             <Route path={ROUTES.mic} element={<OnboardMic />} />
             <Route path={ROUTES.strings} element={<OnboardTest />} />

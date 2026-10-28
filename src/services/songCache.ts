@@ -36,6 +36,7 @@ export interface SavedSong {
 }
 
 export interface SongCache {
+  forget(id: string): Promise<void>;
   /** Guarda a música que veio do servidor; com o mesmo hash, só marca que foi aberta. */
   remember(loaded: LoadedSong, level: Level): Promise<'saved' | 'unchanged'>;
   /** A guardada, ou nada se não há ou se ficou num formato que o app não lê mais. */
@@ -59,6 +60,10 @@ export function createSongCache(
   }
 
   return {
+    async forget(id) {
+      const userId = user();
+      await Promise.all(LEVELS.map(level => store.delete(userId, id, level)));
+    },
     async remember({ sheet, song, hash }, level) {
       const at = now();
       const userId = user();

@@ -267,15 +267,24 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       assert.equal((await getSong(c, dono, id)).rows.length, 1);
     });
 
-    it('dono anônimo importa: cria a ficha (privada, dele) e o original', async () => {
+    it('dono NÃO grava música direto (nem ficha, nem original, nem renomeia): só a Edge Function, por import_song', async () => {
       const dono = await newUser(c);
-      const { rows } = await as(c, dono,
-        `insert into ${S}.songs (title, bpm, time_beats, time_unit, duration_seconds, origin)
-         values ('Minha', 90, 3, 4, 12, 'imported') returning id, owner_id, visibility`);
-      assert.deepEqual(rows.map((r) => [r.owner_id, r.visibility]), [[dono, 'private']]);
-      await as(c, dono, `insert into ${S}.song_sources (song_id, format, file_name, content) values ($1, 'musicxml', 'm.musicxml', '<x/>')`, [rows[0].id]);
-      const upd = await as(c, dono, `update ${S}.songs set title = 'Minha 2' where id = $1`, [rows[0].id]);
-      assert.equal(upd.rowCount, 1);
+      await denied(as(c, dono,
+        `insert into ${S}.songs (title, bpm, time_beats, time_unit, duration_seconds, origin) values ('Minha', 90, 3, 4, 12, 'imported')`));
+      const id = await serverSong(c, { owner: dono });
+      await denied(as(c, dono, `update ${S}.songs set title = 'Minha 2' where id = $1`, [id]));
+      await denied(as(c, dono, `update ${S}.song_sources set content = '<x/>' where song_id = $1`, [id]));
+      await c.query(`delete from ${S}.song_sources where song_id = $1`, [id]);
+      await denied(as(c, dono, `insert into ${S}.song_sources (song_id, format, file_name, content) values ($1, 'musicxml', 'm.musicxml', '<x/>')`, [id]));
+    });
+
+    it('dono apaga a própria música: ficha, charts e original saem juntos', async () => {
+      const dono = await newUser(c);
+      const id = await serverSong(c, { owner: dono });
+      assert.equal((await as(c, dono, `delete from ${S}.songs where id = $1`, [id])).rowCount, 1);
+      const left = await c.query(
+        `select (select count(*) from ${S}.song_charts where song_id = $1)::int + (select count(*) from ${S}.song_sources where song_id = $1)::int as n`, [id]);
+      assert.equal(left.rows[0].n, 0);
     });
 
     for (const anonymous of [true, false]) {
@@ -294,9 +303,9 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         const dono = await newUser(c);
         const outro = await newUser(c, { anonymous });
         const id = await serverSong(c, { owner: dono });
-        assert.equal((await as(c, outro, `update ${S}.songs set title = 'invasor' where id = $1`, [id])).rowCount, 0);
+        await denied(as(c, outro, `update ${S}.songs set title = 'invasor' where id = $1`, [id]));
         assert.equal((await as(c, outro, `delete from ${S}.songs where id = $1`, [id])).rowCount, 0);
-        assert.equal((await as(c, outro, `update ${S}.song_sources set content = '<invasor/>' where song_id = $1`, [id])).rowCount, 0);
+        await denied(as(c, outro, `update ${S}.song_sources set content = '<invasor/>' where song_id = $1`, [id]));
         assert.equal((await as(c, outro, `delete from ${S}.song_sources where song_id = $1`, [id])).rowCount, 0);
         const { rows } = await c.query(`select s.title, o.content from ${S}.songs s join ${S}.song_sources o on o.song_id = s.id where s.id = $1`, [id]);
         assert.deepEqual(rows, [{ title: 'Teste', content: '<score-partwise/>' }]);
@@ -311,7 +320,7 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       await denied(as(c, a, `insert into ${S}.songs (title, bpm, time_beats, time_unit, duration_seconds, origin, visibility) values (${values}, 'public')`));
       const id = await serverSong(c, { owner: b, levels: [] });
       await c.query(`delete from ${S}.song_sources where song_id = $1`, [id]);
-      await rlsDenied(as(c, a, `insert into ${S}.song_sources (song_id, format, file_name, content) values ($1, 'musicxml', 'a', '<x/>')`, [id]));
+      await denied(as(c, a, `insert into ${S}.song_sources (song_id, format, file_name, content) values ($1, 'musicxml', 'a', '<x/>')`, [id]));
     });
 
     it('dono NÃO torna a importada pública nem a passa para outro', async () => {
@@ -325,11 +334,11 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
     it('ninguém do app escreve no catálogo nem lê o original dele', async () => {
       const u = await newUser(c, { anonymous: false });
       const id = await serverSong(c);
-      await rlsDenied(as(c, u, `insert into ${S}.songs (title, bpm, time_beats, time_unit, duration_seconds, origin) values ('X', 60, 4, 4, 4, 'catalog')`));
-      assert.equal((await as(c, u, `update ${S}.songs set title = 'invasor' where id = $1`, [id])).rowCount, 0);
+      await denied(as(c, u, `insert into ${S}.songs (title, bpm, time_beats, time_unit, duration_seconds, origin) values ('X', 60, 4, 4, 4, 'catalog')`));
+      await denied(as(c, u, `update ${S}.songs set title = 'invasor' where id = $1`, [id]));
       assert.equal((await as(c, u, `delete from ${S}.songs where id = $1`, [id])).rowCount, 0);
       assert.deepEqual((await as(c, u, `select song_id from ${S}.song_sources where song_id = $1`, [id])).rows, []);
-      assert.equal((await as(c, u, `update ${S}.song_sources set content = '<x/>' where song_id = $1`, [id])).rowCount, 0);
+      await denied(as(c, u, `update ${S}.song_sources set content = '<x/>' where song_id = $1`, [id]));
       assert.equal((await c.query(`select title from ${S}.songs where id = $1`, [id])).rows[0].title, 'Teste');
     });
 
@@ -815,12 +824,13 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       assert.deepEqual((await rowsOf(u.id, id, { level: 'hard' })).map((r) => r[2]), [150]);
     });
 
-    it('importada alheia, música ou nível inexistente dão o mesmo "não encontrada"; período inválido é recusado', async () => {
+    it('importada (alheia ou a própria), música ou nível inexistente dão o mesmo "não encontrada"; período inválido é recusado', async () => {
       const dono = await account();
       const u = await account('cat');
       const own = await serverSong(c, { owner: dono.id });
       await submit(c, dono.id, playOf(own));
-      assert.equal((await rowsOf(dono.id, own)).length, 1);
+      // música do jogador é privada e fica fora do ranking, até para o dono (0009)
+      await notFound(ranking(dono.id, own));
       await notFound(ranking(u.id, own));
       await notFound(ranking(u.id, 'nao-existe'));
       await notFound(ranking(u.id, await serverSong(c), { level: 'hard' }));
@@ -1150,6 +1160,141 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       const b = await newUser(c, { anonymous: false });
       await denied(as(c, a, `update ${S}.profiles set is_anonymous = false where id = $1`, [a]));
       await denied(as(c, a, `select email from auth.users where id = $1`, [b]));
+    });
+  });
+
+  describe('import_song (Edge Function import-song)', () => {
+    /** Chama import_song como a Edge Function: papel service_role, dono vindo do JWT já conferido. */
+    async function importSong(owner, { id = randomUUID(), origin = 'imported', levels = ['easy', 'medium', 'hard'], replace = false,
+      source = { format: 'musicxml', file_name: 'peca.musicxml', content: '<score-partwise/>' }, charts = null, title = 'Minha peça' } = {}) {
+      const sheet = { title, composer: 'Eu', bpm: 60, time_beats: 4, time_unit: 4, key: 'D major', duration_seconds: 4 };
+      const chartMap = charts ?? Object.fromEntries(levels.map((l) => [l, chartOf(id, l)]));
+      await c.query('savepoint srv');
+      try {
+        await c.query('set local role service_role');
+        const { rows } = await c.query(`select ${S}.import_song($1, $2, $3, $4, $5, $6, $7) as r`,
+          [owner, id, origin, sheet, JSON.stringify(chartMap), source, replace]);
+        await c.query('release savepoint srv');
+        return rows[0].r;
+      } catch (e) {
+        await c.query('rollback to savepoint srv');
+        throw e;
+      } finally {
+        await c.query('reset role');
+      }
+    }
+
+    it('grava ficha privada do dono, os 3 charts com hash e o original; o dono lê por get_song', async () => {
+      const dono = await newUser(c);
+      const r = await importSong(dono, { source: { format: 'mxl', file_name: 'a.mxl', content: 'UEsDBA==' } });
+      assert.deepEqual(r.levels, ['easy', 'medium', 'hard']);
+      assert.equal(r.origin, 'imported');
+      const { rows } = await c.query(`select owner_id, visibility, catalog_position from ${S}.songs where id = $1`, [r.id]);
+      assert.deepEqual(rows, [{ owner_id: dono, visibility: 'private', catalog_position: null }]);
+      const song = await getSong(c, dono, r.id, 'hard');
+      assert.match(song.rows[0].hash, /^[0-9a-f]{64}$/);
+      assert.equal(r.hashes.hard, song.rows[0].hash);
+      assert.deepEqual(Object.keys(r.hashes).sort(), ['easy', 'hard', 'medium']);
+      assert.deepEqual((await as(c, dono, `select format from ${S}.song_sources where song_id = $1`, [r.id])).rows, [{ format: 'mxl' }]);
+    });
+
+    for (const anonymous of [true, false]) {
+      it(`outro jogador (${anonymous ? 'anônimo' : 'com conta'}) NÃO lê a importada: nem ficha, charts, original, get_song nem a lista`, async () => {
+        const dono = await newUser(c);
+        const outro = await newUser(c, { anonymous });
+        const { id } = await importSong(dono, { origin: anonymous ? 'imported' : 'editor', source: { format: 'song', file_name: 'editor.json', content: '{}' } });
+        assert.deepEqual((await as(c, outro, `select id from ${S}.songs where id = $1 or owner_id = $2`, [id, dono])).rows, []);
+        assert.deepEqual((await as(c, outro, `select level from ${S}.song_charts where song_id = $1`, [id])).rows, []);
+        assert.deepEqual((await as(c, outro, `select content from ${S}.song_sources where song_id = $1`, [id])).rows, []);
+        for (const level of ['easy', 'medium', 'hard']) assert.deepEqual((await getSong(c, outro, id, level)).rows, []);
+      });
+    }
+
+    it('o app NÃO chama import_song, nem com o próprio id de dono', async () => {
+      const dono = await newUser(c);
+      const id = randomUUID();
+      await denied(as(c, dono, `select ${S}.import_song($1, $2, 'imported', '{}', $3, '{}')`, [dono, id, JSON.stringify({ easy: chartOf(id) })]));
+      await denied(as(c, null, `select ${S}.import_song($1, $2, 'imported', '{}', '{}', '{}')`, [dono, id]));
+    });
+
+    it('limite de 50 músicas do jogador (importadas e do editor); apagar libera a vaga; outro jogador tem as suas', async () => {
+      const dono = await newUser(c);
+      const ids = [];
+      for (let i = 0; i < 50; i++) ids.push((await importSong(dono, { levels: ['hard'], origin: i % 2 ? 'editor' : 'imported' })).id);
+      await assert.rejects(importSong(dono, { levels: ['hard'] }), (e) => e.code === 'VHLIM');
+      await importSong(await newUser(c), { levels: ['hard'] });
+      await as(c, dono, `delete from ${S}.songs where id = $1`, [ids[0]]);
+      await importSong(dono, { levels: ['hard'] });
+      await assert.rejects(importSong(dono, { levels: ['hard'] }), (e) => e.code === 'VHLIM');
+    });
+
+    it('apagar música mantém selos e sequência, remove partidas e recorde, sem afetar outro jogador nem catálogo', async () => {
+      const dono = await newUser(c);
+      const outro = await newUser(c);
+      const { id } = await importSong(dono, { levels: ['easy'] });
+      const ownPlay = await submit(c, dono, playOf(id));
+      assert.ok(ownPlay.badges.length > 0);
+      const catalog = await serverSong(c);
+      await submit(c, outro, playOf(catalog));
+      const snapshot = async (user) => ({
+        badges: (await as(c, user, `select badge_id, earned_at from ${S}.badges_earned order by badge_id`)).rows,
+        days: (await as(c, user, `select * from ${S}.play_days order by day`)).rows,
+        streaks: (await as(c, user, `select * from ${S}.streaks`)).rows,
+        plays: (await as(c, user, `select id from ${S}.plays order by id`)).rows,
+        records: (await as(c, user, `select * from ${S}.records order by song_id, level`)).rows,
+      });
+      const before = await snapshot(dono);
+      const otherBefore = await snapshot(outro);
+      assert.equal((await as(c, outro, `delete from ${S}.songs where id = $1 returning id`, [id])).rows.length, 0);
+      assert.equal((await as(c, dono, `delete from ${S}.songs where id = $1 returning id`, [catalog])).rows.length, 0);
+      assert.equal((await as(c, dono, `delete from ${S}.songs where id = $1 returning id`, [id])).rows.length, 1);
+      const after = await snapshot(dono);
+      assert.deepEqual(after.badges, before.badges);
+      assert.deepEqual(after.days, before.days);
+      assert.deepEqual(after.streaks, before.streaks);
+      assert.deepEqual(after.plays, []);
+      assert.deepEqual(after.records, []);
+      assert.deepEqual((await as(c, dono, `select play_id from ${S}.badges_earned`)).rows.map(r => r.play_id), ownPlay.badges.map(() => null));
+      assert.deepEqual(await snapshot(outro), otherBefore);
+      assert.deepEqual((await as(c, outro, `select badge_id from ${S}.badges_earned where user_id = $1`, [dono])).rows, []);
+      assert.equal((await c.query(`select count(*)::int as n from ${S}.songs where id = $1`, [catalog])).rows[0].n, 1);
+    });
+
+    it('regravar do editor troca os charts sem gastar vaga; música alheia, importada ou inexistente não se regrava', async () => {
+      const dono = await newUser(c);
+      const editor = { origin: 'editor', source: { format: 'song', file_name: 'editor.json', content: '{}' } };
+      const { id } = await importSong(dono, { ...editor, levels: ['easy', 'hard'] });
+      const r = await importSong(dono, { ...editor, id, replace: true, levels: ['medium'], title: 'Nova' });
+      assert.deepEqual([r.id, r.title, r.levels], [id, 'Nova', ['medium']]);
+      assert.equal((await c.query(`select count(*)::int as n from ${S}.songs where owner_id = $1`, [dono])).rows[0].n, 1);
+      await notFound(importSong(await newUser(c), { ...editor, id, replace: true }));
+      const imported = await importSong(dono);
+      await notFound(importSong(dono, { ...editor, id: imported.id, replace: true }));
+      await notFound(importSong(dono, { ...editor, id: randomUUID(), replace: true }));
+    });
+
+    it('entrada forjada é recusada: catálogo, sem chart, chart de outra música ou nível, formato de original desconhecido', async () => {
+      const dono = await newUser(c);
+      await invalid(importSong(dono, { origin: 'catalog' }));
+      await invalid(importSong(dono, { charts: {} }));
+      await invalid(importSong(randomUUID()));
+      await assert.rejects(importSong(dono, { charts: { easy: chartOf('outra') } }), /song_charts_matches_row/);
+      const id = randomUUID();
+      await assert.rejects(importSong(dono, { id, charts: { hard: chartOf(id, 'easy') } }), /song_charts_matches_row/);
+      await assert.rejects(importSong(dono, { source: { format: 'pdf', file_name: 'a.pdf', content: 'x' } }), /source_format/);
+      assert.equal((await c.query(`select count(*)::int as n from ${S}.songs where owner_id = $1`, [dono])).rows[0].n, 0);
+    });
+
+    it('importada NÃO entra no ranking (nem para o dono) nem vira desafio, mas a partida conta para o recorde dele', async () => {
+      const dono = await newUser(c, { anonymous: false });
+      const id = randomUUID();
+      await importSong(dono, { id, levels: ['easy'] });
+      const play = await submit(c, dono, playOf(id));
+      assert.equal(play.record.improved, true);
+      for (const period of ['week', 'all']) {
+        await notFound(as(c, dono, `select * from ${S}.get_ranking($1, 'easy', $2)`, [id, period]));
+      }
+      await notFound(as(c, dono, `select ${S}.create_challenge($1, 3)`, [play.play_id]));
     });
   });
 
