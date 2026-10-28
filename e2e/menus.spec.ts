@@ -24,6 +24,41 @@ test.beforeEach(async ({ page }) => {
   await skipOnboarding(page);
 });
 
+test('os retornos nomeiam e abrem o Menu ou a tela mãe', async ({ page }) => {
+  for (const path of ['/biblioteca', '/ranking', '/perfil', '/configuracoes', '/tocar']) {
+    await page.goto(path);
+    const back = page.getByRole('link', { name: 'Menu', exact: true });
+    await expect(back).toHaveText('◂Menu');
+    await expect(back).toHaveAttribute('href', '/');
+    if (path === '/perfil') await expect(page.getByRole('navigation', { name: 'Perfil' }).getByRole('link').last()).toHaveAttribute('data-back', '');
+    await back.click();
+    await expect(page).toHaveURL(/\/$/);
+  }
+  await page.goto('/selos');
+  await expect(page.getByRole('navigation', { name: 'Selos' }).getByRole('link').last()).toHaveAttribute('data-back', '');
+  await page.getByRole('link', { name: 'Perfil', exact: true }).click();
+  await expect(page).toHaveURL(/\/perfil$/);
+  await page.goto('/tocar/musica?modo=partitura');
+  await page.getByRole('link', { name: 'Modos', exact: true }).click();
+  await expect(page).toHaveURL(/\/tocar\?modo=partitura/);
+});
+
+for (const theme of ['caderno', 'palco', '8-bits']) {
+  test(`${theme}: retornos têm o mesmo topo e recuo da direita`, async ({ page }) => {
+    await page.addInitScript((id) => localStorage.setItem('vh:theme', id), theme);
+    const compact = page.viewportSize()!.height < 500;
+    for (const path of ['/configuracoes', '/configuracoes?secao=jogo', '/configuracoes?secao=lembrete', '/tocar', '/tocar/musica', '/biblioteca', '/perfil', '/selos', '/ranking', '/lembrete']) {
+      await page.goto(path);
+      const back = page.locator('[data-back]');
+      await expect(back).toBeVisible();
+      await fontsReady(page, theme);
+      const bounds = await back.boundingBox();
+      expect({ top: Math.round(bounds!.y), right: Math.round(page.viewportSize()!.width - bounds!.x - bounds!.width) }, path).toEqual(compact ? { top: 12, right: 16 } : { top: 32, right: 48 });
+      await expectFits(page);
+    }
+  });
+}
+
 for (const tema of ['caderno', 'palco', '8-bits'] as const) {
   for (const fonte of ['real', 'reserva'] as const) {
     test.describe(`${tema}, fonte ${fonte}`, () => {

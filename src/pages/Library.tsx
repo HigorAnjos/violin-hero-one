@@ -1,11 +1,12 @@
 import React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { BackLink, NavigationScreen as Screen } from '../components/BackLink/BackLink';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countIn';
 import { OfflineBanner } from '../components/OfflineBanner/OfflineBanner';
-import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
+import { clampLines, Kicker, ScreenTitle } from '../components/Screen/Screen';
 import { matchesSearch, SearchField } from '../components/SearchField/SearchField';
 import { SongCover } from '../components/SongCover/SongCover';
 import { offlineTag, songMeta } from '../components/SongCover/songFacts';
@@ -29,7 +30,7 @@ type SortKey = keyof typeof SORTS;
 
 const Header = styled.header`
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.lg};
 `;
@@ -311,9 +312,8 @@ export const Library: React.FC = () => {
           <Button as={Link} to={ROUTES.editor} $variant="ghost">
             <span aria-hidden="true">✎</span>Escrever música
           </Button>
-          <Button as={Link} to={ROUTES.home} $variant="ghost">
-            <span aria-hidden="true">◂</span>Menu
-          </Button>
+          {/* O retorno fica por último, na ponta direita do cabeçalho, como nas outras telas */}
+          <BackLink />
         </HeaderActions>
       </Header>
 

@@ -103,7 +103,7 @@ describe('SongSelect', () => {
   it('Voltar devolve à escolha de modo com o modo atual', async () => {
     renderSongs(`${ROUTES.songs}?modo=partitura`);
     expect(screen.getByText('Passo 2 de 3 · Modo Partitura')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('link', { name: /Voltar/ }));
+    await userEvent.click(screen.getByRole('link', { name: 'Modos' }));
     expect(screen.getByTestId('location')).toHaveTextContent('/tocar?modo=partitura');
   });
 

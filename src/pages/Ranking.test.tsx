@@ -9,6 +9,9 @@ import type { Ranking as RankingData, RankingQuery, RankingRow } from '../servic
 import { renderScreen } from '../shell/testing';
 import { Ranking } from './Ranking';
 
+// O cenário sem servidor não deve consultar o Supabase configurado no .env.local da worktree.
+vi.mock('../services/supabase', () => ({ supabase: null }));
+
 // Sem Supabase no teste os hooks só dariam "offline"; aqui eles devolvem o que cada cenário pede
 type Fake = { data?: RankingData; error?: Error };
 let fake: Fake | null = null;
@@ -82,6 +85,7 @@ describe('Ranking', () => {
   it('pódio 2º-1º-3º, a lista a partir do 4º e a linha do jogador destacada no lugar dela', () => {
     fake = account(TOP);
     renderScreen(<Ranking />, { path: '/ranking?musica=ode-a-alegria&nivel=medio' });
+    expect(screen.getByRole('link', { name: 'Menu' })).toHaveAttribute('href', '/');
     const podium = within(screen.getByRole('list', { name: 'Pódio' }));
     expect(podium.getAllByRole('listitem').map((li) => li.querySelector('b')?.textContent)).toEqual(['2º', '1º', '3º']);
     expect(podium.getByText('Gato 4821')).toBeInTheDocument();

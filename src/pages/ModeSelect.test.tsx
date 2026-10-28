@@ -12,6 +12,7 @@ const renderModes = (path: string = ROUTES.modes, theme = undefined as typeof pa
 describe('ModeSelect', () => {
   it('Cordas 3D marcado de início; Arcade e Partitura livres, nenhum "em breve"', () => {
     renderModes();
+    expect(screen.getByRole('link', { name: 'Menu' })).toHaveAttribute('href', '/');
     expect(screen.getByRole('heading', { level: 1, name: 'Escolha o modo' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Cordas 3D' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('radio', { name: 'Arcade' })).toHaveAttribute('aria-checked', 'false');
