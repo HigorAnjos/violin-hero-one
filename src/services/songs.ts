@@ -135,6 +135,14 @@ export async function listOwnSongs(client: SongsClient | null, session: SessionS
   });
 }
 
+/** A RLS restringe a exclusão ao dono; o filtro também protege o catálogo. */
+export async function deleteOwnSong(id: string, client: SongsClient | null = supabase): Promise<void> {
+  const db = requireSession(client, await ensureSession(client));
+  const { data, error } = await db.from('songs').delete().eq('id', id).neq('origin', 'catalog').select('id');
+  if (error) throw new Error('Não foi possível apagar agora. Tente de novo com internet.');
+  if (!data?.length) throw new Error('Esta música não está disponível para apagar.');
+}
+
 /** Ficha + chart de um nível por get_song, que aplica no servidor quem pode ler a música. */
 export async function getSong(client: SongsClient | null, session: SessionState, id: string, level: Level): Promise<LoadedSong> {
   const db = requireSession(client, session);

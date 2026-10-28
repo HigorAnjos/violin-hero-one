@@ -213,7 +213,7 @@ describe('loadSong com o cache do aparelho', () => {
   });
 
   it('cache quebrado (sem espaço, sem IndexedDB): toca do mesmo jeito', async () => {
-    const broken = { remember: vi.fn().mockRejectedValue(new Error('quota')), find: vi.fn().mockRejectedValue(new Error('x')), list: vi.fn() };
+    const broken = { forget: vi.fn(), remember: vi.fn().mockRejectedValue(new Error('quota')), find: vi.fn().mockRejectedValue(new Error('x')), list: vi.fn() };
     const loaded = await loadSong(fakeClient({ rpc: { data: [ROW], error: null } }).client, signedIn, 'escala-re-maior', 'easy', broken);
     expect(loaded).toMatchObject({ saved: null, sheet: SHEET });
     await expect(loadSong(null, signedIn, 'escala-re-maior', 'easy', broken)).rejects.toMatchObject({ kind: 'offline' });

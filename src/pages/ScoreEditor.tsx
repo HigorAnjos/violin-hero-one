@@ -483,6 +483,7 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
       const result = await saveAndKeep(importer, chart, songCache);
       clearDraft();
       void queryClient.invalidateQueries({ queryKey: songKeys.saved });
+      void queryClient.invalidateQueries({ queryKey: songKeys.mine });
       setSaving({ status: 'saved', id: result.song.id, doc });
     } catch (e) {
       setSaving({ status: 'error', message: e instanceof Error ? e.message : 'Não foi possível salvar agora.' });
@@ -556,6 +557,7 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
                 <span aria-hidden="true">✎</span>Na pauta
               </Tab>
             </Tabs>
+            <Button as={Link} to={tabUrl(ROUTES.import)} $variant="ghost">ABC / Importar</Button>
             <NotePalette duration={state.duration} dotted={state.dotted} canUndo={state.past.length > 0} canRedo={state.future.length > 0} onAction={act} />
           </Tools>
           <Sheet aria-label="Partitura em edição">

@@ -8,6 +8,7 @@ export const ROUTES = {
   songs: '/tocar/musica',
   loading: '/tocar/carregando',
   library: '/biblioteca',
+  import: '/importar',
   /** Escrever partitura (a música fica privada de quem escreveu). */
   editor: '/editor',
   /** A aba "Ditar tocando" do editor: a única do editor que abre o microfone. */

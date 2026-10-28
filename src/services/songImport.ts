@@ -21,7 +21,7 @@ export interface SongImporter {
 
 export type FileImportResult =
   /** Música gravada: `saved` é o nível mais fácil que entrou (já pronto para tocar), `levels` os que existem. */
-  | { status: 'created'; saved: LoadedSong; levels: Level[] }
+  | { status: 'created'; saved: LoadedSong; levels: Level[]; part?: PartChoice | null }
   /** Mais de uma parte de violino: a pessoa escolhe e a tela chama de novo com `part`. */
   | { status: 'choose-part'; parts: PartChoice[] };
 
@@ -56,6 +56,7 @@ export type ImportClient = { auth: AuthClient; functions: Pick<SupabaseClient['f
 
 /** O 201 da função: ficha, níveis, o chart de um nível e o hash dele. */
 interface CreatedResponse {
+  part?: PartChoice | null;
   status?: 'created';
   sheet?: Partial<SongSheet>;
   levels?: Level[];
@@ -117,7 +118,7 @@ export function edgeSongImporter(client: ImportClient | null): SongImporter {
       if (data?.status === 'choose-part') return { status: 'choose-part', parts: data.parts };
       const saved = loaded(data, 'imported');
       const levels = new Set(data?.levels ?? [saved.song.level]);
-      return { status: 'created', saved, levels: LEVELS.filter((l) => levels.has(l)) };
+      return { status: 'created', saved, levels: LEVELS.filter((l) => levels.has(l)), part: data?.part };
     },
   };
 }

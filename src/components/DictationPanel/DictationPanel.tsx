@@ -135,6 +135,7 @@ const Help = styled.div`
   min-width: 0;
 
   > p {
+    letter-spacing: normal;
     font-size: 0.875rem;
     line-height: 1.25rem;
   }
@@ -188,6 +189,12 @@ const Actions = styled.div`
 
 const GRIDS: readonly DictationGrid[] = [0.5, 0.25];
 
+// O símbolo usa sua métrica musical, sem a largura tabular dos algarismos do texto.
+const TempoNote = styled.span`
+  font-family: 'Noto Music', sans-serif;
+  font-variant-numeric: normal;
+`;
+
 export interface DictationPanelProps {
   phase: DictationPhase;
   live: LiveNote | null;
@@ -212,6 +219,7 @@ const KICKER: Record<DictationPhase['status'], string> = {
 export const DictationPanel: React.FC<DictationPanelProps> = ({ phase, live, grid, onGrid, onStart, onStop, fifths, tempo }) => {
   const busy = phase.status !== 'idle';
   const recording = phase.status === 'recording';
+  const tempoLabel = <><TempoNote>{tempo.split(' ')[0]}</TempoNote>{tempo.slice(tempo.indexOf(' '))}</>;
   return (
     <Panel aria-label="Ditado pelo microfone" $active={busy}>
       <Mic $live={recording} aria-hidden="true">
@@ -244,11 +252,11 @@ export const DictationPanel: React.FC<DictationPanelProps> = ({ phase, live, gri
         <p>
           {busy ? (
             <>
-              Toque no tempo do clique ({tempo}). Cada nota aparece na pauta quando acaba. <b>Esc</b> ou Parar para terminar e corrigir.
+              Toque no tempo do clique ({tempoLabel}). Cada nota aparece na pauta quando acaba. <b>Esc</b> ou Parar para terminar e corrigir.
             </>
           ) : (
             <>
-              Escolha compasso e andamento lá em cima ({tempo}). Depois de <b>1 compasso de contagem</b>, toque a melodia no tempo: cada nota vai para a
+              Escolha compasso e andamento lá em cima ({tempoLabel}). Depois de <b>1 compasso de contagem</b>, toque a melodia no tempo: cada nota vai para a
               pauta. Com fone de ouvido o clique não entra no microfone.
             </>
           )}

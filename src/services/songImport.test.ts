@@ -117,7 +117,7 @@ describe('saveAndKeep', () => {
   });
 
   it('cache cheio ou quebrado não derruba a gravação; falha do servidor sobe', async () => {
-    const broken = { remember: vi.fn().mockRejectedValue(new Error('QuotaExceeded')), find: vi.fn(), list: vi.fn() };
+    const broken = { forget: vi.fn(), remember: vi.fn().mockRejectedValue(new Error('QuotaExceeded')), find: vi.fn(), list: vi.fn() };
     await expect(saveAndKeep(fakeSongImporter(), SCALE, broken)).resolves.toMatchObject({ hash: 'fake-1' });
     await expect(saveAndKeep(fakeSongImporter({ fail: 'server' }), SCALE, null)).rejects.toThrow(/Não foi possível salvar/);
   });
