@@ -1,4 +1,5 @@
 import React from 'react';
+import { BackLink } from '../components/BackLink/BackLink';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { css } from 'styled-components';
@@ -18,7 +19,7 @@ import { useShelf } from '../services/shelf';
 import { playSync } from '../services/sync';
 import { modesUrl, parseRankingUrl, rankingUrl } from '../shell/choice';
 import { useProgress } from '../shell/progress';
-import { accountUrl, ROUTES } from '../shell/routes';
+import { accountUrl } from '../shell/routes';
 import { useSession } from '../shell/useAccount';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { goalFor } from './Profile';
@@ -570,10 +571,7 @@ export const Ranking: React.FC = () => {
               ))}
             </Select>
           </label>
-          <Button as={Link} to={ROUTES.home} $variant="ghost">
-            <span aria-hidden="true">◂</span>
-            Menu
-          </Button>
+          <BackLink />
         </Controls>
       </Header>
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { BackLink } from '../components/BackLink/BackLink';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { ANIMAL_LOOK } from '../components/AvatarPicker/AvatarPicker';
@@ -519,10 +520,7 @@ export const Profile: React.FC = () => {
           </Bar>
         </Who>
         <nav aria-label="Perfil">
-          <Button as={Link} to={ROUTES.home} $variant="ghost">
-            <span aria-hidden="true">◂</span>
-            Menu
-          </Button>
+          <BackLink />
           <Button as={Link} to={ROUTES.ranking} $variant="ghost">
             Ranking
           </Button>

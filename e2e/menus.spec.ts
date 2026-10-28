@@ -24,6 +24,23 @@ test.beforeEach(async ({ page }) => {
   await skipOnboarding(page);
 });
 
+test('os retornos nomeiam e abrem o Menu ou a tela mãe', async ({ page }) => {
+  for (const path of ['/biblioteca', '/ranking', '/perfil', '/configuracoes', '/tocar']) {
+    await page.goto(path);
+    const back = page.getByRole('link', { name: 'Menu', exact: true });
+    await expect(back).toHaveText('◂Menu');
+    await expect(back).toHaveAttribute('href', '/');
+    await back.click();
+    await expect(page).toHaveURL(/\/$/);
+  }
+  await page.goto('/selos');
+  await page.getByRole('link', { name: 'Perfil', exact: true }).click();
+  await expect(page).toHaveURL(/\/perfil$/);
+  await page.goto('/tocar/musica?modo=partitura');
+  await page.getByRole('link', { name: 'Modos', exact: true }).click();
+  await expect(page).toHaveURL(/\/tocar\?modo=partitura/);
+});
+
 for (const tema of ['caderno', 'palco', '8-bits'] as const) {
   for (const fonte of ['real', 'reserva'] as const) {
     test.describe(`${tema}, fonte ${fonte}`, () => {

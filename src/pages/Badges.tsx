@@ -1,4 +1,5 @@
 import React from 'react';
+import { BackLink } from '../components/BackLink/BackLink';
 import { Link } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
 import { Badge, badgeColor } from '../components/Badge/Badge';
@@ -277,10 +278,7 @@ export const Badges: React.FC = () => {
           </Progress>
         </div>
         <nav aria-label="Selos">
-          <Button as={Link} to={ROUTES.profile} $variant="ghost">
-            <span aria-hidden="true">◂</span>
-            Perfil
-          </Button>
+          <BackLink to={ROUTES.profile} label="Perfil" />
           <Button as={Link} to={modesUrl()}>
             Tocar
           </Button>

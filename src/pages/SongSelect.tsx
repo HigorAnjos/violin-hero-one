@@ -1,4 +1,5 @@
 import React from 'react';
+import { BackLink } from '../components/BackLink/BackLink';
 import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
@@ -287,9 +288,7 @@ export const SongSelect: React.FC = () => {
         </Intro>
         <Tools>
           <Search label="Buscar música" value={query} onChange={setQuery} />
-          <Button as={Link} to={modesUrl(menuMode(mode), selected?.id)} $variant="ghost">
-            <span aria-hidden="true">◂</span>Voltar
-          </Button>
+          <BackLink to={modesUrl(menuMode(mode), selected?.id)} label="Modos" />
         </Tools>
       </Header>
 
