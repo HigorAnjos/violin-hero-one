@@ -12,7 +12,7 @@ import type { PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
 import type { GameDeps } from '../shell/useGame';
-import type { DevResult } from '../shell/usePlayScreen';
+import { devWindow } from '../shell/devTools';
 import { Gameplay } from './Gameplay';
 
 // Partida inteira com motor e pista: sob carga (CI, suíte em paralelo) passa dos 5 s padrão
@@ -199,7 +199,7 @@ describe('Gameplay gravando a entrega', () => {
     return { ear, recorder };
   }
 
-  const recorded = () => (window as Window & DevResult).__vhRecording;
+  const recorded = () => devWindow().__vhRecording;
 
   it('grava do começo ao fim da música e entrega a gravação com o resultado', async () => {
     const { ear, recorder } = recordingEar();

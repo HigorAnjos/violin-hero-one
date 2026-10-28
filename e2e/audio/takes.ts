@@ -31,7 +31,7 @@ export function takePath(name: TakeName): string {
 }
 
 /** O nível Fácil, o mesmo das músicas fixas do jogo. */
-const loadSong = (id: string) => {
+export const loadSong = (id: string) => {
   const name = `${id}.musicxml`;
   return convertSongFile({ name, content: readFileSync(path.join(SONGS_DIR, name), 'utf8') }).charts.easy;
 };

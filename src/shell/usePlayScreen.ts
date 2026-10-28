@@ -11,19 +11,13 @@ import { loadA4 } from '../services/playerAudio';
 import { playPayload, PLAY_MODE_OF } from '../services/progress';
 import { playSync } from '../services/sync';
 import { playedChart } from './deviceSync';
-import { DEV_TOOLS } from './devTools';
+import { DEV_TOOLS, devWindow } from './devTools';
 import { micFailure } from './Ear';
 import { readPlayState, type GameMode, type ResultState } from './play';
 import { playerLevelSettings } from './playerLevel';
 import { checkRecord } from './records';
 import { micTroubleUrl, ROUTES } from './routes';
 import { FINISH_DELAY_MS, type GamePhase, type useGame } from './useGame';
-
-/** O que a partida deixa na janela para o e2e (só DEV_TOOLS): o resultado e a gravação da entrega (?gravar). */
-export interface DevResult {
-  __vhResult?: GameResult;
-  __vhRecording?: Recording | RecordingError;
-}
 
 /** O teto de duration_ms do banco (plays.duration_ms): 4 horas. */
 const MAX_DURATION_MS = 4 * 3600 * 1000;
@@ -78,7 +72,7 @@ export function usePlayScreen(mode: GameMode) {
         record,
         clientId: payload.client_id,
       };
-      if (DEV_TOOLS) Object.assign(window as Window & DevResult, { __vhResult: result, __vhRecording: recording });
+      if (DEV_TOOLS) Object.assign(devWindow(), { __vhResult: result, __vhRecording: recording });
       if (result.status === 'failed') return navigate(ROUTES.gameOver, { replace: true, state });
       addEarnedBadges(result.badges);
       navigate(result.badges.length ? ROUTES.badge : ROUTES.results, { replace: true, state });

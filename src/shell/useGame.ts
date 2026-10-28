@@ -11,6 +11,7 @@ import { explainJudgment, type Explanation } from '../components/JudgmentHint/ex
 import type { TracePoint } from '../components/TuningCard/TuningCard';
 import { TRACE_SECONDS } from '../components/TuningCard/TuningCard';
 import { loadEarnedBadges } from '../services/badges';
+import { DEV_TOOLS, devWindow } from './devTools';
 import type { Ear, EarAudio } from './Ear';
 import { createGameSession, type GameSession, type GameSessionOptions, type PracticeClock, type PracticeStart, type SessionEvent } from './gameSession';
 import { loadOrchestra, type OrchestraFactory } from './orchestra';
@@ -340,9 +341,12 @@ export function useGame(options: GameOptions) {
         else recorder = shared.recorder = started;
       }
       follow();
+      // e2e: quanto cada leitura leva da amostra até o motor (o gravador não pode aumentar isto)
+      const lags: number[] | null = DEV_TOOLS ? (devWindow().__vhPitchLag = []) : null;
       offs.push(
         ear.onPitch((reading) => {
           if (!session) return;
+          if (lags && reading) lags.push((ear.audio()?.context.currentTime ?? reading.time) - reading.time);
           session.push(reading);
           // Na nota da vez, o desvio para o alvo; fora dela (troca de nota, legato), o da nota que soa
           const t = target();
