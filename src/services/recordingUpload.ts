@@ -35,9 +35,51 @@ export class UploadError extends Error {
 /**
  * Para onde a gravação sobe (o Supabase Storage, no floor do banco). Sobe na conta da sessão recebida, nunca noutra;
  * o arquivo que já está lá com o mesmo id conta como enviado. Falha com UploadError; outro erro conta como `offline`.
+ *
+ * Contrato do bucket do ciclo 5 (supabase/storage/0001 e a migração 0014), para a implementação real:
+ * - Content-Type sem parâmetros (`storageContentType`): o bucket só aceita audio/webm, audio/mp4 e audio/ogg;
+ * - caminho `<turma>/<aluno>/<tarefa>/<id>.<ext>` (`recordingPath`, a partir de `meta`);
+ * - o bucket não tem policy de update: o reenvio do mesmo id volta 409, que conta como enviado.
  */
 export interface UploadTarget {
   upload(session: SignedInSession, item: UploadItem): Promise<void>;
+}
+
+/** O tipo que o bucket aceita: o do MediaRecorder sem os parâmetros (`audio/webm;codecs=opus` → `audio/webm`). */
+export function storageContentType(mimeType: string): string {
+  return mimeType.split(';')[0].trim().toLowerCase();
+}
+
+const EXTENSIONS: Readonly<Record<string, string>> = { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'm4a' };
+
+/** A extensão do arquivo no bucket; null para um tipo que ele não aceita. */
+export function recordingExtension(mimeType: string): string | null {
+  return EXTENSIONS[storageContentType(mimeType)] ?? null;
+}
+
+/** As chaves de `meta` que o caminho no bucket usa; `dueAt` (ISO) é o prazo da tarefa, opcional. */
+export interface RecordingMeta {
+  classId: string;
+  studentId: string;
+  taskId: string;
+  dueAt?: string;
+}
+
+/** `<turma>/<aluno>/<tarefa>/<id>.<ext>`; null se falta parte do caminho ou o tipo não entra no bucket. */
+export function recordingPath(item: Pick<UploadItem, 'id' | 'mimeType' | 'meta'>): string | null {
+  const { classId, studentId, taskId } = item.meta as Partial<RecordingMeta>;
+  const ext = recordingExtension(item.mimeType);
+  if (!classId || !studentId || !taskId || !ext) return null;
+  return `${classId}/${studentId}/${taskId}/${item.id}.${ext}`;
+}
+
+/** Gravação de criança não fica no aparelho para sempre: depois disto (ou do prazo da tarefa) sai da fila sem subir. */
+export const RECORDING_KEEP_MS = 30 * 24 * 3600 * 1000;
+
+/** A gravação passou do prazo: 30 dias na fila, ou o `dueAt` da tarefa, o que vier antes. */
+export function recordingExpired(entry: Pick<QueuedRecording, 'queuedAt' | 'meta'>, now: number): boolean {
+  const due = entry.meta.dueAt ? Date.parse(entry.meta.dueAt) : NaN;
+  return now - entry.queuedAt >= RECORDING_KEEP_MS || (!Number.isNaN(due) && now > due);
 }
 
 /** Uma gravação esperando o destino, guardada no aparelho até ele confirmar. */
@@ -59,6 +101,8 @@ export interface QueuedRecording {
 
 export interface RecordingQueueStore {
   all(userId: string): Promise<QueuedRecording[]>;
+  /** De todos os donos: a limpeza do prazo passa também na de quem não volta mais. */
+  everything(): Promise<QueuedRecording[]>;
   put(entry: QueuedRecording): Promise<void>;
   delete(userId: string, id: string): Promise<void>;
   clear(userId: string): Promise<void>;
@@ -69,6 +113,7 @@ export function memoryRecordingQueueStore(): RecordingQueueStore {
   const key = (userId: string, id: string) => `${userId}\u0000${id}`;
   return {
     all: async (userId) => [...entries.values()].filter((e) => e.userId === userId),
+    everything: async () => [...entries.values()],
     put: async (entry) => void entries.set(key(entry.userId, entry.id), entry),
     delete: async (userId, id) => void entries.delete(key(userId, id)),
     clear: async (userId) => {
@@ -82,6 +127,7 @@ export function indexedDbRecordingQueueStore(factory: IDBFactory | DeviceDb): Re
   const run = typeof factory === 'function' ? factory : deviceDb(factory);
   return {
     all: (userId) => run(RECORDINGS_STORE, 'readonly', (s) => s.index(BY_USER).getAll(userId) as IDBRequest<QueuedRecording[]>),
+    everything: () => run(RECORDINGS_STORE, 'readonly', (s) => s.getAll() as IDBRequest<QueuedRecording[]>),
     put: async (entry) => void (await run(RECORDINGS_STORE, 'readwrite', (s) => s.put(entry))),
     delete: async (userId, id) => void (await run(RECORDINGS_STORE, 'readwrite', (s) => s.delete([userId, id]))),
     clear: async (userId) => {
@@ -100,12 +146,12 @@ export interface RecordingUploadsDeps {
   target(): UploadTarget | null;
   online?(): boolean;
   now?(): number;
-  /** Gravação recusada de vez: fica no log, sem laço. */
+  /** Gravação recusada de vez ou vencida: fica no log, sem laço. */
   log?(message: string, detail: unknown): void;
 }
 
-/** Onde está cada gravação desta visita: na fila, no destino, ou recusada. */
-export type UploadStatus = 'queued' | 'sent' | 'rejected';
+/** Onde está cada gravação desta visita: na fila, no destino, recusada, ou vencida no aparelho sem subir. */
+export type UploadStatus = 'queued' | 'sent' | 'rejected' | 'expired';
 
 export interface RecordingUploads {
   /** Guarda na fila do dono da vez e tenta subir. Sem dono no aparelho, recusa: gravação sem dono não sobe em conta nenhuma. */
@@ -174,7 +220,19 @@ export function createRecordingUploads(deps: RecordingUploadsDeps): RecordingUpl
     return 'sent';
   }
 
+  /** Tira do aparelho a gravação vencida de qualquer dono, inclusive de quem nunca mais voltou. */
+  async function sweep() {
+    const at = now();
+    for (const entry of await deps.store.everything()) {
+      if (!recordingExpired(entry, at)) continue;
+      await deps.store.delete(entry.userId, entry.id);
+      log(`gravação ${entry.id} venceu no aparelho sem subir`, { queuedAt: entry.queuedAt, dueAt: entry.meta.dueAt });
+      mark(entry.id, 'expired');
+    }
+  }
+
   async function pass(userId: string | undefined, strict: boolean) {
+    await sweep();
     const owner = userId ?? deps.user();
     if (!owner) return;
     const entries = (await deps.store.all(owner)).sort((a, b) => a.queuedAt - b.queuedAt);
@@ -239,7 +297,8 @@ export function createRecordingUploads(deps: RecordingUploadsDeps): RecordingUpl
     },
     flush,
     async pending(userId) {
-      return (await deps.store.all(userId)).length;
+      const at = now();
+      return (await deps.store.all(userId)).filter((e) => !recordingExpired(e, at)).length;
     },
     forget: (userId) => deps.store.clear(userId),
     status: (id) => statuses.get(id),
