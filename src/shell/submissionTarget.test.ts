@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ClassroomError, type ClassroomApi } from '../services/classroom';
+import { ClassroomError, supabaseClassroom, type ClassroomApi, type ClassroomClient } from '../services/classroom';
 import { fakeClassroom } from '../services/classroomFake';
 import { createRecordingUploads, memoryRecordingQueueStore, UploadError, type SignedInSession } from '../services/recordingUpload';
 import { submissionUploadTarget } from './submissionTarget';
@@ -34,6 +34,18 @@ describe('destino das gravações da entrega', () => {
     const [mine] = await fake.getMyAssignments();
     expect(mine.submission).toMatchObject({ playId, audioPath: path });
     expect(fake.audio.has(path)).toBe(true);
+  });
+
+  it('no Supabase, a duração da gravação chega à entrega em p_audio_duration_ms, arredondada', async () => {
+    const { session, item, playId } = await scene();
+    const row = { id: item.meta.taskId, class_id: item.meta.classId, song_id: 'canon', song_title: 'Canon', level: 'easy', mode: 'arcade', due_at: item.meta.dueAt, best: null, submission: null, review: null };
+    const rpc = vi.fn().mockResolvedValue({ data: row, error: null });
+    const upload = vi.fn().mockResolvedValue({ data: {}, error: null });
+    const client = { rpc, from: vi.fn(), storage: { from: vi.fn(() => ({ upload })) } } as unknown as ClassroomClient;
+    await submissionUploadTarget(supabaseClassroom(client), async () => {}).upload(session, item);
+    const path = `${item.meta.classId}/${item.meta.studentId}/${item.meta.taskId}/entrega-1.webm`;
+    expect(upload).toHaveBeenCalledWith(path, item.blob, { contentType: 'audio/webm', upsert: false });
+    expect(rpc).toHaveBeenCalledWith('submit_assignment', { p_assignment_id: item.meta.taskId, p_play_id: playId, p_audio_path: path, p_audio_duration_ms: 48_250 });
   });
 
   it('sem partida conhecida, o servidor escolhe a melhor que conta', async () => {

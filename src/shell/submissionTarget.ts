@@ -11,12 +11,6 @@ export interface SubmissionMeta {
   playId?: string;
 }
 
-/**
- * A 0017 acrescenta a duração do áudio na entrega (p_audio_duration_ms). Até ela chegar ao contrato, o campo vai junto
- * e o supabaseClassroom só não o repassa.
- */
-type SubmitWithDuration = SubmitInput & { audioDurationMs?: number };
-
 /** O bucket não tem update: subir de novo o mesmo arquivo volta 409, e isso é o arquivo já lá. */
 function alreadyUploaded(error: unknown): boolean {
   const cause = (error instanceof ClassroomError ? error.cause : error) as { statusCode?: string | number; status?: number } | undefined;
@@ -54,7 +48,9 @@ export function submissionUploadTarget(api: ClassroomApi, flushPlays: (userId: s
       } catch (error) {
         if (!alreadyUploaded(error)) throw uploadError(error);
       }
-      const input: SubmitWithDuration = { assignmentId: meta.taskId, playId: meta.playId || null, audioPath: path, audioDurationMs: Math.round(item.durationMs) };
+      // A duração da gravação vai para submissions.audio_duration_ms (p_audio_duration_ms, 0017): o player do professor
+      // e do responsável mostra o tempo sem baixar o áudio
+      const input: SubmitInput = { assignmentId: meta.taskId, playId: meta.playId || null, audioPath: path, audioDurationMs: Math.round(item.durationMs) };
       try {
         await api.submitAssignment(input);
       } catch (error) {
