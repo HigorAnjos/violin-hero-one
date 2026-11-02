@@ -199,6 +199,48 @@ const Play = styled(Link)`
   }
 `;
 
+/** "Tenho um código da turma": o cartão claro do design, abaixo do Começar. */
+const ClassCode = styled(Play)`
+  padding: 1rem 1.25rem;
+  background-color: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
+  border: 2.5px solid ${({ theme }) => theme.colors.text};
+  box-shadow: 0 4px 0 ${({ theme }) => theme.colors.text};
+
+  > span:first-child {
+    background-color: ${({ theme }) => theme.colors.warning.surface};
+    color: ${({ theme }) => theme.colors.warning.text};
+    font-family: ${({ theme }) => theme.fonts.display};
+    font-weight: 800;
+    font-size: 0.875rem;
+    line-height: 1;
+    text-align: center;
+  }
+
+  b {
+    font-size: 1.125rem;
+  }
+
+  small {
+    color: ${({ theme }) => theme.colors.textMuted};
+    opacity: 1;
+  }
+
+  @media (max-height: 500px) {
+    padding: 0 1rem;
+    min-height: 2.75rem;
+    box-shadow: none;
+
+    > span:first-child {
+      display: none;
+    }
+
+    small {
+      display: none;
+    }
+  }
+`;
+
 const Divider = styled.p`
   display: flex;
   align-items: center;
@@ -247,8 +289,8 @@ const Alert = styled.p`
 
 /**
  * 0 · Boas-vindas: começar sem cadastro ou entrar numa conta que já existe (outro aparelho). Entrar troca o usuário
- * deste aparelho: o que o convidado tinha pendente sobe antes, na conta de convidado. O código da turma e o
- * "Sou professor" chegam no ciclo 5.
+ * deste aparelho: o que o convidado tinha pendente sobe antes, na conta de convidado. O aluno entra
+ * pelo código da turma (ClassLogin), sem e-mail.
  */
 export const Login: React.FC = () => {
   const session = useSession();
@@ -309,6 +351,18 @@ export const Login: React.FC = () => {
           </span>
           <span aria-hidden="true">▸</span>
         </Play>
+        <ClassCode to={ROUTES.classLogin}>
+          <span aria-hidden="true">
+            ABC
+            <br />
+            123
+          </span>
+          <span>
+            <b>Tenho um código da turma</b>
+            <small>Para alunos. Não precisa de e-mail.</small>
+          </span>
+          <span aria-hidden="true">▸</span>
+        </ClassCode>
 
         <Divider>Já tem conta?</Divider>
         <Button as={Link} to={ROUTES.parent} $variant="link">Sou responsável</Button>

@@ -12,12 +12,12 @@ import {
   type SubmitInput,
 } from '../services/classroom';
 import { PLAY_MODE_OF } from '../services/progress';
-import type { SessionState } from '../services/session';
 import { playSync, recordingUploads, setUploadTarget } from '../services/sync';
 import { supabase } from '../services/supabase';
 import { adoptSession } from './accountSwitch';
 import { GAME_MODES, type GameMode, type TaskPlay } from './play';
 import { submissionUploadTarget } from './submissionTarget';
+import { isStudentSession } from './studentSession';
 import { useSession } from './useAccount';
 
 /** A partida de tarefa que terminou, para o fake (no app de verdade ela sobe pela fila de partidas). */
@@ -72,13 +72,7 @@ export function setClassroomShell(next: ClassroomShell | null): void {
   shell = next && Promise.resolve(next);
 }
 
-/**
- * Conta de aluno: entrou pela turma, sem e-mail. Conta com e-mail ou Google sempre tem e-mail na sessão; o e-mail
- * sintético do aluno a sessão não leva (signedIn). Vale sem rede também: o aparelho segue sabendo que é de aluno.
- */
-export function isStudentSession(session: SessionState | undefined): boolean {
-  return session?.status === 'signed-in' && !session.anonymous && !session.email;
-}
+export { isStudentSession };
 
 /** A turma do aluno da sessão; `student` já vale antes da turma chegar (para esconder ranking e desafio). */
 export function useStudent() {

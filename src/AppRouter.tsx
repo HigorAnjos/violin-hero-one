@@ -24,6 +24,8 @@ import { Settings, settingsUrl } from './pages/Settings';
 import { isOnboarded } from './services/profile';
 import type { AppUpdate } from './shell/appUpdate';
 import { useAccountWatch } from './shell/accountSwitch';
+import { useStudentUploads } from './shell/classroom';
+import { NotForStudents } from './shell/NotForStudents';
 import { useDeviceSync } from './shell/deviceSync';
 import { ProfileSync, useRemoteProfile } from './shell/profileSync';
 import { EarProvider, type Ear } from './shell/Ear';
@@ -44,6 +46,10 @@ const BadgeEarned = lazyGameScreen('BadgeEarned');
 const Results = lazyGameScreen('Results');
 const Parent = React.lazy(() => import('./pages/Parent').then(module => ({ default: module.Parent })));
 const Plans = React.lazy(() => import('./pages/Plans').then(module => ({ default: module.Plans })));
+const JoinClass = React.lazy(() => import('./pages/JoinClass').then((module) => ({ default: module.JoinClass })));
+const ClassLogin = React.lazy(() => import('./pages/ClassLogin').then((module) => ({ default: module.ClassLogin })));
+const StudentTasks = React.lazy(() => import('./pages/StudentTasks').then((module) => ({ default: module.StudentTasks })));
+const TaskResult = React.lazy(() => import('./pages/TaskResult').then((module) => ({ default: module.TaskResult })));
 
 /** Primeira vez no aparelho: boas-vindas (começar sem cadastro ou entrar numa conta). Depois, a tela inicial. */
 const Home: React.FC = () => (isOnboarded() ? <Main /> : <FirstVisit />);
@@ -62,6 +68,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
   // Nesta ordem: o DeviceData do sync está registrado quando a conta troca de usuário
   useDeviceSync();
   useAccountWatch();
+  useStudentUploads();
   return (
     <ThemeChoiceProvider>
       <GlobalStyles />
@@ -100,9 +107,13 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.account} element={<GuestPrompt />} />
             <Route path={ROUTES.parent} element={<Parent />} />
             <Route path={ROUTES.plans} element={<Plans />} />
-            <Route path={ROUTES.ranking} element={<Ranking />} />
-            <Route path={ROUTES.challenge} element={<Challenge />} />
-            <Route path={ROUTES.challengeCode} element={<ChallengeInvite />} />
+            <Route path={ROUTES.joinClass} element={<JoinClass />} />
+            <Route path={ROUTES.classLogin} element={<ClassLogin />} />
+            <Route path={ROUTES.tasks} element={<StudentTasks />} />
+            <Route path={ROUTES.taskResult} element={<TaskResult />} />
+            <Route path={ROUTES.ranking} element={<NotForStudents><Ranking /></NotForStudents>} />
+            <Route path={ROUTES.challenge} element={<NotForStudents><Challenge /></NotForStudents>} />
+            <Route path={ROUTES.challengeCode} element={<NotForStudents><ChallengeInvite /></NotForStudents>} />
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           </React.Suspense>

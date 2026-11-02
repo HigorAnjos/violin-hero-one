@@ -38,7 +38,7 @@ describe('destino das gravações da entrega', () => {
 
   it('sem partida conhecida, o servidor escolhe a melhor que conta', async () => {
     const { fake, session, item, playId } = await scene();
-    const { playId: _known, ...meta } = item.meta;
+    const meta = { ...item.meta, playId: '' };
     await submissionUploadTarget(fake, async () => {}).upload(session, { ...item, meta });
     expect((await fake.getMyAssignments())[0].submission?.playId).toBe(playId);
   });
