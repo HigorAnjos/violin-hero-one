@@ -50,6 +50,9 @@ const JoinClass = React.lazy(() => import('./pages/JoinClass').then((module) => 
 const ClassLogin = React.lazy(() => import('./pages/ClassLogin').then((module) => ({ default: module.ClassLogin })));
 const StudentTasks = React.lazy(() => import('./pages/StudentTasks').then((module) => ({ default: module.StudentTasks })));
 const TaskResult = React.lazy(() => import('./pages/TaskResult').then((module) => ({ default: module.TaskResult })));
+const Teacher = React.lazy(() => import('./pages/Teacher').then((module) => ({ default: module.Teacher })));
+const AssignTask = React.lazy(() => import('./pages/AssignTask').then((module) => ({ default: module.AssignTask })));
+const TeacherReview = React.lazy(() => import('./pages/TeacherReview').then((module) => ({ default: module.TeacherReview })));
 
 /** Primeira vez no aparelho: boas-vindas (começar sem cadastro ou entrar numa conta). Depois, a tela inicial. */
 const Home: React.FC = () => (isOnboarded() ? <Main /> : <FirstVisit />);
@@ -111,9 +114,14 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.classLogin} element={<ClassLogin />} />
             <Route path={ROUTES.tasks} element={<StudentTasks />} />
             <Route path={ROUTES.taskResult} element={<TaskResult />} />
+            <Route path={ROUTES.teacher} element={<Teacher />} />
+            <Route path={ROUTES.teacherClass} element={<Teacher />} />
+            <Route path={ROUTES.newAssignment} element={<AssignTask />} />
+            <Route path={ROUTES.review} element={<TeacherReview />} />
             <Route path={ROUTES.ranking} element={<NotForStudents><Ranking /></NotForStudents>} />
             <Route path={ROUTES.challenge} element={<NotForStudents><Challenge /></NotForStudents>} />
             <Route path={ROUTES.challengeCode} element={<NotForStudents><ChallengeInvite /></NotForStudents>} />
+
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
           </React.Suspense>

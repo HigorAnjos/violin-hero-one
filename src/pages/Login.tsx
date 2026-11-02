@@ -287,10 +287,18 @@ const Alert = styled.p`
   color: ${({ theme }) => theme.colors.danger.text};
 `;
 
+/** As entradas dos adultos da turma: responsável e professor, lado a lado. */
+const Roles = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 0.75rem;
+`;
+
 /**
  * 0 · Boas-vindas: começar sem cadastro ou entrar numa conta que já existe (outro aparelho). Entrar troca o usuário
- * deste aparelho: o que o convidado tinha pendente sobe antes, na conta de convidado. O aluno entra
- * pelo código da turma (ClassLogin), sem e-mail.
+ * deste aparelho: o que o convidado tinha pendente sobe antes, na conta de convidado. O aluno entra pelo código da
+ * turma (ClassLogin), sem e-mail; responsável e professor (ciclo 5), pelos links logo acima das contas.
  */
 export const Login: React.FC = () => {
   const session = useSession();
@@ -365,7 +373,12 @@ export const Login: React.FC = () => {
         </ClassCode>
 
         <Divider>Já tem conta?</Divider>
-        <Button as={Link} to={ROUTES.parent} $variant="link">Sou responsável</Button>
+        <Roles>
+          <Button as={Link} to={ROUTES.parent} $variant="link">Sou responsável</Button>
+          <Button as={Link} to={ROUTES.teacher} $variant="link">
+            Sou professor: criar minha turma <span aria-hidden="true">▸</span>
+          </Button>
+        </Roles>
         <Choices>
           {providers.google && (
             <Button type="button" $variant="ghost" onClick={google}>
