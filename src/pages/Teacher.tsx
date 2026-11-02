@@ -231,6 +231,17 @@ function ClassCode({ klass }: { klass: ClassDetail | ClassSummary }) {
 }
 
 // ---------- painel da turma ----------
+const ClassColumn = styled(Column)`
+  @media (max-height: 500px) {
+    overflow-y: auto;
+
+    > header {
+      flex: none;
+      order: -1;
+    }
+  }
+`;
+
 const Grid = styled.div`
   display: grid;
   grid-template-columns: 1.15fr 1fr 0.8fr;
@@ -239,6 +250,8 @@ const Grid = styled.div`
   max-height: 14.5rem;
 
   @media (max-height: 500px) {
+    flex: none;
+    order: 1;
     grid-template-columns: 1fr 1fr;
     max-height: none;
     gap: 0.5rem;
@@ -390,9 +403,15 @@ const AddStudent = styled.form`
 const Students = styled(Panel)`
   flex: 1;
   min-height: 7rem;
+
+  @media (max-height: 500px) {
+    flex: none;
+    overflow: visible;
+  }
 `;
 
 const Confirm = styled.div`
+  order: 2;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -404,6 +423,8 @@ const Confirm = styled.div`
 `;
 
 const Danger = styled(Button)`
+  flex: none;
+  order: 2;
   color: ${({ theme }) => theme.colors.danger.text};
 `;
 
@@ -718,7 +739,7 @@ function ClassView({ ready, classId }: { ready: Ready; classId: string }) {
     );
   const activeCount = klass.students.filter((s) => s.active).length;
   return (
-    <Column>
+    <ClassColumn>
       <Header>
         <div>
           <Kicker>{klass.closedAt ? 'Turma encerrada' : `${activeCount} ${activeCount === 1 ? 'aluno' : 'alunos'} · ${open.length} ${open.length === 1 ? 'tarefa aberta' : 'tarefas abertas'}`}</Kicker>
@@ -740,7 +761,7 @@ function ClassView({ ready, classId }: { ready: Ready; classId: string }) {
       </Grid>
       <StudentRows ready={ready} klass={klass} tasks={openDetails} />
       <CloseClass ready={ready} klass={klass} />
-    </Column>
+    </ClassColumn>
   );
 }
 

@@ -26,7 +26,7 @@ const Circle = styled.span<{ $string: StringName; $size: number }>`
   justify-content: center;
   background-color: ${({ theme, $string }) => theme.game.strings[$string].main};
   color: ${({ theme, $string }) => theme.game.strings[$string].text};
-  font-family: ${({ theme }) => theme.fonts.display};
+  font-family: ${({ theme }) => theme.fonts.ui};
   font-weight: 800;
   font-size: ${({ $size }) => Math.max(0.75, $size * 0.36)}rem;
   line-height: 1;

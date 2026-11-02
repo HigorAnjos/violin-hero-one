@@ -5,7 +5,7 @@ import { expectFits, expectVisibleFocus, tinyText, tooSmallTargets } from './lay
 
 // Sem backend: ?turmas=simulada troca as turmas do Supabase pelo fake (src/shell/teacherDemo.ts). Cada tarefa nova
 // recebe na hora a entrega dos dois primeiros alunos, para ter o que revisar sem o aparelho do aluno.
-test.use({ launchOptions: launchWith() });
+test.use({ launchOptions: launchWith(), locale: 'pt-BR' });
 
 async function checkScreen(page: Page, what: string) {
   await expectFits(page);
@@ -40,6 +40,8 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
         await pin.getByRole('button', { name: 'Anotei o PIN' }).click();
       }
       await expect(page.getByText('Alunos · 3 de 10')).toBeVisible();
+      await expect(page.getByRole('table').getByRole('row').nth(1)).toBeInViewport({ ratio: 1 });
+      await expect(page.getByRole('button', { name: 'Redefinir PIN de Ana' })).toBeInViewport({ ratio: 1 });
       await checkScreen(page, 'painel da turma');
 
       await page.getByRole('link', { name: /Nova tarefa/ }).click();
@@ -59,6 +61,8 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
       await expect(page.getByRole('heading', { name: /^Ana · / })).toBeVisible();
       await expect(page.getByLabel('Afinação por corda')).toContainText('−14 ¢');
       await expect(page.getByText('0:00 / 0:02')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Tocar gravação de Ana' })).toBeInViewport({ ratio: 1 });
+      await expect(page.getByText(/O áudio fica guardado até 30 dias/)).toBeInViewport({ ratio: 1 });
       await checkScreen(page, 'revisão');
       await page.getByRole('button', { name: 'Tocar gravação de Ana' }).click();
       await expect(page.getByRole('button', { name: 'Pausar gravação de Ana' })).toBeVisible();

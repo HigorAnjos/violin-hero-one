@@ -49,6 +49,23 @@ const Body = styled.div`
   }
 `;
 
+const RecordingPanel = styled(Panel)`
+  flex: none;
+  overflow: visible;
+`;
+
+const MeasuresArea = styled.div`
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  overflow-y: auto;
+
+  @media (max-height: 500px) {
+    gap: 0.5rem;
+  }
+`;
+
 /** A lista da tarefa: cada aluno com a situação. */
 const Roster = styled.nav`
   flex: none;
@@ -232,7 +249,7 @@ function Recording({ ready, row }: { ready: Ready; row: Row }) {
   if (!sub) return null;
   const duration = sub.audioDurationMs ?? sub.durationMs ?? 0;
   return (
-    <Panel aria-label="Gravação">
+    <RecordingPanel aria-label="Gravação">
       <Kicker>Gravação</Kicker>
       {sub.audioDeleted ? (
         <Text>O áudio desta entrega já foi apagado, 30 dias depois da revisão.</Text>
@@ -244,7 +261,7 @@ function Recording({ ready, row }: { ready: Ready; row: Row }) {
       ) : (
         <Text>Entrega sem gravação: só a partida.</Text>
       )}
-    </Panel>
+    </RecordingPanel>
   );
 }
 
@@ -412,7 +429,9 @@ function ReviewArea({ ready, taskId }: { ready: Ready; taskId: string }) {
                     {chosen.best && <Muted>A melhor partida que conta até agora:</Muted>}
                   </Panel>
                 )}
-                <Measures row={chosen} />
+                <MeasuresArea>
+                  <Measures row={chosen} />
+                </MeasuresArea>
               </Column>
               <ReviewForm key={chosen.studentId} ready={ready} row={chosen} next={next} />
             </>
