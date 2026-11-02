@@ -6,6 +6,10 @@ import { levelSettings } from '../game/engine/levels';
 import { findFixedSong, FIXED_SONGS } from '../game/notation/songs';
 import { A4_STORAGE_KEY } from '../services/playerAudio';
 import { PROFILE_STORAGE_KEY } from '../services/profile';
+import { QueryClient } from '@tanstack/react-query';
+import { fakeClassroom } from '../services/classroomFake';
+import { setClassroomShell } from '../shell/classroom';
+import { fakeClassroomShell } from '../shell/simulatedClassroom';
 import { renderScreen } from '../shell/testing';
 import { ThemeChoiceProvider } from '../shell/ThemeChoice';
 import { Main as MainScreen } from './Main';
@@ -32,6 +36,27 @@ describe('Main', () => {
     expect(menu().getByRole('link', { name: 'Afinar Lá 442' })).toBeInTheDocument();
     // Sem banco no teste: a estante são as embutidas
     expect(await menu().findByRole('link', { name: `Biblioteca ${FIXED_SONGS.length}` }, { timeout: 5000 })).toBeInTheDocument();
+  });
+
+  it('aluno da turma: Tarefas no menu com quantas faltam, e sem o troféu do ranking', async () => {
+    const fake = fakeClassroom({ userId: 'professora' });
+    const turma = await fake.createClass('Turma');
+    const { pin } = await fake.addStudent(turma.id, 'Ana');
+    await fake.createAssignment({ classId: turma.id, songId: 'brilha-brilha', level: 'easy', mode: 'arcade', dueAt: new Date(Date.now() + 86400e3).toISOString() });
+    const { userId } = fake.login({ code: turma.code, name: 'Ana', pin });
+    setClassroomShell(fakeClassroomShell(fake));
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(['session'], { status: 'signed-in', userId, anonymous: false });
+    renderScreen(<Main />, { queryClient });
+    expect(await menu().findByRole('link', { name: 'Tarefas 1 a fazer' })).toHaveAttribute('href', '/tarefas');
+    expect(screen.queryByRole('link', { name: 'Ranking' })).not.toBeInTheDocument();
+    setClassroomShell(null);
+  });
+
+  it('convidado não vê Tarefas e vê o ranking', () => {
+    renderScreen(<Main />);
+    expect(menu().queryByRole('link', { name: /^Tarefas/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ranking' })).toBeInTheDocument();
   });
 
   it('a sugestão segue o nível guardado e o Lá segue a afinação salva', () => {

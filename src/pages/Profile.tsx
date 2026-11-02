@@ -17,6 +17,7 @@ import { modesUrl } from '../shell/choice';
 import { useProgress } from '../shell/progress';
 import { formatDuration, lastDays, LEARNED_ACCURACY, learnedSongs, markedDays, stringTrend, tuningAverage } from '../shell/progressStats';
 import { ROUTES } from '../shell/routes';
+import { useIsStudent } from '../shell/studentSession';
 import { LEVEL_INFO } from './OnboardLevel';
 import { settingsUrl } from './Settings';
 
@@ -480,6 +481,7 @@ function trendPoints(weeks: readonly (number | null)[], max: number): string {
 export const Profile: React.FC = () => {
   const progress = useProgress();
   const shelf = useShelf();
+  const student = useIsStudent();
   const owned = new Set(progress.badges);
   const nextBadge = BADGES.find((b) => !owned.has(b.id));
   const look = progress.animal ? ANIMAL_LOOK[progress.animal] : null;
@@ -519,9 +521,15 @@ export const Profile: React.FC = () => {
           </Bar>
         </Who>
         <nav aria-label="Perfil">
-          <Button as={Link} to={ROUTES.ranking} $variant="ghost">
-            Ranking
-          </Button>
+          {student ? (
+            <Button as={Link} to={ROUTES.tasks} $variant="ghost">
+              Tarefas
+            </Button>
+          ) : (
+            <Button as={Link} to={ROUTES.ranking} $variant="ghost">
+              Ranking
+            </Button>
+          )}
           <Button as={Link} to={settingsUrl()} $variant="ghost">
             Configurações
           </Button>
