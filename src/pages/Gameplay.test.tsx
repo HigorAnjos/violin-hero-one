@@ -2,6 +2,7 @@ import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { palcoTheme } from '../assets/styles/themes/palco';
+import { RecordingError, type Recorder, type Recording } from '../game/audio';
 import { ODE } from '../game/engine/testing';
 import type { Song } from '../game/notation/song';
 import { loadEarnedBadges } from '../services/badges';
@@ -11,6 +12,7 @@ import type { PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 import { renderScreen } from '../shell/testing';
 import type { GameDeps } from '../shell/useGame';
+import { devWindow } from '../shell/devTools';
 import { Gameplay } from './Gameplay';
 
 // Partida inteira com motor e pista: sob carga (CI, suíte em paralelo) passa dos 5 s padrão
@@ -45,8 +47,7 @@ afterEach(() => {
 
 const track = { canvas: {} as HTMLCanvasElement, update: vi.fn(), onJudgment: vi.fn(), setNotes: vi.fn(), setLook: vi.fn(), resize: vi.fn(), destroy: vi.fn() };
 
-function setup(search = '', state: PlayState = { song: FAST, mode: 'Arcade' }, overrides: Partial<GameDeps> = {}) {
-  const ear: FakeEar = createFakeEar();
+function setup(search = '', state: PlayState = { song: FAST, mode: 'Arcade' }, overrides: Partial<GameDeps> = {}, ear: FakeEar = createFakeEar()) {
   const context = fakeContext();
   ear.provideAudio({ context, source: {}, stream: null } as unknown as EarAudio);
   const deps: Partial<GameDeps> = { loadTrack: vi.fn(async () => track), orchestra: null, clicks: () => () => undefined, ...overrides };
@@ -179,5 +180,71 @@ describe('Gameplay', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
     await userEvent.click(screen.getByRole('button', { name: 'Sair para músicas' }));
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+  });
+});
+
+describe('Gameplay gravando a entrega', () => {
+  const RECORDING: Recording = { blob: new Blob(['som']), durationMs: 9000, mimeType: 'audio/webm;codecs=opus' };
+
+  function recordingEar() {
+    const recorder = {
+      state: 'recording' as const,
+      mimeType: RECORDING.mimeType,
+      pause: vi.fn(),
+      resume: vi.fn(),
+      stop: vi.fn(async () => RECORDING),
+      discard: vi.fn(),
+    };
+    const ear = Object.assign(createFakeEar(), { record: vi.fn((): Recorder => recorder) });
+    return { ear, recorder };
+  }
+
+  const recorded = () => devWindow().__vhRecording;
+
+  it('grava do começo ao fim da música e entrega a gravação com o resultado', async () => {
+    const { ear, recorder } = recordingEar();
+    const { run } = setup('?simular=0&gravar', undefined, {}, ear);
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    expect(ear.record).toHaveBeenCalledOnce();
+    run(12);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(new RegExp(`${ROUTES.badge}|${ROUTES.results}`)), { timeout: 3000 });
+    expect(recorder.stop).toHaveBeenCalledOnce();
+    expect(recorded()).toBe(RECORDING);
+  });
+
+  it('pausa junto com a partida e volta com ela', async () => {
+    const { ear, recorder } = recordingEar();
+    setup('?gravar', undefined, {}, ear);
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
+    expect(recorder.pause).toHaveBeenCalledOnce();
+    await userEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    await waitFor(() => expect(recorder.resume).toHaveBeenCalledOnce(), { timeout: 3000 });
+  });
+
+  it('partida abandonada descarta a gravação', async () => {
+    const { ear, recorder } = recordingEar();
+    setup('?gravar', undefined, {}, ear);
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sair para músicas' }));
+    expect(recorder.discard).toHaveBeenCalled();
+    expect(recorder.stop).not.toHaveBeenCalled();
+  });
+
+  it('sem gravar, o Ouvido nem grava', async () => {
+    const { ear } = recordingEar();
+    setup('', undefined, {}, ear);
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    expect(ear.record).not.toHaveBeenCalled();
+  });
+
+  it('Ouvido que não grava (simulado): a partida segue e o fim diz por quê', async () => {
+    const { run } = setup('?simular=0&gravar');
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    run(12);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(new RegExp(`${ROUTES.badge}|${ROUTES.results}`)), { timeout: 3000 });
+    expect(recorded()).toBeInstanceOf(RecordingError);
+    expect(recorded()).toMatchObject({ kind: 'unsupported' });
   });
 });

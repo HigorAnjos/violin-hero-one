@@ -18,6 +18,8 @@ export interface PlayState {
   noFail?: boolean;
   /** Só no modo Prática; sem ele, do compasso 0, sem laço, a 70%. */
   practice?: PracticeStart;
+  /** Partida de tarefa: grava o microfone para a entrega (fora da Prática). */
+  recordAudio?: boolean;
 }
 
 export interface ResultState extends PlayState {

@@ -1,13 +1,15 @@
-/** O IndexedDB do app: as músicas guardadas e a fila de partidas, as duas por usuário. */
+/** O IndexedDB do app: as músicas guardadas, a fila de partidas e a de gravações, todas por usuário. */
 export const DEVICE_DB_NAME = 'violin-hero';
 /**
  * 2: as músicas ganham o dono na chave e entra a fila de partidas. A versão 1 não sabia de quem era cada música:
  * o store some e volta a encher na próxima vez com rede (Decisões).
+ * 3: entra a fila de gravações das entregas (recordingUpload.ts).
  */
-export const DEVICE_DB_VERSION = 2;
+export const DEVICE_DB_VERSION = 3;
 export const SONGS_STORE = 'songs';
 export const PLAYS_STORE = 'plays';
-/** Índice por dono nos dois stores. */
+export const RECORDINGS_STORE = 'recordings';
+/** Índice por dono em todos os stores. */
 export const BY_USER = 'userId';
 
 export const done = <T>(request: IDBRequest<T>) =>
@@ -22,6 +24,9 @@ function upgrade(db: IDBDatabase, oldVersion: number) {
     if (db.objectStoreNames.contains(SONGS_STORE)) db.deleteObjectStore(SONGS_STORE);
     db.createObjectStore(SONGS_STORE, { keyPath: ['userId', 'id', 'level'] }).createIndex(BY_USER, 'userId');
     db.createObjectStore(PLAYS_STORE, { keyPath: ['userId', 'clientId'] }).createIndex(BY_USER, 'userId');
+  }
+  if (oldVersion < 3) {
+    db.createObjectStore(RECORDINGS_STORE, { keyPath: ['userId', 'id'] }).createIndex(BY_USER, 'userId');
   }
 }
 

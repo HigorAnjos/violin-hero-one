@@ -1,4 +1,4 @@
-import { createMicSession, isMicClosed, type MicAudio, type MicCloseReason, type MicSession } from '../game/audio';
+import { createMicSession, isMicClosed, startRecording, type MicAudio, type MicCloseReason, type MicSession, type Recorder } from '../game/audio';
 import type { Ear } from './Ear';
 
 /** O Ouvido de verdade e o que as telas de jogo precisam além dele: relógio e fonte, Lá e aviso de fechamento. */
@@ -6,6 +6,7 @@ export interface MicrophoneEar extends Ear {
   audio(): MicAudio | null;
   setA4(a4: number): void;
   onClosed(listener: (reason: MicCloseReason) => void): () => void;
+  record(): Recorder;
 }
 
 /** Porta das telas sobre a MicSession, a dona única do microfone. */
@@ -25,5 +26,6 @@ export function createMicrophoneEar(session: MicSession = createMicSession()): M
     audio: () => session.audio(),
     setA4: (a4) => session.setA4(a4),
     onClosed: (listener) => session.onClose(listener),
+    record: () => startRecording(session),
   };
 }
