@@ -107,9 +107,3 @@ export function audioGoneText(reviewedAt: string | null): string {
   const until = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(Date.parse(reviewedAt) + AUDIO_RETENTION_DAYS * DAY);
   return `O áudio será apagado em ${until}, ${AUDIO_RETENTION_DAYS} dias depois da revisão.`;
 }
-
-/** "0:29"; de milissegundos. */
-export function clock(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
-}

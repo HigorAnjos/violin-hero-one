@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { clock } from '../components/SubmissionPlayer/SubmissionPlayer';
 import {
   audioGoneText,
   centsText,
-  clock,
   dueAtFromDate,
   dueText,
   formatClassCode,
