@@ -44,6 +44,9 @@ const BadgeEarned = lazyGameScreen('BadgeEarned');
 const Results = lazyGameScreen('Results');
 const Parent = React.lazy(() => import('./pages/Parent').then(module => ({ default: module.Parent })));
 const Plans = React.lazy(() => import('./pages/Plans').then(module => ({ default: module.Plans })));
+const Teacher = React.lazy(() => import('./pages/Teacher').then((module) => ({ default: module.Teacher })));
+const AssignTask = React.lazy(() => import('./pages/AssignTask').then((module) => ({ default: module.AssignTask })));
+const TeacherReview = React.lazy(() => import('./pages/TeacherReview').then((module) => ({ default: module.TeacherReview })));
 
 /** Primeira vez no aparelho: boas-vindas (começar sem cadastro ou entrar numa conta). Depois, a tela inicial. */
 const Home: React.FC = () => (isOnboarded() ? <Main /> : <FirstVisit />);
@@ -100,6 +103,10 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.account} element={<GuestPrompt />} />
             <Route path={ROUTES.parent} element={<Parent />} />
             <Route path={ROUTES.plans} element={<Plans />} />
+            <Route path={ROUTES.teacher} element={<Teacher />} />
+            <Route path={ROUTES.teacherClass} element={<Teacher />} />
+            <Route path={ROUTES.newAssignment} element={<AssignTask />} />
+            <Route path={ROUTES.review} element={<TeacherReview />} />
             <Route path={ROUTES.ranking} element={<Ranking />} />
             <Route path={ROUTES.challenge} element={<Challenge />} />
             <Route path={ROUTES.challengeCode} element={<ChallengeInvite />} />
