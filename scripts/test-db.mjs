@@ -1529,11 +1529,14 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         assert.deepEqual(await login(cls.code, 'Fantasma', '0000'), { status: 'locked' });
       });
 
-      it('30 erros do mesmo IP bloqueiam o IP para qualquer aluno; outro IP segue entrando', async () => {
+      it('100 erros do mesmo IP bloqueiam o IP para qualquer aluno (99 ainda não: escola atrás de NAT); outro IP segue entrando', async () => {
         const t = await teacher();
         const cls = await classOf(t);
         const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
-        for (let i = 0; i < 30; i++) await login(cls.code, `Chute ${i}`, '0000', '10.9.9.9');
+        const colega = await studentOf(t, cls.id, 'Davi', { join: false });
+        for (let i = 0; i < 99; i++) await login(cls.code, `Chute ${i}`, '0000', '10.9.9.9');
+        assert.equal((await login(cls.code, 'Davi', colega.pin, '10.9.9.9')).status, 'ok');
+        await login(cls.code, 'Chute 99', '0000', '10.9.9.9');
         assert.deepEqual(await login(cls.code, 'Rita', aluno.pin, '10.9.9.9'), { status: 'locked' });
         assert.equal((await login(cls.code, 'Rita', aluno.pin, '10.8.8.8')).status, 'ok');
       });
@@ -1545,6 +1548,38 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         for (let i = 0; i < 5; i++) await login(cls.code, 'Rita', wrongPin(aluno.pin));
         assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'locked');
         await c.query(`update ${S}.login_throttle set locked_until = now() - interval '1 second' where locked_until > now()`);
+        assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'ok');
+      });
+
+      it('3 bloqueios seguidos NÃO acabam sozinhos: só o PIN novo do professor desbloqueia', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        const expire = () => c.query(`update ${S}.login_throttle set locked_until = now() - interval '1 second' where locked_until > now() and locked_until <> 'infinity'`);
+        for (let round = 1; round <= 3; round++) {
+          for (let i = 0; i < 5; i++) await login(cls.code, 'Rita', wrongPin(aluno.pin));
+          assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'locked', `bloqueio ${round}`);
+          await expire();
+        }
+        assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'locked', 'o terceiro bloqueio não vence');
+        // O mesmo vale para nome que não existe: o bloqueio não revela quem está na turma
+        for (let round = 1; round <= 3; round++) {
+          for (let i = 0; i < 5; i++) await login(cls.code, 'Fantasma', '0000');
+          await expire();
+        }
+        assert.equal((await login(cls.code, 'Fantasma', '0000')).status, 'locked');
+        const { pin } = await rpc(t, 'reset_student_pin', [aluno.id]);
+        assert.equal((await login(cls.code, 'Rita', pin)).status, 'ok');
+      });
+
+      it('um dia sem bloqueio zera a sequência', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        for (let round = 1; round <= 3; round++) {
+          for (let i = 0; i < 5; i++) await login(cls.code, 'Rita', wrongPin(aluno.pin));
+          await c.query(`update ${S}.login_throttle set locked_until = now() - interval '25 hours', window_started_at = now() - interval '25 hours' where locked_until > now()`);
+        }
         assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'ok');
       });
 
@@ -1567,6 +1602,20 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         const second = await asServer(c, `select ${S}.class_link_user($1, $2) as r`, [aluno.id, u2]);
         assert.deepEqual([first.rows[0].r, second.rows[0].r], [u1, u1]);
         assert.equal((await login(cls.code, 'Rita', aluno.pin)).user_id, u1);
+      });
+
+      it('primeira entrada que caiu antes de ligar: class_link_existing acha o usuário pelo e-mail sintético', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        const link = () => asServer(c, `select ${S}.class_link_existing($1) as r`, [aluno.id]).then((res) => res.rows[0].r);
+        await notFound(link());
+        const orphan = randomUUID();
+        await c.query(`insert into auth.users (id, instance_id, aud, role, email, is_anonymous) values ($1, $2, 'authenticated', 'authenticated', $3, false)`,
+          [orphan, ZERO, `aluno-${aluno.id}@alunos.violinhero.invalid`]);
+        assert.equal(await link(), orphan);
+        assert.equal((await login(cls.code, 'Rita', aluno.pin)).user_id, orphan);
+        await denied(as(c, t, `select ${S}.class_link_existing($1)`, [aluno.id]));
       });
 
       it('o app NÃO chama a conferência nem a ligação, nem com sessão', async () => {
@@ -1930,6 +1979,28 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         assert.deepEqual([mine.submission.audio_path, mine.submission.audio_deleted, mine.review.grade], [null, true, 5]);
         const daBia = (await rpc(t, 'get_assignment', [task.id])).students.find((s) => s.name === 'Bia');
         assert.equal(daBia.submission.audio_path, p(bia, 'sem-revisao'));
+      });
+
+      it('entrega nunca revisada sai 30 dias depois do prazo da tarefa, também de aluno inativo e turma encerrada', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const ana = await studentOf(t, cls.id, 'Ana');
+        const bia = await studentOf(t, cls.id, 'Bia');
+        const song = await serverSong(c, { notes: 4 });
+        const task = await rpc(t, 'create_assignment', [cls.id, song, 'easy', 'arcade', new Date(Date.now() + 86400e3).toISOString(), null, null]);
+        await submit(c, ana.user, fullPlay(song));
+        await submit(c, bia.user, fullPlay(song));
+        const p = (m) => `${cls.id}/${m.id}/${task.id}/take.webm`;
+        await rpc(ana.user, 'submit_assignment', [task.id, null, p(ana)]);
+        await rpc(bia.user, 'submit_assignment', [task.id, null, p(bia)]);
+        await rpc(t, 'set_student_active', [bia.id, false]);
+        await rpc(t, 'close_class', [cls.id]);
+        const dueAgo = (interval) => c.query(
+          `update ${S}.assignments set created_at = now() - interval '40 days', due_at = now() - $2::interval where id = $1`, [task.id, interval]);
+        await dueAgo('29 days');
+        assert.deepEqual(await toPurge(), []);
+        await dueAgo('30 days 1 second');
+        assert.deepEqual((await toPurge()).sort(), [p(ana), p(bia)].sort());
       });
 
       it('apagar a tarefa põe o áudio das entregas na limpeza; o app NÃO chama a limpeza', async () => {
