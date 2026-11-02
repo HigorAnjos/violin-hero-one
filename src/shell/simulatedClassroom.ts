@@ -16,13 +16,14 @@ const DAY = 86400e3;
 /**
  * Turma de mentira para o desenvolvimento e o e2e (?turmas=simulada, sem backend): a Profª Helena com a turma
  * "Iniciantes · sábado" (código ADGK-NRUX), os alunos Ana Clara (PIN 1000), Bruno (1001) e Davi (1002), duas tarefas
- * a fazer e uma já revisada da Ana. O aparelho começa como convidado; entrar pela turma troca para o aluno.
+ * a fazer e uma já revisada da Ana. O aparelho começa como convidado; entrar pela turma troca para o aluno. Resolve
+ * com a cena montada: uma entrada no meio dela trocaria o usuário do fake antes da hora.
  */
-export function simulatedClassroom(): ClassroomShell {
+export async function simulatedClassroom(): Promise<ClassroomShell> {
   const titles = Object.fromEntries(FIXED_SONGS.map((s) => [s.id, s.title]));
   const fake = fakeClassroom({ songs: titles, userId: 'professora-helena' });
   const due = (days: number) => new Date(Date.now() + days * DAY).toISOString();
-  void (async () => {
+  await (async () => {
     const turma = await fake.createClass('Iniciantes · sábado');
     await fake.addStudent(turma.id, 'Ana Clara');
     await fake.addStudent(turma.id, 'Bruno');
@@ -37,7 +38,7 @@ export function simulatedClassroom(): ClassroomShell {
     fake.actAs('professora-helena');
     await fake.reviewSubmission({ submissionId: entregue.submission!.id, concept: 'muito-bom', comment: 'O ritmo está ótimo! Só a nota longa do fim está caindo de afinação.' });
     fake.actAs('convidado', { anonymous: true });
-  })();
+  })().catch((error: unknown) => console.error('[turma simulada] a cena não montou', error));
   return fakeClassroomShell(fake);
 }
 

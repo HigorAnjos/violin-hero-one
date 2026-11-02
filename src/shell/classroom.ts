@@ -52,6 +52,8 @@ function realClassroom(): ClassroomShell {
 }
 
 let shell: Promise<ClassroomShell> | null = null;
+/** O endereço da abertura do app: a escolha vale a visita inteira, mesmo depois de navegar para fora do ?turmas. */
+const bootSearch = typeof window === 'undefined' ? '' : window.location.search;
 
 /**
  * No desenvolvimento e no e2e, `?turmas=simulada` na primeira tela troca o Supabase pela turma de mentira, até
@@ -60,7 +62,7 @@ let shell: Promise<ClassroomShell> | null = null;
 export function classroomShell(): Promise<ClassroomShell> {
   if (shell) return shell;
   if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
-    if (new URLSearchParams(window.location.search).get('turmas') === 'simulada') {
+    if (new URLSearchParams(bootSearch).get('turmas') === 'simulada') {
       return (shell = import('./simulatedClassroom').then((module) => module.simulatedClassroom()));
     }
   }
