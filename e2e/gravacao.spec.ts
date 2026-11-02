@@ -79,7 +79,8 @@ test('a partida de tarefa grava a entrega inteira sem atrasar o julgamento', asy
   expect(recorded.lags.length).toBeGreaterThan(100);
   // Nesta máquina as medianas ficam a ±2 ms uma da outra: a folga é o ruído entre dois Chromium
   expect(withRecording.median - without.median).toBeLessThan(5);
-  expect(withRecording.p95).toBeLessThan(50);
+  // O p95 depende da máquina (na CI passa de 55 ms já sem gravar): vale a diferença, não um teto fixo
+  expect(withRecording.p95 - without.p95).toBeLessThan(10);
 
   const r = recorded.recording;
   if (!r || typeof r === 'string') throw new Error(`a gravação não saiu: ${r}`);
