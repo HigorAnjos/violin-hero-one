@@ -78,6 +78,7 @@ export const AccountPanel: React.FC<{ client?: (AccountClient & Parameters<typeo
 
   return (
     <SettingsPanel title="Conta" wide>
+      <SettingsRow><Button as={Link} to={ROUTES.parent} $variant="link">Sou responsável</Button></SettingsRow>
       {!session && <SettingsRow>Conectando…</SettingsRow>}
       {session?.status === 'offline' && <SettingsRow>{new AccountError('offline').message}</SettingsRow>}
       {session?.status === 'signed-in' && session.anonymous && (

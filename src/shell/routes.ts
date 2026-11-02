@@ -32,6 +32,8 @@ export const ROUTES = {
   reminder: '/lembrete',
   login: '/entrar',
   account: '/conta',
+  parent: '/responsavel',
+  plans: '/planos',
   ranking: '/ranking',
   challenge: '/desafio',
   /** O link do desafio: abre para qualquer um (aceitar pede conta). */
@@ -55,9 +57,9 @@ export function classLoginUrl(code?: string | null): string {
 }
 
 /** Onde a conta é pedida (GuestPrompt): ranking, desafio ou usar em outro aparelho. Nunca no meio de uma música. */
-export type AccountReason = 'ranking' | 'desafio' | 'aparelho';
+export type AccountReason = 'ranking' | 'desafio' | 'aparelho' | 'responsavel';
 
-const ACCOUNT_REASONS: readonly AccountReason[] = ['ranking', 'desafio', 'aparelho'];
+const ACCOUNT_REASONS: readonly AccountReason[] = ['ranking', 'desafio', 'aparelho', 'responsavel'];
 
 /** `next`: para onde ir com a conta criada (e para onde o link do e-mail volta). `back`: o "Agora não". */
 export function accountUrl(reason: AccountReason, next: string, back: string = next): string {

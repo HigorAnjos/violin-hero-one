@@ -130,6 +130,8 @@ export interface Assignment {
  * tarefa existir e chegada ao servidor até o prazo (partida feita sem rede que só subiu depois do prazo não conta).
  */
 export interface BestPlay {
+  meanAbsCents?: number | null;
+  stringCents?: Record<string, number> | null;
   playId: string;
   score: number;
   accuracy: number;
@@ -146,6 +148,8 @@ export interface Submission {
   audioPath: string | null;
   /** A retenção já apagou o áudio (30 dias depois da revisão). */
   audioDeleted: boolean;
+  /** Duração informada na entrega, quando disponível. */
+  audioDurationMs?: number | null;
 }
 
 export interface Review {
@@ -417,7 +421,7 @@ function toStatus(r: Row): AssignmentStatus {
   const sub = r.submission as Row | null;
   const review = r.review as Row | null;
   return {
-    best: best ? { playId: str(best.play_id), score: num(best.score), accuracy: num(best.accuracy), playedAt: str(best.played_at) } : null,
+    best: best ? { playId: str(best.play_id), score: num(best.score), accuracy: num(best.accuracy), playedAt: str(best.played_at), meanAbsCents: numOrNull(best.mean_abs_cents), stringCents: (best.string_cents as Record<string, number> | null) ?? null } : null,
     submission: sub
       ? {
           id: str(sub.id),
@@ -427,6 +431,7 @@ function toStatus(r: Row): AssignmentStatus {
           submittedAt: str(sub.submitted_at),
           audioPath: strOrNull(sub.audio_path),
           audioDeleted: !!sub.audio_deleted,
+          audioDurationMs: numOrNull(sub.audio_duration_ms),
         }
       : null,
     review: review ? toReview(review) : null,
