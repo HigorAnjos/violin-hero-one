@@ -48,7 +48,7 @@ const ALLOWED_FUNCTIONS = [
   'authenticated violinhero.reset_student_pin(uuid)',
   'authenticated violinhero.review_submission(uuid,integer,text,text)',
   'authenticated violinhero.set_student_active(uuid,boolean)',
-  'authenticated violinhero.submit_assignment(uuid,uuid,text)',
+  'authenticated violinhero.submit_assignment(uuid,uuid,text,integer)',
   'authenticated violinhero.submit_play(jsonb)',
 ];
 
@@ -1781,6 +1781,28 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         await invalid(submitTask(ana.user, task.id));
         const list = await rpc(t, 'list_class_assignments', [task.class_id]);
         assert.deepEqual(list.map((a) => [a.student_count, a.submitted_count, a.reviewed_count]), [[2, 1, 1]]);
+      });
+
+      it('revisão traz afinação e duração da partida e do áudio; outro professor e o colega NÃO leem', async () => {
+        const { t, cls, ana, bia, song, task } = await scene();
+        await submit(c, ana.user, fullPlay(song, { mean_abs_cents: 11.5, string_cents: [-4, 6.5, null, 12], duration_ms: 4500 }));
+        const path = audioOf(cls.id, ana.id, task.id);
+        const own = await rpc(ana.user, 'submit_assignment', [task.id, null, path, 4321]);
+        const pick = (s) => [s.mean_abs_cents, s.string_cents, s.duration_ms];
+        assert.deepEqual(pick(own.best), [11.5, [-4, 6.5, null, 12], 4500]);
+        const row = (await rpc(t, 'get_assignment', [task.id])).students.find((s) => s.student_id === ana.id);
+        assert.deepEqual([...pick(row.submission), row.submission.audio_duration_ms], [11.5, [-4, 6.5, null, 12], 4500, 4321]);
+        // Três argumentos (quem chamava antes da 0017) seguem valendo; sem áudio, a duração não fica
+        await submit(c, bia.user, fullPlay(song));
+        const semAudio = await submitTask(bia.user, task.id, null, null);
+        assert.equal(semAudio.submission.audio_duration_ms, null);
+        assert.equal((await rpc(bia.user, 'submit_assignment', [task.id, null, null, 999])).submission.audio_duration_ms, null);
+        await invalid(rpc(ana.user, 'submit_assignment', [task.id, null, path, -1]));
+        const outro = await teacher();
+        await notFound(rpc(outro, 'get_assignment', [task.id]));
+        await notFound(rpc(outro, 'get_student_progress', [ana.id]));
+        const daBia = JSON.stringify(await rpc(bia.user, 'get_my_assignments'));
+        assert.ok(!daBia.includes('4321') && !daBia.includes('11.5'), `a afinação da Ana vazou para a Bia: ${daBia}`);
       });
 
       it('aluno tirado da turma NÃO vê mais as tarefas nem entrega; turma encerrada NÃO recebe entrega', async () => {

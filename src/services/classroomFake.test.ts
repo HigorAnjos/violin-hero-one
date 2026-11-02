@@ -67,6 +67,20 @@ describe('fakeClassroom (as regras do banco que as telas veem)', () => {
     await expect(api.submissionAudioUrl(path)).rejects.toMatchObject({ kind: 'not-found' });
   });
 
+  it('entrega traz a afinação e a duração da partida e a do áudio, que só fica com gravação', async () => {
+    const { api, cls, pin } = await scene();
+    const task = await api.createAssignment({ classId: cls.id, songId: SONG, level: 'easy', mode: 'arcade', dueAt: tomorrow() });
+    const { student } = api.login({ code: cls.code, name: 'Ana Luísa', pin });
+    api.addPlay({ songId: SONG, meanAbsCents: 11, stringCents: [-4, 6, null, 12], durationMs: 48_000 });
+    const path = `${cls.id}/${student.id}/${task.id}/take.webm`;
+    const sent = await api.submitAssignment({ assignmentId: task.id, audioPath: path, audioDurationMs: 47_500 });
+    const { meanAbsCents, stringCents, durationMs, audioDurationMs } = sent.submission!;
+    expect([meanAbsCents, stringCents, durationMs, audioDurationMs]).toEqual([11, [-4, 6, null, 12], 48_000, 47_500]);
+    expect(sent.best?.stringCents).toEqual([-4, 6, null, 12]);
+    const plain = await api.submitAssignment({ assignmentId: task.id, audioDurationMs: 47_500 });
+    expect(plain.submission?.audioDurationMs).toBeNull();
+  });
+
   it('responsável: convite de uso único, vê só o filho e ouve a entrega dele', async () => {
     const { api, cls, student } = await scene();
     const { student: bia } = await api.addStudent(cls.id, 'Bia');

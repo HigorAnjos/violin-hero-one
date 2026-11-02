@@ -63,6 +63,26 @@ describe('supabaseClassroom', () => {
     expect(r.submission?.audioDurationMs).toBe(12500);
   });
 
+  it('afinação e duração da partida e do áudio (0017); a duração só vai com áudio', async () => {
+    const { client, rpc } = rpcClient({
+      id: 'x', class_id: 't1', song_id: 's', song_title: 'Brilha', level: 'easy', mode: 'arcade', instruction_key: null,
+      instruction_text: null, created_at: 'c', due_at: 'd', closed: false,
+      best: { play_id: 'p1', score: 400, accuracy: 97.5, played_at: 'pa', mean_abs_cents: '11.50', string_cents: ['-4.00', 6.5, null, 12], duration_ms: 48000 },
+      submission: {
+        id: 'e1', play_id: 'p1', score: 400, accuracy: 97.5, submitted_at: 'sa', audio_path: 't1/a1/x/f.webm', audio_deleted: false,
+        audio_duration_ms: 47500, mean_abs_cents: 11.5, string_cents: [-4, 6.5, null, 12], duration_ms: 48000,
+      },
+      review: null,
+    });
+    const api = supabaseClassroom(client);
+    const r = await api.submitAssignment({ assignmentId: 'x', audioPath: 't1/a1/x/f.webm', audioDurationMs: 47500.4 });
+    expect(rpc).toHaveBeenLastCalledWith('submit_assignment', { p_assignment_id: 'x', p_play_id: null, p_audio_path: 't1/a1/x/f.webm', p_audio_duration_ms: 47500 });
+    expect([r.best?.meanAbsCents, r.best?.stringCents, r.best?.durationMs]).toEqual([11.5, [-4, 6.5, null, 12], 48000]);
+    expect([r.submission?.audioDurationMs, r.submission?.stringCents]).toEqual([47500, [-4, 6.5, null, 12]]);
+    await api.submitAssignment({ assignmentId: 'x', audioDurationMs: 47500 });
+    expect(rpc).toHaveBeenLastCalledWith('submit_assignment', { p_assignment_id: 'x', p_play_id: null, p_audio_path: null });
+  });
+
   it('erro do banco vira ClassroomError com o motivo', async () => {
     const { client } = rpcClient(null, { code: 'VHLIM', message: 'limite' });
     await expect(supabaseClassroom(client).addStudent('t1', 'Ana')).rejects.toMatchObject({ kind: 'limit' });

@@ -164,6 +164,7 @@ const QUESTION: Record<AccountReason, string> = {
   desafio: 'Quer desafiar um amigo',
   aparelho: 'Quer usar em outro aparelho',
   responsavel: 'Quer acompanhar seu filho',
+  professor: 'Quer criar sua turma',
 };
 
 /** "Quer aparecer no ranking, Lia?" — só o apelido, nunca nome real nem e-mail. */

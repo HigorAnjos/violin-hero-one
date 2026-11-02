@@ -65,6 +65,9 @@ interface FakePlay {
   accuracy: number;
   finished: boolean;
   playedAt: string;
+  meanAbsCents: number | null;
+  stringCents: (number | null)[];
+  durationMs: number;
 }
 
 interface FakeSubmission {
@@ -73,6 +76,7 @@ interface FakeSubmission {
   memberId: string;
   playId: string;
   audioPath: string | null;
+  audioDurationMs: number | null;
   submittedAt: string;
   review: Review | null;
 }
@@ -85,6 +89,10 @@ export interface FakePlayInput {
   accuracy?: number;
   finished?: boolean;
   playedAt?: string;
+  /** Afinação da partida (o padrão é ±8 ¢, todas as cordas afinadas) e duração (o padrão, 30 s). */
+  meanAbsCents?: number | null;
+  stringCents?: (number | null)[];
+  durationMs?: number;
 }
 
 export interface FakeClassroom extends ClassroomApi {
@@ -190,14 +198,19 @@ export function fakeClassroom({
   const best = (a: Assignment, uid: string | null) =>
     plays.filter((p) => counts(p, a, uid)).sort((x, y) => y.score - x.score)[0] ?? null;
   const fresh = (a: Assignment): Assignment => ({ ...a, closed: a.dueAt <= iso() });
+  const tuning = (p: FakePlay) => ({ meanAbsCents: p.meanAbsCents, stringCents: p.stringCents, durationMs: p.durationMs });
   const status = (a: Assignment, m: FakeMember): AssignmentStatus => {
     const b = best(a, m.userId);
     const s = submissions.find((x) => x.assignmentId === a.id && x.memberId === m.id);
     const play = s ? plays.find((p) => p.id === s.playId) : undefined;
     return {
-      best: b ? { playId: b.id, score: b.score, accuracy: b.accuracy, playedAt: b.playedAt } : null,
+      best: b ? { playId: b.id, score: b.score, accuracy: b.accuracy, playedAt: b.playedAt, ...tuning(b) } : null,
       submission: s
-        ? { id: s.id, playId: s.playId, score: play?.score ?? null, accuracy: play?.accuracy ?? null, submittedAt: s.submittedAt, audioPath: s.audioPath, audioDeleted: false }
+        ? {
+            id: s.id, playId: s.playId, score: play?.score ?? null, accuracy: play?.accuracy ?? null, submittedAt: s.submittedAt,
+            audioPath: s.audioPath, audioDeleted: false, audioDurationMs: s.audioDurationMs,
+            ...(play ? tuning(play) : { meanAbsCents: null, stringCents: [], durationMs: null }),
+          }
         : null,
       review: s?.review ?? null,
     };
@@ -246,9 +259,12 @@ export function fakeClassroom({
       meAnonymous = false;
       return { userId: me, student: { id: m!.id, name: m!.name, classId: k!.id, className: k!.name } };
     },
-    addPlay({ songId, level = 'easy', mode = 'arcade', score = 100, accuracy = 100, finished = true, playedAt = iso() }) {
+    addPlay({
+      songId, level = 'easy', mode = 'arcade', score = 100, accuracy = 100, finished = true, playedAt = iso(),
+      meanAbsCents = 8, stringCents = [0, 0, 0, 0], durationMs = 30_000,
+    }) {
       const id = next('partida');
-      plays.push({ id, userId: me, songId, level, mode, score, accuracy, finished, playedAt });
+      plays.push({ id, userId: me, songId, level, mode, score, accuracy, finished, playedAt, meanAbsCents, stringCents, durationMs });
       return id;
     },
     setPlan(teacherId, planId) {
@@ -407,7 +423,7 @@ export function fakeClassroom({
           .map((a) => studentAssignment(a, m))
           .sort((x, y) => Number(x.closed) - Number(y.closed) || x.dueAt.localeCompare(y.dueAt));
       }),
-    submitAssignment: ({ assignmentId, playId = null, audioPath = null }) =>
+    submitAssignment: ({ assignmentId, playId = null, audioPath = null, audioDurationMs = null }) =>
       run(() => {
         const m = myMember();
         const a = assignments.find((x) => x.id === assignmentId && x.classId === m?.classId) ?? fail('not-found');
@@ -416,12 +432,14 @@ export function fakeClassroom({
         if (!play) fail('refused');
         const parts = audioPath ? audioParts(audioPath) : null;
         if (audioPath && (!parts || parts.classId !== a.classId || parts.memberId !== m!.id || parts.assignmentId !== a.id)) fail('refused');
+        const duration = audioPath ? audioDurationMs : null;
+        if (duration !== null && !(duration >= 0 && duration <= 4 * 3600e3)) fail('refused');
         let s = submissions.find((x) => x.assignmentId === a.id && x.memberId === m!.id);
         if (s?.review) fail('refused');
         if (!s) {
-          s = { id: next('entrega'), assignmentId: a.id, memberId: m!.id, playId: play!.id, audioPath, submittedAt: iso(), review: null };
+          s = { id: next('entrega'), assignmentId: a.id, memberId: m!.id, playId: play!.id, audioPath, audioDurationMs: duration, submittedAt: iso(), review: null };
           submissions.push(s);
-        } else Object.assign(s, { playId: play!.id, audioPath, submittedAt: iso() });
+        } else Object.assign(s, { playId: play!.id, audioPath, audioDurationMs: duration, submittedAt: iso() });
         return studentAssignment(a, m!);
       }),
     acceptGuardianInvite: (code) =>

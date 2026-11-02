@@ -129,16 +129,23 @@ export interface Assignment {
  * Melhor partida do aluno que conta para a tarefa: terminada, música + nível + modo da tarefa, jogada depois de a
  * tarefa existir e chegada ao servidor até o prazo (partida feita sem rede que só subiu depois do prazo não conta).
  */
-export interface BestPlay {
-  meanAbsCents?: number | null;
-  stringCents?: Record<string, number> | null;
+export interface BestPlay extends PlayTuning {
   playId: string;
   score: number;
   accuracy: number;
   playedAt: string;
 }
 
-export interface Submission {
+/** Afinação e duração da partida (0017); opcionais para quem monta a situação sem elas (fakes, testes antigos). */
+export interface PlayTuning {
+  /** Desvio médio absoluto dos acertos, em cents; null sem acerto. */
+  meanAbsCents?: number | null;
+  /** Afinação média por corda (Sol, Ré, Lá, Mi), em cents com sinal (+ alto, − baixo); null na corda sem acerto. */
+  stringCents?: (number | null)[];
+  durationMs?: number | null;
+}
+
+export interface Submission extends PlayTuning {
   id: string;
   playId: string | null;
   score: number | null;
@@ -148,7 +155,7 @@ export interface Submission {
   audioPath: string | null;
   /** A retenção já apagou o áudio (30 dias depois da revisão). */
   audioDeleted: boolean;
-  /** Duração informada na entrega, quando disponível. */
+  /** Duração que o aparelho gravou (o webm do MediaRecorder sai sem duração); null sem ela. */
   audioDurationMs?: number | null;
 }
 
@@ -200,6 +207,8 @@ export interface SubmitInput {
   playId?: string | null;
   /** Caminho já enviado com uploadSubmissionAudio (submissionAudioPath); sem gravação, nada. */
   audioPath?: string | null;
+  /** O durationMs da gravação (só vale com audioPath). */
+  audioDurationMs?: number | null;
 }
 
 // ---------- responsável ----------
@@ -416,12 +425,18 @@ const toReview = (r: Row): Review => ({
   reviewedAt: str(r.reviewed_at),
 });
 
+const toTuning = (r: Row): PlayTuning => ({
+  meanAbsCents: numOrNull(r.mean_abs_cents),
+  stringCents: Array.isArray(r.string_cents) ? r.string_cents.map(numOrNull) : [],
+  durationMs: numOrNull(r.duration_ms),
+});
+
 function toStatus(r: Row): AssignmentStatus {
   const best = r.best as Row | null;
   const sub = r.submission as Row | null;
   const review = r.review as Row | null;
   return {
-    best: best ? { playId: str(best.play_id), score: num(best.score), accuracy: num(best.accuracy), playedAt: str(best.played_at), meanAbsCents: numOrNull(best.mean_abs_cents), stringCents: (best.string_cents as Record<string, number> | null) ?? null } : null,
+    best: best ? { playId: str(best.play_id), score: num(best.score), accuracy: num(best.accuracy), playedAt: str(best.played_at), ...toTuning(best) } : null,
     submission: sub
       ? {
           id: str(sub.id),
@@ -432,6 +447,7 @@ function toStatus(r: Row): AssignmentStatus {
           audioPath: strOrNull(sub.audio_path),
           audioDeleted: !!sub.audio_deleted,
           audioDurationMs: numOrNull(sub.audio_duration_ms),
+          ...toTuning(sub),
         }
       : null,
     review: review ? toReview(review) : null,
@@ -560,6 +576,8 @@ export function supabaseClassroom(client: ClassroomClient | null): ClassroomApi 
         p_assignment_id: input.assignmentId,
         p_play_id: input.playId ?? null,
         p_audio_path: input.audioPath ?? null,
+        // Só com valor: o banco tem default (0017) e quem não grava não manda
+        ...(input.audioPath && input.audioDurationMs != null ? { p_audio_duration_ms: Math.round(input.audioDurationMs) } : {}),
       }, toStudentAssignment),
     acceptGuardianInvite: (code) => call('accept_guardian_invite', { p_code: code }, toChild),
     listMyChildren: () => call('list_my_children', undefined, list(toChild)),

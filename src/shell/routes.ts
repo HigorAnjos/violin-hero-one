@@ -38,12 +38,28 @@ export const ROUTES = {
   challenge: '/desafio',
   /** O link do desafio: abre para qualquer um (aceitar pede conta). */
   challengeCode: '/desafio/:codigo',
+  /** Área do professor (conta com e-mail): turmas, alunos, tarefas e revisão. */
+  teacher: '/professor',
+  teacherClass: '/professor/turma/:turma',
+  newAssignment: '/professor/turma/:turma/nova-tarefa',
+  review: '/professor/tarefa/:tarefa',
 } as const;
 
-/** Onde a conta é pedida (GuestPrompt): ranking, desafio ou usar em outro aparelho. Nunca no meio de uma música. */
-export type AccountReason = 'ranking' | 'desafio' | 'aparelho' | 'responsavel';
+export const teacherClassUrl = (classId: string) => ROUTES.teacherClass.replace(':turma', encodeURIComponent(classId));
+export const newAssignmentUrl = (classId: string) => ROUTES.newAssignment.replace(':turma', encodeURIComponent(classId));
+/** A revisão de uma tarefa; com `studentId`, já aberta na entrega desse aluno. */
+export function reviewUrl(assignmentId: string, studentId?: string): string {
+  const path = ROUTES.review.replace(':tarefa', encodeURIComponent(assignmentId));
+  return studentId ? `${path}?${new URLSearchParams({ aluno: studentId })}` : path;
+}
 
-const ACCOUNT_REASONS: readonly AccountReason[] = ['ranking', 'desafio', 'aparelho', 'responsavel'];
+/**
+ * Onde a conta é pedida (GuestPrompt): ranking, desafio, outro aparelho, responsável ou professor. Nunca no meio de
+ * uma música.
+ */
+export type AccountReason = 'ranking' | 'desafio' | 'aparelho' | 'responsavel' | 'professor';
+
+const ACCOUNT_REASONS: readonly AccountReason[] = ['ranking', 'desafio', 'aparelho', 'responsavel', 'professor'];
 
 /** `next`: para onde ir com a conta criada (e para onde o link do e-mail volta). `back`: o "Agora não". */
 export function accountUrl(reason: AccountReason, next: string, back: string = next): string {
