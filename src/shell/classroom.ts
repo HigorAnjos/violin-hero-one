@@ -16,9 +16,7 @@ import type { SessionState } from '../services/session';
 import { playSync, recordingUploads, setUploadTarget } from '../services/sync';
 import { supabase } from '../services/supabase';
 import { adoptSession } from './accountSwitch';
-import { DEV_TOOLS } from './devTools';
 import { GAME_MODES, type GameMode, type TaskPlay } from './play';
-import { simulatedClassroom } from './simulatedClassroom';
 import { submissionUploadTarget } from './submissionTarget';
 import { useSession } from './useAccount';
 
@@ -53,17 +51,25 @@ function realClassroom(): ClassroomShell {
   };
 }
 
-let shell: ClassroomShell | null = null;
+let shell: Promise<ClassroomShell> | null = null;
 
-/** No desenvolvimento e no e2e, `?turmas=simulada` na primeira tela troca o Supabase pela turma de mentira, até recarregar. */
-export function classroomShell(): ClassroomShell {
-  shell ??= DEV_TOOLS && new URLSearchParams(window.location.search).get('turmas') === 'simulada' ? simulatedClassroom() : realClassroom();
-  return shell;
+/**
+ * No desenvolvimento e no e2e, `?turmas=simulada` na primeira tela troca o Supabase pela turma de mentira, até
+ * recarregar. Por import() e com a condição literal: o build de produção apaga o fake antes de montar os pedaços.
+ */
+export function classroomShell(): Promise<ClassroomShell> {
+  if (shell) return shell;
+  if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
+    if (new URLSearchParams(window.location.search).get('turmas') === 'simulada') {
+      return (shell = import('./simulatedClassroom').then((module) => module.simulatedClassroom()));
+    }
+  }
+  return (shell = Promise.resolve(realClassroom()));
 }
 
 /** Testes: a turma que as telas usam (o fake), ou null para voltar a escolher pela URL. */
 export function setClassroomShell(next: ClassroomShell | null): void {
-  shell = next;
+  shell = next && Promise.resolve(next);
 }
 
 /**
@@ -80,7 +86,7 @@ export function useStudent() {
   const student = isStudentSession(session);
   const query = useQuery({
     queryKey: classroomKeys.myClass,
-    queryFn: () => classroomShell().api.getMyClass(),
+    queryFn: async () => (await classroomShell()).api.getMyClass(),
     enabled: student,
     staleTime: 5 * 60_000,
   });
@@ -88,7 +94,7 @@ export function useStudent() {
 }
 
 export function useMyAssignments(enabled: boolean) {
-  return useQuery({ queryKey: classroomKeys.myAssignments, queryFn: () => classroomShell().api.getMyAssignments(), enabled });
+  return useQuery({ queryKey: classroomKeys.myAssignments, queryFn: async () => (await classroomShell()).api.getMyAssignments(), enabled });
 }
 
 /** Entrar pela turma: a fila de quem estava aqui sobe antes, e a sessão do aluno vira a do aparelho. */
@@ -97,7 +103,7 @@ export function useStudentLogin() {
   const session = useSession();
   return useMutation({
     mutationFn: async (credentials: StudentCredentials) => {
-      const { loginClient, sessionClient } = classroomShell();
+      const { loginClient, sessionClient } = await classroomShell();
       const result = await studentLogin(loginClient, session ?? { status: 'offline' }, credentials);
       await adoptSession(queryClient, sessionClient, { status: 'signed-in', userId: result.userId, anonymous: false });
       await queryClient.invalidateQueries({ queryKey: classroomKeys.all });
@@ -108,7 +114,7 @@ export function useStudentLogin() {
 
 /** A entrega sem gravação (ou o navegador que não grava): a partida que vale sobe antes. */
 export async function submitPlayOnly(userId: string, task: TaskPlay, playId: string | null): Promise<void> {
-  const { api, flushPlays } = classroomShell();
+  const { api, flushPlays } = await classroomShell();
   await flushPlays(userId);
   const input: SubmitInput = { assignmentId: task.assignmentId, playId };
   await api.submitAssignment(input);
@@ -120,10 +126,16 @@ export function useStudentUploads(): void {
   const student = isStudentSession(session);
   React.useEffect(() => {
     if (!student) return;
-    const { api, flushPlays } = classroomShell();
-    setUploadTarget(submissionUploadTarget(api, flushPlays));
-    void recordingUploads.flush().catch(() => undefined);
-    return () => setUploadTarget(null);
+    let live = true;
+    void classroomShell().then(({ api, flushPlays }) => {
+      if (!live) return;
+      setUploadTarget(submissionUploadTarget(api, flushPlays));
+      void recordingUploads.flush().catch(() => undefined);
+    });
+    return () => {
+      live = false;
+      setUploadTarget(null);
+    };
   }, [student]);
 }
 
