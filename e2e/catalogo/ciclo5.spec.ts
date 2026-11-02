@@ -48,6 +48,16 @@ async function storageUp(): Promise<boolean> {
 }
 const NO_STORAGE = 'Storage do Supabase local fora do ar (aqui o container não resolve DNS): a entrega com áudio só roda na CI';
 
+/**
+ * Daqui em diante a história precisa do Storage. Fora da CI, sem ele, o resto pula com o motivo; na CI ele faz parte
+ * do job, e cair lá falha o teste em vez de pular calado o áudio e as negações do bucket.
+ */
+async function requireStorage() {
+  const up = await storageUp();
+  if (process.env.CI) expect(up, NO_STORAGE).toBe(true);
+  test.skip(!up, NO_STORAGE);
+}
+
 interface Reply<T = unknown> {
   status: number;
   body: T;
@@ -78,8 +88,20 @@ async function rpcOk<T>(page: Page, fn: string, args: Record<string, unknown> = 
 }
 
 /**
+ * A função nega como o banco nega quem não é dono (0011–0013): de outro ou inexistente dá o mesmo P0002, com a
+ * mensagem de "não encontrado". O PostgREST não tem status HTTP para P0002 e responde 500; o app decide pelo código
+ * (classroomErrorKind). Outro código (42501, um erro de verdade) é falha, não negação.
+ */
+async function expectNotFound(page: Page, fn: string, args: Record<string, unknown>, what: string) {
+  const reply = await rpc<{ code?: string; message?: string }>(page, fn, args);
+  expect({ status: reply.status, code: reply.body?.code }, what).toEqual({ status: 500, code: 'P0002' });
+  expect(reply.body?.message, what).toMatch(/não encontrad/);
+}
+
+/**
  * O áudio de `audioPath` pelo Storage com o token da página: o endereço assinado (o que as telas pedem) e a leitura
- * direta. A policy do bucket decide; o status e o tipo voltam para o teste.
+ * direta. A policy do bucket decide; o status, o tipo e o tamanho voltam para o teste, e o começo do corpo quando
+ * não é áudio.
  */
 const storageTry = (page: Page, audioPath: string) =>
   page.evaluate(
@@ -93,10 +115,33 @@ const storageTry = (page: Page, audioPath: string) =>
         body: JSON.stringify({ expiresIn: 60 }),
       });
       const read = await fetch(`${url}/storage/v1/object/authenticated/submissions/${file}`, { headers });
-      return { sign: sign.status, read: read.status, readType: read.headers.get('content-type') ?? '', readBytes: (await read.arrayBuffer()).byteLength };
+      const readType = read.headers.get('content-type') ?? '';
+      const bytes = new Uint8Array(await read.arrayBuffer());
+      return {
+        sign: sign.status,
+        signBody: (await sign.text()).slice(0, 200),
+        read: read.status,
+        readType,
+        readBytes: bytes.byteLength,
+        readBody: readType.startsWith('audio/') ? '' : new TextDecoder().decode(bytes.slice(0, 200)),
+      };
     },
     [process.env.E2E_SUPABASE_URL!, process.env.E2E_SUPABASE_ANON_KEY!, audioPath] as const
   );
+
+/**
+ * O Storage nega o áudio: o sign e a leitura respondem com erro de policy ou de arquivo inexistente (400/403/404,
+ * que o Storage não distingue de propósito), com um corpo de erro e nenhum byte de áudio.
+ */
+async function expectAudioDenied(page: Page, audioPath: string, who: string) {
+  const reply = await storageTry(page, audioPath);
+  expect([400, 403, 404], `${who}: sign (${reply.signBody})`).toContain(reply.sign);
+  expect(reply.signBody, `${who}: sign sem endereço`).not.toContain('signedURL');
+  expect([400, 403, 404], `${who}: leitura (${reply.readBody})`).toContain(reply.read);
+  expect(reply.readType, `${who}: leitura sem áudio`).not.toMatch(/^audio\//);
+  expect(reply.readBody, `${who}: corpo de erro`).toMatch(/error|not.?found|denied|unauthorized/i);
+  expect(reply.readBytes, `${who}: sem bytes de áudio`).toBeLessThan(1024);
+}
 
 /** O que o ranking da semana da escala no Fácil mostra para o usuário da página. */
 const scaleRanking = (page: Page) =>
@@ -346,20 +391,63 @@ test.describe('ciclo 5: professora, 3 alunos, entrega com áudio, revisão e res
         for (const s of students) await expect(teacher.getByRole('table').getByRole('row').filter({ hasText: s.name })).toContainText('já entrou');
       });
 
-      const storage = await storageUp();
       const clocks = new Map<string, string>();
-      await test.step('d. cada aluno joga a tarefa com o WAV gravando e a entrega sobe com o áudio para o Storage', async () => {
-        for (const s of students) {
-          const page = s.device!.page;
-          const shown = await playTask(page);
-          // Sem Storage aqui, a primeira partida até a entrega já provou o caminho; o envio fica para a CI
-          test.skip(!storage, NO_STORAGE);
-          await sendTask(page, shown);
-          clocks.set(s.name, shown);
-        }
+      await test.step('d1. cada aluno joga a tarefa com o WAV gravando; a partida conta e a entrega espera na tela', async () => {
+        for (const s of students) clocks.set(s.name, await playTask(s.device!.page));
       });
 
       const [ana, bruno] = students;
+      const guardian = await newDevice();
+      await test.step('g1. o responsável da Ana cria conta e aceita o convite que a professora gerou', async () => {
+        await teacher.goto(`/professor/turma/${classId}`);
+        await teacher.getByRole('button', { name: 'Convite do responsável de Ana' }).click();
+        const invite = teacher.getByRole('status').filter({ hasText: 'Convite para o responsável de' });
+        await expect(invite).toBeVisible();
+        const inviteCode = (await invite.textContent())!.match(/Ana: ([A-Z0-9-]+), vale até/)![1];
+
+        await guardian.goto('/responsavel');
+        await expect(guardian).toHaveURL(/\/conta\?motivo=responsavel/);
+        await accountFromPrompt(guardian, 'Quer acompanhar seu filho?', unique('responsavel'), /\/responsavel#?$/);
+        await guardian.getByLabel('Código do convite').fill(inviteCode);
+        await guardian.getByRole('button', { name: 'Aceitar convite' }).click();
+        await expect(guardian.getByRole('heading', { name: 'A semana de Ana' })).toBeVisible();
+        await expect(guardian.getByLabel('Filho').locator('option')).toHaveCount(1);
+        await expect(guardian.getByRole('region', { name: 'Afinação' })).toContainText(`${SCALE.sheet.title}: `);
+      });
+
+      const other = await newDevice();
+      await test.step('h1. o que o banco NÃO mostra: outra professora, o colega, o ranking, o desafio e o responsável', async () => {
+        await teacherAccount(other, unique('outra-professora'));
+        await expect(other.getByRole('heading', { name: 'Crie sua primeira turma' })).toBeVisible();
+        await expect(other.getByText('Iniciantes · sábado')).toHaveCount(0);
+        expect(await rpcOk(other, 'list_my_classes')).toEqual([]);
+        await expectNotFound(other, 'get_class', { p_class_id: classId }, 'outra professora abre a turma');
+        await expectNotFound(other, 'get_assignment', { p_assignment_id: assignmentId }, 'outra professora abre a tarefa');
+        await expectNotFound(other, 'get_student_progress', { p_member_id: ana.id }, 'outra professora vê o progresso da Ana');
+
+        const brunoPage = bruno.device!.page;
+        await expectNotFound(brunoPage, 'get_student_progress', { p_member_id: ana.id }, 'o colega vê o progresso da Ana');
+
+        // Os três jogaram a escala valendo nesta semana e nenhum aparece no ranking dela, nem para si mesmo
+        for (const s of students) {
+          const lines = await scaleRanking(s.device!.page);
+          expect(lines.filter((l) => l.is_me), `${s.name} no ranking`).toEqual([]);
+        }
+        // Nem desafio com a própria partida da tarefa: conta de aluno não é conta de desafio (0018)
+        const [brunoTask] = await rpcOk<StatusRow[]>(brunoPage, 'get_my_assignments');
+        const challenge = await rpc<{ code?: string }>(brunoPage, 'create_challenge', { p_play_id: brunoTask.best!.play_id, p_days: 7 });
+        expect({ status: challenge.status, code: challenge.body?.code }, 'aluno cria desafio').toEqual({ status: 403, code: '28000' });
+
+        await expectNotFound(guardian, 'get_student_progress', { p_member_id: bruno.id }, 'o responsável da Ana vê o Bruno');
+        expect(await rpcOk<{ student_id: string }[]>(guardian, 'list_my_children')).toEqual([expect.objectContaining({ student_id: ana.id, name: 'Ana' })]);
+      });
+
+      await requireStorage();
+
+      await test.step('d2. cada aluno envia a entrega e o áudio sobe para o Storage', async () => {
+        for (const s of students) await sendTask(s.device!.page, clocks.get(s.name)!);
+      });
+
       let anaAudio = '';
       let brunoAudio = '';
       await test.step('e. a professora vê as 3 entregas, ouve a da Ana pelo endereço assinado e revisa', async () => {
@@ -403,21 +491,9 @@ test.describe('ciclo 5: professora, 3 alunos, entrega com áudio, revisão e res
         await expect(review).toContainText('Som lindo! Arco reto no fim.');
       });
 
-      const guardian = await newDevice();
-      await test.step('g. o responsável da Ana cria conta, aceita o convite e vê o progresso e a entrega', async () => {
-        await teacher.getByRole('button', { name: 'Convite do responsável de Ana' }).click();
-        const invite = teacher.getByRole('status').filter({ hasText: 'Convite para o responsável de' });
-        await expect(invite).toBeVisible();
-        const inviteCode = (await invite.textContent())!.match(/Ana: ([A-Z0-9-]+), vale até/)![1];
-
-        await guardian.goto('/responsavel');
-        await expect(guardian).toHaveURL(/\/conta\?motivo=responsavel/);
-        await accountFromPrompt(guardian, 'Quer acompanhar seu filho?', unique('responsavel'), /\/responsavel#?$/);
-        await guardian.getByLabel('Código do convite').fill(inviteCode);
-        await guardian.getByRole('button', { name: 'Aceitar convite' }).click();
+      await test.step('g2. o responsável vê a revisão e ouve a entrega da Ana', async () => {
+        await guardian.reload();
         await expect(guardian.getByRole('heading', { name: 'A semana de Ana' })).toBeVisible();
-        await expect(guardian.getByLabel('Filho').locator('option')).toHaveCount(1);
-        await expect(guardian.getByRole('region', { name: 'Afinação' })).toContainText(`${SCALE.sheet.title}: `);
         const card = guardian.getByRole('region', { name: SCALE.sheet.title });
         await expect(card).toContainText('Ótimo');
         await card.getByRole('button', { name: 'Ouvir entrega' }).click();
@@ -430,47 +506,15 @@ test.describe('ciclo 5: professora, 3 alunos, entrega com áudio, revisão e res
         await expect.poll(() => audio.evaluate((el: HTMLAudioElement) => el.currentTime)).toBeGreaterThan(0);
       });
 
-      await test.step('h. o que NÃO se vê: outra professora, o colega, o ranking e o responsável de outro aluno', async () => {
-        const other = await newDevice();
-        await teacherAccount(other, unique('outra-professora'));
-        await expect(other.getByRole('heading', { name: 'Crie sua primeira turma' })).toBeVisible();
-        await expect(other.getByText('Iniciantes · sábado')).toHaveCount(0);
-        expect(await rpcOk(other, 'list_my_classes')).toEqual([]);
-        expect((await rpc(other, 'get_class', { p_class_id: classId })).status, 'get_class da turma de outra').not.toBe(200);
-        expect((await rpc(other, 'get_assignment', { p_assignment_id: assignmentId })).status, 'get_assignment de outra').not.toBe(200);
-        expect((await rpc(other, 'get_student_progress', { p_member_id: ana.id })).status, 'progresso de aluno de outra').not.toBe(200);
-        const otherTry = await storageTry(other, anaAudio);
-        expect(otherTry.sign, 'outra professora assina o áudio').not.toBe(200);
-        expect(otherTry.read, 'outra professora lê o áudio').not.toBe(200);
-
-        // O Bruno não ouve a Ana; o próprio áudio ele lê (a policy deixa o dono)
-        const brunoPage = bruno.device!.page;
-        const peer = await storageTry(brunoPage, anaAudio);
-        expect(peer.sign, 'colega assina o áudio da Ana').not.toBe(200);
-        expect(peer.read, 'colega lê o áudio da Ana').not.toBe(200);
-        expect(peer.readBytes).toBeLessThan(1024);
-        const own = await storageTry(brunoPage, brunoAudio);
-        expect(own).toMatchObject({ sign: 200, read: 200 });
+      await test.step('h2. o que o Storage NÃO entrega: outra professora, o colega e o responsável de outro aluno', async () => {
+        await expectAudioDenied(other, anaAudio, 'outra professora, áudio da Ana');
+        await expectAudioDenied(bruno.device!.page, anaAudio, 'o Bruno, áudio da Ana');
+        await expectAudioDenied(guardian, brunoAudio, 'o responsável da Ana, áudio do Bruno');
+        // O dono lê o próprio (a policy nega por quem pede, não o bucket inteiro)
+        const own = await storageTry(bruno.device!.page, brunoAudio);
+        expect({ sign: own.sign, read: own.read }).toEqual({ sign: 200, read: 200 });
         expect(own.readType).toMatch(/^audio\/webm/);
-        expect((await rpc(brunoPage, 'get_student_progress', { p_member_id: ana.id })).status, 'colega vê o progresso da Ana').not.toBe(200);
-
-        // Os três jogaram a escala valendo nesta semana e nenhum aparece no ranking dela, nem para si mesmo
-        for (const s of students) {
-          const lines = await scaleRanking(s.device!.page);
-          expect(lines.filter((l) => l.is_me), `${s.name} no ranking`).toEqual([]);
-        }
-        // Nem desafio com a própria partida da tarefa
-        const [brunoTask] = await rpcOk<StatusRow[]>(brunoPage, 'get_my_assignments');
-        const challenge = await rpc<{ code?: string }>(brunoPage, 'create_challenge', { p_play_id: brunoTask.best!.play_id, p_days: 7 });
-        expect(challenge.status, 'aluno cria desafio').not.toBe(200);
-        expect(challenge.body).toMatchObject({ code: '28000' });
-
-        // O responsável da Ana não vê o Bruno: nem o progresso, nem o áudio
-        expect((await rpc(guardian, 'get_student_progress', { p_member_id: bruno.id })).status, 'responsável vê outro aluno').not.toBe(200);
-        expect(await rpcOk<{ name: string }[]>(guardian, 'list_my_children')).toEqual([expect.objectContaining({ name: 'Ana' })]);
-        const guardianTry = await storageTry(guardian, brunoAudio);
-        expect(guardianTry.sign, 'responsável assina o áudio de outro aluno').not.toBe(200);
-        expect(guardianTry.read, 'responsável lê o áudio de outro aluno').not.toBe(200);
+        expect(own.readBytes).toBeGreaterThan(SCALE_SECONDS * 2 * 1024);
       });
     } finally {
       await Promise.all(students.map((s) => s.device?.browser.close()));
@@ -519,11 +563,9 @@ test.describe('ciclo 5 no celular: o aluno entra e entrega', () => {
         await expect(page).toHaveURL(/\/tarefas$/, { timeout: LOGIN_TIMEOUT });
         await expect(taskCard(page)).toBeVisible();
       });
-      await test.step('d. joga a tarefa com o WAV gravando e a entrega sobe com o áudio', async () => {
-        const shown = await playTask(page);
-        test.skip(!(await storageUp()), NO_STORAGE);
-        await sendTask(page, shown);
-      });
+      const shown = await test.step('d1. joga a tarefa com o WAV gravando; a partida conta', () => playTask(page));
+      await requireStorage();
+      await test.step('d2. a entrega sobe com o áudio', () => sendTask(page, shown));
     } finally {
       await student.browser.close();
     }
