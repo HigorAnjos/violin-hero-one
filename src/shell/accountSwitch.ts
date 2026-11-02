@@ -103,7 +103,8 @@ export function adoptSession(queryClient: QueryClient, client: { rpc: SupabaseCl
     const otherUser = cached?.status === 'signed-in' && cached.userId !== (next.status === 'signed-in' ? next.userId : null);
     if (outcome === 'switched' || otherUser) {
       queryClient.removeQueries({ queryKey: progressKeys.all });
-      await queryClient.invalidateQueries();
+      // A sessão acabou de ser escrita: recarregar dela perderia a do aluno da turma simulada (sem cliente)
+      await queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== 'session' });
     }
   });
   adopting = run.catch(() => undefined);
