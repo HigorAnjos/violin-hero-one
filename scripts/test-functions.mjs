@@ -458,11 +458,13 @@ describe('turmas: class-login, áudio das entregas e retenção', { skip: !ready
 
     it('arquivo que nenhuma entrega cita sai depois de 48 h; o citado e o recente ficam', async () => {
       const { teacher, kids, song, task, pathOf } = await scene();
-      const orphan = pathOf('Ana', 'sem-entrega');
-      const recent = pathOf('Ana', 'recente');
-      const kept = pathOf('Bia', 'entregue');
+      // O órfão nasce como na vida real: o aluno sobe num caminho válido e a entrega nunca é registrada
+      const orphan = pathOf('Ana', 'sem-entrega.webm');
+      const recent = pathOf('Ana', 'recente.webm');
+      const kept = pathOf('Bia', 'entregue.webm');
       for (const [kid, path] of [['Ana', orphan], ['Ana', recent], ['Bia', kept]]) {
-        assert.equal((await upload(kids[kid].client, `${path}`)).error, null);
+        const { error } = await upload(kids[kid].client, path);
+        assert.equal(error, null, error?.message);
         uploaded.push(path);
       }
       await rpc(kids.Bia.client, 'submit_play', { p_play: playOf(song) });

@@ -54,12 +54,13 @@ describe('supabaseClassroom', () => {
       id: 'x', class_id: 't1', song_id: 's', song_title: 'Brilha', level: 'hard', mode: 'arcade', instruction_key: 'tocar-inteira',
       instruction_text: null, created_at: 'c', due_at: 'd', closed: false,
       best: { play_id: 'p1', score: 400, accuracy: '97.50', played_at: 'pa' },
-      submission: { id: 'e1', play_id: 'p1', score: 400, accuracy: '97.50', submitted_at: 'sa', audio_path: 't1/a1/x/f.webm', audio_deleted: false },
+      submission: { id: 'e1', play_id: 'p1', score: 400, accuracy: '97.50', submitted_at: 'sa', audio_path: 't1/a1/x/f.webm', audio_deleted: false, audio_duration_ms: 12500 },
       review: { grade: null, concept: 'bom', comment: 'Boa', reviewed_at: 'ra' },
     });
     const r = await supabaseClassroom(client).submitAssignment({ assignmentId: 'x', audioPath: 't1/a1/x/f.webm' });
     expect(rpc).toHaveBeenCalledWith('submit_assignment', { p_assignment_id: 'x', p_play_id: null, p_audio_path: 't1/a1/x/f.webm' });
     expect([r.level, r.best?.accuracy, r.submission?.audioPath, r.review?.concept, r.review?.grade]).toEqual(['hard', 97.5, 't1/a1/x/f.webm', 'bom', null]);
+    expect(r.submission?.audioDurationMs).toBe(12500);
   });
 
   it('afinação e duração da partida e do áudio (0017); a duração só vai com áudio', async () => {
