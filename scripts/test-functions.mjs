@@ -336,6 +336,18 @@ describe('turmas: class-login, áudio das entregas e retenção', { skip: !ready
       assert.equal((await login({ code: cls.code, name: 'Rita', pin: String((Number(pin) + 1) % 10000).padStart(4, '0') })).status, 401);
     });
 
+    it('primeira entrada que caiu depois de criar o usuário: a próxima liga esse usuário e entra', async () => {
+      const { cls, student, pin } = await classWithStudent('Rita');
+      // O que sobra de uma entrada que criou o usuário e caiu antes do class_link_user
+      const { data, error } = await admin.auth.admin.createUser({ email: `aluno-${student.id}@alunos.violinhero.invalid`, email_confirm: true });
+      if (error) throw error;
+      const r = await login({ code: cls.code, name: 'Rita', pin });
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      assert.equal(r.body.user_id, data.user.id);
+      const { rows } = await db.query(`select user_id from ${S}.class_members where id = $1`, [student.id]);
+      assert.equal(rows[0].user_id, data.user.id);
+    });
+
     it('pedido torto: 400 sem gastar tentativa', async () => {
       for (const body of [{ code: 'ABCDEFGH', name: 'Rita' }, { code: 'ABCDEFGH', name: '', pin: '1234' }, 'não é json', { code: 1, name: 'x', pin: '1234' }]) {
         const r = await login(body);
@@ -442,6 +454,25 @@ describe('turmas: class-login, áudio das entregas e retenção', { skip: !ready
       const { rows } = await db.query(`select audio_path, audio_deleted_at from ${S}.submissions where id = $1`, [sub.submission.id]);
       assert.equal(rows[0].audio_path, null);
       assert.ok(rows[0].audio_deleted_at);
+    });
+
+    it('arquivo que nenhuma entrega cita sai depois de 48 h; o citado e o recente ficam', async () => {
+      const { teacher, kids, song, task, pathOf } = await scene();
+      const orphan = pathOf('Ana', 'sem-entrega');
+      const recent = pathOf('Ana', 'recente');
+      const kept = pathOf('Bia', 'entregue');
+      for (const [kid, path] of [['Ana', orphan], ['Ana', recent], ['Bia', kept]]) {
+        assert.equal((await upload(kids[kid].client, `${path}`)).error, null);
+        uploaded.push(path);
+      }
+      await rpc(kids.Bia.client, 'submit_play', { p_play: playOf(song) });
+      await rpc(kids.Bia.client, 'submit_assignment', { p_assignment_id: task.id, p_play_id: null, p_audio_path: kept });
+      await db.query(`update storage.objects set created_at = now() - interval '49 hours' where bucket_id = 'submissions' and name = any($1)`, [[orphan, kept]]);
+      const res = await fetch(PURGE_URL, { method: 'POST', headers: { Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` } });
+      assert.equal(res.status, 200);
+      assert.notEqual((await download(teacher.client, orphan)).error, null, 'o órfão saiu');
+      assert.equal((await download(teacher.client, recent)).error, null, 'o recente fica');
+      assert.equal((await download(teacher.client, kept)).error, null, 'o entregue fica');
     });
   });
 });

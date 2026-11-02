@@ -12,7 +12,7 @@
 //         student: { id, name, class_id, class_name } }
 //   4xx/5xx { error: { code, message } } — 400 bad_request, 401 invalid_credentials (código, nome ou PIN não conferem:
 //   sempre a mesma resposta), 429 too_many_attempts, 403 class_closed, 500 server
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -57,16 +57,20 @@ const env = (name: string) => {
 
 const options = { auth: { persistSession: false, autoRefreshToken: false } };
 
+/** Cliente da chave de serviço no schema violinhero (só aqui, no servidor). */
+const serverClient = (url: string) => createClient(url, env('SUPABASE_SERVICE_ROLE_KEY'), { ...options, db: { schema: 'violinhero' } });
+type ServerClient = ReturnType<typeof serverClient>;
+
 /** E-mail do usuário de auth do aluno: o domínio .invalid (RFC 2606) não existe, então nada chega a ninguém. */
 const studentEmail = (memberId: string) => `aluno-${memberId}@alunos.violinhero.invalid`;
 
 /**
- * IP de quem chamou: o do Cloudflare na frente do Supabase (cf-connecting-ip, que o cliente não forja) ou, sem ele
- * (Supabase local), o primeiro de x-forwarded-for; vazio se não veio. O bloqueio por turma + nome não depende dele.
+ * IP de quem chamou: o último de x-forwarded-for, o que o gateway do Supabase acrescenta (os anteriores vêm do
+ * cliente e qualquer um troca a cada pedido); vazio se não veio. O bloqueio por turma + nome não depende dele.
  */
 function clientIp(req: Request): string {
-  const forwarded = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-  return (req.headers.get('cf-connecting-ip') || forwarded || '').slice(0, 64);
+  const forwarded = req.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim();
+  return (forwarded || '').slice(0, 64);
 }
 
 interface Credentials {
@@ -104,9 +108,10 @@ interface Checked {
 
 /**
  * O usuário de auth do aluno: o já ligado ou um novo (sem senha, e-mail confirmado). Em duas primeiras entradas ao mesmo
- * tempo, quem perde a corrida apaga o que criou e usa o da outra.
+ * tempo, quem perde a corrida apaga o que criou e usa o da outra. Se uma entrada anterior criou o usuário e caiu antes
+ * de ligar, o e-mail sintético já existe: o banco acha esse usuário por ele e liga (class_link_existing).
  */
-async function studentUser(server: SupabaseClient, memberId: string, linked: string | null | undefined): Promise<string> {
+async function studentUser(server: ServerClient, memberId: string, linked: string | null | undefined): Promise<string> {
   if (linked) return linked;
   const { data, error } = await server.auth.admin.createUser({
     email: studentEmail(memberId),
@@ -114,10 +119,9 @@ async function studentUser(server: SupabaseClient, memberId: string, linked: str
     app_metadata: { violinhero_role: 'student' },
   });
   if (error || !data.user) {
-    // E-mail já existe: a outra entrada criou e está ligando; o que vale é o que ficou no aluno
-    const { data: row } = await server.from('class_members').select('user_id').eq('id', memberId).maybeSingle();
-    if (row?.user_id) return row.user_id as string;
-    throw error ?? new Error('createUser sem usuário');
+    const { data: kept, error: existingError } = await server.rpc('class_link_existing', { p_member_id: memberId });
+    if (existingError || !kept) throw error ?? existingError ?? new Error('createUser sem usuário');
+    return kept as string;
   }
   const { data: kept, error: linkError } = await server.rpc('class_link_user', { p_member_id: memberId, p_user_id: data.user.id });
   if (linkError) throw linkError;
@@ -131,7 +135,7 @@ Deno.serve(async (req) => {
   try {
     const credentials = await readCredentials(req);
     const url = env('SUPABASE_URL');
-    const server = createClient(url, env('SUPABASE_SERVICE_ROLE_KEY'), { ...options, db: { schema: 'violinhero' } });
+    const server = serverClient(url);
 
     const { data, error } = await server.rpc('class_login_check', {
       p_code: credentials.code,

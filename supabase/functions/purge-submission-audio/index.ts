@@ -1,6 +1,7 @@
 // Edge Function purge-submission-audio: retenção do áudio das entregas (decisão do Higor, ciclo 5). Apaga do bucket
-// submissions, pela API do Storage, o áudio revisado há mais de 30 dias e o que foi trocado por outro antes da revisão
-// (violinhero.audio_to_purge), e só então tira os caminhos do banco (violinhero.audio_purged). Apagar a linha de
+// submissions, pela API do Storage, o áudio revisado há mais de 30 dias, o de entrega nunca revisada 30 dias depois do
+// prazo da tarefa, o trocado por outro e o arquivo que nenhuma entrega cita há 48 h (violinhero.audio_to_purge), e só
+// então tira os caminhos do banco (violinhero.audio_purged). Apagar a linha de
 // storage.objects direto deixaria o arquivo para trás. Idempotente: rodar de novo sem nada vencido não faz nada.
 //
 // Só a chave de serviço chama (Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>); deploy com --no-verify-jwt --use-api.
@@ -50,7 +51,8 @@ Deno.serve(async (req) => {
       if (removed.error) throw removed.error;
       const done = await server.rpc('audio_purged', { p_paths: paths });
       if (done.error) throw done.error;
-      purged += done.data as number;
+      // Conta o que saiu do Storage (o órfão não está em entrega nem na fila do banco)
+      purged += paths.length;
       if (paths.length < BATCH) break;
     }
     return json(200, { purged });
