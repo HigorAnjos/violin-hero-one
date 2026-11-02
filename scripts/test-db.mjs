@@ -1572,6 +1572,26 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         assert.equal((await login(cls.code, 'Rita', pin)).status, 'ok');
       });
 
+      it('aluno cadastrado ou trazido de volta NÃO nasce com o bloqueio que o nome acumulou antes', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const lockForever = async (name) => {
+          for (let round = 0; round < 3; round++) {
+            for (let i = 0; i < 5; i++) await login(cls.code, name, '0000');
+            await c.query(`update ${S}.login_throttle set locked_until = now() - interval '1 second' where locked_until > now() and locked_until <> 'infinity'`);
+          }
+          assert.equal((await login(cls.code, name, '0000')).status, 'locked');
+        };
+        await lockForever('Pedro');
+        const pedro = await studentOf(t, cls.id, 'pedro', { join: false });
+        assert.equal((await login(cls.code, 'Pedro', pedro.pin)).status, 'ok');
+        const caio = await studentOf(t, cls.id, 'Caio', { join: false });
+        await rpc(t, 'set_student_active', [caio.id, false]);
+        await lockForever('Caio');
+        await rpc(t, 'set_student_active', [caio.id, true]);
+        assert.equal((await login(cls.code, 'Caio', caio.pin)).status, 'ok');
+      });
+
       it('um dia sem bloqueio zera a sequência', async () => {
         const t = await teacher();
         const cls = await classOf(t);
