@@ -33,11 +33,9 @@ const Alert = styled.p`
 
 type Phase = { step: 'idle' } | { step: 'busy' } | { step: 'confirm'; unsent: number } | { step: 'error'; message: string };
 
-/** "Há 2 partidas ainda não enviadas; sair agora as descarta." */
+/** "Há 2 envios pendentes; sair agora os descarta." Partidas e gravações de tarefa somadas (DeviceData.pending). */
 export function unsentWarning(unsent: number): string {
-  return unsent === 1
-    ? 'Há 1 partida ainda não enviada; sair agora a descarta.'
-    : `Há ${unsent} partidas ainda não enviadas; sair agora as descarta.`;
+  return unsent === 1 ? 'Há 1 envio pendente; sair agora o descarta.' : `Há ${unsent} envios pendentes; sair agora os descarta.`;
 }
 
 /**
@@ -78,6 +76,10 @@ export const AccountPanel: React.FC<{ client?: (AccountClient & Parameters<typeo
 
   return (
     <SettingsPanel title="Conta" wide>
+      <SettingsRow>
+        <Button as={Link} to={ROUTES.parent} $variant="link">Sou responsável</Button>
+        <Button as={Link} to={ROUTES.teacher} $variant="link">Sou professor</Button>
+      </SettingsRow>
       {!session && <SettingsRow>Conectando…</SettingsRow>}
       {session?.status === 'offline' && <SettingsRow>{new AccountError('offline').message}</SettingsRow>}
       {session?.status === 'signed-in' && session.anonymous && (

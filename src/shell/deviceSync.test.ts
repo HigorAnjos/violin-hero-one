@@ -9,7 +9,8 @@ import { progressKeys, type ProgressClient } from '../services/progress';
 import type { SessionState } from '../services/session';
 import { rememberUser } from '../services/user';
 import { songKeys } from '../services/songs';
-import { forgetUserQueries, playedChart, reconnect, useDeviceSync } from './deviceSync';
+import { createRecordingUploads, memoryRecordingQueueStore, memoryUploadTarget } from '../services/recordingUpload';
+import { forgetUserQueries, nextRetry, playedChart, reconnect, useDeviceSync } from './deviceSync';
 
 const SIGNED_IN: SessionState = { status: 'signed-in', userId: 'u1', anonymous: true };
 
@@ -62,6 +63,26 @@ describe('reconnect', () => {
     expect(t.queryClient.getQueryData(['songs', 'catalog'])).toEqual(['ok']);
     expect(t.queryClient.getQueryState(songKeys.song('greensleeves', 'easy'))?.isInvalidated).toBe(true);
     expect(t.queryClient.getQueryState(songKeys.song('canon', 'easy'))?.isInvalidated).toBe(false);
+  });
+
+  it('a gravação que esperava a rede sobe junto com a fila de partidas', async () => {
+    const t = setup();
+    const target = memoryUploadTarget();
+    let net = false;
+    const uploads = createRecordingUploads({ store: memoryRecordingQueueStore(), user: () => 'u1', session: t.session, target: () => target, online: () => net });
+    await uploads.enqueue({ id: 'e1', blob: new Blob(['som']), mimeType: 'audio/mp4', durationMs: 1000, meta: {} });
+    t.goOnline();
+    net = true;
+    await reconnect(t.queryClient, t.sync, t.session, uploads);
+    expect([...target.files.keys()]).toEqual(['u1/e1']);
+  });
+});
+
+describe('nextRetry', () => {
+  it('a fila que quer tentar antes manda; as duas vazias, null', () => {
+    expect(nextRetry({ nextDelay: () => 5000 }, { nextDelay: () => 2000 })).toBe(2000);
+    expect(nextRetry({ nextDelay: () => null }, { nextDelay: () => 2000 })).toBe(2000);
+    expect(nextRetry({ nextDelay: () => null }, { nextDelay: () => null })).toBeNull();
   });
 });
 

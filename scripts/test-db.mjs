@@ -22,12 +22,33 @@ const ZERO = '00000000-0000-0000-0000-000000000000';
  */
 const ALLOWED_FUNCTIONS = [
   'authenticated violinhero.accept_challenge(text)',
+  'authenticated violinhero.accept_guardian_invite(text)',
+  'authenticated violinhero.add_student(uuid,text)',
+  'authenticated violinhero.can_read_submission_audio(text)',
+  'authenticated violinhero.can_upload_submission_audio(text)',
+  'authenticated violinhero.close_class(uuid)',
+  'authenticated violinhero.create_assignment(uuid,text,violinhero.chart_level,violinhero.play_mode,timestamp with time zone,text,text)',
   'authenticated violinhero.create_challenge(uuid,integer)',
+  'authenticated violinhero.create_class(text)',
+  'authenticated violinhero.create_guardian_invite(uuid)',
   'authenticated violinhero.ensure_my_profile()',
+  'authenticated violinhero.get_assignment(uuid)',
   'authenticated violinhero.get_challenge(text)',
+  'authenticated violinhero.get_class(uuid)',
+  'authenticated violinhero.get_my_assignments()',
+  'authenticated violinhero.get_my_class()',
+  'authenticated violinhero.get_my_plan()',
   'authenticated violinhero.get_ranking(text,violinhero.chart_level,text,integer)',
   'authenticated violinhero.get_song(text,violinhero.chart_level)',
+  'authenticated violinhero.get_student_progress(uuid)',
+  'authenticated violinhero.list_class_assignments(uuid)',
   'authenticated violinhero.list_my_challenges()',
+  'authenticated violinhero.list_my_children()',
+  'authenticated violinhero.list_my_classes()',
+  'authenticated violinhero.reset_student_pin(uuid)',
+  'authenticated violinhero.review_submission(uuid,integer,text,text)',
+  'authenticated violinhero.set_student_active(uuid,boolean)',
+  'authenticated violinhero.submit_assignment(uuid,uuid,text,integer)',
   'authenticated violinhero.submit_play(jsonb)',
 ];
 
@@ -132,6 +153,22 @@ async function as(c, uid, sql, params = []) {
     return res;
   } catch (e) {
     await c.query('rollback to savepoint sp');
+    throw e;
+  } finally {
+    await c.query('reset role');
+  }
+}
+
+/** Roda `sql` como as Edge Functions (service_role: ignora RLS, mas não GRANT). */
+async function asServer(c, sql, params = []) {
+  await c.query('savepoint srv');
+  try {
+    await c.query('set local role service_role');
+    const res = await c.query(sql, params);
+    await c.query('release savepoint srv');
+    return res;
+  } catch (e) {
+    await c.query('rollback to savepoint srv');
     throw e;
   } finally {
     await c.query('reset role');
@@ -1295,6 +1332,769 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         await notFound(as(c, dono, `select * from ${S}.get_ranking($1, 'easy', $2)`, [id, period]));
       }
       await notFound(as(c, dono, `select ${S}.create_challenge($1, 3)`, [play.play_id]));
+    });
+  });
+
+  describe('turmas (ciclo 5)', () => {
+    /** `fn` do schema chamada como o jogador `uid`, com os argumentos na ordem. */
+    const rpc = (uid, fn, args = []) =>
+      as(c, uid, `select ${S}.${fn}(${args.map((_, i) => `$${i + 1}`).join(', ')}) as r`, args).then((res) => res.rows[0].r);
+    const needsAccount = (promise) => assert.rejects(promise, (e) => e.code === '28000');
+    const overLimit = (promise) => assert.rejects(promise, (e) => e.code === 'VHLIM');
+    const duplicate = (promise) => assert.rejects(promise, (e) => e.code === '23505');
+    const teacher = () => newUser(c, { anonymous: false });
+
+    async function classOf(t, name = 'Turma da manhã') {
+      return rpc(t, 'create_class', [name]);
+    }
+
+    /** Aluno cadastrado pelo professor e já entrado (o usuário de auth que a class-login cria, ligado ao aluno). */
+    async function studentOf(t, classId, name = 'Ana Clara', { join = true } = {}) {
+      const { student, pin } = await rpc(t, 'add_student', [classId, name]);
+      let user = null;
+      if (join) {
+        user = await newUser(c, { anonymous: false });
+        await asServer(c, `select ${S}.class_link_user($1, $2)`, [student.id, user]);
+      }
+      return { id: student.id, user, pin, name };
+    }
+
+    const login = (code, name, pin, ip = '10.0.0.1') =>
+      asServer(c, `select ${S}.class_login_check($1, $2, $3, $4) as r`, [code, name, pin, ip]).then((res) => res.rows[0].r);
+
+    const wrongPin = (pin) => String((Number(pin) + 1) % 10000).padStart(4, '0');
+    /** As músicas das cenas de turma têm 4 notas: a partida padrão acerta as 4 (400 pontos). */
+    const fullPlay = (song, overrides = {}) => playOf(song, { sequence: ['perfect', 'perfect', 'perfect', 'perfect'], ...overrides });
+
+    describe('professor e turma', () => {
+      it('anônimo, sem sessão e conta de aluno NÃO criam turma', async () => {
+        await needsAccount(rpc(await newUser(c), 'create_class', ['Minha']));
+        await denied(as(c, null, `select ${S}.create_class('Minha')`));
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id);
+        await needsAccount(rpc(aluno.user, 'create_class', ['Turma do aluno']));
+        assert.equal((await c.query(`select count(*)::int as n from ${S}.classes where teacher_id in ($1, $2)`, [t, aluno.user])).rows[0].n, 1);
+      });
+
+      it('cria a turma com código de 8 símbolos sem 0/O/1/I; outro professor NÃO vê, NÃO lista nem mexe nela', async () => {
+        const t = await teacher();
+        const cls = await classOf(t, '  Violino   1  ');
+        assert.match(cls.code, /^[A-HJ-NP-Z2-9]{8}$/);
+        assert.equal(cls.name, 'Violino 1');
+        assert.deepEqual(cls.students, []);
+        assert.deepEqual((await rpc(t, 'list_my_classes')).map((k) => [k.id, k.student_count]), [[cls.id, 0]]);
+        const outro = await teacher();
+        assert.deepEqual(await rpc(outro, 'list_my_classes'), []);
+        await notFound(rpc(outro, 'get_class', [cls.id]));
+        await notFound(rpc(outro, 'add_student', [cls.id, 'Intruso']));
+        await notFound(rpc(outro, 'close_class', [cls.id]));
+        const aluno = await studentOf(t, cls.id);
+        await notFound(rpc(outro, 'reset_student_pin', [aluno.id]));
+        await notFound(rpc(outro, 'set_student_active', [aluno.id, false]));
+        assert.equal((await rpc(t, 'get_class', [cls.id])).closed_at, null);
+      });
+
+      it('o app NÃO lê nem escreve as tabelas da turma direto, nem o próprio professor', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id);
+        for (const uid of [t, aluno.user]) {
+          for (const table of ['classes', 'class_members', 'class_member_pins', 'login_throttle', 'teacher_plans']) {
+            await denied(as(c, uid, `select * from ${S}.${table}`));
+          }
+          await denied(as(c, uid, `insert into ${S}.teacher_plans (teacher_id, plan_id) values ($1, 'pro')`, [uid]));
+          await denied(as(c, uid, `update ${S}.class_members set active = true`));
+        }
+        // O catálogo de planos é público (a tela compara)
+        assert.deepEqual((await as(c, t, `select id from ${S}.plans order by sort`)).rows.map((r) => r.id), ['free', 'pro']);
+      });
+
+      it('o PIN aparece só na resposta do cadastro: o banco guarda bcrypt, a turma NÃO mostra, ninguém lê o hash', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Bruno');
+        assert.match(aluno.pin, /^\d{4}$/);
+        const { rows: [{ pin_hash }] } = await c.query(`select pin_hash from ${S}.class_member_pins where member_id = $1`, [aluno.id]);
+        assert.match(pin_hash, /^\$2[abxy]?\$10\$/);
+        assert.ok(!pin_hash.includes(aluno.pin));
+        const view = JSON.stringify(await rpc(t, 'get_class', [cls.id]));
+        assert.ok(!view.includes(pin_hash) && !view.includes('pin'), 'get_class mostrou o PIN');
+        assert.deepEqual((await rpc(t, 'get_class', [cls.id])).students.map((s) => [s.name, s.active, s.joined]), [['Bruno', true, true]]);
+        await denied(as(c, aluno.user, `select pin_hash from ${S}.class_member_pins`));
+      });
+
+      it('nome repetido na turma (sem contar acento, maiúscula e espaço) é recusado; aluno inativo libera o nome', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const joao = await studentOf(t, cls.id, 'João Pedro');
+        await duplicate(rpc(t, 'add_student', [cls.id, '  joao   PEDRO ']));
+        await invalid(rpc(t, 'add_student', [cls.id, '   ']));
+        await invalid(rpc(t, 'add_student', [cls.id, 'x'.repeat(41)]));
+        await rpc(t, 'set_student_active', [joao.id, false]);
+        const outro = await studentOf(t, cls.id, 'Joao Pedro');
+        await duplicate(rpc(t, 'set_student_active', [joao.id, true]));
+        // A outra turma aceita o mesmo nome
+        const cls2 = await classOf(t, 'Tarde');
+        await studentOf(t, cls2.id, 'João Pedro');
+        assert.notEqual(outro.id, joao.id);
+      });
+
+      it('limites do plano free: 2 turmas abertas e 10 alunos ativos; encerrar libera; o pro, lido do banco, aumenta', async () => {
+        const t = await teacher();
+        const a = await classOf(t, 'A');
+        await classOf(t, 'B');
+        await overLimit(classOf(t, 'C'));
+        await rpc(t, 'close_class', [a.id]);
+        const c3 = await classOf(t, 'C');
+        for (let i = 1; i <= 10; i++) await studentOf(t, c3.id, `Aluno ${i}`, { join: false });
+        await overLimit(rpc(t, 'add_student', [c3.id, 'Aluno 11']));
+        assert.deepEqual((await rpc(t, 'get_my_plan')).plan.id, 'free');
+        await c.query(`insert into ${S}.teacher_plans (teacher_id, plan_id) values ($1, 'pro')`, [t]);
+        await studentOf(t, c3.id, 'Aluno 11', { join: false });
+        await classOf(t, 'D');
+        const plan = await rpc(t, 'get_my_plan');
+        assert.deepEqual([plan.plan.id, plan.plan.max_open_classes, plan.open_classes], ['pro', 20, 3]);
+      });
+
+      it('turma encerrada NÃO recebe aluno nem PIN novo; encerrar de novo mantém a data', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id);
+        const closed = await rpc(t, 'close_class', [cls.id]);
+        assert.ok(closed.closed_at);
+        await invalid(rpc(t, 'add_student', [cls.id, 'Depois']));
+        await invalid(rpc(t, 'reset_student_pin', [aluno.id]));
+        assert.equal((await rpc(t, 'close_class', [cls.id])).closed_at, closed.closed_at);
+      });
+
+      it('get_my_class: o aluno vê a turma e o próprio nome; quem não é aluno ativo recebe null', async () => {
+        const t = await teacher();
+        const cls = await classOf(t, 'Cordas');
+        const aluno = await studentOf(t, cls.id, 'Lia');
+        const mine = await rpc(aluno.user, 'get_my_class');
+        assert.deepEqual([mine.student_id, mine.name, mine.class_name], [aluno.id, 'Lia', 'Cordas']);
+        assert.equal(await rpc(t, 'get_my_class'), null);
+        assert.equal(await rpc(await newUser(c), 'get_my_class'), null);
+        await rpc(t, 'set_student_active', [aluno.id, false]);
+        assert.equal(await rpc(aluno.user, 'get_my_class'), null);
+      });
+    });
+
+    describe('entrada do aluno (class_login_check, só a class-login)', () => {
+      it('código + nome + PIN certos entram, sem ligar para acento, maiúscula, espaço ou hífen no código', async () => {
+        const t = await teacher();
+        const cls = await classOf(t, 'Cordas');
+        const aluno = await studentOf(t, cls.id, 'João Pedro', { join: false });
+        const code = `${cls.code.slice(0, 4).toLowerCase()}-${cls.code.slice(4)}`;
+        const r = await login(code, ' joao  pedro ', aluno.pin);
+        assert.deepEqual([r.status, r.member_id, r.user_id, r.name, r.class_name], ['ok', aluno.id, null, 'João Pedro', 'Cordas']);
+      });
+
+      it('PIN errado, nome desconhecido, código desconhecido e aluno inativo dão a mesma resposta neutra', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        const inativo = await studentOf(t, cls.id, 'Caio', { join: false });
+        await rpc(t, 'set_student_active', [inativo.id, false]);
+        const answers = [
+          await login(cls.code, 'Rita', wrongPin(aluno.pin)),
+          await login(cls.code, 'Ninguém', aluno.pin),
+          await login('ZZZZZZZZ', 'Rita', aluno.pin),
+          await login(cls.code, 'Caio', inativo.pin),
+          await login(cls.code, 'Rita', 'abcd'),
+          await login(cls.code, 'Rita', null),
+        ];
+        for (const a of answers) assert.deepEqual(a, { status: 'invalid' });
+      });
+
+      it('5 PINs errados bloqueiam o aluno (até o certo), sem bloquear o colega; o PIN novo do professor desbloqueia', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        const colega = await studentOf(t, cls.id, 'Davi', { join: false });
+        for (let i = 0; i < 5; i++) assert.equal((await login(cls.code, 'Rita', wrongPin(aluno.pin))).status, 'invalid');
+        assert.deepEqual(await login(cls.code, 'Rita', aluno.pin), { status: 'locked' });
+        assert.equal((await login(cls.code, 'Davi', colega.pin)).status, 'ok');
+        const { pin } = await rpc(t, 'reset_student_pin', [aluno.id]);
+        assert.match(pin, /^\d{4}$/);
+        if (pin !== aluno.pin) assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'invalid');
+        assert.equal((await login(cls.code, 'Rita', pin)).status, 'ok');
+      });
+
+      it('nome que NÃO existe bloqueia igual ao que existe: o bloqueio não revela quem está na turma', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        for (let i = 0; i < 5; i++) assert.equal((await login(cls.code, 'Fantasma', '0000')).status, 'invalid');
+        assert.deepEqual(await login(cls.code, 'Fantasma', '0000'), { status: 'locked' });
+      });
+
+      it('100 erros do mesmo IP bloqueiam o IP para qualquer aluno (99 ainda não: escola atrás de NAT); outro IP segue entrando', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        const colega = await studentOf(t, cls.id, 'Davi', { join: false });
+        for (let i = 0; i < 99; i++) await login(cls.code, `Chute ${i}`, '0000', '10.9.9.9');
+        assert.equal((await login(cls.code, 'Davi', colega.pin, '10.9.9.9')).status, 'ok');
+        await login(cls.code, 'Chute 99', '0000', '10.9.9.9');
+        assert.deepEqual(await login(cls.code, 'Rita', aluno.pin, '10.9.9.9'), { status: 'locked' });
+        assert.equal((await login(cls.code, 'Rita', aluno.pin, '10.8.8.8')).status, 'ok');
+      });
+
+      it('o bloqueio acaba sozinho depois de 15 minutos', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        for (let i = 0; i < 5; i++) await login(cls.code, 'Rita', wrongPin(aluno.pin));
+        assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'locked');
+        await c.query(`update ${S}.login_throttle set locked_until = now() - interval '1 second' where locked_until > now()`);
+        assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'ok');
+      });
+
+      it('3 bloqueios seguidos NÃO acabam sozinhos: só o PIN novo do professor desbloqueia', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        const expire = () => c.query(`update ${S}.login_throttle set locked_until = now() - interval '1 second' where locked_until > now() and locked_until <> 'infinity'`);
+        for (let round = 1; round <= 3; round++) {
+          for (let i = 0; i < 5; i++) await login(cls.code, 'Rita', wrongPin(aluno.pin));
+          assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'locked', `bloqueio ${round}`);
+          await expire();
+        }
+        assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'locked', 'o terceiro bloqueio não vence');
+        // O mesmo vale para nome que não existe: o bloqueio não revela quem está na turma
+        for (let round = 1; round <= 3; round++) {
+          for (let i = 0; i < 5; i++) await login(cls.code, 'Fantasma', '0000');
+          await expire();
+        }
+        assert.equal((await login(cls.code, 'Fantasma', '0000')).status, 'locked');
+        const { pin } = await rpc(t, 'reset_student_pin', [aluno.id]);
+        assert.equal((await login(cls.code, 'Rita', pin)).status, 'ok');
+      });
+
+      it('aluno cadastrado ou trazido de volta NÃO nasce com o bloqueio que o nome acumulou antes', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const lockForever = async (name) => {
+          for (let round = 0; round < 3; round++) {
+            for (let i = 0; i < 5; i++) await login(cls.code, name, '0000');
+            await c.query(`update ${S}.login_throttle set locked_until = now() - interval '1 second' where locked_until > now() and locked_until <> 'infinity'`);
+          }
+          assert.equal((await login(cls.code, name, '0000')).status, 'locked');
+        };
+        await lockForever('Pedro');
+        const pedro = await studentOf(t, cls.id, 'pedro', { join: false });
+        assert.equal((await login(cls.code, 'Pedro', pedro.pin)).status, 'ok');
+        const caio = await studentOf(t, cls.id, 'Caio', { join: false });
+        await rpc(t, 'set_student_active', [caio.id, false]);
+        await lockForever('Caio');
+        await rpc(t, 'set_student_active', [caio.id, true]);
+        assert.equal((await login(cls.code, 'Caio', caio.pin)).status, 'ok');
+      });
+
+      it('um dia sem bloqueio zera a sequência', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        for (let round = 1; round <= 3; round++) {
+          for (let i = 0; i < 5; i++) await login(cls.code, 'Rita', wrongPin(aluno.pin));
+          await c.query(`update ${S}.login_throttle set locked_until = now() - interval '25 hours', window_started_at = now() - interval '25 hours' where locked_until > now()`);
+        }
+        assert.equal((await login(cls.code, 'Rita', aluno.pin)).status, 'ok');
+      });
+
+      it('turma encerrada: credencial certa ouve "closed"; errada continua neutra', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        await rpc(t, 'close_class', [cls.id]);
+        assert.deepEqual(await login(cls.code, 'Rita', aluno.pin), { status: 'closed' });
+        assert.deepEqual(await login(cls.code, 'Rita', wrongPin(aluno.pin)), { status: 'invalid' });
+      });
+
+      it('class_link_user liga um usuário só: a segunda primeira entrada recebe o da primeira', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        const u1 = await newUser(c, { anonymous: false });
+        const u2 = await newUser(c, { anonymous: false });
+        const first = await asServer(c, `select ${S}.class_link_user($1, $2) as r`, [aluno.id, u1]);
+        const second = await asServer(c, `select ${S}.class_link_user($1, $2) as r`, [aluno.id, u2]);
+        assert.deepEqual([first.rows[0].r, second.rows[0].r], [u1, u1]);
+        assert.equal((await login(cls.code, 'Rita', aluno.pin)).user_id, u1);
+      });
+
+      it('primeira entrada que caiu antes de ligar: class_link_existing acha o usuário pelo e-mail sintético', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+        const link = () => asServer(c, `select ${S}.class_link_existing($1) as r`, [aluno.id]).then((res) => res.rows[0].r);
+        await notFound(link());
+        const orphan = randomUUID();
+        await c.query(`insert into auth.users (id, instance_id, aud, role, email, is_anonymous) values ($1, $2, 'authenticated', 'authenticated', $3, false)`,
+          [orphan, ZERO, `aluno-${aluno.id}@alunos.violinhero.invalid`]);
+        assert.equal(await link(), orphan);
+        assert.equal((await login(cls.code, 'Rita', aluno.pin)).user_id, orphan);
+        await denied(as(c, t, `select ${S}.class_link_existing($1)`, [aluno.id]));
+      });
+
+      it('o app NÃO chama a conferência nem a ligação, nem com sessão', async () => {
+        const u = await newUser(c, { anonymous: false });
+        await denied(as(c, u, `select ${S}.class_login_check('AAAAAAAA', 'x', '0000', '1.1.1.1')`));
+        await denied(as(c, u, `select ${S}.class_link_user($1, $1)`, [u]));
+        await denied(as(c, null, `select ${S}.class_login_check('AAAAAAAA', 'x', '0000', '1.1.1.1')`));
+      });
+    });
+
+    describe('aluno fora do ranking e do desafio (0018)', () => {
+      it('o nome cadastrado NÃO aparece no perfil; a conta de aluno NÃO entra no ranking, nem para ela mesma', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id, 'Maria Secreta');
+        const song = await serverSong(c, { notes: 4 });
+        await submit(c, aluno.user, fullPlay(song));
+        const outro = await newUser(c, { anonymous: false });
+        await submit(c, outro, fullPlay(song, { sequence: ['perfect', 'miss', 'miss', 'miss'] }));
+        const profile = await as(c, aluno.user, `select * from ${S}.profiles`);
+        assert.ok(!/Maria|Secreta/.test(JSON.stringify(profile.rows)), 'o nome do aluno vazou no perfil');
+        await assertOffRanking(aluno.user, song, outro);
+      });
+
+      /** Nenhuma linha do get_ranking é do aluno: nem pelo nome cadastrado, nem pelo nome gerado, nem para ele mesmo. */
+      async function assertOffRanking(student, song, viewer) {
+        const generated = await c.query(`select ${S}.ranking_name(animal, nickname_tag) as name from ${S}.profiles where id = $1`, [student]);
+        const rankingName = generated.rows[0].name;
+        assert.match(rankingName, /\S/);
+        for (const period of ['all', 'week']) {
+          const ranking = await as(c, viewer, `select * from ${S}.get_ranking($1, 'easy', $2)`, [song, period]);
+          assert.ok(ranking.rows.some((r) => r.is_me), `o ranking (${period}) não mostrou nem quem pediu`);
+          assert.ok(!/Maria|Secreta/.test(JSON.stringify(ranking.rows)), `o nome do aluno vazou no ranking (${period})`);
+          assert.ok(ranking.rows.every((r) => r.ranking_name !== rankingName), `o aluno apareceu no ranking (${period})`);
+          const mine = await as(c, student, `select * from ${S}.get_ranking($1, 'easy', $2)`, [song, period]);
+          assert.ok(mine.rows.every((r) => !r.is_me), `o aluno se viu no ranking (${period})`);
+        }
+      }
+
+      it('aluno tirado da turma (inativo) segue fora do ranking', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id);
+        await rpc(t, 'set_student_active', [aluno.id, false]);
+        const song = await serverSong(c, { notes: 4 });
+        await submit(c, aluno.user, fullPlay(song));
+        const outro = await newUser(c, { anonymous: false });
+        await submit(c, outro, fullPlay(song, { sequence: ['perfect', 'miss', 'miss', 'miss'] }));
+        await assertOffRanking(aluno.user, song, outro);
+      });
+
+      it('aluno NÃO cria nem aceita desafio (28000); conta com e-mail segue criando', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id);
+        const song = await serverSong(c, { notes: 4 });
+        const own = await submit(c, aluno.user, fullPlay(song));
+        await needsAccount(rpc(aluno.user, 'create_challenge', [own.play_id, 2]));
+        const outro = await newUser(c, { anonymous: false });
+        const theirs = await submit(c, outro, fullPlay(song));
+        const challenge = await rpc(outro, 'create_challenge', [theirs.play_id, 2]);
+        await needsAccount(rpc(aluno.user, 'accept_challenge', [challenge.code]));
+      });
+    });
+
+    describe('tarefas e entregas', () => {
+      const due = (days = 7) => new Date(Date.now() + days * 86400e3).toISOString();
+      const assign = (t, classId, song, { level = 'easy', mode = 'arcade', days = 7, key = 'tocar-inteira', text = null } = {}) =>
+        rpc(t, 'create_assignment', [classId, song, level, mode, due(days), key, text]);
+      const submitTask = (uid, assignmentId, playId = null, audio = null) => rpc(uid, 'submit_assignment', [assignmentId, playId, audio]);
+      const audioOf = (classId, memberId, assignmentId, file = 'take.webm') => `${classId}/${memberId}/${assignmentId}/${file}`;
+
+      /** Professor com turma, dois alunos entrados, uma música do catálogo (4 notas, fácil e difícil) e uma tarefa. */
+      async function scene() {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const ana = await studentOf(t, cls.id, 'Ana');
+        const bia = await studentOf(t, cls.id, 'Bia');
+        const song = await serverSong(c, { notes: 4, levels: ['easy', 'hard'] });
+        const task = await assign(t, cls.id, song);
+        return { t, cls, ana, bia, song, task };
+      }
+
+      it('criar tarefa: só na turma do professor, música do catálogo com o nível, sem prática, prazo de até 60 dias', async () => {
+        const { t, cls, song, task } = await scene();
+        assert.deepEqual([task.song_id, task.level, task.mode, task.instruction_key, task.closed], [song, 'easy', 'arcade', 'tocar-inteira', false]);
+        assert.equal(task.students.length, 2);
+        await notFound(assign(await teacher(), cls.id, song));
+        await notFound(assign(t, cls.id, await serverSong(c, { owner: t })));
+        await notFound(assign(t, cls.id, song, { level: 'medium' }));
+        await invalid(assign(t, cls.id, song, { mode: 'practice' }));
+        await invalid(assign(t, cls.id, song, { days: -1 }));
+        await invalid(assign(t, cls.id, song, { days: 61 }));
+        await invalid(assign(t, cls.id, song, { key: 'invente' }));
+        await invalid(assign(t, cls.id, song, { key: null, text: 'x'.repeat(141) }));
+        const own = await assign(t, cls.id, song, { key: null, text: '  Toque   duas vezes ' });
+        assert.equal(own.instruction_text, 'Toque duas vezes');
+      });
+
+      it('professor de outra turma NÃO vê tarefas, alunos nem entregas; aluno de outra turma NÃO vê a tarefa', async () => {
+        const { t, cls, ana, song, task } = await scene();
+        await submit(c, ana.user, fullPlay(song));
+        await submitTask(ana.user, task.id);
+        const outro = await teacher();
+        await notFound(rpc(outro, 'get_assignment', [task.id]));
+        await notFound(rpc(outro, 'list_class_assignments', [cls.id]));
+        const fora = await studentOf(outro, (await classOf(outro)).id, 'Zeca');
+        assert.deepEqual(await rpc(fora.user, 'get_my_assignments'), []);
+        await notFound(submitTask(fora.user, task.id));
+        for (const uid of [outro, fora.user, ana.user, t]) {
+          for (const table of ['assignments', 'submissions', 'reviews']) await denied(as(c, uid, `select * from ${S}.${table}`));
+        }
+      });
+
+      it('conta só a partida terminada da música, nível e modo certos, jogada depois da tarefa e chegada até o prazo', async () => {
+        const { t, cls, ana, song } = await scene();
+        // Antes da tarefa: a partida chegou e a tarefa nasceu depois
+        await submit(c, ana.user, fullPlay(song, { sequence: ['perfect', 'perfect', 'perfect', 'perfect'] }));
+        const later = await assign(t, cls.id, song);
+        await c.query(`update ${S}.assignments set created_at = now() + interval '1 second' where id = $1`, [later.id]);
+        assert.equal((await rpc(ana.user, 'get_my_assignments')).find((a) => a.id === later.id).best, null);
+        // Nível, modo e partida não terminada errados não contam; a certa conta
+        const task = await assign(t, cls.id, song);
+        await submit(c, ana.user, fullPlay(song, { level: 'hard' }));
+        await submit(c, ana.user, fullPlay(song, { mode: 'sheet' }));
+        await submit(c, ana.user, fullPlay(song, { finished: false }));
+        assert.equal((await rpc(t, 'get_assignment', [task.id])).students.find((s) => s.student_id === ana.id).best?.score ?? null, 400);
+        // Prazo vencido antes de a partida chegar: não conta
+        const late = await assign(t, cls.id, song);
+        await c.query(`update ${S}.assignments set created_at = now() - interval '2 days', due_at = now() - interval '1 day' where id = $1`, [late.id]);
+        assert.equal((await rpc(t, 'get_assignment', [late.id])).students.find((s) => s.student_id === ana.id).best, null);
+        await invalid(submitTask(ana.user, late.id));
+      });
+
+      it('entrega: o servidor escolhe a melhor partida; partida e áudio de outro aluno são recusados', async () => {
+        const { cls, ana, bia, song, task } = await scene();
+        await invalid(submitTask(ana.user, task.id));
+        const fraca = await submit(c, ana.user, fullPlay(song, { sequence: ['perfect', 'miss', 'miss', 'miss'] }));
+        const forte = await submit(c, ana.user, fullPlay(song, { sequence: ['perfect', 'perfect', 'perfect', 'miss'] }));
+        const daBia = await submit(c, bia.user, fullPlay(song));
+        const auto = await submitTask(ana.user, task.id);
+        assert.equal(auto.submission.play_id, forte.play_id);
+        await invalid(submitTask(ana.user, task.id, daBia.play_id));
+        await invalid(submitTask(ana.user, task.id, fraca.play_id, audioOf(cls.id, bia.id, task.id)));
+        await invalid(submitTask(ana.user, task.id, fraca.play_id, audioOf(cls.id, ana.id, randomUUID())));
+        await invalid(submitTask(ana.user, task.id, fraca.play_id, `${audioOf(cls.id, ana.id, task.id)}/../x.webm`));
+        const chosen = await submitTask(ana.user, task.id, fraca.play_id, audioOf(cls.id, ana.id, task.id));
+        assert.deepEqual([chosen.submission.play_id, chosen.submission.audio_path], [fraca.play_id, audioOf(cls.id, ana.id, task.id)]);
+      });
+
+      it('aluno NÃO vê a entrega, a partida nem a revisão do colega; o professor vê a turma inteira', async () => {
+        const { t, ana, bia, song, task } = await scene();
+        await submit(c, ana.user, fullPlay(song));
+        const sub = await submitTask(ana.user, task.id);
+        await rpc(t, 'review_submission', [sub.submission.id, 5, null, 'Muito bem']);
+        const daBia = (await rpc(bia.user, 'get_my_assignments')).find((a) => a.id === task.id);
+        assert.deepEqual([daBia.best, daBia.submission, daBia.review], [null, null, null]);
+        assert.ok(!JSON.stringify(await rpc(bia.user, 'get_my_assignments')).includes('Ana'));
+        const view = await rpc(t, 'get_assignment', [task.id]);
+        assert.deepEqual(view.students.map((s) => [s.name, s.submission !== null, s.review?.grade ?? null]), [['Ana', true, 5], ['Bia', false, null]]);
+        const daAna = (await rpc(ana.user, 'get_my_assignments')).find((a) => a.id === task.id);
+        assert.deepEqual([daAna.review.grade, daAna.review.comment], [5, 'Muito bem']);
+      });
+
+      it('revisão: só o professor da turma, nota 1–5 OU conceito; depois dela a entrega NÃO muda', async () => {
+        const { t, ana, song, task } = await scene();
+        await submit(c, ana.user, fullPlay(song));
+        const sub = (await submitTask(ana.user, task.id)).submission;
+        await notFound(rpc(await teacher(), 'review_submission', [sub.id, 4, null, '']));
+        await needsAccount(rpc(ana.user, 'review_submission', [sub.id, 5, null, '']));
+        await invalid(rpc(t, 'review_submission', [sub.id, 4, 'bom', '']));
+        await invalid(rpc(t, 'review_submission', [sub.id, null, null, '']));
+        await invalid(rpc(t, 'review_submission', [sub.id, 6, null, '']));
+        await invalid(rpc(t, 'review_submission', [sub.id, null, 'genial', '']));
+        await invalid(rpc(t, 'review_submission', [sub.id, null, 'bom', 'x'.repeat(281)]));
+        const review = await rpc(t, 'review_submission', [sub.id, null, 'precisa-praticar', 'Capriche no arco']);
+        assert.deepEqual([review.grade, review.concept], [null, 'precisa-praticar']);
+        await invalid(submitTask(ana.user, task.id));
+        const list = await rpc(t, 'list_class_assignments', [task.class_id]);
+        assert.deepEqual(list.map((a) => [a.student_count, a.submitted_count, a.reviewed_count]), [[2, 1, 1]]);
+      });
+
+      it('revisão traz afinação e duração da partida e do áudio; outro professor e o colega NÃO leem', async () => {
+        const { t, cls, ana, bia, song, task } = await scene();
+        await submit(c, ana.user, fullPlay(song, { mean_abs_cents: 11.5, string_cents: [-4, 6.5, null, 12], duration_ms: 4500 }));
+        const path = audioOf(cls.id, ana.id, task.id);
+        const own = await rpc(ana.user, 'submit_assignment', [task.id, null, path, 4321]);
+        const pick = (s) => [s.mean_abs_cents, s.string_cents, s.duration_ms];
+        assert.deepEqual(pick(own.best), [11.5, [-4, 6.5, null, 12], 4500]);
+        const row = (await rpc(t, 'get_assignment', [task.id])).students.find((s) => s.student_id === ana.id);
+        assert.deepEqual([...pick(row.submission), row.submission.audio_duration_ms], [11.5, [-4, 6.5, null, 12], 4500, 4321]);
+        // Três argumentos (quem chamava antes da 0017) seguem valendo; sem áudio, a duração não fica
+        await submit(c, bia.user, fullPlay(song));
+        const semAudio = await submitTask(bia.user, task.id, null, null);
+        assert.equal(semAudio.submission.audio_duration_ms, null);
+        assert.equal((await rpc(bia.user, 'submit_assignment', [task.id, null, null, 999])).submission.audio_duration_ms, null);
+        await invalid(rpc(ana.user, 'submit_assignment', [task.id, null, path, -1]));
+        const outro = await teacher();
+        await notFound(rpc(outro, 'get_assignment', [task.id]));
+        await notFound(rpc(outro, 'get_student_progress', [ana.id]));
+        const daBia = JSON.stringify(await rpc(bia.user, 'get_my_assignments'));
+        assert.ok(!daBia.includes('4321') && !daBia.includes('11.5'), `a afinação da Ana vazou para a Bia: ${daBia}`);
+      });
+
+      it('aluno tirado da turma NÃO vê mais as tarefas nem entrega; turma encerrada NÃO recebe entrega', async () => {
+        const { t, cls, ana, bia, song, task } = await scene();
+        await submit(c, ana.user, fullPlay(song));
+        await submit(c, bia.user, fullPlay(song));
+        await rpc(t, 'set_student_active', [ana.id, false]);
+        assert.deepEqual(await rpc(ana.user, 'get_my_assignments'), []);
+        await notFound(submitTask(ana.user, task.id));
+        assert.deepEqual((await rpc(t, 'get_assignment', [task.id])).students.map((s) => s.name), ['Bia']);
+        await rpc(t, 'close_class', [cls.id]);
+        await invalid(submitTask(bia.user, task.id));
+      });
+    });
+
+    describe('responsável', () => {
+      const invite = (t, memberId) => rpc(t, 'create_guardian_invite', [memberId]);
+      const accept = (uid, code) => rpc(uid, 'accept_guardian_invite', [code]);
+      const guardian = () => newUser(c, { anonymous: false });
+
+      async function family() {
+        const t = await teacher();
+        const cls = await classOf(t, 'Cordas');
+        const ana = await studentOf(t, cls.id, 'Ana');
+        const bia = await studentOf(t, cls.id, 'Bia');
+        const mae = await guardian();
+        const { code } = await invite(t, ana.id);
+        await accept(mae, code);
+        return { t, cls, ana, bia, mae };
+      }
+
+      it('o convite liga o responsável ao filho; o mesmo convite NÃO serve para outra pessoa; vencido também não', async () => {
+        const t = await teacher();
+        const cls = await classOf(t, 'Cordas');
+        const ana = await studentOf(t, cls.id, 'Ana');
+        const inv = await invite(t, ana.id);
+        assert.match(inv.code, /^[A-HJ-NP-Z2-9]{10}$/);
+        assert.equal((await invite(t, ana.id)).code, inv.code);
+        await notFound(invite(await teacher(), ana.id));
+        const mae = await guardian();
+        const child = await accept(mae, inv.code.toLowerCase());
+        assert.deepEqual([child.student_id, child.name, child.class_name], [ana.id, 'Ana', 'Cordas']);
+        assert.deepEqual((await accept(mae, inv.code)).student_id, ana.id);
+        await notFound(accept(await guardian(), inv.code));
+        const novo = await invite(t, ana.id);
+        assert.notEqual(novo.code, inv.code);
+        await c.query(`update ${S}.guardian_invites set expires_at = now() - interval '1 second', created_at = now() - interval '8 days' where code = $1`, [novo.code]);
+        await notFound(accept(await guardian(), novo.code));
+        await notFound(accept(await guardian(), 'AAAAAAAAAA'));
+        assert.deepEqual((await rpc(mae, 'list_my_children')).map((k) => k.name), ['Ana']);
+      });
+
+      it('anônimo e conta de aluno NÃO viram responsáveis', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const ana = await studentOf(t, cls.id, 'Ana');
+        const bia = await studentOf(t, cls.id, 'Bia');
+        const { code } = await invite(t, ana.id);
+        await needsAccount(accept(await newUser(c), code));
+        await needsAccount(accept(bia.user, code));
+        await needsAccount(accept(ana.user, code));
+      });
+
+      it('responsável vê só o próprio filho: NÃO vê o colega nem é visto por outro responsável', async () => {
+        const { t, ana, bia, mae } = await family();
+        const song = await serverSong(c, { notes: 4 });
+        await submit(c, ana.user, fullPlay(song));
+        await submit(c, bia.user, fullPlay(song));
+        const progress = await rpc(mae, 'get_student_progress', [ana.id]);
+        assert.equal(progress.student.name, 'Ana');
+        assert.equal(progress.records.length, 1);
+        assert.equal(progress.recent_plays.length, 1);
+        assert.equal(progress.streak.current_days, 1);
+        await notFound(rpc(mae, 'get_student_progress', [bia.id]));
+        await notFound(rpc(await guardian(), 'get_student_progress', [ana.id]));
+        await notFound(rpc(await teacher(), 'get_student_progress', [ana.id]));
+        await notFound(rpc(bia.user, 'get_student_progress', [ana.id]));
+        assert.deepEqual(await rpc(await guardian(), 'list_my_children'), []);
+        assert.equal((await rpc(t, 'get_student_progress', [bia.id])).student.name, 'Bia');
+        for (const table of ['guardian_invites', 'guardian_links']) await denied(as(c, mae, `select * from ${S}.${table}`));
+      });
+
+      it('progresso NÃO mostra as músicas próprias do aluno; tarefas, entrega e revisão do filho aparecem', async () => {
+        const { t, cls, ana, mae } = await family();
+        const own = await serverSong(c, { owner: ana.user, notes: 4 });
+        await submit(c, ana.user, fullPlay(own));
+        const song = await serverSong(c, { notes: 4 });
+        const task = await rpc(t, 'create_assignment', [cls.id, song, 'easy', 'arcade', new Date(Date.now() + 86400e3).toISOString(), 'tocar-inteira', null]);
+        await submit(c, ana.user, fullPlay(song));
+        const sub = await rpc(ana.user, 'submit_assignment', [task.id, null, null]);
+        await rpc(t, 'review_submission', [sub.submission.id, 4, null, 'Boa']);
+        const progress = await rpc(mae, 'get_student_progress', [ana.id]);
+        assert.deepEqual(progress.records.map((r) => r.song_id), [song]);
+        assert.deepEqual(progress.recent_plays.map((p) => p.song_id), [song]);
+        assert.ok(!JSON.stringify(progress).includes(own));
+        assert.deepEqual(progress.assignments.map((a) => [a.id, a.review?.grade]), [[task.id, 4]]);
+      });
+
+      it('aluno tirado da turma some para o responsável; limite de 4 responsáveis por aluno', async () => {
+        const { t, ana, mae } = await family();
+        for (let i = 0; i < 3; i++) await accept(await guardian(), (await invite(t, ana.id)).code);
+        await overLimit(accept(await guardian(), (await invite(t, ana.id)).code));
+        await rpc(t, 'set_student_active', [ana.id, false]);
+        assert.deepEqual(await rpc(mae, 'list_my_children'), []);
+        await notFound(rpc(mae, 'get_student_progress', [ana.id]));
+        await invalid(invite(t, ana.id));
+      });
+    });
+
+    describe('áudio das entregas (funções das policies do Storage)', () => {
+      const canRead = (uid, path) => as(c, uid, `select ${S}.can_read_submission_audio($1) as r`, [path]).then((res) => res.rows[0].r);
+      const canUpload = (uid, path) => as(c, uid, `select ${S}.can_upload_submission_audio($1) as r`, [path]).then((res) => res.rows[0].r);
+
+      async function scene() {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const ana = await studentOf(t, cls.id, 'Ana');
+        const bia = await studentOf(t, cls.id, 'Bia');
+        const mae = await newUser(c, { anonymous: false });
+        await rpc(mae, 'accept_guardian_invite', [(await rpc(t, 'create_guardian_invite', [ana.id])).code]);
+        const song = await serverSong(c, { notes: 4 });
+        const task = await rpc(t, 'create_assignment', [cls.id, song, 'easy', 'arcade', new Date(Date.now() + 86400e3).toISOString(), null, null]);
+        return { t, cls, ana, bia, mae, song, task, path: `${cls.id}/${ana.id}/${task.id}/take-1.webm` };
+      }
+
+      it('ouvem: o aluno, o professor da turma e o responsável; NÃO ouvem: colega, outro professor, outro responsável, anônimo', async () => {
+        const { t, ana, bia, mae, path } = await scene();
+        for (const uid of [ana.user, t, mae]) assert.equal(await canRead(uid, path), true);
+        const outroResp = await newUser(c, { anonymous: false });
+        for (const uid of [bia.user, await teacher(), outroResp, await newUser(c)]) assert.equal(await canRead(uid, path), false);
+        await denied(as(c, null, `select ${S}.can_read_submission_audio($1)`, [path]));
+      });
+
+      it('caminho torto NÃO abre nada: aluno trocado de turma, tarefa de outra turma, extensão ou pasta a mais', async () => {
+        const { t, cls, ana, task } = await scene();
+        const other = await classOf(t, 'Outra');
+        const otherTask = await rpc(t, 'create_assignment', [other.id, task.song_id, 'easy', 'arcade', new Date(Date.now() + 86400e3).toISOString(), null, null]);
+        for (const bad of [
+          `${other.id}/${ana.id}/${task.id}/a.webm`,
+          `${cls.id}/${ana.id}/${otherTask.id}/a.webm`,
+          `${cls.id}/${ana.id}/${task.id}/a.exe`,
+          `${cls.id}/${ana.id}/${task.id}/x/a.webm`,
+          `${cls.id}/${ana.id}/${task.id}/../a.webm`,
+          'qualquer.webm',
+        ]) {
+          assert.equal(await canRead(t, bad), false, bad);
+          assert.equal(await canUpload(ana.user, bad), false, bad);
+        }
+      });
+
+      it('sobe só o próprio aluno ativo, em turma aberta, antes da revisão', async () => {
+        const { t, cls, ana, bia, mae, song, task, path } = await scene();
+        assert.equal(await canUpload(ana.user, path), true);
+        for (const uid of [bia.user, t, mae, await newUser(c)]) assert.equal(await canUpload(uid, path), false);
+        await submit(c, ana.user, fullPlay(song));
+        const sub = await rpc(ana.user, 'submit_assignment', [task.id, null, path]);
+        await rpc(t, 'review_submission', [sub.submission.id, 5, null, '']);
+        assert.equal(await canUpload(ana.user, path), false);
+        const biaPath = `${cls.id}/${bia.id}/${task.id}/take.webm`;
+        assert.equal(await canUpload(bia.user, biaPath), true);
+        await rpc(t, 'set_student_active', [bia.id, false]);
+        assert.equal(await canUpload(bia.user, biaPath), false);
+        assert.equal(await canRead(bia.user, biaPath), true, 'o aluno inativo ainda ouve o que é dele');
+        await rpc(t, 'close_class', [cls.id]);
+        assert.equal(await canRead(ana.user, path), true);
+      });
+
+      it('no Storage, o bucket submissions é privado, com 10 MB e áudio, e as policies chamam essas funções', async (t) => {
+        const { rows: [{ ok }] } = await c.query(`select to_regclass('storage.objects') is not null as ok`);
+        if (!ok) {
+          // O Supabase local desta máquina roda sem Storage; a CI liga e roda este teste
+          if (process.env.CI) throw new Error('Storage desligado na CI: as policies do áudio não foram testadas.');
+          t.skip('Storage desligado no Supabase local');
+          return;
+        }
+        const { rows: [bucket] } = await c.query(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'submissions'`);
+        assert.deepEqual([bucket.public, Number(bucket.file_size_limit), [...bucket.allowed_mime_types].sort()],
+          [false, 10 * 1024 * 1024, ['audio/mp4', 'audio/ogg', 'audio/webm']]);
+        const { rows } = await c.query(
+          `select policyname, cmd, roles::text[] as roles, coalesce(qual, with_check) as rule from pg_policies
+            where schemaname = 'storage' and tablename = 'objects' and policyname like 'violinhero_submissions_%' order by 1`);
+        assert.deepEqual(rows.map((r) => [r.policyname, r.cmd, r.roles]), [
+          ['violinhero_submissions_insert', 'INSERT', ['authenticated']],
+          ['violinhero_submissions_select', 'SELECT', ['authenticated']],
+        ]);
+        assert.match(rows[0].rule, /can_upload_submission_audio/);
+        assert.match(rows[1].rule, /can_read_submission_audio/);
+      });
+    });
+
+    describe('retenção do áudio', () => {
+      const toPurge = () => asServer(c, `select path from ${S}.audio_to_purge(1000)`).then((res) => res.rows.map((r) => r.path));
+
+      it('o áudio revisado há mais de 30 dias e o trocado entram na limpeza; o recente e o sem revisão NÃO', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const ana = await studentOf(t, cls.id, 'Ana');
+        const bia = await studentOf(t, cls.id, 'Bia');
+        const song = await serverSong(c, { notes: 4 });
+        const task = await rpc(t, 'create_assignment', [cls.id, song, 'easy', 'arcade', new Date(Date.now() + 86400e3).toISOString(), null, null]);
+        await submit(c, ana.user, fullPlay(song));
+        await submit(c, bia.user, fullPlay(song));
+        const p = (m, f) => `${cls.id}/${m.id}/${task.id}/${f}.webm`;
+        await rpc(ana.user, 'submit_assignment', [task.id, null, p(ana, 'velho')]);
+        const sub = await rpc(ana.user, 'submit_assignment', [task.id, null, p(ana, 'novo')]);
+        await rpc(bia.user, 'submit_assignment', [task.id, null, p(bia, 'sem-revisao')]);
+        await rpc(t, 'review_submission', [sub.submission.id, 5, null, '']);
+        assert.deepEqual(await toPurge(), [p(ana, 'velho')]);
+        await c.query(`update ${S}.reviews set reviewed_at = now() - interval '30 days 1 second' where submission_id = $1`, [sub.submission.id]);
+        assert.deepEqual((await toPurge()).sort(), [p(ana, 'novo'), p(ana, 'velho')].sort());
+
+        const { rows: [{ n }] } = await asServer(c, `select ${S}.audio_purged($1) as n`, [[p(ana, 'novo'), p(ana, 'velho')]]);
+        assert.equal(n, 2);
+        assert.deepEqual(await toPurge(), []);
+        const mine = (await rpc(ana.user, 'get_my_assignments')).find((a) => a.id === task.id);
+        assert.deepEqual([mine.submission.audio_path, mine.submission.audio_deleted, mine.review.grade], [null, true, 5]);
+        const daBia = (await rpc(t, 'get_assignment', [task.id])).students.find((s) => s.name === 'Bia');
+        assert.equal(daBia.submission.audio_path, p(bia, 'sem-revisao'));
+      });
+
+      it('entrega nunca revisada sai 30 dias depois do prazo da tarefa, também de aluno inativo e turma encerrada', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const ana = await studentOf(t, cls.id, 'Ana');
+        const bia = await studentOf(t, cls.id, 'Bia');
+        const song = await serverSong(c, { notes: 4 });
+        const task = await rpc(t, 'create_assignment', [cls.id, song, 'easy', 'arcade', new Date(Date.now() + 86400e3).toISOString(), null, null]);
+        await submit(c, ana.user, fullPlay(song));
+        await submit(c, bia.user, fullPlay(song));
+        const p = (m) => `${cls.id}/${m.id}/${task.id}/take.webm`;
+        await rpc(ana.user, 'submit_assignment', [task.id, null, p(ana)]);
+        await rpc(bia.user, 'submit_assignment', [task.id, null, p(bia)]);
+        await rpc(t, 'set_student_active', [bia.id, false]);
+        await rpc(t, 'close_class', [cls.id]);
+        const dueAgo = (interval) => c.query(
+          `update ${S}.assignments set created_at = now() - interval '40 days', due_at = now() - $2::interval where id = $1`, [task.id, interval]);
+        await dueAgo('29 days');
+        assert.deepEqual(await toPurge(), []);
+        await dueAgo('30 days 1 second');
+        assert.deepEqual((await toPurge()).sort(), [p(ana), p(bia)].sort());
+      });
+
+      it('apagar a tarefa põe o áudio das entregas na limpeza; o app NÃO chama a limpeza', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const ana = await studentOf(t, cls.id, 'Ana');
+        const song = await serverSong(c, { notes: 4 });
+        const task = await rpc(t, 'create_assignment', [cls.id, song, 'easy', 'arcade', new Date(Date.now() + 86400e3).toISOString(), null, null]);
+        await submit(c, ana.user, fullPlay(song));
+        const path = `${cls.id}/${ana.id}/${task.id}/a.webm`;
+        await rpc(ana.user, 'submit_assignment', [task.id, null, path]);
+        await c.query(`delete from ${S}.assignments where id = $1`, [task.id]);
+        assert.deepEqual(await toPurge(), [path]);
+        await denied(as(c, t, `select * from ${S}.audio_to_purge()`));
+        await denied(as(c, t, `select ${S}.audio_purged(array['x'])`));
+        await denied(as(c, t, `select * from ${S}.audio_trash`));
+      });
     });
   });
 

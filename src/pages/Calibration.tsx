@@ -15,7 +15,7 @@ import { meterFraction } from '../game/audio';
 import { clampA4, loadA4, useSaveCalibration } from '../services/playerAudio';
 import { micFailure, useEar, type EarAudio } from '../shell/Ear';
 import { loadOrchestraSettings, saveOrchestraSettings } from '../game/synth';
-import { gameRoute, readPlayState } from '../shell/play';
+import { gameRoute, readPlayState, taskCarry } from '../shell/play';
 import { playerLevelSettings } from '../shell/playerLevel';
 import { micTroubleUrl, ROUTES } from '../shell/routes';
 
@@ -192,6 +192,7 @@ export const Calibration: React.FC = () => {
         practice: play.practice,
         latencyMs: latencyToMs(calibration.seconds),
         next: gameRoute(play.mode),
+        ...taskCarry(play),
       },
     });
   };

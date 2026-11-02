@@ -84,4 +84,24 @@ describe('createMicrophoneEar', () => {
     f.ear.stop();
     expect(onClosed).toHaveBeenLastCalledWith('stopped');
   });
+
+  it('record grava sobre o microfone já aberto, sem pedir outro', async () => {
+    const f = setup();
+    expect(() => f.ear.record()).toThrow(expect.objectContaining({ kind: 'no-microphone' }));
+    await f.ear.start();
+    const destination = { stream: { getTracks: () => [] } };
+    Object.assign(f.mic.context, { createMediaStreamDestination: () => destination });
+    Object.assign(f.mic.source, { connect: vi.fn(), disconnect: vi.fn() });
+    const MediaRecorder = vi.fn(function () {
+      return Object.assign(new EventTarget(), { start: vi.fn(), mimeType: 'audio/webm;codecs=opus' });
+    });
+    vi.stubGlobal('MediaRecorder', Object.assign(MediaRecorder, { isTypeSupported: () => true }));
+    try {
+      expect(f.ear.record().state).toBe('recording');
+      expect(MediaRecorder).toHaveBeenCalledWith(destination.stream, expect.objectContaining({ mimeType: 'audio/webm;codecs=opus' }));
+      expect(f.deps.openMicrophone).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

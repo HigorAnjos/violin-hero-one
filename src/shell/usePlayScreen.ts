@@ -2,6 +2,7 @@ import React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { tuningBands } from '../components/Tuner/tuner';
+import type { Recording, RecordingError } from '../game/audio';
 import type { GameResult } from '../game/engine';
 import { parseSimulate } from '../game/engine/simulate';
 import { findFixedSong } from '../game/notation/songs';
@@ -10,12 +11,13 @@ import { loadA4 } from '../services/playerAudio';
 import { playPayload, PLAY_MODE_OF } from '../services/progress';
 import { playSync } from '../services/sync';
 import { playedChart } from './deviceSync';
-import { DEV_TOOLS } from './devTools';
+import { DEV_TOOLS, devWindow } from './devTools';
 import { micFailure } from './Ear';
-import { readPlayState, type GameMode, type ResultState } from './play';
+import { readPlayState, taskCarry, type GameMode, type ResultState } from './play';
 import { playerLevelSettings } from './playerLevel';
 import { checkRecord } from './records';
 import { micTroubleUrl, ROUTES } from './routes';
+import { holdTaskRecording } from './taskRecording';
 import { FINISH_DELAY_MS, type GamePhase, type useGame } from './useGame';
 
 /** O teto de duration_ms do banco (plays.duration_ms): 4 horas. */
@@ -31,9 +33,11 @@ export function usePlayScreen(mode: GameMode) {
   const play = React.useMemo(() => {
     // O modo é o da tela: quem chega direto no endereço (e2e, recarregar) volta para a mesma tela no "de novo"
     const state = { ...readPlayState(location.state), mode };
-    // ?musica=<id> abre a música direto na tela, para o e2e que toca um WAV no lugar do microfone
-    const chosen = DEV_TOOLS ? findFixedSong(new URLSearchParams(location.search).get('musica') ?? '') : undefined;
-    return chosen ? { ...state, song: chosen.song } : state;
+    // ?musica=<id> abre a música direto na tela, para o e2e que toca um WAV no lugar do microfone; ?gravar grava a partida
+    const params = new URLSearchParams(location.search);
+    const chosen = DEV_TOOLS ? findFixedSong(params.get('musica') ?? '') : undefined;
+    const recordAudio = state.recordAudio || (DEV_TOOLS && params.has('gravar'));
+    return { ...state, ...(chosen && { song: chosen.song }), recordAudio };
   }, [location.state, location.search, mode]);
   const [a4] = React.useState(loadA4);
   const [performance] = React.useState(() => (DEV_TOOLS ? parseSimulate(location.search) : null));
@@ -43,7 +47,7 @@ export function usePlayScreen(mode: GameMode) {
   const [startedAt] = React.useState(() => window.performance.now());
 
   const finish = React.useCallback(
-    (result: GameResult, extra: Partial<ResultState> = {}) => {
+    (result: GameResult, extra: Partial<ResultState> = {}, recording?: Recording | RecordingError) => {
       const record = checkRecord(play.song, result) ?? undefined;
       // Toda partida, terminada ou interrompida, entra na fila e sobe quando houver sessão e rede
       const payload = playPayload({
@@ -68,10 +72,16 @@ export function usePlayScreen(mode: GameMode) {
         result,
         record,
         clientId: payload.client_id,
+        ...taskCarry(play),
       };
-      if (DEV_TOOLS) (window as Window & { __vhResult?: GameResult }).__vhResult = result;
+      if (DEV_TOOLS) Object.assign(devWindow(), { __vhResult: result, __vhRecording: recording });
       if (result.status === 'failed') return navigate(ROUTES.gameOver, { replace: true, state });
       addEarnedBadges(result.badges);
+      // Partida de tarefa: a entrega mostra o resultado e decide o envio da gravação
+      if (play.task) {
+        if (recording) holdTaskRecording(payload.client_id, recording);
+        return navigate(ROUTES.taskResult, { replace: true, state });
+      }
       navigate(result.badges.length ? ROUTES.badge : ROUTES.results, { replace: true, state });
     },
     [navigate, play, queryClient, startedAt]

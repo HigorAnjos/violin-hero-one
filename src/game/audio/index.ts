@@ -13,6 +13,19 @@ export {
   type VisibilitySource,
 } from './session';
 export {
+  RECORDING_BITS_PER_SECOND,
+  RECORDING_TYPES,
+  RecordingError,
+  pickRecordingFormat,
+  startRecording,
+  type Recorder,
+  type RecorderOptions,
+  type RecorderState,
+  type Recording,
+  type RecordingErrorKind,
+  type RecordingFormat,
+} from './recorder';
+export {
   SILENCE_DB,
   fallOff,
   meterFraction,

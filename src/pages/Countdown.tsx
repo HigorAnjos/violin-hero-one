@@ -10,7 +10,7 @@ import { Kicker, SongKicker } from '../components/Screen/Screen';
 import type { Song } from '../game/notation/song';
 import { STRING_LETTERS } from '../game/notation/violin';
 import { FIXED_SONGS } from '../game/notation/songs';
-import { DEFAULT_MODE, gameRoute, type PlayState } from '../shell/play';
+import { DEFAULT_MODE, gameRoute, taskCarry, type PlayState } from '../shell/play';
 import { loadGameScreens } from './loadGameScreens';
 import { safeInternalPath } from '../shell/routes';
 
@@ -122,11 +122,15 @@ export const Countdown: React.FC = () => {
   const state = (useLocation().state ?? {}) as CountdownState;
   // Vindo do onboarding, sem música escolhida: a primeira das músicas fixas
   const song = state.song ?? FIXED_SONGS[0].song;
-  const { mode, latencyMs, noFail, practice } = state;
+  const { mode, latencyMs, noFail, practice, recordAudio, task } = state;
   const next = safeInternalPath(state.next ?? null, gameRoute(mode));
   const start = React.useCallback(
-    () => navigate(next, { replace: true, state: { song, mode, latencyMs, noFail, practice } satisfies PlayState }),
-    [navigate, next, song, mode, latencyMs, noFail, practice]
+    () =>
+      navigate(next, {
+        replace: true,
+        state: { song, mode, latencyMs, noFail, practice, ...taskCarry({ recordAudio, task }) } satisfies PlayState,
+      }),
+    [navigate, next, song, mode, latencyMs, noFail, practice, recordAudio, task]
   );
   // Na prática, a entrada já vem na velocidade escolhida
   const counted = React.useMemo(() => (practice ? { ...song, bpm: song.bpm * practice.speed } : song), [song, practice]);

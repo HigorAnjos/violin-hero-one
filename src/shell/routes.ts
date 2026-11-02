@@ -32,16 +32,50 @@ export const ROUTES = {
   reminder: '/lembrete',
   login: '/entrar',
   account: '/conta',
+  parent: '/responsavel',
+  plans: '/planos',
   ranking: '/ranking',
   challenge: '/desafio',
   /** O link do desafio: abre para qualquer um (aceitar pede conta). */
   challengeCode: '/desafio/:codigo',
+  /** O link (ou o código) que o professor passa: ?codigo=ABCD-EFGH. */
+  joinClass: '/turma',
+  /** Entrada do aluno sem e-mail: código da turma + nome + PIN. */
+  classLogin: '/turma/entrar',
+  tasks: '/tarefas',
+  /** O fim da partida de tarefa: resultado e entrega. */
+  taskResult: '/tarefas/entrega',
+  /** Área do professor (conta com e-mail): turmas, alunos, tarefas e revisão. */
+  teacher: '/professor',
+  teacherClass: '/professor/turma/:turma',
+  newAssignment: '/professor/turma/:turma/nova-tarefa',
+  review: '/professor/tarefa/:tarefa',
 } as const;
 
-/** Onde a conta é pedida (GuestPrompt): ranking, desafio ou usar em outro aparelho. Nunca no meio de uma música. */
-export type AccountReason = 'ranking' | 'desafio' | 'aparelho';
+/** `code`: o da turma, já preenchido (do link do professor). */
+export function joinClassUrl(code?: string | null): string {
+  return code ? `${ROUTES.joinClass}?${new URLSearchParams({ codigo: code })}` : ROUTES.joinClass;
+}
 
-const ACCOUNT_REASONS: readonly AccountReason[] = ['ranking', 'desafio', 'aparelho'];
+export function classLoginUrl(code?: string | null): string {
+  return code ? `${ROUTES.classLogin}?${new URLSearchParams({ codigo: code })}` : ROUTES.classLogin;
+}
+
+export const teacherClassUrl = (classId: string) => ROUTES.teacherClass.replace(':turma', encodeURIComponent(classId));
+export const newAssignmentUrl = (classId: string) => ROUTES.newAssignment.replace(':turma', encodeURIComponent(classId));
+/** A revisão de uma tarefa; com `studentId`, já aberta na entrega desse aluno. */
+export function reviewUrl(assignmentId: string, studentId?: string): string {
+  const path = ROUTES.review.replace(':tarefa', encodeURIComponent(assignmentId));
+  return studentId ? `${path}?${new URLSearchParams({ aluno: studentId })}` : path;
+}
+
+/**
+ * Onde a conta é pedida (GuestPrompt): ranking, desafio, outro aparelho, responsável ou professor. Nunca no meio de
+ * uma música.
+ */
+export type AccountReason = 'ranking' | 'desafio' | 'aparelho' | 'responsavel' | 'professor';
+
+const ACCOUNT_REASONS: readonly AccountReason[] = ['ranking', 'desafio', 'aparelho', 'responsavel', 'professor'];
 
 /** `next`: para onde ir com a conta criada (e para onde o link do e-mail volta). `back`: o "Agora não". */
 export function accountUrl(reason: AccountReason, next: string, back: string = next): string {
@@ -72,6 +106,7 @@ export const MIC_ROUTES: ReadonlySet<string> = new Set([
   ROUTES.gameOver,
   ROUTES.badge,
   ROUTES.results,
+  ROUTES.taskResult,
   ROUTES.dictation,
 ]);
 

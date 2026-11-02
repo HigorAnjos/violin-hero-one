@@ -116,7 +116,10 @@ port = 54324
 # sender_name = "Admin"
 
 [storage]
-enabled = false
+# Áudio das entregas (bucket submissions, ciclo 5). O bucket e as policies vêm de supabase/storage/*.sql, que o
+# scripts/migrate.mjs aplica depois das migrações quando storage.objects existe: fora de supabase/migrations, nem o
+# Postgres sem o container do Storage nem uma ordem diferente do CLI quebram o start.
+enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
@@ -393,6 +396,15 @@ deno_version = 2
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
+
+# A entrada do aluno acontece antes de existir sessão dele: a função confere código + nome + PIN sozinha
+# (deploy com --no-verify-jwt)
+[functions.class-login]
+verify_jwt = false
+
+# Chamada só pelo agendamento, com a chave de serviço; a função confere a chave (a nova sb_secret_ não é JWT)
+[functions.purge-submission-audio]
+verify_jwt = false
 
 [analytics]
 enabled = false
