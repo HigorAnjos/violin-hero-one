@@ -29,6 +29,7 @@ import { gameRoute, readResultState } from '../shell/play';
 import { badgesToShow } from '../shell/progress';
 import type { RecordCheck } from '../shell/records';
 import { ROUTES } from '../shell/routes';
+import { useIsStudent } from '../shell/studentSession';
 import { useMyPublicName } from '../services/publicName';
 import { shareFile, type ShareOutcome } from '../services/share';
 import { usePlayOutcome } from '../services/sync';
@@ -480,6 +481,8 @@ export const Results: React.FC = () => {
   const state = readResultState(useLocation().state);
   // Quando o servidor responde, vale o que ele confirmou; sem servidor (ou no reenvio, que não traz o anterior), o local
   const outcome = usePlayOutcome(state?.clientId);
+  // Conta de aluno da turma não entra no ranking nem no desafio
+  const student = useIsStudent();
   const publicName = useMyPublicName();
   const [sharing, setSharing] = React.useState(false);
   const [shared, setShared] = React.useState<ShareOutcome | null>(null);
@@ -565,7 +568,7 @@ export const Results: React.FC = () => {
                   <path key={i} transform={`translate(${i * 38} 0)`} d={STAR} fill={i < starCount ? theme.colors.warning.main : theme.colors.surfaceBorder} />
                 ))}
               </Stars>
-              {!practiced && (
+              {!practiced && !student && (
                 <ScoreLinks>
                   {challengeable && (
                     <RankingLink as={Link} to={newChallengeUrl(outcome?.playId)} $variant="link">

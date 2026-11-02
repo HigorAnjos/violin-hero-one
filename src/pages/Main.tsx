@@ -10,7 +10,9 @@ import { FIXED_SONGS, findFixedSong } from '../game/notation/songs';
 import { loadA4 } from '../services/playerAudio';
 import { loadLocalProfile } from '../services/profile';
 import { useShelf } from '../services/shelf';
+import { taskStatus } from '../components/TaskCard/taskStatus';
 import { modesUrl } from '../shell/choice';
+import { useMyAssignments, useStudent } from '../shell/classroom';
 import { DEFAULT_MODE, type PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 
@@ -126,6 +128,10 @@ export const Main: React.FC = () => {
   });
   const [a4] = React.useState(loadA4);
   const count = shelf.status === 'ready' ? String(shelf.songs.length) : '…';
+  // Aluno da turma: as tarefas entram no menu, com quantas faltam
+  const { student } = useStudent();
+  const tasks = useMyAssignments(student);
+  const todo = tasks.data ? tasks.data.filter((t) => taskStatus(t) === 'todo').length : null;
 
   return (
     <Page>
@@ -147,6 +153,7 @@ export const Main: React.FC = () => {
             </>
           }
         />
+        {student && <MenuLink to={ROUTES.tasks} label="Tarefas" detail={todo === null ? 'da turma' : todo ? `${todo} a fazer` : 'em dia ✓'} />}
         <MenuLink to={ROUTES.library} label="Biblioteca" detail={count} />
         <MenuLink
           to={ROUTES.calibration}
@@ -158,7 +165,7 @@ export const Main: React.FC = () => {
       <Controls>
         <StreakPill />
         <SessionStatus accountLink />
-        <CornerLinks />
+        <CornerLinks ranking={!student} />
       </Controls>
     </Page>
   );

@@ -59,6 +59,13 @@ describe('Countdown', () => {
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/jogo\/3d$/);
   });
 
+  it('a partida de tarefa segue para o jogo com a tarefa e a gravação ligada', () => {
+    const task = { assignmentId: 'tarefa-1', classId: 'turma-1', studentId: 'aluno-1', dueAt: '2026-11-09T12:00:00Z', songTitle: 'Canon' };
+    renderCountdown({ song: CANON, recordAudio: true, task });
+    act(() => screen.getByRole('button', { name: /Pular contagem/ }).click());
+    expect(JSON.parse(screen.getByTestId('location').dataset.state ?? '{}')).toMatchObject({ recordAudio: true, task });
+  });
+
   it('destino de fora do jogo é ignorado', () => {
     renderCountdown({ next: 'https://mal.com' });
     act(() => screen.getByRole('button', { name: /Pular contagem/ }).click());

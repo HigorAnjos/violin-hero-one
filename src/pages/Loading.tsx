@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countIn';
@@ -10,7 +10,7 @@ import { levelSettings } from '../game/engine/levels';
 import { loadLocalProfile } from '../services/profile';
 import { savedCount, usePlayableSong, useShelf } from '../services/shelf';
 import { menuMode, modesUrl, parseSongChoice, songsUrl, type SongChoice } from '../shell/choice';
-import type { PlayState } from '../shell/play';
+import { taskCarry, type PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 
 const spin = keyframes`
@@ -189,6 +189,7 @@ const Cancel = styled(Button)`
 
 const Preparing: React.FC<{ choice: SongChoice }> = ({ choice }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const shelf = useShelf();
   const playable = usePlayableSong(choice.songId, choice.level);
   const [settings] = React.useState(() => levelSettings(loadLocalProfile().level ?? 'beginner'));
@@ -198,9 +199,11 @@ const Preparing: React.FC<{ choice: SongChoice }> = ({ choice }) => {
   const back = songsUrl(menuMode(choice.mode), choice.songId);
 
   const song = playable.status === 'ready' ? playable.song : null;
+  // A tarefa (StudentTasks) chega pelo estado da navegação e segue até a partida
+  const [carry] = React.useState(() => taskCarry((location.state ?? {}) as PlayState));
   React.useEffect(() => {
-    if (song) navigate(ROUTES.calibration, { replace: true, state: { song, mode: choice.mode } satisfies PlayState });
-  }, [song, choice.mode, navigate]);
+    if (song) navigate(ROUTES.calibration, { replace: true, state: { song, mode: choice.mode, ...carry } satisfies PlayState });
+  }, [song, choice.mode, navigate, carry]);
 
   const ready = playable.status === 'ready';
   const steps = [

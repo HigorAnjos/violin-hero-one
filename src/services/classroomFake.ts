@@ -1,5 +1,13 @@
-// Turmas de mentira, em memória, para os testes das telas de professor, aluno e responsável (e o ?turmas=simulada que
-// o floor de tela quiser ligar no e2e). Segue as regras do banco (0011–0014) que a tela enxerga: quem é professor,
+// Turmas de mentira, em memória, para os testes das telas de professor, aluno e responsável e para o ?turmas=simulada.
+//
+// ?turmas=simulada (só no dev e no build --mode e2e; DEV_TOOLS): cada área monta a sua cena, cada uma com o seu fake,
+// e elas não se enxergam: a do professor (shell/teacherClassroom → teacherDemo, um professor sem turma que recebe as
+// entregas na hora), a do aluno (shell/classroom → simulatedClassroom, a Profª Helena com a turma ADGK-NRUX e a entrada
+// por código + nome + PIN) e a do responsável (shell/parentClassroom → parentDemo). Pega na primeira tela e vale até
+// recarregar. Sempre por import() atrás da condição literal (import.meta.env.DEV || MODE === 'e2e'): o build de
+// produção apaga o fake antes de dividir os pedaços.
+//
+// Segue as regras do banco (0011–0014) que a tela enxerga: quem é professor,
 // turma de outro dá 'not-found', limites do plano free, nome repetido, PIN de 4 dígitos visto uma vez, bloqueio depois
 // de 5 erros, partida que conta para a tarefa, revisão que fecha a entrega, convite de responsável de uso único.
 // Quem está usando muda com actAs (ou com login, como a class-login faria).

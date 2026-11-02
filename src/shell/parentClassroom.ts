@@ -3,6 +3,7 @@ import { supabase } from '../services/supabase';
 import { DEV_TOOLS } from './devTools';
 
 let demo: Promise<ClassroomApi> | undefined;
+/** ?turmas=simulada: a área do responsável no fake (as três simulações estão explicadas em services/classroomFake.ts). */
 export function isParentDemo(search = window.location.search) {
   return DEV_TOOLS && new URLSearchParams(search).get('turmas') === 'simulada';
 }

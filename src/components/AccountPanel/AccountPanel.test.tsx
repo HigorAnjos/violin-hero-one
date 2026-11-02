@@ -59,12 +59,12 @@ describe('AccountPanel', () => {
     expect(localStorage.getItem(DEVICE_USER_STORAGE_KEY)).toBe('anon-2');
   });
 
-  it('sem rede com partidas pendentes: pergunta, Ficar é o padrão e não sai', async () => {
+  it('sem rede com envios pendentes (partidas e gravações): pergunta, Ficar é o padrão e não sai', async () => {
     vi.mocked(unsentBeforeSignOut).mockResolvedValue(2);
     open(account);
     await userEvent.click(screen.getByRole('button', { name: 'Sair da conta' }));
     const dialog = await screen.findByRole('alertdialog', { name: 'Sair da conta' });
-    expect(dialog).toHaveTextContent('Há 2 partidas ainda não enviadas; sair agora as descarta.');
+    expect(dialog).toHaveTextContent('Há 2 envios pendentes; sair agora os descarta.');
     expect(screen.getByRole('button', { name: 'Ficar' })).toHaveFocus();
     await userEvent.keyboard('{Enter}');
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
@@ -78,6 +78,6 @@ describe('AccountPanel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sair da conta' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Sair mesmo assim' }));
     await waitFor(() => expect(signOut).toHaveBeenCalled());
-    expect(unsentWarning(1)).toBe('Há 1 partida ainda não enviada; sair agora a descarta.');
+    expect(unsentWarning(1)).toBe('Há 1 envio pendente; sair agora o descarta.');
   });
 });

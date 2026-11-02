@@ -1,6 +1,6 @@
 import React from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { BADGES_STORAGE_KEY } from '../services/badges';
 import { deviceData, type DeviceData } from '../services/deviceData';
 import { adoptOrphanDraft, clearDraft } from '../services/editorDraft';
@@ -78,26 +78,35 @@ export function useAccountWatch(client: WatchClient | null = supabase): void {
   const queryClient = useQueryClient();
   React.useEffect(() => {
     if (!client) return;
-    let chain = Promise.resolve();
     const { data } = client.auth.onAuthStateChange((_event, authSession) => {
       if (!authSession) return;
       const next = signedIn(authSession.user);
       // Fora do callback: chamar o supabase dentro dele trava o auth (aviso do supabase-js)
-      setTimeout(() => {
-        chain = chain
-          .then(async () => {
-            const outcome = await adoptUser(client, next);
-            const cached = queryClient.getQueryData<SessionState>(['session']);
-            queryClient.setQueryData(['session'], next);
-            const otherUser = cached?.status === 'signed-in' && cached.userId !== (next.status === 'signed-in' ? next.userId : null);
-            if (outcome === 'switched' || otherUser) {
-              queryClient.removeQueries({ queryKey: progressKeys.all });
-              await queryClient.invalidateQueries();
-            }
-          })
-          .catch(() => undefined);
-      }, 0);
+      setTimeout(() => void adoptSession(queryClient, client, next).catch(() => undefined), 0);
     });
     return () => data.subscription.unsubscribe();
   }, [client, queryClient]);
+}
+
+/** Uma troca por vez: o evento do auth e a entrada do aluno (que adota a sessão ela mesma) não esquecem o anterior duas vezes. */
+let adopting: Promise<unknown> = Promise.resolve();
+
+/**
+ * A sessão `next` vira a das telas: o aparelho passa a ser dela (adoptUser) e a query ['session'] troca. Trocou de
+ * usuário, o progresso em memória é jogado fora e as queries recarregam.
+ */
+export function adoptSession(queryClient: QueryClient, client: { rpc: SupabaseClient['rpc'] } | null, next: SessionState): Promise<void> {
+  const run = adopting.then(async () => {
+    const outcome = await adoptUser(client, next);
+    const cached = queryClient.getQueryData<SessionState>(['session']);
+    queryClient.setQueryData(['session'], next);
+    const otherUser = cached?.status === 'signed-in' && cached.userId !== (next.status === 'signed-in' ? next.userId : null);
+    if (outcome === 'switched' || otherUser) {
+      queryClient.removeQueries({ queryKey: progressKeys.all });
+      // A sessão acabou de ser escrita: recarregar dela perderia a do aluno da turma simulada (sem cliente)
+      await queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] !== 'session' });
+    }
+  });
+  adopting = run.catch(() => undefined);
+  return run;
 }

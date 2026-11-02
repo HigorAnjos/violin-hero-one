@@ -1646,23 +1646,58 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       });
     });
 
-    describe('nome do aluno fora da turma', () => {
-      it('o nome cadastrado NÃO aparece no ranking, no desafio nem no perfil: lá fora o aluno é o nome gerado', async () => {
+    describe('aluno fora do ranking e do desafio (0018)', () => {
+      it('o nome cadastrado NÃO aparece no perfil; a conta de aluno NÃO entra no ranking, nem para ela mesma', async () => {
         const t = await teacher();
         const cls = await classOf(t);
         const aluno = await studentOf(t, cls.id, 'Maria Secreta');
         const song = await serverSong(c, { notes: 4 });
-        const play = await submit(c, aluno.user, fullPlay(song));
+        await submit(c, aluno.user, fullPlay(song));
         const outro = await newUser(c, { anonymous: false });
-        const ranking = await as(c, outro, `select * from ${S}.get_ranking($1, 'easy', 'all')`, [song]);
-        assert.equal(ranking.rows.length, 1);
-        assert.match(ranking.rows[0].ranking_name, /^Violinista \d{4}$/);
-        const challenge = await rpc(aluno.user, 'create_challenge', [play.play_id, 2]);
-        const seen = await rpc(outro, 'get_challenge', [challenge.code]);
+        await submit(c, outro, fullPlay(song, { sequence: ['perfect', 'miss', 'miss', 'miss'] }));
         const profile = await as(c, aluno.user, `select * from ${S}.profiles`);
-        for (const text of [JSON.stringify(ranking.rows), JSON.stringify(seen), JSON.stringify(profile.rows)]) {
-          assert.ok(!/Maria|Secreta/.test(text), `o nome do aluno vazou: ${text}`);
+        assert.ok(!/Maria|Secreta/.test(JSON.stringify(profile.rows)), 'o nome do aluno vazou no perfil');
+        await assertOffRanking(aluno.user, song, outro);
+      });
+
+      /** Nenhuma linha do get_ranking é do aluno: nem pelo nome cadastrado, nem pelo nome gerado, nem para ele mesmo. */
+      async function assertOffRanking(student, song, viewer) {
+        const generated = await c.query(`select ${S}.ranking_name(animal, nickname_tag) as name from ${S}.profiles where id = $1`, [student]);
+        const rankingName = generated.rows[0].name;
+        assert.match(rankingName, /\S/);
+        for (const period of ['all', 'week']) {
+          const ranking = await as(c, viewer, `select * from ${S}.get_ranking($1, 'easy', $2)`, [song, period]);
+          assert.ok(ranking.rows.some((r) => r.is_me), `o ranking (${period}) não mostrou nem quem pediu`);
+          assert.ok(!/Maria|Secreta/.test(JSON.stringify(ranking.rows)), `o nome do aluno vazou no ranking (${period})`);
+          assert.ok(ranking.rows.every((r) => r.ranking_name !== rankingName), `o aluno apareceu no ranking (${period})`);
+          const mine = await as(c, student, `select * from ${S}.get_ranking($1, 'easy', $2)`, [song, period]);
+          assert.ok(mine.rows.every((r) => !r.is_me), `o aluno se viu no ranking (${period})`);
         }
+      }
+
+      it('aluno tirado da turma (inativo) segue fora do ranking', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id);
+        await rpc(t, 'set_student_active', [aluno.id, false]);
+        const song = await serverSong(c, { notes: 4 });
+        await submit(c, aluno.user, fullPlay(song));
+        const outro = await newUser(c, { anonymous: false });
+        await submit(c, outro, fullPlay(song, { sequence: ['perfect', 'miss', 'miss', 'miss'] }));
+        await assertOffRanking(aluno.user, song, outro);
+      });
+
+      it('aluno NÃO cria nem aceita desafio (28000); conta com e-mail segue criando', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const aluno = await studentOf(t, cls.id);
+        const song = await serverSong(c, { notes: 4 });
+        const own = await submit(c, aluno.user, fullPlay(song));
+        await needsAccount(rpc(aluno.user, 'create_challenge', [own.play_id, 2]));
+        const outro = await newUser(c, { anonymous: false });
+        const theirs = await submit(c, outro, fullPlay(song));
+        const challenge = await rpc(outro, 'create_challenge', [theirs.play_id, 2]);
+        await needsAccount(rpc(aluno.user, 'accept_challenge', [challenge.code]));
       });
     });
 
