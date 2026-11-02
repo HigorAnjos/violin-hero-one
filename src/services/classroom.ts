@@ -146,6 +146,8 @@ export interface Submission {
   audioPath: string | null;
   /** A retenção já apagou o áudio (30 dias depois da revisão). */
   audioDeleted: boolean;
+  /** Duração informada na entrega, quando disponível. */
+  audioDurationMs?: number | null;
 }
 
 export interface Review {
@@ -427,6 +429,7 @@ function toStatus(r: Row): AssignmentStatus {
           submittedAt: str(sub.submitted_at),
           audioPath: strOrNull(sub.audio_path),
           audioDeleted: !!sub.audio_deleted,
+          audioDurationMs: numOrNull(sub.audio_duration_ms),
         }
       : null,
     review: review ? toReview(review) : null,

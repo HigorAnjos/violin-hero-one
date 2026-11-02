@@ -311,6 +311,7 @@ export const Login: React.FC = () => {
         </Play>
 
         <Divider>Já tem conta?</Divider>
+        <Button as={Link} to={ROUTES.parent} $variant="link">Sou responsável</Button>
         <Choices>
           {providers.google && (
             <Button type="button" $variant="ghost" onClick={google}>

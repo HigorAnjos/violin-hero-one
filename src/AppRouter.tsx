@@ -10,6 +10,8 @@ import { Library } from './pages/Library';
 import { ImportSong } from './pages/ImportSong';
 import { Loading } from './pages/Loading';
 import { Login } from './pages/Login';
+import { Parent } from './pages/Parent';
+import { Plans } from './pages/Plans';
 import { SongSelect } from './pages/SongSelect';
 import { MicTrouble } from './pages/MicTrouble';
 import { OnboardLevel } from './pages/OnboardLevel';
@@ -96,6 +98,8 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.reminder} element={<Navigate to={settingsUrl('lembrete')} replace />} />
             <Route path={ROUTES.login} element={<Login />} />
             <Route path={ROUTES.account} element={<GuestPrompt />} />
+            <Route path={ROUTES.parent} element={<Parent />} />
+            <Route path={ROUTES.plans} element={<Plans />} />
             <Route path={ROUTES.ranking} element={<Ranking />} />
             <Route path={ROUTES.challenge} element={<Challenge />} />
             <Route path={ROUTES.challengeCode} element={<ChallengeInvite />} />

@@ -162,6 +162,7 @@ const QUESTION: Record<AccountReason, string> = {
   ranking: 'Quer aparecer no ranking',
   desafio: 'Quer desafiar um amigo',
   aparelho: 'Quer usar em outro aparelho',
+  responsavel: 'Quer acompanhar seu filho',
 };
 
 /** "Quer aparecer no ranking, Lia?" — só o apelido, nunca nome real nem e-mail. */
@@ -201,7 +202,7 @@ export const GuestPrompt: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [navigate, back]);
 
-  if (session?.status === 'signed-in' && !session.anonymous) return <Navigate to={next} replace />;
+  if (session?.status === 'signed-in' && !session.anonymous && (reason !== 'responsavel' || session.email)) return <Navigate to={next} replace />;
   const offline = session?.status === 'offline';
 
   const google = async () => {
