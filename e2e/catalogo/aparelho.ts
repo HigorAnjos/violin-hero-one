@@ -111,11 +111,28 @@ export const test = base.extend<{ newDevice: () => Promise<Page> }>({
 });
 
 /**
+ * Nesta máquina o edge runtime do supabase start não sobe (o Docker não resolve DNS para baixar o npm: da função):
+ * E2E_FUNCTIONS_URL aponta a mesma função rodando no Deno da máquina. Na CI fica vazio e o app chama pelo Kong.
+ */
+export async function localFunctions(context: BrowserContext) {
+  const target = process.env.E2E_FUNCTIONS_URL;
+  if (!target) return;
+  await context.route(`${process.env.E2E_SUPABASE_URL}/functions/v1/**`, (route) =>
+    route.continue({ url: route.request().url().replace(/^.*\/functions\/v1\/[^/?]+/, target.replace(/\/$/, '')) })
+  );
+}
+
+/**
  * Pelo pedido de conta (GuestPrompt, já na tela, aberto pelo "Criar conta"): e-mail, o link mágico do Mailpit e a
  * volta para `back`, já como conta (`mail`: quantos e-mails o endereço terá recebido com este).
  */
 export async function createAccountFromPrompt(page: Page, dialog: string | RegExp, email: string, back: RegExp, mail = 1) {
   await page.getByRole('link', { name: 'Criar conta' }).click();
+  await accountFromPrompt(page, dialog, email, back, mail);
+}
+
+/** O mesmo, com o pedido de conta já aberto (a área do professor e a do responsável mandam direto para ele). */
+export async function accountFromPrompt(page: Page, dialog: string | RegExp, email: string, back: RegExp, mail = 1) {
   const prompt = page.getByRole('dialog', { name: dialog });
   await prompt.getByRole('button', { name: 'Usar e-mail' }).click();
   await prompt.getByLabel('E-mail').fill(email);

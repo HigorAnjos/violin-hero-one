@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { BrowserContext, BrowserContextOptions, Page, PlaywrightWorkerArgs } from '@playwright/test';
+import type { BrowserContextOptions, Page, PlaywrightWorkerArgs } from '@playwright/test';
 import { BADGES } from '../../src/game/engine/badges';
 import type { BadgeId } from '../../src/game/engine/types';
 import type { Song } from '../../src/game/notation/song';
@@ -7,7 +7,7 @@ import { DEVICE_DB_NAME, DEVICE_DB_VERSION, SONGS_STORE } from '../../src/servic
 import type { CachedSong } from '../../src/services/songCache';
 import { chooseSong } from '../choose';
 import { microphoneArgs, warmAudio } from '../microphone';
-import { expect, queued, serverRows, storedSession, test } from './aparelho';
+import { expect, localFunctions, queued, serverRows, storedSession, test } from './aparelho';
 
 /**
  * O critério de pronto do ciclo 4 contra o Supabase local de verdade, sem o fake do importador: as 5 partituras reais
@@ -55,18 +55,6 @@ const UP_AND_DOWN = [...D_MAJOR, ...D_MAJOR.slice(0, -1).reverse()];
 
 const CATALOG_ASSETS = path.resolve(import.meta.dirname, '../../dist-catalogo/assets');
 const exact = (title: string) => new RegExp(`^${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
-
-/**
- * Nesta máquina o edge runtime do supabase start não sobe (o Docker não resolve DNS para baixar o npm: da função):
- * E2E_FUNCTIONS_URL aponta a mesma função rodando no Deno da máquina. Na CI fica vazio e o app chama pelo Kong.
- */
-async function localFunctions(context: BrowserContext) {
-  const target = process.env.E2E_FUNCTIONS_URL;
-  if (!target) return;
-  await context.route(`${process.env.E2E_SUPABASE_URL}/functions/v1/**`, (route) =>
-    route.continue({ url: route.request().url().replace(/^.*\/functions\/v1\/[^/?]+/, target.replace(/\/$/, '')) })
-  );
-}
 
 /** A ficha da música no servidor, com o token do jogador da página (a RLS decide o que vem). */
 const songRow = (page: Page, id: string) =>
