@@ -36,7 +36,23 @@ export const ROUTES = {
   challenge: '/desafio',
   /** O link do desafio: abre para qualquer um (aceitar pede conta). */
   challengeCode: '/desafio/:codigo',
+  /** O link (ou o código) que o professor passa: ?codigo=ABCD-EFGH. */
+  joinClass: '/turma',
+  /** Entrada do aluno sem e-mail: código da turma + nome + PIN. */
+  classLogin: '/turma/entrar',
+  tasks: '/tarefas',
+  /** O fim da partida de tarefa: resultado e entrega. */
+  taskResult: '/tarefas/entrega',
 } as const;
+
+/** `code`: o da turma, já preenchido (do link do professor). */
+export function joinClassUrl(code?: string | null): string {
+  return code ? `${ROUTES.joinClass}?${new URLSearchParams({ codigo: code })}` : ROUTES.joinClass;
+}
+
+export function classLoginUrl(code?: string | null): string {
+  return code ? `${ROUTES.classLogin}?${new URLSearchParams({ codigo: code })}` : ROUTES.classLogin;
+}
 
 /** Onde a conta é pedida (GuestPrompt): ranking, desafio ou usar em outro aparelho. Nunca no meio de uma música. */
 export type AccountReason = 'ranking' | 'desafio' | 'aparelho';
@@ -72,6 +88,7 @@ export const MIC_ROUTES: ReadonlySet<string> = new Set([
   ROUTES.gameOver,
   ROUTES.badge,
   ROUTES.results,
+  ROUTES.taskResult,
   ROUTES.dictation,
 ]);
 

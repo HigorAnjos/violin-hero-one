@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FIXED_SONGS } from '../game/notation/songs';
-import { gameRoute, readPlayState } from './play';
+import { gameRoute, readPlayState, taskCarry } from './play';
 import { needsMicrophone, ROUTES } from './routes';
 
 describe('estado da partida', () => {
@@ -17,6 +17,12 @@ describe('estado da partida', () => {
     expect(readPlayState(null)).toMatchObject({ song: FIXED_SONGS[0].song, mode: 'Cordas 3D' });
     expect(readPlayState({ mode: 'Guitarra' }).mode).toBe('Cordas 3D');
     expect(readPlayState({ mode: 'Partitura' }).mode).toBe('Partitura');
+  });
+
+  it('a tarefa e a gravação passam adiante; partida comum não ganha nenhuma das duas', () => {
+    const task = { assignmentId: 't', classId: 'c', studentId: 's', dueAt: '2026-11-09T12:00:00Z', songTitle: 'Canon' };
+    expect(taskCarry({ recordAudio: true, task, noFail: true })).toEqual({ recordAudio: true, task });
+    expect(taskCarry({ noFail: true })).toEqual({});
   });
 
   it('mantém a prática que veio na navegação', () => {

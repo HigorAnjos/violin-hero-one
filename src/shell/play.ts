@@ -20,6 +20,23 @@ export interface PlayState {
   practice?: PracticeStart;
   /** Partida de tarefa: grava o microfone para a entrega (fora da Prática). */
   recordAudio?: boolean;
+  /** Partida de tarefa da turma: o fim vai para a entrega (TaskResult) em vez do resultado. */
+  task?: TaskPlay;
+}
+
+/** A tarefa que a partida cumpre: o que a entrega precisa para subir o áudio na pasta certa. */
+export interface TaskPlay {
+  assignmentId: string;
+  classId: string;
+  studentId: string;
+  /** ISO: a gravação que não subiu até o prazo sai da fila. */
+  dueAt: string;
+  songTitle: string;
+}
+
+/** O que da partida de tarefa passa adiante a cada tela (Carregando, Afinar, Contagem, partida). */
+export function taskCarry(state: PlayState): Pick<PlayState, 'recordAudio' | 'task'> {
+  return { ...(state.recordAudio && { recordAudio: true }), ...(state.task && { task: state.task }) };
 }
 
 export interface ResultState extends PlayState {

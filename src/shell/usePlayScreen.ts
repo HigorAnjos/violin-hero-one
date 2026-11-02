@@ -13,10 +13,11 @@ import { playSync } from '../services/sync';
 import { playedChart } from './deviceSync';
 import { DEV_TOOLS, devWindow } from './devTools';
 import { micFailure } from './Ear';
-import { readPlayState, type GameMode, type ResultState } from './play';
+import { readPlayState, taskCarry, type GameMode, type ResultState } from './play';
 import { playerLevelSettings } from './playerLevel';
 import { checkRecord } from './records';
 import { micTroubleUrl, ROUTES } from './routes';
+import { holdTaskRecording } from './taskRecording';
 import { FINISH_DELAY_MS, type GamePhase, type useGame } from './useGame';
 
 /** O teto de duration_ms do banco (plays.duration_ms): 4 horas. */
@@ -71,10 +72,16 @@ export function usePlayScreen(mode: GameMode) {
         result,
         record,
         clientId: payload.client_id,
+        ...taskCarry(play),
       };
       if (DEV_TOOLS) Object.assign(devWindow(), { __vhResult: result, __vhRecording: recording });
       if (result.status === 'failed') return navigate(ROUTES.gameOver, { replace: true, state });
       addEarnedBadges(result.badges);
+      // Partida de tarefa: a entrega mostra o resultado e decide o envio da gravação
+      if (play.task) {
+        if (recording) holdTaskRecording(payload.client_id, recording);
+        return navigate(ROUTES.taskResult, { replace: true, state });
+      }
       navigate(result.badges.length ? ROUTES.badge : ROUTES.results, { replace: true, state });
     },
     [navigate, play, queryClient, startedAt]
