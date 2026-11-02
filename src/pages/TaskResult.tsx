@@ -93,6 +93,13 @@ const Checks = styled.ul`
     font-weight: 800;
   }
 
+  /* Medida sem meta (precisão, afinação): marcador neutro, para não parecer "passou" */
+  i[data-neutral] {
+    background-color: transparent;
+    border: 2px solid ${({ theme }) => theme.colors.surfaceBorder};
+    color: ${({ theme }) => theme.colors.text};
+  }
+
   b {
     margin-left: auto;
     font-weight: 800;
@@ -334,16 +341,16 @@ export const TaskResult: React.FC = () => {
         <h1>
           Tarefa tocada! <span>{good ? 'Bora mostrar?' : 'Bora entregar?'}</span>
         </h1>
-        <Checks aria-label="O que a partida cumpriu">
+        <Checks aria-label="Como foi a partida">
           <li>
             <i aria-hidden="true">✓</i>Música inteira, do começo ao fim
           </li>
           <li>
-            <i aria-hidden="true">✓</i>Precisão<b>{percent(result.accuracy)}</b>
+            <i aria-hidden="true" data-neutral="">♪</i>Precisão<b>{percent(result.accuracy)}</b>
           </li>
           {result.meanAbsCents !== null && (
             <li>
-              <i aria-hidden="true">✓</i>Afinação média<b>±{Math.round(result.meanAbsCents)} ¢</b>
+              <i aria-hidden="true" data-neutral="">♪</i>Afinação média<b>±{Math.round(result.meanAbsCents)} ¢</b>
             </li>
           )}
         </Checks>

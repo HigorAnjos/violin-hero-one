@@ -56,11 +56,14 @@ function open(recording?: Parameters<typeof holdTaskRecording>[1], withTask = tr
 const take = () => ({ blob: new Blob(['som'], { type: 'audio/webm;codecs=opus' }), mimeType: 'audio/webm;codecs=opus', durationMs: 48_000 });
 
 describe('TaskResult (A3)', () => {
-  it('mostra o que a partida cumpriu e a gravação para ouvir; enviar sobe o áudio e entrega a tarefa', async () => {
+  it('mostra como foi a partida e a gravação para ouvir; enviar sobe o áudio e entrega a tarefa', async () => {
     setUploadTarget(submissionUploadTarget(fake, async () => {}));
     open(take());
     expect(screen.getByText(`Tarefa · ${ODE.title}`)).toBeInTheDocument();
-    expect(screen.getByRole('list', { name: 'O que a partida cumpriu' })).toHaveTextContent('Precisão94,1%');
+    const summary = screen.getByRole('list', { name: 'Como foi a partida' });
+    expect(summary).toHaveTextContent('Precisão94,1%');
+    // Sem meta na tarefa, só a música inteira ganha ✓; precisão e afinação são medidas, não "passou"
+    expect(summary.textContent?.match(/✓/g)).toHaveLength(1);
     expect(screen.getByText('±11 ¢')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ouvir a gravação' })).toBeInTheDocument();
     expect(screen.getByText(/o áudio de 0:48/)).toBeInTheDocument();
