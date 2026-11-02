@@ -7,9 +7,15 @@ export type SessionState =
 
 export type AuthClient = Pick<SupabaseClient['auth'], 'getSession' | 'signInAnonymously'>;
 
+/** E-mail sintético do usuário de aluno de turma (domínio .invalid, criado pela class-login): nunca vai para a tela. */
+export function isStudentEmail(email: string | null | undefined): boolean {
+  return !!email && email.endsWith('@alunos.violinhero.invalid');
+}
+
 /** O estado da sessão para um usuário do Supabase. */
 export function signedIn(user: { id: string; is_anonymous?: boolean; email?: string }): SessionState {
-  return { status: 'signed-in', userId: user.id, anonymous: user.is_anonymous ?? false, ...(user.email ? { email: user.email } : {}) };
+  const email = isStudentEmail(user.email) ? undefined : user.email;
+  return { status: 'signed-in', userId: user.id, anonymous: user.is_anonymous ?? false, ...(email ? { email } : {}) };
 }
 
 /**
