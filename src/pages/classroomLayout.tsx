@@ -29,7 +29,7 @@ export const ClassroomContent = styled.div`
 export const ClassroomCard = styled.section`
   padding: 1rem;
   border: 2px solid ${({ theme }) => theme.colors.surfaceBorder};
-  border-radius: 18px;
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
   background: ${({ theme }) => theme.colors.surface};
   display: flex;
   flex-direction: column;
