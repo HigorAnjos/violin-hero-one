@@ -42,6 +42,8 @@ const Practice = lazyGameScreen('Practice');
 const GameOver = lazyGameScreen('GameOver');
 const BadgeEarned = lazyGameScreen('BadgeEarned');
 const Results = lazyGameScreen('Results');
+const Parent = React.lazy(() => import('./pages/Parent').then(module => ({ default: module.Parent })));
+const Plans = React.lazy(() => import('./pages/Plans').then(module => ({ default: module.Plans })));
 
 /** Primeira vez no aparelho: boas-vindas (começar sem cadastro ou entrar numa conta). Depois, a tela inicial. */
 const Home: React.FC = () => (isOnboarded() ? <Main /> : <FirstVisit />);
@@ -96,6 +98,8 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.reminder} element={<Navigate to={settingsUrl('lembrete')} replace />} />
             <Route path={ROUTES.login} element={<Login />} />
             <Route path={ROUTES.account} element={<GuestPrompt />} />
+            <Route path={ROUTES.parent} element={<Parent />} />
+            <Route path={ROUTES.plans} element={<Plans />} />
             <Route path={ROUTES.ranking} element={<Ranking />} />
             <Route path={ROUTES.challenge} element={<Challenge />} />
             <Route path={ROUTES.challengeCode} element={<ChallengeInvite />} />

@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { ANIMAL_LOOK } from '../components/AvatarPicker/AvatarPicker';
 import { Button } from '../components/Button/Button';
+import { StudentGuardianNotice } from '../components/StudentGuardianNotice';
 import { EmailLinkForm } from '../components/EmailLinkForm/EmailLinkForm';
 import { useSwitchConfirm } from '../components/SwitchConfirm/useSwitchConfirm';
 import { Kicker } from '../components/Screen/Screen';
@@ -162,6 +163,7 @@ const QUESTION: Record<AccountReason, string> = {
   ranking: 'Quer aparecer no ranking',
   desafio: 'Quer desafiar um amigo',
   aparelho: 'Quer usar em outro aparelho',
+  responsavel: 'Quer acompanhar seu filho',
 };
 
 /** "Quer aparecer no ranking, Lia?" — só o apelido, nunca nome real nem e-mail. */
@@ -201,6 +203,7 @@ export const GuestPrompt: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [navigate, back]);
 
+  if (reason === 'responsavel' && session?.status === 'signed-in' && !session.anonymous && !session.email) return <Backdrop><Dialog><StudentGuardianNotice /></Dialog></Backdrop>;
   if (session?.status === 'signed-in' && !session.anonymous) return <Navigate to={next} replace />;
   const offline = session?.status === 'offline';
 
