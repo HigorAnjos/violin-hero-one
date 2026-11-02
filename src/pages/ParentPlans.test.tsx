@@ -6,10 +6,11 @@ import { cadernoTheme } from '../assets/styles/themes';
 import { palcoTheme } from '../assets/styles/themes/palco';
 import { pixelTheme } from '../assets/styles/themes/specials';
 import { renderScreen } from '../shell/testing';
-import { parentDemo } from '../shell/parentClassroom';
+import { parentDemo } from '../shell/parentDemo';
 import { fakeClassroom } from '../services/classroomFake';
 import { Parent } from './Parent';
 import { Plans } from './Plans';
+import { GuestPrompt } from './GuestPrompt';
 
 vi.mock('../services/supabase', () => ({ supabase: null }));
 const session = { status: 'signed-in', anonymous: false, userId: 'responsavel', email: 'adulto@exemplo.com' } as const;
@@ -52,11 +53,35 @@ describe.each([cadernoTheme, palcoTheme, pixelTheme])('responsável e planos: $i
 
 it.each([
   { status: 'signed-in', userId: 'anon', anonymous: true },
-  { status: 'signed-in', userId: 'aluno', anonymous: false },
   { status: 'offline' },
 ])('sem conta adulta com e-mail não consulta os filhos (%j)', async session => {
   const api = fakeClassroom(); const list = vi.spyOn(api, 'listMyChildren');
   renderScreen(<Parent api={api} />, { path: '/responsavel', route: '/responsavel', queryClient: client(session) });
+  await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/conta?motivo=responsavel'));
+  expect(list).not.toHaveBeenCalled();
+});
+
+it('aluno não recebe oferta de vincular conta adulta', async () => {
+  const api = fakeClassroom(); const list = vi.spyOn(api, 'listMyChildren');
+  renderScreen(<Parent api={api} />, { path: '/responsavel', queryClient: client({ status: 'signed-in', userId: 'aluno', anonymous: false }) });
+  expect(await screen.findByRole('heading', { name: 'Esta é uma conta de aluno' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Abrir configurações de conta' })).toHaveAttribute('href', '/configuracoes?secao=conta');
+  expect(screen.queryByText('Usar e-mail')).not.toBeInTheDocument();
+  expect(screen.queryByText(/Google/)).not.toBeInTheDocument();
+  expect(list).not.toHaveBeenCalled();
+});
+
+it('link direto da conta de responsável também bloqueia vinculação no usuário aluno', async () => {
+  renderScreen(<GuestPrompt />, { path: '/conta?motivo=responsavel&depois=/responsavel', queryClient: client({ status: 'signed-in', userId: 'aluno', anonymous: false }) });
+  expect(await screen.findByRole('heading', { name: 'Esta é uma conta de aluno' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Usar e-mail' })).not.toBeInTheDocument();
+  expect(screen.queryByText(/Google/)).not.toBeInTheDocument();
+});
+
+it('sem sessão resolvida aguarda e não consulta dados de criança', async () => {
+  const api = fakeClassroom(); const list = vi.spyOn(api, 'listMyChildren');
+  renderScreen(<Parent api={api} />, { path: '/responsavel', route: '/responsavel' });
+  expect(screen.getByRole('status')).toHaveTextContent('Conectando…');
   await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/conta?motivo=responsavel'));
   expect(list).not.toHaveBeenCalled();
 });

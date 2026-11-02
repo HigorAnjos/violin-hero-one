@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate } from 'react-router-dom';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
+import { StudentGuardianNotice } from '../components/StudentGuardianNotice';
 import { ClassroomError, classroomKeys, REVIEW_CONCEPTS, type ClassroomApi, type StudentAssignment } from '../services/classroom';
 import { accountUrl, ROUTES } from '../shell/routes';
 import { useSession } from '../shell/useAccount';
@@ -93,6 +94,7 @@ export function Parent({ api: provided }: { api?: ClassroomApi }) {
   const demo = isParentDemo();
   const allowed = demo || (session?.status === 'signed-in' && !session.anonymous && !!session.email);
   const api = useQuery({ queryKey: ['parent-api', demo], queryFn: parentClassroom, enabled: allowed && !provided, staleTime: Infinity });
+  if (!demo && session?.status === 'signed-in' && !session.anonymous && !session.email) return <ClassroomPage><header><BackLink /></header><StudentGuardianNotice /></ClassroomPage>;
   if (session && !allowed) return <Navigate to={accountUrl('responsavel', ROUTES.parent, ROUTES.home)} replace />;
   return <ClassroomPage><header><div><small>ÁREA DO RESPONSÁVEL</small><h1>Acompanhe seu filho</h1></div><BackLink /></header>{provided && allowed ? <ParentArea api={provided} /> : api.data && allowed ? <ParentArea api={api.data} /> : <p role="status">Conectando…</p>}</ClassroomPage>;
 }

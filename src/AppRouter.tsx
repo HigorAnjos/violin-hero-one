@@ -10,8 +10,6 @@ import { Library } from './pages/Library';
 import { ImportSong } from './pages/ImportSong';
 import { Loading } from './pages/Loading';
 import { Login } from './pages/Login';
-import { Parent } from './pages/Parent';
-import { Plans } from './pages/Plans';
 import { SongSelect } from './pages/SongSelect';
 import { MicTrouble } from './pages/MicTrouble';
 import { OnboardLevel } from './pages/OnboardLevel';
@@ -44,6 +42,8 @@ const Practice = lazyGameScreen('Practice');
 const GameOver = lazyGameScreen('GameOver');
 const BadgeEarned = lazyGameScreen('BadgeEarned');
 const Results = lazyGameScreen('Results');
+const Parent = React.lazy(() => import('./pages/Parent').then(module => ({ default: module.Parent })));
+const Plans = React.lazy(() => import('./pages/Plans').then(module => ({ default: module.Plans })));
 
 /** Primeira vez no aparelho: boas-vindas (começar sem cadastro ou entrar numa conta). Depois, a tela inicial. */
 const Home: React.FC = () => (isOnboarded() ? <Main /> : <FirstVisit />);

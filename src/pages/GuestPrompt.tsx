@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { ANIMAL_LOOK } from '../components/AvatarPicker/AvatarPicker';
 import { Button } from '../components/Button/Button';
+import { StudentGuardianNotice } from '../components/StudentGuardianNotice';
 import { EmailLinkForm } from '../components/EmailLinkForm/EmailLinkForm';
 import { useSwitchConfirm } from '../components/SwitchConfirm/useSwitchConfirm';
 import { Kicker } from '../components/Screen/Screen';
@@ -202,7 +203,8 @@ export const GuestPrompt: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [navigate, back]);
 
-  if (session?.status === 'signed-in' && !session.anonymous && (reason !== 'responsavel' || session.email)) return <Navigate to={next} replace />;
+  if (reason === 'responsavel' && session?.status === 'signed-in' && !session.anonymous && !session.email) return <Backdrop><Dialog><StudentGuardianNotice /></Dialog></Backdrop>;
+  if (session?.status === 'signed-in' && !session.anonymous) return <Navigate to={next} replace />;
   const offline = session?.status === 'offline';
 
   const google = async () => {
