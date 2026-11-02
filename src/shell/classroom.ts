@@ -56,8 +56,8 @@ let shell: Promise<ClassroomShell> | null = null;
 const bootSearch = typeof window === 'undefined' ? '' : window.location.search;
 
 /**
- * No desenvolvimento e no e2e, `?turmas=simulada` na primeira tela troca o Supabase pela turma de mentira, até
- * recarregar. Por import() e com a condição literal: o build de produção apaga o fake antes de montar os pedaços.
+ * `?turmas=simulada` na primeira tela troca o Supabase pela turma de mentira do aluno, até recarregar (as três
+ * simulações, e por que import() com a condição literal, estão em services/classroomFake.ts).
  */
 export function classroomShell(): Promise<ClassroomShell> {
   if (shell) return shell;

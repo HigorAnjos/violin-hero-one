@@ -5,8 +5,9 @@ import { DEV_TOOLS } from './devTools';
 let demo: Promise<ClassroomApi> | undefined;
 
 /**
- * ?turmas=simulada (só com DEV_TOOLS): a área do professor roda no fake, com um professor de mentira. Pega uma vez:
- * os links de dentro da área não levam o parâmetro, e a simulação segue até recarregar a página.
+ * ?turmas=simulada (as três simulações estão explicadas em services/classroomFake.ts): a área do professor roda no
+ * fake, com um professor de mentira. Pega uma vez: os links de dentro da área não levam o parâmetro, e a simulação
+ * segue até recarregar a página.
  */
 export function isTeacherDemo(search = window.location.search): boolean {
   return DEV_TOOLS && (demo !== undefined || new URLSearchParams(search).get('turmas') === 'simulada');
