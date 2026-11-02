@@ -39,8 +39,8 @@ function Delivery({ task, api }: { task: StudentAssignment; api: ClassroomApi })
   </ClassroomCard>;
 }
 
-function ChildProgress({ studentId, api }: { studentId: string; api: ClassroomApi }) {
-  const progress = useQuery({ queryKey: classroomKeys.progress(studentId), queryFn: () => api.getStudentProgress(studentId), retry: false });
+function ChildProgress({ studentId, api, viewer }: { studentId: string; api: ClassroomApi; viewer: string }) {
+  const progress = useQuery({ queryKey: [...classroomKeys.progress(studentId), viewer], queryFn: () => api.getStudentProgress(studentId), retry: false });
   if (progress.isPending) return <p role="status">Carregando progresso…</p>;
   if (progress.isError) return <div role="alert">{message(progress.error)} <Button onClick={() => void progress.refetch()}>Tentar de novo</Button></div>;
   const data = progress.data;
@@ -56,9 +56,9 @@ function ChildProgress({ studentId, api }: { studentId: string; api: ClassroomAp
   </>;
 }
 
-function ParentArea({ api }: { api: ClassroomApi }) {
+function ParentArea({ api, viewer }: { api: ClassroomApi; viewer: string }) {
   const queryClient = useQueryClient();
-  const children = useQuery({ queryKey: classroomKeys.children, queryFn: () => api.listMyChildren(), retry: false });
+  const children = useQuery({ queryKey: [...classroomKeys.children, viewer], queryFn: () => api.listMyChildren(), retry: false });
   const [selected, setSelected] = React.useState('');
   const [code, setCode] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -85,7 +85,7 @@ function ParentArea({ api }: { api: ClassroomApi }) {
     {children.isError && <div role="alert">{message(children.error)} <Button onClick={() => void children.refetch()}>Tentar de novo</Button></div>}
     {children.data?.length === 0 && <p>Nenhum filho vinculado ainda. Aceite um convite para começar.</p>}
     {!!children.data?.length && <label>Filho<select value={current?.studentId} onChange={e => setSelected(e.target.value)}>{children.data.map(c => <option key={c.studentId} value={c.studentId}>{c.name} · {c.className}{c.classClosed ? ' (turma encerrada)' : ''}</option>)}</select></label>}
-    {current && <ChildProgress key={current.studentId} studentId={current.studentId} api={api} />}
+    {current && <ChildProgress key={current.studentId} studentId={current.studentId} api={api} viewer={viewer} />}
   </ClassroomContent>;
 }
 
@@ -93,8 +93,9 @@ export function Parent({ api: provided }: { api?: ClassroomApi }) {
   const session = useSession();
   const demo = isParentDemo();
   const allowed = demo || (session?.status === 'signed-in' && !session.anonymous && !!session.email);
+  const viewer = demo ? 'demo' : session?.status === 'signed-in' ? session.userId : '';
   const api = useQuery({ queryKey: ['parent-api', demo], queryFn: parentClassroom, enabled: allowed && !provided, staleTime: Infinity });
   if (!demo && session?.status === 'signed-in' && !session.anonymous && !session.email) return <ClassroomPage><header><BackLink /></header><StudentGuardianNotice /></ClassroomPage>;
   if (session && !allowed) return <Navigate to={accountUrl('responsavel', ROUTES.parent, ROUTES.home)} replace />;
-  return <ClassroomPage><header><div><small>ÁREA DO RESPONSÁVEL</small><h1>Acompanhe seu filho</h1></div><BackLink /></header>{provided && allowed ? <ParentArea api={provided} /> : api.data && allowed ? <ParentArea api={api.data} /> : <p role="status">Conectando…</p>}</ClassroomPage>;
+  return <ClassroomPage><header><div><small>ÁREA DO RESPONSÁVEL</small><h1>Acompanhe seu filho</h1></div><BackLink /></header>{provided && allowed ? <ParentArea key={viewer} api={provided} viewer={viewer} /> : api.data && allowed ? <ParentArea key={viewer} api={api.data} viewer={viewer} /> : <p role="status">Conectando…</p>}</ClassroomPage>;
 }

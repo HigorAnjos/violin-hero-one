@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
@@ -84,6 +84,22 @@ it('sem sessão resolvida aguarda e não consulta dados de criança', async () =
   expect(screen.getByRole('status')).toHaveTextContent('Conectando…');
   await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/conta?motivo=responsavel'));
   expect(list).not.toHaveBeenCalled();
+});
+
+it('trocar de responsável não mostra o filho em cache da conta anterior', async () => {
+  const { api, invite } = await parentDemo();
+  await api.acceptGuardianInvite(invite.code);
+  const qc = client();
+  renderScreen(<Parent api={api} />, { queryClient: qc });
+  await screen.findByRole('heading', { name: 'A semana de Ana' });
+  api.actAs('outro-responsavel');
+  // A nova resposta demora: o cache anterior continua existindo, mas não pode aparecer.
+  vi.spyOn(api, 'listMyChildren').mockReturnValue(new Promise(() => {}));
+  act(() => { qc.setQueryData(['session'], { ...session, userId: 'outro-responsavel' }); });
+  await screen.findByText('Carregando filhos…');
+  expect(screen.queryByText(/Ana/)).not.toBeInTheDocument();
+  expect(screen.queryByText('Continue praticando com calma!')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Entrega de Brilha Brilha Estrelinha')).not.toBeInTheDocument();
 });
 
 it('convite recusado preserva formulário e permite tentar de novo', async () => {
