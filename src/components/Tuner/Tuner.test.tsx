@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { renderScreen } from '../../shell/testing';
-import { initialTuner } from './tuner';
+import { initialTuner } from './tunerState';
 import { stringStatus, Tuner } from './Tuner';
 
 const renderTuner = (a4: number, onA4 = vi.fn()) => renderScreen(<Tuner a4={a4} onA4={onA4} state={initialTuner()} />);

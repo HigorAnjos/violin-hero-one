@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import { LEVEL_NAMES } from '../src/components/CountIn/countIn';
+import { LEVEL_NAMES } from '../src/components/CountIn/countInTiming';
 import type { Level } from '../src/game/notation/song';
 
 /** Marca a primeira vez como feita (antes de abrir a página): a raiz abre a tela inicial. */

@@ -22,9 +22,17 @@
     "purge:audio": "node scripts/purge-audio.mjs",
     "db:local": "node scripts/db-local.mjs",
     "test:e2e": "playwright test",
-    "test:e2e:catalogo": "playwright test -c playwright.catalogo.config.ts"
+    "test:e2e:catalogo": "playwright test -c playwright.catalogo.config.ts",
+    "cap:sync": "npm run build && cap sync",
+    "android:debug": "cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "8.0.1",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3",
     "@fontsource/baloo-2": "^5.3.0",
     "@fontsource/noto-music": "^5.3.0",
     "@fontsource/nunito": "^5.3.0",
@@ -42,6 +50,7 @@
     "workbox-window": "^7.4.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.5.3",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^7.0.1",

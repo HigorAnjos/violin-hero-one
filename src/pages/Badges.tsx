@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
 import { Badge, badgeColor } from '../components/Badge/Badge';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { Kicker } from '../components/Screen/Screen';
 import { BADGES, type Badge as BadgeInfo } from '../game/engine';
 import { GOLD_TUNING_CENTS } from '../game/engine/badges';

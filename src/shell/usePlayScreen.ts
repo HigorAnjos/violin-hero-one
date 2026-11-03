@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { tuningBands } from '../components/Tuner/tuner';
+import { tuningBands } from '../components/Tuner/tunerState';
 import type { Recording, RecordingError } from '../game/audio';
 import type { GameResult } from '../game/engine';
 import { parseSimulate } from '../game/engine/simulate';

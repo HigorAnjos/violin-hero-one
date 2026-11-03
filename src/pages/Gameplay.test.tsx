@@ -6,6 +6,7 @@ import { RecordingError, type Recorder, type Recording } from '../game/audio';
 import { ODE } from '../game/engine/testing';
 import type { Song } from '../game/notation/song';
 import { loadEarnedBadges } from '../services/badges';
+import { keepScreenOn } from '../services/platform';
 import type { EarAudio } from '../shell/Ear';
 import { createFakeEar, type FakeEar } from '../shell/fakeEar';
 import type { PlayState } from '../shell/play';
@@ -14,6 +15,12 @@ import { renderScreen } from '../shell/testing';
 import type { GameDeps } from '../shell/useGame';
 import { devWindow } from '../shell/devTools';
 import { Gameplay } from './Gameplay';
+
+const screenOn = vi.hoisted(() => ({ release: vi.fn() }));
+vi.mock('../services/platform', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/platform')>()),
+  keepScreenOn: vi.fn(() => screenOn.release),
+}));
 
 // Partida inteira com motor e pista: sob carga (CI, suíte em paralelo) passa dos 5 s padrão
 vi.setConfig({ testTimeout: 15_000 });
@@ -86,6 +93,18 @@ describe('Gameplay', () => {
     run(12);
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(ROUTES.badge), { timeout: 3000 });
     expect(loadEarnedBadges()).toContain('primeira-musica');
+  });
+
+  it('tela acesa (celular) da abertura ao fim da partida', async () => {
+    vi.mocked(keepScreenOn).mockClear();
+    screenOn.release.mockClear();
+    const { run } = setup('?simular=0');
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    expect(keepScreenOn).toHaveBeenCalledOnce();
+    expect(screenOn.release).not.toHaveBeenCalled();
+    run(12);
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(ROUTES.badge), { timeout: 3000 });
+    expect(screenOn.release).toHaveBeenCalledOnce();
   });
 
   it('erros demais param a orquestra: vai para "a orquestra parou"', async () => {

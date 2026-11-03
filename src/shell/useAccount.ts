@@ -1,5 +1,7 @@
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAuthProviders, type AuthProviders } from '../services/account';
+import { useLocation } from 'react-router-dom';
+import { AccountError, authErrorFromUrl, fetchAuthProviders, type AuthProviders } from '../services/account';
 import { ensureSession, type AuthClient } from '../services/session';
 import { supabase, supabaseAnonKey, supabaseUrl } from '../services/supabase';
 
@@ -16,4 +18,19 @@ export function useSession(client: { auth: AuthClient } | null = supabase) {
 export function useAuthProviders(load: () => Promise<AuthProviders> = () => fetchAuthProviders(supabaseUrl, supabaseAnonKey)): AuthProviders {
   const { data } = useQuery({ queryKey: ['auth-providers'], queryFn: load, staleTime: Infinity, retry: false });
   return data ?? { google: false };
+}
+
+/**
+ * O erro da volta da conta (#error_code=…), para a tela mostrar. Na web ele chega com a página nova (a tela lê na
+ * montagem); no celular o deep link troca só o # da tela que já está aberta (nativeAuthReturn), e é por aqui que
+ * ela fica sabendo.
+ */
+export function useAuthReturnError(show: (message: string) => void): void {
+  const { pathname, search, hash } = useLocation();
+  const [seen, setSeen] = React.useState(hash);
+  if (hash !== seen) {
+    setSeen(hash);
+    const kind = authErrorFromUrl(new URL(`${pathname}${search}${hash}`, window.location.origin).toString());
+    if (kind) show(new AccountError(kind).message);
+  }
 }

@@ -3,7 +3,7 @@ import styled, { useTheme } from 'styled-components';
 import { rgba } from '../../assets/styles/themes/color';
 import { formatCents, formatHz } from '../OpenStringCard/openStringCheck';
 import { Kicker } from '../Screen/Screen';
-import { DEFAULT_BANDS, type TuningBands } from '../Tuner/tuner';
+import { DEFAULT_BANDS, type TuningBands } from '../Tuner/tunerState';
 import { TRACE_SECONDS, type TracePoint } from '../TuningCard/TuningCard';
 
 const W = 352;

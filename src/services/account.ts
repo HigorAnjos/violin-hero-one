@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { deviceData, type DeviceData } from './deviceData';
+import { NATIVE_AUTH_RETURN } from './nativeAuth';
+import { isNative, openExternal } from './platform';
 import { signedIn, type SessionState } from './session';
 
 /**
@@ -78,9 +80,24 @@ export function normalizeEmail(raw: string): string | null {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
-/** Endereço completo para onde o link mágico e o Google voltam (o caminho da tela que pediu a conta). */
-export function returnUrl(path: string, origin: string = window.location.origin): string {
+/**
+ * Endereço completo para onde o link mágico e o Google voltam (o caminho da tela que pediu a conta). No celular, o
+ * deep link do app (app.violinhero://auth/<caminho>), que o nativeAuth troca pela sessão.
+ */
+export function returnUrl(path: string, origin: string = isNative() ? NATIVE_AUTH_RETURN : window.location.origin): string {
   return new URL(path, origin).toString();
+}
+
+/**
+ * Google: na web o supabase-js leva a própria página até lá. No celular o Google não deixa entrar por WebView: o
+ * endereço vem de volta (skipBrowserRedirect) e abre no navegador do sistema.
+ */
+function providerOptions(back: string): { redirectTo: string; skipBrowserRedirect?: boolean } {
+  return isNative() ? { redirectTo: returnUrl(back), skipBrowserRedirect: true } : { redirectTo: returnUrl(back) };
+}
+
+async function openProvider(url: string | null | undefined): Promise<void> {
+  if (isNative() && url) await openExternal(url);
 }
 
 function requireEmail(raw: string): string {
@@ -107,8 +124,9 @@ export async function linkEmail(client: AccountClient | null, raw: string, back:
 /** Criar conta pelo Google: o navegador vai ao Google e volta em `back` com o mesmo user id. */
 export async function linkGoogle(client: AccountClient | null, back: string): Promise<void> {
   const db = requireClient(client);
-  const { error } = await db.auth.linkIdentity({ provider: 'google', options: { redirectTo: returnUrl(back) } });
+  const { data, error } = await db.auth.linkIdentity({ provider: 'google', options: providerOptions(back) });
   fail(error);
+  await openProvider(data?.url);
 }
 
 /** Antes de trocar de usuário: a fila do anônimo sobe na conta anônima; sem conseguir, nada de trocar. */
@@ -137,8 +155,9 @@ export async function sendLoginLink(client: AccountClient | null, session: Sessi
 export async function loginWithGoogle(client: AccountClient | null, session: SessionState, back: string, data: DeviceData = deviceData()): Promise<void> {
   const db = requireClient(client);
   await flushBeforeSwitch(session, data);
-  const { error } = await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: returnUrl(back) } });
+  const { data: provider, error } = await db.auth.signInWithOAuth({ provider: 'google', options: providerOptions(back) });
   fail(error);
+  await openProvider(provider?.url);
 }
 
 /** Antes de sair: tenta subir a fila; o que não subiu é o que sair agora descartaria. */

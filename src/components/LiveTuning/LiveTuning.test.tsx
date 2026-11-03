@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { ThemeProvider } from 'styled-components';
 import { describe, expect, it } from 'vitest';
 import { cadernoTheme } from '../../assets/styles/themes';
-import { tuningBands } from '../Tuner/tuner';
+import { tuningBands } from '../Tuner/tunerState';
 import { liveTrace, liveWord, LiveTuning } from './LiveTuning';
 
 describe('liveWord', () => {

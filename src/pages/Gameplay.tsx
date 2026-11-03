@@ -1,6 +1,6 @@
 import React from 'react';
 import styled, { useTheme } from 'styled-components';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { Orchestra } from '../components/Orchestra/Orchestra';
 import { PauseMenu } from '../components/PauseMenu/PauseMenu';
 import { ScoreCard } from '../components/ScoreCard/ScoreCard';

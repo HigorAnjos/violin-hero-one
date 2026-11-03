@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
 import { ScoreStaff } from '../components/ScoreStaff/ScoreStaff';
 import { noteName } from '../game/notation/editor';

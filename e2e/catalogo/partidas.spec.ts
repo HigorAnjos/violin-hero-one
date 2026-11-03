@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { LEVEL_NAMES } from '../../src/components/CountIn/countIn';
+import { LEVEL_NAMES } from '../../src/components/CountIn/countInTiming';
 import type { BadgeId, GameResult } from '../../src/game/engine/types';
 import { attacks, LEVELS, songDurationSeconds, type Level } from '../../src/game/notation/song';
 import { chooseSong } from '../choose';

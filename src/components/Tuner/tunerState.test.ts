@@ -14,7 +14,7 @@ import {
   tuneWord,
   tuningBands,
   type TunerState,
-} from './tuner';
+} from './tunerState';
 
 const at = (midi: number, cents: number, time: number, a4 = 442, clarity = 0.95): PitchReading => ({
   time,

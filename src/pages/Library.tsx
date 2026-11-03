@@ -4,7 +4,7 @@ import { BackLink, NavigationScreen as Screen } from '../components/BackLink/Bac
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { OfflineBanner } from '../components/OfflineBanner/OfflineBanner';
 import { clampLines, Kicker, ScreenTitle } from '../components/Screen/Screen';
 import { matchesSearch, SearchField } from '../components/SearchField/SearchField';
