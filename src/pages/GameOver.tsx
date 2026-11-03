@@ -19,6 +19,8 @@ const Page = styled.main`
   justify-content: center;
   gap: 3rem;
   padding: ${({ theme }) => theme.spacing.lg};
+  /* As cadeiras ocupam o terço de baixo: os cartões ficam acima delas, nunca por cima (1280×720 sobrepunha) */
+  padding-bottom: calc(33vh + ${({ theme }) => theme.spacing.sm});
 
   > svg {
     position: absolute;
@@ -26,7 +28,7 @@ const Page = styled.main`
     right: 0;
     bottom: 0;
     width: 100%;
-    height: 33%;
+    height: 33vh;
     pointer-events: none;
   }
 
