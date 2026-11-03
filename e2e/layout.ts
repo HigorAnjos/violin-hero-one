@@ -30,7 +30,8 @@ export async function expectArrowsAligned(page: Page) {
         (arrow as HTMLElement).style.display = 'none';
         const without = el.getBoundingClientRect().height;
         (arrow as HTMLElement).style.display = '';
-        const neighbors = [...(el.parentElement?.children ?? [])].filter((s) => s !== el && s.matches('button, a[href]'));
+        // Só os vizinhos à vista: um botão escondido neste tamanho (display: none) não tem linha
+        const neighbors = [...(el.parentElement?.children ?? [])].filter((s) => s !== el && s.matches('button, a[href]') && (s as HTMLElement).offsetParent !== null);
         const half = (n: number) => Math.round(n * 2) / 2;
         return {
           label: (el.textContent ?? '').trim(),
@@ -86,6 +87,42 @@ export async function tooSmallTargets(page: Page) {
       .filter(({ box }) => box.height < 43.5 || box.width < 43.5)
       .map(({ el, box }) => `${el.textContent?.trim() || el.getAttribute('aria-label')}: ${Math.round(box.width)}×${Math.round(box.height)}`)
   );
+}
+
+/**
+ * Controles visíveis (botões, links, campos) que se sobrepõem a outro controle: um toque no celular acertaria o
+ * vizinho. Conta só a parte que aparece (o que um ancestral recorta, como a lista que rola de lado, não conta).
+ */
+export async function overlappingTargets(page: Page) {
+  return page.evaluate(() => {
+    const shown = (el: Element) => {
+      let { left, top, right, bottom } = el.getBoundingClientRect();
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const style = getComputedStyle(p);
+        if (style.overflowX === 'visible' && style.overflowY === 'visible') continue;
+        const clip = p.getBoundingClientRect();
+        left = Math.max(left, clip.left);
+        top = Math.max(top, clip.top);
+        right = Math.min(right, clip.right);
+        bottom = Math.min(bottom, clip.bottom);
+      }
+      return { left, top, right, bottom };
+    };
+    const controls = [...document.querySelectorAll<HTMLElement>('main button, main a[href], main input, main select, main [role="radio"]')].filter(
+      (el) => el.offsetParent !== null && getComputedStyle(el).visibility !== 'hidden'
+    );
+    const name = (el: HTMLElement) => el.getAttribute('aria-label') || el.textContent?.trim().slice(0, 24) || el.tagName.toLowerCase();
+    const out: string[] = [];
+    controls.forEach((a, i) => {
+      for (const b of controls.slice(i + 1)) {
+        if (a.contains(b) || b.contains(a)) continue;
+        const r = shown(a);
+        const s = shown(b);
+        if (Math.min(r.right, s.right) - Math.max(r.left, s.left) > 0.5 && Math.min(r.bottom, s.bottom) - Math.max(r.top, s.top) > 0.5) out.push(`${name(a)} × ${name(b)}`);
+      }
+    });
+    return out;
+  });
 }
 
 /** Tab até o primeiro controle: o foco aparece (contorno sólido ou anel de foco do campo). */
