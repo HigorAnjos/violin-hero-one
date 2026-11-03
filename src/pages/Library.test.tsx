@@ -97,6 +97,33 @@ describe('Library', () => {
     expect(cards()).toHaveLength(1);
   });
 
+  it('a lupa do celular abre a busca com o foco nela e, ao fechar, limpa o texto', async () => {
+    renderLibrary();
+    await waitFor(() => expect(cards()).toHaveLength(FIXED_SONGS.length));
+    // A lupa só aparece no celular deitado: escondida no jsdom, fica sem nome acessível e sai do getByRole
+    const toggle = screen.getByLabelText('Buscar', { selector: 'button' });
+    const toolbar = document.getElementById(toggle.getAttribute('aria-controls')!)!;
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toolbar).not.toHaveAttribute('data-open');
+    await userEvent.click(toggle);
+    const search = screen.getByRole('searchbox', { name: 'Buscar na biblioteca' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toolbar).toHaveAttribute('data-open');
+    expect(search).toHaveFocus();
+    await userEvent.type(search, 'ode');
+    expect(cards()).toHaveLength(1);
+    await userEvent.click(toggle);
+    expect(search).toHaveValue('');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(cards()).toHaveLength(FIXED_SONGS.length);
+  });
+
+  it('"Importar" do celular e "Importar música" do desktop abrem a importação', async () => {
+    renderLibrary();
+    const links = [...document.querySelectorAll(`a[href="${ROUTES.import}"]`)].map((a) => a.textContent);
+    expect(links).toEqual(['Importar música', '＋Importar']);
+  });
+
   it('sem internet: as embutidas e o aviso', async () => {
     renderLibrary();
     expect(await screen.findByText('Sem internet', undefined, { timeout: 5000 })).toBeInTheDocument();
