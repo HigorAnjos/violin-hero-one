@@ -41,6 +41,11 @@ export const METRONOME_AHEAD_SECONDS = 0.5;
  * Bem acima de um quadro a 10 fps.
  */
 export const STALL_SECONDS = 0.2;
+/**
+ * A expiração nunca fica mais que isto atrás da hora: com todo quadro lento (Chrome em segundo plano entrega o
+ * requestAnimationFrame a cada ~1 s) ela anda assim mesmo, e a partida termina. É a travada mais longa que ainda protege.
+ */
+export const MAX_EXPIRY_LAG_SECONDS = 2;
 
 /** O que a pista precisa da partida (src/game/render), sem carregar o Pixi aqui. */
 export interface GameTrack {
@@ -467,6 +472,7 @@ export function createGameSession(options: GameSessionOptions): GameSession {
       const step = t - lastFrame;
       lastFrame = t;
       if (step <= STALL_SECONDS) expiredTo = Math.min(t, expiredTo + 2 * Math.max(step, 0));
+      expiredTo = Math.max(expiredTo, t - MAX_EXPIRY_LAG_SECONDS);
       engine.advance(expiredTo);
       track?.update(t);
       return t;
