@@ -37,10 +37,42 @@ describe('createAppUpdate', () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
-  it('atualizar troca o service worker e recarrega', () => {
+  /** Service worker esperando: guarda a mensagem e deixa o teste trocar o estado dele. */
+  function waitingWorker() {
+    const worker = Object.assign(new EventTarget(), { state: 'installed' as ServiceWorkerState, postMessage: vi.fn() });
+    const become = (state: ServiceWorkerState) => {
+      worker.state = state;
+      worker.dispatchEvent(new Event('statechange'));
+    };
+    return { worker: worker as unknown as ServiceWorker, postMessage: worker.postMessage, become };
+  }
+
+  it('atualizar com versão nova esperando: manda ela entrar e recarrega quando ela ativa, num clique', () => {
     const sw = fakeRegister();
-    createAppUpdate(sw.register).apply();
-    expect(sw.reload).toHaveBeenCalledWith(true);
+    const reload = vi.fn();
+    const update = createAppUpdate(sw.register, 1000, reload);
+    const next = waitingWorker();
+    sw.options().onRegisteredSW?.('/sw.js', { waiting: next.worker, update: vi.fn() } as unknown as ServiceWorkerRegistration);
+    update.apply();
+    expect(next.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+    next.become('activating');
+    expect(reload).not.toHaveBeenCalled();
+    // Vale também para a página sem controlador (primeira visita): não depende do controllerchange
+    next.become('activated');
+    expect(reload).toHaveBeenCalledOnce();
+    // O registerSW não recarrega por conta própria (seriam duas recargas) nem é quem troca de versão
+    sw.options().onNeedReload?.();
+    expect(reload).toHaveBeenCalledOnce();
+    expect(sw.reload).not.toHaveBeenCalled();
+  });
+
+  it('atualizar sem versão esperando (a nova já ativou sozinha, página sem controlador): recarrega na hora', () => {
+    const sw = fakeRegister();
+    const reload = vi.fn();
+    const update = createAppUpdate(sw.register, 1000, reload);
+    sw.options().onRegisteredSW?.('/sw.js', { waiting: null, update: vi.fn() } as unknown as ServiceWorkerRegistration);
+    update.apply();
+    expect(reload).toHaveBeenCalledOnce();
   });
 
   it('confere versão nova de tempos em tempos e engole a falha sem internet', async () => {

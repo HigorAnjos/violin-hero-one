@@ -22,18 +22,29 @@ export const pendingUpdate = (): AppUpdate => ({ subscribe: () => () => undefine
 /** Com o app aberto por horas (PWA instalado), confere de hora em hora se saiu versão nova. */
 export const UPDATE_CHECK_MS = 60 * 60_000;
 
-export function createAppUpdate(register: RegisterServiceWorker, checkEveryMs = UPDATE_CHECK_MS): AppUpdate {
+/** A mensagem que o sw.js do workbox (generateSW, registerType prompt) atende com skipWaiting(). */
+const SKIP_WAITING = { type: 'SKIP_WAITING' };
+
+export function createAppUpdate(
+  register: RegisterServiceWorker,
+  checkEveryMs = UPDATE_CHECK_MS,
+  reload: () => void = () => window.location.reload()
+): AppUpdate {
   let waiting = false;
+  let registration: ServiceWorkerRegistration | undefined;
   const listeners = new Set<() => void>();
-  const update = register({
+  register({
     onNeedRefresh() {
       waiting = true;
       for (const listener of listeners) listener();
     },
-    onRegisteredSW(_url, registration) {
-      if (!registration) return;
+    // Quem recarrega é o apply: o registerSW só recarrega no controllerchange de página que já tinha controlador
+    onNeedReload: () => undefined,
+    onRegisteredSW(_url, r) {
+      if (!r) return;
+      registration = r;
       // Sem internet a conferência falha: tenta de novo na próxima hora, sem erro na tela
-      setInterval(() => void registration.update().catch(() => undefined), checkEveryMs);
+      setInterval(() => void r.update().catch(() => undefined), checkEveryMs);
     },
   });
   return {
@@ -42,6 +53,22 @@ export function createAppUpdate(register: RegisterServiceWorker, checkEveryMs = 
       return () => listeners.delete(listener);
     },
     waiting: () => waiting,
-    apply: () => void update(true),
+    /**
+     * Página sem controlador (primeira visita, recarga forçada) não recebe controllerchange, e a versão nova pode nem
+     * ter esperado (ativou sozinha): o updateServiceWorker do vite-plugin-pwa não fazia nada e o app seguia na versão
+     * velha. Aqui vale o estado do service worker: o que espera ativa e a página recarrega quando ele termina; sem
+     * nenhum esperando, a versão nova já está ativa e basta recarregar.
+     */
+    apply() {
+      const next = registration?.waiting;
+      if (!next) {
+        reload();
+        return;
+      }
+      next.addEventListener('statechange', () => {
+        if (next.state === 'activated') reload();
+      });
+      next.postMessage(SKIP_WAITING);
+    },
   };
 }
