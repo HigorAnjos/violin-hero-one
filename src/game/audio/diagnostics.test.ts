@@ -3,6 +3,7 @@ import {
   createLiveStats,
   formatReport,
   MIN_STEADY_READINGS,
+  micKind,
   oboeSignals,
   OBOE_LIMITS,
   readInput,
@@ -15,11 +16,10 @@ import { PitchTracker } from './pitch/tracker';
 import { DEFAULT_SAMPLE_RATE, tone } from './testing/synth';
 import type { PitchReading } from './types';
 
-function audioWith(settings: Record<string, unknown>, context: Partial<DiagnosedAudio['context']> = {}): DiagnosedAudio {
+function audioWith(settings: Record<string, unknown>, context: Partial<DiagnosedAudio['context']> = {}, label = 'iPhone Microphone'): DiagnosedAudio {
   return {
-    label: 'Microfone interno',
     context: { sampleRate: 48000, state: 'running', baseLatency: 0.01, outputLatency: 0.03, ...context },
-    stream: { getAudioTracks: () => [{ label: 'x', getSettings: () => settings }] as unknown as MediaStreamTrack[] },
+    stream: { getAudioTracks: () => [{ label, getSettings: () => settings }] as unknown as MediaStreamTrack[] },
   };
 }
 
@@ -48,7 +48,7 @@ describe('readInput', () => {
     );
     expect(input.applied).toEqual({ echoCancellation: 'off', noiseSuppression: 'off', autoGainControl: 'off' });
     expect(input.ignored).toEqual([]);
-    expect(input).toMatchObject({ label: 'Microfone interno', trackSampleRate: 48000, channelCount: 1, contextSampleRate: 48000, contextState: 'running' });
+    expect(input).toMatchObject({ kind: 'embutido', trackSampleRate: 48000, channelCount: 1, contextSampleRate: 48000, contextState: 'running' });
     expect(input.trackLatencyMs).toBeCloseTo(10);
     expect(input.baseLatencyMs).toBeCloseTo(10);
     expect(input.outputLatencyMs).toBeCloseTo(30);
@@ -61,6 +61,36 @@ describe('readInput', () => {
     expect(input.supported).toEqual({ echoCancellation: true, noiseSuppression: false, autoGainControl: false });
     expect(input.outputLatencyMs).toBeNull();
     expect(input.trackSampleRate).toBeNull();
+  });
+});
+
+describe('micKind', () => {
+  it('só o tipo, pelos rótulos comuns de Android, iOS e computador', () => {
+    expect(micKind('iPhone Microphone')).toBe('embutido');
+    expect(micKind('Default - Microphone Array (Realtek)')).toBe('embutido');
+    expect(micKind('Headset earpiece')).toBe('fone com fio');
+    expect(micKind('Fone de ouvido com fio')).toBe('fone com fio');
+    expect(micKind('AirPods de Joana')).toBe('bluetooth');
+    expect(micKind('Galaxy Buds2 Pro')).toBe('bluetooth');
+    expect(micKind('USB Audio Device')).toBe('usb');
+    expect(micKind('Joana')).toBe('desconhecido');
+    expect(micKind('')).toBe('desconhecido');
+  });
+
+  it('o rótulo com o nome da pessoa nunca vai para o texto copiado (LGPD)', () => {
+    const input = readInput(audioWith({}, {}, 'AirPods de Joana Pereira'), SUPPORTED);
+    const text = formatReport({
+      when: new Date(0),
+      app: 'web',
+      device: 'x',
+      input,
+      live: { level: null, reading: null, lag: null, steadiness: null },
+      calibrated: null,
+      a4: 442,
+    });
+    expect(text).toContain('microfone: bluetooth');
+    expect(text).not.toMatch(/Joana|Pereira|AirPods/);
+    expect(JSON.stringify(input)).not.toMatch(/Joana/);
   });
 });
 

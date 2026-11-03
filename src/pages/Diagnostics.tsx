@@ -171,7 +171,8 @@ const Report = styled.textarea`
   border-radius: ${({ theme }) => theme.borderRadius.sm};
   background-color: ${({ theme }) => theme.colors.surface};
   color: ${({ theme }) => theme.colors.text};
-  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-family: ${({ theme }) => theme.fonts.ui};
+  font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
   line-height: 1.125rem;
   resize: none;
@@ -245,7 +246,7 @@ export const Diagnostics: React.FC = () => {
       await ear.start();
       ear.setA4(a4);
       const audio = ear.audio();
-      if (audio?.stream) setInput(readInput({ context: audio.context, stream: audio.stream, label: '' }, supportedConstraints()));
+      if (audio?.stream) setInput(readInput({ context: audio.context, stream: audio.stream }, supportedConstraints()));
       else setProblem('Sem microfone de verdade (Ouvido simulado).');
     } catch (error) {
       setProblem(`O microfone não abriu: ${micFailure(error).cause}.`);

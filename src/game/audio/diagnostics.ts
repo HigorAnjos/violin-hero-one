@@ -15,8 +15,23 @@ export type Processing = (typeof PROCESSING)[number];
 /** 'on': pedimos desligado e o navegador diz que segue ligado; 'unknown': ele não informa (getSettings sem o campo). */
 export type ProcessingState = 'off' | 'on' | 'unknown';
 
+/** O tipo do microfone, nunca o rótulo: no celular e no Bluetooth ele costuma trazer o nome da pessoa (LGPD). */
+export type MicKind = 'embutido' | 'fone com fio' | 'bluetooth' | 'usb' | 'desconhecido';
+
+const KINDS: [MicKind, RegExp][] = [
+  ['bluetooth', /bluetooth|airpods|buds|beats|hands-?free|\bbt\b/i],
+  ['usb', /\busb\b/i],
+  ['fone com fio', /headset|headphone|earphone|earpod|fone|wired|com fio|jack|lightning/i],
+  ['embutido', /built-?in|intern|default|padr[aã]o|iphone|ipad|speakerphone|bottom|front|back|microphone|microfone/i],
+];
+
+/** Só o tipo sai do rótulo; o rótulo em si não é guardado nem copiado. */
+export function micKind(label: string): MicKind {
+  return KINDS.find(([, pattern]) => pattern.test(label))?.[0] ?? 'desconhecido';
+}
+
 export interface InputReport {
-  label: string;
+  kind: MicKind;
   /** getSupportedConstraints: o navegador reconhece o pedido. */
   supported: Record<Processing, boolean>;
   applied: Record<Processing, ProcessingState>;
@@ -36,7 +51,6 @@ export interface InputReport {
 export interface DiagnosedAudio {
   context: Pick<AudioContext, 'sampleRate' | 'state'> & Partial<Pick<AudioContext, 'baseLatency' | 'outputLatency'>>;
   stream: Pick<MediaStream, 'getAudioTracks'>;
-  label: string;
 }
 
 const ms = (seconds: unknown): number | null => (typeof seconds === 'number' && Number.isFinite(seconds) ? seconds * 1000 : null);
@@ -53,7 +67,7 @@ export function readInput(audio: DiagnosedAudio, supported: MediaTrackSupportedC
     applied[key] = typeof value === 'boolean' ? (value === RAW_AUDIO[key] ? 'off' : 'on') : 'unknown';
   }
   return {
-    label: audio.label || track?.label || '',
+    kind: micKind(track?.label ?? ''),
     supported: known,
     applied,
     ignored: PROCESSING.filter((key) => applied[key] === 'on'),
@@ -212,7 +226,7 @@ export function formatReport({ when, app, device, input, live, calibrated, a4 }:
     lines.push('microfone: fechado');
   } else {
     lines.push(
-      `microfone: ${input.label || 'sem nome'}`,
+      `microfone: ${input.kind}`,
       `pedido: ${PROCESSING.map((k) => `${k}=${RAW_AUDIO[k]}`).join(' ')}`,
       `suportado: ${PROCESSING.map((k) => `${k}=${yes(input.supported[k])}`).join(' ')}`,
       `aplicado: ${PROCESSING.map((k) => `${k}=${STATE_TEXT[input.applied[k]]}`).join(' ')}`,

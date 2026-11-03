@@ -10,7 +10,7 @@ import { Diagnostics } from './Diagnostics';
 
 function micAudio(settings: Record<string, unknown>) {
   const context = { sampleRate: 48000, state: 'running', baseLatency: 0.005, outputLatency: 0.02, currentTime: 10.012 };
-  const stream = { getAudioTracks: () => [{ label: 'Microfone interno', getSettings: () => settings }] } as unknown as MediaStream;
+  const stream = { getAudioTracks: () => [{ label: 'Fone Bluetooth da Joana', getSettings: () => settings }] } as unknown as MediaStream;
   return { context: context as unknown as AudioContext, source: {} as AudioNode, stream };
 }
 
@@ -48,7 +48,10 @@ describe('Diagnostics', () => {
     expect(ear.started).toBe(1);
     expect(ear.a4).toBe(442);
     const text = report();
-    expect(text).toContain('microfone: Microfone interno');
+    // Só o tipo: o nome da pessoa no rótulo do fone não aparece na tela nem no texto copiado
+    expect(text).toContain('microfone: bluetooth');
+    expect(text).not.toContain('Joana');
+    expect(document.body).not.toHaveTextContent('Joana');
     expect(text).toContain('aplicado: echoCancellation=desligado noiseSuppression=LIGADO autoGainControl=não informado');
     expect(text).toContain('ignorado pelo WebView: noiseSuppression');
     expect(text).toContain('taxa: contexto 48000 Hz · microfone 44100 Hz');
