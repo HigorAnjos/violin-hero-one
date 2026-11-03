@@ -1482,6 +1482,21 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
     });
 
     describe('entrada do aluno (class_login_check, só a class-login)', () => {
+      for (const ip of [null, '', '   ']) {
+        it(`IP ${JSON.stringify(ip)} não cria chave IP nem consulta bloqueio antigo; nome continua bloqueando`, async () => {
+          const t = await teacher();
+          const cls = await classOf(t);
+          const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
+          const colega = await studentOf(t, cls.id, 'Davi', { join: false });
+          await c.query(`delete from ${S}.login_throttle where key like 'ip:%'`);
+          for (let i = 0; i < 5; i++) assert.equal((await login(cls.code, 'Rita', wrongPin(aluno.pin), ip)).status, 'invalid');
+          assert.equal((await c.query(`select count(*)::int as n from ${S}.login_throttle where key like 'ip:%'`)).rows[0].n, 0);
+          await c.query(`insert into ${S}.login_throttle (key, locked_until) values ('ip:desconhecido', now() + interval '15 minutes')`);
+          assert.deepEqual(await login(cls.code, 'Rita', aluno.pin, ip), { status: 'locked' });
+          assert.equal((await login(cls.code, 'Davi', colega.pin, ip)).status, 'ok');
+        });
+      }
+
       it('código + nome + PIN certos entram, sem ligar para acento, maiúscula, espaço ou hífen no código', async () => {
         const t = await teacher();
         const cls = await classOf(t, 'Cordas');

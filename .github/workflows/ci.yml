@@ -33,6 +33,10 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno test supabase/functions/class-login/client-ip_test.ts
       - run: npm run build
 
   # Um Supabase local só para os dois: test:db (no db:local) e o e2e do catálogo contra o banco semeado

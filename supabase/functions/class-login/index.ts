@@ -4,7 +4,15 @@
 // senha) e devolve uma sessão Supabase dele, gerada por um link mágico do admin (não manda e-mail) trocado aqui mesmo.
 // Nenhum segredo vai para o app além da sessão do próprio aluno. A chave de serviço só existe no ambiente do Supabase.
 //
-// Deploy: supabase functions deploy class-login --no-verify-jwt --use-api (não há sessão antes da entrada).
+// CLASS_LOGIN_IP_LIMIT=on liga o limite por IP; padrão desligado (requer migração 0019 antes do deploy).
+// CLASS_LOGIN_IP_DEBUG=on registra só cabeçalhos candidatos; padrão desligado.
+// CLASS_LOGIN_IP_HEADER escolhe xff-first, xff-last ou cabeçalho candidato exceto forwarded; padrão último XFF.
+// Deploy (não há sessão antes da entrada):
+// npx supabase functions deploy class-login --project-ref fgymtxxjlikbfhwxifpu --no-verify-jwt --use-api
+// Diagnóstico após deploy:
+// npx supabase secrets set CLASS_LOGIN_IP_DEBUG=on --project-ref fgymtxxjlikbfhwxifpu
+// Desligue logo após coletar e registre em Decisões o cabeçalho escolhido e o diagnóstico temporário:
+// npx supabase secrets unset CLASS_LOGIN_IP_DEBUG --project-ref fgymtxxjlikbfhwxifpu
 //
 // POST application/json { code, name, pin } (com a chave anon no apikey, como o supabase-js manda)
 // Resposta (o contrato de src/services/classroom.ts, studentLogin):
@@ -13,6 +21,7 @@
 //   4xx/5xx { error: { code, message } } — 400 bad_request, 401 invalid_credentials (código, nome ou PIN não conferem:
 //   sempre a mesma resposta), 429 too_many_attempts, 403 class_closed, 500 server
 import { createClient } from '@supabase/supabase-js';
+import { throttleIp, debugClientIp } from './client-ip.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -63,15 +72,6 @@ type ServerClient = ReturnType<typeof serverClient>;
 
 /** E-mail do usuário de auth do aluno: o domínio .invalid (RFC 2606) não existe, então nada chega a ninguém. */
 const studentEmail = (memberId: string) => `aluno-${memberId}@alunos.violinhero.invalid`;
-
-/**
- * IP de quem chamou: o último de x-forwarded-for, o que o gateway do Supabase acrescenta (os anteriores vêm do
- * cliente e qualquer um troca a cada pedido); vazio se não veio. O bloqueio por turma + nome não depende dele.
- */
-function clientIp(req: Request): string {
-  const forwarded = req.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim();
-  return (forwarded || '').slice(0, 64);
-}
 
 interface Credentials {
   code: string;
@@ -132,6 +132,7 @@ async function studentUser(server: ServerClient, memberId: string, linked: strin
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return fail('bad_request');
+  debugClientIp(req, Deno.env.get('CLASS_LOGIN_IP_DEBUG'));
   try {
     const credentials = await readCredentials(req);
     const url = env('SUPABASE_URL');
@@ -141,7 +142,7 @@ Deno.serve(async (req) => {
       p_code: credentials.code,
       p_name: credentials.name,
       p_pin: credentials.pin,
-      p_ip: clientIp(req),
+      p_ip: throttleIp(req, Deno.env.get('CLASS_LOGIN_IP_LIMIT'), Deno.env.get('CLASS_LOGIN_IP_HEADER')),
     });
     if (error) throw error;
     const checked = data as Checked;
