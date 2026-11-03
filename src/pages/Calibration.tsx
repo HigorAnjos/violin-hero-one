@@ -266,6 +266,7 @@ export const Calibration: React.FC = () => {
             onMeasure={calibration.start}
             onStart={begin}
             canMeasure={audio !== null}
+            volume={<SegmentMeter fraction={meterFraction(meters.volumeDb)} count={8} label={`Volume do microfone: ${formatDb(meters.volumeDb)}`} toneAt={() => 'primary'} />}
           />
         </Side>
       </Body>

@@ -28,7 +28,7 @@ describe('Calibration', () => {
     act(() => ear.pitch(reading(69, 0, 0)));
     expect(screen.getByRole('heading', { name: 'Afine antes de tocar' })).toBeInTheDocument();
     expect(screen.getByText('A4')).toBeInTheDocument();
-    expect(screen.getByText('● Ouvindo agora')).toBeInTheDocument();
+    expect(screen.getByText('Ouvindo agora').parentElement).toHaveTextContent('● Ouvindo agora');
   });
 
   it('o Lá de referência muda no Ouvido na hora', async () => {

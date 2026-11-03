@@ -19,7 +19,11 @@ export const A4_PRESETS: readonly { hz: number; label: string }[] = [
   { hz: 415, label: '415 barroco' },
 ];
 
+/** Atalhos que ficam à vista no celular deitado (MobileCalibration: 440, 442, 443 e "···"). */
+export const COMMON_A4: readonly number[] = [440, 442, 443];
+
 const Panel = styled.section`
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   display: flex;
@@ -83,11 +87,36 @@ const Reference = styled.div`
     color: ${({ theme }) => theme.colors.textMuted};
   }
 
+  > [data-compact] {
+    display: none;
+  }
+
+  /* Celular deitado (MobileCalibration): na linha do "Afinador", só os atalhos; o −/+ e o 415 ficam atrás do "···" */
   @media (max-height: 500px) {
-    padding: ${({ theme }) => theme.spacing.xxs};
+    position: absolute;
+    top: ${({ theme }) => theme.spacing.sm};
+    right: ${({ theme }) => theme.spacing.md};
+    flex-wrap: nowrap;
+    gap: ${({ theme }) => theme.spacing.xxs};
+    padding: 0;
+    background: none;
+    border: 0;
 
     > small,
-    > ${Kicker} {
+    > ${Kicker}:not([data-compact]) {
+      display: none;
+    }
+
+    > [data-compact] {
+      display: inline-flex;
+    }
+
+    > ${Kicker}[data-compact] {
+      margin-right: ${({ theme }) => theme.spacing.xxs};
+    }
+
+    &:not([data-more]) > [data-more],
+    &[data-more] > [data-common] {
       display: none;
     }
   }
@@ -309,21 +338,53 @@ const StringCard = styled.li<{ $state: 'tuned' | 'live' | 'pending' }>`
       }
     `}
 
+  /* Celular deitado (MobileCalibration): a letra à esquerda; o sinal e o Hz da corda empilhados ao lado */
   @media (max-height: 500px) {
-    padding: ${({ theme }) => `${theme.spacing.xxs} ${theme.spacing.xs}`};
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: ${({ theme }) => theme.spacing.xs};
+    row-gap: 0;
+    padding: ${({ theme }) => `${theme.spacing.xs} ${theme.spacing.xs}`};
     font-size: 0.75rem;
+    line-height: 1rem;
 
     b {
-      font-size: 1.25rem;
+      grid-row: 1 / 3;
+      font-size: 1.375rem;
+      line-height: 1;
     }
 
-    span {
-      display: none;
+    > span {
+      grid-row: 2;
+      white-space: nowrap;
+    }
+
+    /* Some da vista, não do leitor de tela (como o .sr-only) */
+    > span > span,
+    > strong > span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    > strong {
+      grid-row: 1;
     }
   }
 `;
 
 const STRINGS: StringIndex[] = [0, 1, 2, 3];
+
+/** Estado de cada corda solta no cartão; o primeiro caractere é o sinal que sobra no celular deitado. */
+export function stringStatus(state: 'tuned' | 'live' | 'pending', tuned: number | null): string {
+  if (state === 'live') return '● Ouvindo agora';
+  return tuned !== null ? `✓ Afinada · ${formatCents(tuned)}` : '○ Pendente';
+}
 /** Oitava de cada corda solta: G3, D4, A4, E5. */
 const OCTAVES = [3, 4, 4, 5];
 
@@ -344,6 +405,8 @@ export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: Tu
   const off = Math.abs(cents);
   const statusColor = off <= TUNED_CENTS ? theme.colors.text : off <= CLOSE_CENTS ? theme.colors.info.text : theme.colors.warning.text;
   const centsLabel = formatCents(cents);
+  // Celular deitado: "···" troca os atalhos comuns pelo −/+ e o 415; abre já aberto se o Lá não é um dos comuns
+  const [more, setMore] = React.useState(() => !COMMON_A4.includes(a4));
 
   return (
     <Panel aria-label="Afinador">
@@ -353,9 +416,12 @@ export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: Tu
         <span>Toque cada corda solta, uma de cada vez</span>
       </Row>
 
-      <Reference role="group" aria-label="Lá de referência">
+      <Reference role="group" aria-label="Lá de referência" data-more={more || undefined}>
         <Kicker>Lá de referência</Kicker>
-        <Stepper>
+        <Kicker data-compact="" aria-hidden="true">
+          Lá
+        </Kicker>
+        <Stepper data-more="">
           <button type="button" aria-label="Diminuir 1 Hz" onClick={() => onA4(a4 - 1)}>
             −
           </button>
@@ -365,10 +431,20 @@ export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: Tu
           </button>
         </Stepper>
         {A4_PRESETS.map((p) => (
-          <Preset key={p.hz} type="button" $on={p.hz === a4} aria-pressed={p.hz === a4} onClick={() => onA4(p.hz)}>
+          <Preset
+            key={p.hz}
+            type="button"
+            $on={p.hz === a4}
+            aria-pressed={p.hz === a4}
+            onClick={() => onA4(p.hz)}
+            {...(COMMON_A4.includes(p.hz) ? { 'data-common': '' } : { 'data-more': '' })}
+          >
             {p.label}
           </Preset>
         ))}
+        <Preset type="button" $on={more} data-compact="" aria-label="Outro Lá" aria-expanded={more} onClick={() => setMore(!more)}>
+          {more ? '✕' : '···'}
+        </Preset>
         <small>
           Orquestras costumam
           <br />
@@ -427,10 +503,15 @@ export const Tuner: React.FC<{ a4: number; onA4: (hz: number) => void; state: Tu
           return (
             <StringCard key={s} $state={cardState}>
               <b style={{ color: theme.game.strings[l].main }}>{l}</b>
+              {/* No celular deitado os trechos em <span> saem da vista: fica "196,0 Hz" e só o sinal (✓ ● ○) */}
               <span>
-                {STRING_SOLFEGE[s]} · {formatHz(midiToFrequency(OPEN_STRING_MIDI[s], a4))}
+                <span>{STRING_SOLFEGE[s]} · </span>
+                {formatHz(midiToFrequency(OPEN_STRING_MIDI[s], a4))}
               </span>
-              <strong>{cardState === 'live' ? '● Ouvindo agora' : tuned !== null ? `✓ Afinada · ${formatCents(tuned)}` : '○ Pendente'}</strong>
+              <strong>
+                {stringStatus(cardState, tuned).slice(0, 1)}
+                <span>{stringStatus(cardState, tuned).slice(1)}</span>
+              </strong>
             </StringCard>
           );
         })}
