@@ -24,10 +24,12 @@ describe('completeAuthReturn', () => {
     expect(await completeAuthReturn(client, 'app.violinhero://auth/?code=abc')).toBe('/');
   });
 
-  it('tokens no # (fluxo implícito): monta a mesma sessão', async () => {
+  it('tokens prontos no # (outro site ou app tentando pôr o aparelho na conta dele): ignorados, sem sessão', async () => {
     const { client, auth } = fakeClient();
-    expect(await completeAuthReturn(client, 'app.violinhero://auth/#access_token=a&refresh_token=r&expires_in=3600&type=magiclink')).toBe('/');
-    expect(auth.setSession).toHaveBeenCalledWith({ access_token: 'a', refresh_token: 'r' });
+    expect(await completeAuthReturn(client, 'app.violinhero://auth/conta#access_token=a&refresh_token=r&expires_in=3600&type=magiclink')).toBe('/conta');
+    expect(await completeAuthReturn(client, 'app.violinhero://auth/?access_token=a&refresh_token=r')).toBe('/');
+    expect(auth.setSession).not.toHaveBeenCalled();
+    expect(auth.exchangeCodeForSession).not.toHaveBeenCalled();
   });
 
   it('link vencido: a tela abre com o erro no #, que as telas de conta já leem', async () => {

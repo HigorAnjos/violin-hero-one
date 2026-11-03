@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  */
 export const NATIVE_AUTH_RETURN = 'app.violinhero://auth';
 
-export type NativeAuthClient = { auth: Pick<SupabaseClient['auth'], 'exchangeCodeForSession' | 'setSession'> };
+export type NativeAuthClient = { auth: Pick<SupabaseClient['auth'], 'exchangeCodeForSession'> };
 
 /** O que a volta traz e não fica no endereço da tela: o código, os tokens e o erro (que volta só no #). */
 const AUTH_PARAMS = ['code', 'access_token', 'refresh_token', 'expires_at', 'expires_in', 'token_type', 'type', 'provider_token', 'provider_refresh_token', 'error', 'error_code', 'error_description'];
@@ -40,16 +40,12 @@ export async function completeAuthReturn(client: NativeAuthClient | null, href: 
   if (errorCode) return failed(errorCode, params.get('error_description'));
   if (!client) return screen;
 
+  // Só o código: a troca exige o code_verifier guardado neste aparelho, então código de outra conta não entra. Tokens
+  // prontos (access_token no #) são ignorados: a volta legítima (PKCE) nunca os traz, e aceitá-los deixaria qualquer
+  // site ou app pôr o aparelho na conta de outra pessoa
   const code = params.get('code');
   if (code) {
     const { error } = await client.auth.exchangeCodeForSession(code);
-    return error ? failed(error.code ?? 'unexpected_failure') : screen;
-  }
-  // Volta do fluxo implícito (tokens no #): a mesma sessão que o supabase-js montaria na web
-  const accessToken = params.get('access_token');
-  const refreshToken = params.get('refresh_token');
-  if (accessToken && refreshToken) {
-    const { error } = await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
     return error ? failed(error.code ?? 'unexpected_failure') : screen;
   }
   return screen;
