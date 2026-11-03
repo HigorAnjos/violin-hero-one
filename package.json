@@ -17,6 +17,8 @@
     "seed:songs": "node scripts/seed-songs.mjs",
     "songs:fixed": "node scripts/fixed-songs.mjs",
     "icons": "node scripts/pwa-icons.mjs",
+    "store:graphics": "node scripts/store-graphics.mjs",
+    "store:screenshots": "playwright test -c playwright.lojas.config.ts",
     "test:db": "node --test scripts/test-db.mjs",
     "test:functions": "node --test scripts/test-functions.mjs",
     "purge:audio": "node scripts/purge-audio.mjs",
