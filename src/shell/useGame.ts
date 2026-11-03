@@ -11,6 +11,7 @@ import { explainJudgment, type Explanation } from '../components/JudgmentHint/ex
 import type { TracePoint } from '../components/TuningCard/TuningCard';
 import { TRACE_SECONDS } from '../components/TuningCard/TuningCard';
 import { loadEarnedBadges } from '../services/badges';
+import { keepScreenOn } from '../services/platform';
 import { DEV_TOOLS, devWindow } from './devTools';
 import type { Ear, EarAudio } from './Ear';
 import { createGameSession, type GameSession, type GameSessionOptions, type PracticeClock, type PracticeStart, type SessionEvent } from './gameSession';
@@ -216,6 +217,10 @@ export function useGame(options: GameOptions) {
     surface: null,
     recorder: null,
   });
+
+  // No celular, a tela não apaga enquanto a partida está aberta (inclusive na pausa); no fim ou na saída, volta ao normal
+  const inGame = phase !== 'over' && phase !== 'broken';
+  React.useEffect(() => (inGame ? keepScreenOn() : undefined), [inGame]);
 
   const follow = React.useCallback(() => {
     const { session, latency } = live.current;
