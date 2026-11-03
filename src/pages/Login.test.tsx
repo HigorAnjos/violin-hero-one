@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useNavigate } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AccountError, LOGIN_LINK_SENT, loginWithGoogle, sendLoginLink } from '../services/account';
 import { markOnboarded } from '../services/profile';
@@ -89,6 +90,26 @@ describe('Login (0)', () => {
     open({ google: true });
     await userEvent.click(screen.getByRole('button', { name: 'Entrar com Google' }));
     expect(loginWithGoogle).toHaveBeenCalledWith(null, anon, '/');
+  });
+
+  it('volta do Google com erro pelo deep link (celular): a tela aberta mostra o erro sem remontar', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(['session'], anon);
+    queryClient.setQueryData(['auth-providers'], { google: true });
+    const DeepLink = () => {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate('/entrar#error_code=otp_expired', { replace: true })}>volta</button>;
+    };
+    renderScreen(
+      <>
+        <Login />
+        <DeepLink />
+      </>,
+      { path: '/entrar', route: '/entrar', queryClient }
+    );
+    expect(screen.queryByText(new AccountError('expired').message)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'volta' }));
+    expect(screen.getByText(new AccountError('expired').message)).toBeInTheDocument();
   });
 
   it('já numa conta: vai para a tela inicial (ou ao nível, sem a primeira vez feita, sem laço com a raiz)', () => {

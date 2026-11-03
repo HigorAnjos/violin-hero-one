@@ -31,6 +31,7 @@ import { ProfileSync, useRemoteProfile } from './shell/profileSync';
 import { EarProvider, type Ear } from './shell/Ear';
 import { MicGuard } from './shell/MicGuard';
 import { createMicrophoneEar } from './shell/microphoneEar';
+import { useNativeAuthReturn } from './shell/nativeAuthReturn';
 import { ROUTES } from './shell/routes';
 import { ThemeChoiceProvider } from './shell/ThemeChoice';
 import { UpdatePrompt } from './shell/UpdatePrompt';
@@ -53,6 +54,12 @@ const TaskResult = React.lazy(() => import('./pages/TaskResult').then((module) =
 const Teacher = React.lazy(() => import('./pages/Teacher').then((module) => ({ default: module.Teacher })));
 const AssignTask = React.lazy(() => import('./pages/AssignTask').then((module) => ({ default: module.AssignTask })));
 const TeacherReview = React.lazy(() => import('./pages/TeacherReview').then((module) => ({ default: module.TeacherReview })));
+
+/** Volta da conta no celular (deep link): dentro do roteador, para abrir a tela que pediu a conta. */
+const NativeAuthReturn: React.FC = () => {
+  useNativeAuthReturn();
+  return null;
+};
 
 /** Primeira vez no aparelho: boas-vindas (começar sem cadastro ou entrar numa conta). Depois, a tela inicial. */
 const Home: React.FC = () => (isOnboarded() ? <Main /> : <FirstVisit />);
@@ -79,6 +86,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
       <EarProvider ear={chosen}>
         <BrowserRouter>
           <MicGuard />
+          <NativeAuthReturn />
           <React.Suspense fallback={null}>
             <Routes>
             <Route path={ROUTES.home} element={<Home />} />

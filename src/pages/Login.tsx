@@ -9,7 +9,7 @@ import { AccountError, authErrorFromUrl, LOGIN_LINK_SENT, loginWithGoogle, sendL
 import { isOnboarded } from '../services/profile';
 import { supabase } from '../services/supabase';
 import { ROUTES } from '../shell/routes';
-import { useAuthProviders, useSession } from '../shell/useAccount';
+import { useAuthProviders, useAuthReturnError, useSession } from '../shell/useAccount';
 
 const Page = styled.main`
   height: 100vh;
@@ -308,6 +308,7 @@ export const Login: React.FC = () => {
     const kind = authErrorFromUrl(window.location.href);
     return kind ? new AccountError(kind).message : null;
   });
+  useAuthReturnError(setError);
   const switching = useSwitchConfirm();
 
   // Já numa conta: a raiz (ou o nível, se a primeira vez não acabou; a raiz voltaria para cá)
