@@ -81,7 +81,7 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
   }
 }
 
-for (const tema of ['caderno', '8-bits'] as const) {
+for (const tema of ['caderno', 'palco', '8-bits'] as const) {
   test(`${tema}: apagar o aluno fora da turma pede confirmação que cabe na tela, e ele some`, async ({ page }) => {
     await page.addInitScript((id) => localStorage.setItem('vh:theme', id), tema);
     await page.emulateMedia({ reducedMotion: 'reduce' });
