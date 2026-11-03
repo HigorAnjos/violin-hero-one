@@ -101,11 +101,29 @@ const Controls = styled.div`
   gap: ${({ theme }) => theme.spacing.sm};
   max-width: calc(100% - 26rem);
 
+  > div {
+    display: contents;
+  }
+
+  /* Celular deitado (MobileMain): os botões redondos no alto e as pílulas de estado no canto de baixo */
   @media (max-height: 500px) {
     top: 1rem;
+    bottom: 0.875rem;
     right: max(1rem, env(safe-area-inset-right));
-    gap: ${({ theme }) => theme.spacing.xs};
+    flex-direction: column-reverse;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: flex-end;
     max-width: calc(100% - 20rem);
+    pointer-events: none;
+
+    > div {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: ${({ theme }) => theme.spacing.xs};
+      pointer-events: auto;
+    }
   }
 `;
 
@@ -163,9 +181,13 @@ export const Main: React.FC = () => {
         />
       </Menu>
       <Controls>
-        <StreakPill />
-        <SessionStatus accountLink />
-        <CornerLinks ranking={!student} />
+        <div>
+          <StreakPill />
+          <SessionStatus accountLink />
+        </div>
+        <div>
+          <CornerLinks ranking={!student} />
+        </div>
       </Controls>
     </Page>
   );

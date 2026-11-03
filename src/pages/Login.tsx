@@ -9,7 +9,7 @@ import { AccountError, authErrorFromUrl, LOGIN_LINK_SENT, loginWithGoogle, sendL
 import { isOnboarded } from '../services/profile';
 import { supabase } from '../services/supabase';
 import { ROUTES } from '../shell/routes';
-import { useAuthProviders, useSession } from '../shell/useAccount';
+import { useAuthProviders, useAuthReturnError, useSession } from '../shell/useAccount';
 
 const Page = styled.main`
   height: 100vh;
@@ -282,6 +282,16 @@ const Note = styled.p`
   }
 `;
 
+/** O link da política, no pé (no celular deitado a nota some e ele fica no fim da coluna que rola). */
+const Legal = styled.div`
+  display: flex;
+  margin-top: -0.5rem;
+
+  @media (max-height: 500px) {
+    margin-top: auto;
+  }
+`;
+
 const Alert = styled.p`
   font-size: 0.875rem;
   color: ${({ theme }) => theme.colors.danger.text};
@@ -308,6 +318,7 @@ export const Login: React.FC = () => {
     const kind = authErrorFromUrl(window.location.href);
     return kind ? new AccountError(kind).message : null;
   });
+  useAuthReturnError(setError);
   const switching = useSwitchConfirm();
 
   // Já numa conta: a raiz (ou o nível, se a primeira vez não acabou; a raiz voltaria para cá)
@@ -402,6 +413,11 @@ export const Login: React.FC = () => {
         {error && <Alert role="alert">{error}</Alert>}
 
         <Note>A conta só é pedida quando faz falta: para entrar no ranking, desafiar amigos ou usar em outro aparelho. Tudo que você já tocou vai junto.</Note>
+        <Legal>
+          <Button as={Link} to={ROUTES.privacy} $variant="link">
+            Política de privacidade
+          </Button>
+        </Legal>
       </Start>
     </Page>
   );

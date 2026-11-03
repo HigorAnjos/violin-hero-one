@@ -3,13 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { latencyToMs } from '../game/audio';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { LatencyPanel } from '../components/LatencyPanel/LatencyPanel';
 import { useLatencyCalibration } from '../components/LatencyPanel/useLatencyCalibration';
 import { clampLines, Kicker, Screen, ScreenTitle } from '../components/Screen/Screen';
 import { SegmentMeter } from '../components/SegmentMeter/SegmentMeter';
 import { noiseView, useSoundMeters } from '../components/SoundMeters/meterLevels';
-import { advanceTuner, initialTuner, tuningBands } from '../components/Tuner/tuner';
+import { advanceTuner, initialTuner, tuningBands } from '../components/Tuner/tunerState';
 import { Tuner } from '../components/Tuner/Tuner';
 import { meterFraction } from '../game/audio';
 import { clampA4, loadA4, useSaveCalibration } from '../services/playerAudio';
@@ -266,6 +266,7 @@ export const Calibration: React.FC = () => {
             onMeasure={calibration.start}
             onStart={begin}
             canMeasure={audio !== null}
+            volume={<SegmentMeter fraction={meterFraction(meters.volumeDb)} count={8} label={`Volume do microfone: ${formatDb(meters.volumeDb)}`} toneAt={() => 'primary'} />}
           />
         </Side>
       </Body>

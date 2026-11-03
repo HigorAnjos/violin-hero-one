@@ -3,7 +3,7 @@ import styled, { useTheme } from 'styled-components';
 import type { Song } from '../../game/notation/song';
 import { STRING_LETTERS, STRING_SOLFEGE } from '../../game/notation/violin';
 import { Kicker } from '../Screen/Screen';
-import { noteName } from '../CountIn/countIn';
+import { noteName } from '../CountIn/countInTiming';
 import { clock, keySignature, ledgerSteps, staffLayout, stepY } from '../../game/render/staff';
 
 const PX_PER_BEAT = 56;

@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AccountError,
   accountErrorKind,
   authErrorFromUrl,
+  DELETE_ACCOUNT_FUNCTION,
+  deleteAccount,
   fetchAuthProviders,
   linkEmail,
   linkGoogle,
@@ -14,7 +16,16 @@ import {
   type AccountClient,
 } from './account';
 import type { DeviceData } from './deviceData';
+import { openExternal } from './platform';
 import type { SessionState } from './session';
+
+const platform = vi.hoisted(() => ({ native: false }));
+vi.mock('./platform', () => ({ isNative: () => platform.native, openExternal: vi.fn(async () => undefined) }));
+
+afterEach(() => {
+  platform.native = false;
+  vi.mocked(openExternal).mockClear();
+});
 
 const ok = { data: {}, error: null };
 
@@ -116,6 +127,45 @@ describe('entrar numa conta que já existe', () => {
   });
 });
 
+describe('no celular (Capacitor)', () => {
+  const GOOGLE = 'https://projeto.supabase.co/auth/v1/authorize?provider=google';
+
+  it('link mágico e criar conta voltam pelo deep link do app, no caminho da tela', async () => {
+    platform.native = true;
+    const { client, auth } = fakeAuth();
+    await sendLoginLink(client, anon, 'lia@t.test', '/', fakeDevice().data);
+    expect(auth.signInWithOtp).toHaveBeenCalledWith({ email: 'lia@t.test', options: { shouldCreateUser: false, emailRedirectTo: 'app.violinhero://auth/' } });
+    await linkEmail(client, 'lia@t.test', '/configuracoes?secao=conta');
+    expect(auth.updateUser).toHaveBeenCalledWith({ email: 'lia@t.test' }, { emailRedirectTo: 'app.violinhero://auth/configuracoes?secao=conta' });
+  });
+
+  it('Google abre no navegador do sistema (o Google barra WebView) e volta pelo deep link', async () => {
+    platform.native = true;
+    const { client, auth } = fakeAuth({
+      signInWithOAuth: vi.fn().mockResolvedValue({ data: { url: GOOGLE }, error: null }),
+      linkIdentity: vi.fn().mockResolvedValue({ data: { url: GOOGLE }, error: null }),
+    });
+    await loginWithGoogle(client, anon, '/', fakeDevice().data);
+    expect(auth.signInWithOAuth).toHaveBeenCalledWith({ provider: 'google', options: { redirectTo: 'app.violinhero://auth/', skipBrowserRedirect: true } });
+    await linkGoogle(client, '/conta');
+    expect(auth.linkIdentity).toHaveBeenCalledWith({ provider: 'google', options: { redirectTo: 'app.violinhero://auth/conta', skipBrowserRedirect: true } });
+    expect(vi.mocked(openExternal).mock.calls).toEqual([[GOOGLE], [GOOGLE]]);
+  });
+
+  it('Google com erro não abre nada', async () => {
+    platform.native = true;
+    const { client } = fakeAuth({ signInWithOAuth: vi.fn().mockResolvedValue({ data: { url: null }, error: { code: 'x', status: 500 } }) });
+    await rejectsAs(loginWithGoogle(client, anon, '/', fakeDevice().data), 'server');
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+
+  it('na web, o supabase-js leva a página: nada de navegador do sistema', async () => {
+    const { client } = fakeAuth({ signInWithOAuth: vi.fn().mockResolvedValue({ data: { url: GOOGLE }, error: null }) });
+    await loginWithGoogle(client, anon, '/', fakeDevice().data);
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+});
+
 describe('sair da conta', () => {
   it('com a fila enviada, nada a perder', async () => {
     expect(await unsentBeforeSignOut(account, fakeDevice().data)).toBe(0);
@@ -143,6 +193,48 @@ describe('sair da conta', () => {
   it('sem rede para o convidado novo: offline', async () => {
     const { client } = fakeAuth({ signInAnonymously: vi.fn().mockResolvedValue({ data: { user: null }, error: new Error('rede') }) });
     expect(await signOut(client, account, fakeDevice().data)).toEqual({ status: 'offline' });
+  });
+});
+
+describe('apagar a conta', () => {
+  function withFunction(result: { data?: unknown; error: unknown }) {
+    const { client, auth } = fakeAuth();
+    const invoke = vi.fn().mockResolvedValue({ data: result.data ?? null, error: result.error });
+    return { client: { ...client, functions: { invoke } } as never, auth, invoke };
+  }
+
+  it('o servidor apaga; o aparelho esquece o usuário e volta como convidado novo', async () => {
+    const { client, auth, invoke } = withFunction({ data: { deleted: true }, error: null });
+    const { data, calls } = fakeDevice();
+    expect(await deleteAccount(client, account, data)).toEqual({ status: 'signed-in', userId: 'anon-2', anonymous: true });
+    expect(invoke).toHaveBeenCalledWith(DELETE_ACCOUNT_FUNCTION, { method: 'POST' });
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    // A fila do aparelho não sobe: era desta conta
+    expect(calls).toEqual(['forget:conta-1']);
+  });
+
+  it('convidado também apaga os dados', async () => {
+    const { client } = withFunction({ data: { deleted: true }, error: null });
+    const { data, calls } = fakeDevice();
+    await deleteAccount(client, anon, data);
+    expect(calls).toEqual(['forget:anon-1']);
+  });
+
+  it('conta de aluno (403): student, e nada é esquecido', async () => {
+    const { client, auth } = withFunction({ error: { name: 'FunctionsHttpError', context: { status: 403 } } });
+    const { data, calls } = fakeDevice();
+    await rejectsAs(deleteAccount(client, account, data), 'student');
+    expect(new AccountError('student').message).toMatch(/professor/);
+    expect(calls).toEqual([]);
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('sem rede: offline; erro do servidor: server; nada é esquecido', async () => {
+    const { data, calls } = fakeDevice();
+    await rejectsAs(deleteAccount(withFunction({ error: { name: 'FunctionsFetchError' } }).client, account, data), 'offline');
+    await rejectsAs(deleteAccount(withFunction({ error: { name: 'FunctionsHttpError', context: { status: 500 } } }).client, account, data), 'server');
+    await rejectsAs(deleteAccount(null, account, data), 'offline');
+    expect(calls).toEqual([]);
   });
 });
 

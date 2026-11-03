@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import type { StringName } from '../assets/styles/themes/types';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import { StudentAvatar } from '../components/StudentAvatar/StudentAvatar';
 import { SubmissionPlayer } from '../components/SubmissionPlayer/SubmissionPlayer';

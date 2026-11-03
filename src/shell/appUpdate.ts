@@ -19,6 +19,17 @@ export interface AppUpdate {
 /** Versão nova sempre esperando, sem service worker: ?nova-versao (ferramenta de conferência, main.tsx). */
 export const pendingUpdate = (): AppUpdate => ({ subscribe: () => () => undefined, waiting: () => true, apply: () => undefined });
 
+/**
+ * A versão nova do app, conforme onde ele roda. No celular (Capacitor) o app abre do pacote local e a versão vem da
+ * loja: o service worker não é registrado e não há aviso de versão nova. Na web, o service worker do build;
+ * `forcePending` (?nova-versao, dev e e2e) mostra o aviso sem trocar o build.
+ */
+export function startAppUpdate(options: { native: boolean; forcePending: boolean; register: RegisterServiceWorker }): AppUpdate | undefined {
+  if (options.native) return undefined;
+  if (options.forcePending) return pendingUpdate();
+  return 'serviceWorker' in navigator ? createAppUpdate(options.register) : undefined;
+}
+
 /** Com o app aberto por horas (PWA instalado), confere de hora em hora se saiu versão nova. */
 export const UPDATE_CHECK_MS = 60 * 60_000;
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SONG_FORMAT_VERSION, type Song } from '../../game/notation/song';
-import { countInView, firstNote, noteName } from './countIn';
+import { countInView, firstNote, noteName } from './countInTiming';
 
 const song = (notes: Song['measures'][number]['notes'], bpm = 120): Song => ({
   formatVersion: SONG_FORMAT_VERSION,

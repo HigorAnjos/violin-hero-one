@@ -13,7 +13,7 @@ export interface MicAudio {
   label: string;
 }
 
-/** 'hidden': a aba sumiu ou a tela bloqueou; 'stopped': alguém chamou close(). */
+/** 'hidden': a aba sumiu, a tela bloqueou ou o app foi para o fundo; 'stopped': alguém chamou close(). */
 export type MicCloseReason = 'hidden' | 'stopped';
 
 /** O pedaço do `document` que a sessão escuta; injetável nos testes. */
@@ -22,6 +22,12 @@ export interface VisibilitySource {
   addEventListener(type: 'visibilitychange', listener: () => void): void;
   removeEventListener(type: 'visibilitychange', listener: () => void): void;
 }
+
+/**
+ * O app de celular foi para o fundo (outro app, tela apagada). O WebView nem sempre avisa a página pelo
+ * visibilitychange, então o shell liga o aviso do sistema aqui. Devolve o cancelar.
+ */
+export type BackgroundSource = (listener: () => void) => () => void;
 
 export interface MicSessionDeps {
   openMicrophone: typeof openMicrophone;
@@ -32,6 +38,8 @@ export interface MicSessionDeps {
 export interface MicSessionOptions {
   a4?: number;
   document?: VisibilitySource | null;
+  /** Fundo do app nativo: fecha como a aba oculta ('hidden'). */
+  background?: BackgroundSource;
   deps?: MicSessionDeps;
 }
 
@@ -162,6 +170,7 @@ export function createMicSession(options: MicSessionOptions = {}): MicSession {
     if (doc?.visibilityState === 'hidden') shut('hidden');
   };
   doc?.addEventListener('visibilitychange', onVisibility);
+  const stopBackground = options.background?.(() => shut('hidden'));
 
   return {
     open(signal) {
@@ -220,6 +229,7 @@ export function createMicSession(options: MicSessionOptions = {}): MicSession {
     },
     dispose() {
       doc?.removeEventListener('visibilitychange', onVisibility);
+      stopBackground?.();
       shut(null);
     },
   };

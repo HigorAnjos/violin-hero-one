@@ -4,7 +4,7 @@ import { BackLink, NavigationScreen as Screen } from '../components/BackLink/Bac
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { OfflineBanner } from '../components/OfflineBanner/OfflineBanner';
 import { clampLines, Kicker, ScreenTitle } from '../components/Screen/Screen';
 import { matchesSearch, SearchField } from '../components/SearchField/SearchField';
@@ -42,6 +42,11 @@ const Header = styled.header`
   align-items: flex-start;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.lg};
+
+  @media (max-height: 500px) {
+    align-items: center;
+    gap: ${({ theme }) => theme.spacing.sm};
+  }
 `;
 
 const Intro = styled.div`
@@ -50,15 +55,58 @@ const Intro = styled.div`
   gap: ${({ theme }) => theme.spacing.xs};
 
   @media (max-height: 500px) {
+    flex: 1 1 auto;
+    min-width: 0;
     flex-direction: row-reverse;
+    justify-content: flex-end;
     align-items: baseline;
     gap: ${({ theme }) => theme.spacing.sm};
+
+    > ${Kicker} {
+      ${clampLines(1)}
+    }
   }
 `;
 
 const HeaderActions = styled.div`
   display: flex;
   gap: ${({ theme }) => theme.spacing.sm};
+
+  @media (max-height: 500px) {
+    flex: none;
+    gap: ${({ theme }) => theme.spacing.xs};
+  }
+`;
+
+/** Só no desktop: no celular deitado (MobileLibrary) o editor fica dentro do "Importar" ("Escrever ou ditar"). */
+const WideOnly = styled(Button)`
+  @media (max-height: 500px) {
+    display: none;
+  }
+`;
+
+const CompactOnly = styled(Button)`
+  display: none;
+  padding: 0 1rem;
+
+  @media (max-height: 500px) {
+    display: inline-flex;
+  }
+`;
+
+/** Lupa do celular deitado: abre a busca e a ordem, que no desktop ficam sempre na barra. */
+const SearchToggle = styled(Button)`
+  display: none;
+  padding: 0;
+
+  &[aria-expanded='true'] {
+    border-color: ${({ theme }) => theme.colors.info.main};
+    color: ${({ theme }) => theme.colors.info.text};
+  }
+
+  @media (max-height: 500px) {
+    display: inline-flex;
+  }
 `;
 
 const Toolbar = styled.div`
@@ -68,6 +116,12 @@ const Toolbar = styled.div`
 
   > span {
     flex: 1;
+  }
+
+  @media (max-height: 500px) {
+    &:not([data-open]) > :not([role='group']) {
+      display: none;
+    }
   }
 `;
 
@@ -156,7 +210,7 @@ const Grid = styled.ul`
 
     > li {
       flex: none;
-      width: 11.25rem;
+      width: 11.5rem;
     }
   }
 `;
@@ -183,7 +237,7 @@ const Cover = styled(SongCover)`
   border-bottom: 1px solid ${({ theme }) => theme.colors.surfaceBorder};
 
   @media (max-height: 500px) {
-    height: 4.5rem;
+    height: 5.25rem;
   }
 `;
 
@@ -228,7 +282,7 @@ const CardBody = styled.span`
 
     b {
       ${clampLines(1)}
-      font-size: 0.875rem;
+      font-size: 0.9375rem;
     }
   }
 `;
@@ -302,6 +356,13 @@ export const Library: React.FC = () => {
   const [query, setQuery] = React.useState('');
   const [filter, setFilter] = React.useState<FilterKey>('all');
   const [sort, setSort] = React.useState<SortKey>('shelf');
+  // Celular deitado: busca e ordem fechadas atrás da lupa; com texto na busca ficam abertas
+  const [searching, setSearching] = React.useState(false);
+  const searchOpen = searching || query !== '';
+  const toolbar = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (searching) toolbar.current?.querySelector('input')?.focus();
+  }, [searching]);
 
   const mine = own.data ?? (kept.data ?? []).filter((s) => s.sheet.origin !== 'catalog').map((s) => ({ ...s.sheet, levels: s.levels }));
   const byId = new Map<string, ShelfSong & { origin?: string }>((shelf.status === 'ready' ? shelf.songs : []).map((s) => [s.id, s]));
@@ -331,12 +392,33 @@ export const Library: React.FC = () => {
           <ScreenTitle>Biblioteca</ScreenTitle>
         </Intro>
         <HeaderActions>
-          <Button as={Link} to={ROUTES.import} $variant="ghost">
+          {!empty && (
+            <SearchToggle
+              type="button"
+              $variant="ghost"
+              aria-label="Buscar"
+              aria-expanded={searchOpen}
+              aria-controls="biblioteca-busca"
+              onClick={() => {
+                setSearching(!searchOpen);
+                setQuery('');
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M11 11l4 4" stroke="currentColor" strokeWidth="1.6" />
+              </svg>
+            </SearchToggle>
+          )}
+          <WideOnly as={Link} to={ROUTES.import} $variant="ghost">
             Importar música
-          </Button>
-          <Button as={Link} to={ROUTES.editor} $variant="ghost">
+          </WideOnly>
+          <CompactOnly as={Link} to={ROUTES.import}>
+            <span aria-hidden="true">＋</span>Importar
+          </CompactOnly>
+          <WideOnly as={Link} to={ROUTES.editor} $variant="ghost">
             <span aria-hidden="true">✎</span>Escrever música
-          </Button>
+          </WideOnly>
           {/* O retorno fica por último, na ponta direita do cabeçalho, como nas outras telas */}
           <BackLink />
         </HeaderActions>
@@ -348,7 +430,7 @@ export const Library: React.FC = () => {
         <LibraryEmpty />
       ) : (
         <>
-          <Toolbar>
+          <Toolbar ref={toolbar} id="biblioteca-busca" data-open={searchOpen || undefined}>
             <Tabs role="group" aria-label="Filtro">
               {(Object.keys(FILTERS) as FilterKey[]).map((key) => (
                 <Tab key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)}>

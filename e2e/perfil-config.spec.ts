@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { skipOnboarding } from './choose';
 import { blockWebFonts, fallbackFontsReady, fontsReady } from './fonts';
-import { expectFits, expectVisibleFocus, tinyText, tooSmallTargets } from './layout';
+import { expectFits, expectVisibleFocus, overlappingTargets, tinyText, tooSmallTargets } from './layout';
 
 /** Jogador com histórico no aparelho: apelido comprido, bicho, recordes e selos, para o Perfil ter tudo preenchido. */
 async function seedProgress(page: Page) {
@@ -28,6 +28,7 @@ const SCREENS = [
   { name: 'perfil', path: '/perfil', ready: (p: Page) => expect(p.getByRole('region', { name: 'Conquistas' })).toBeVisible() },
   { name: 'selos', path: '/selos', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Seus selos' })).toBeVisible() },
   { name: 'lembrete', path: '/configuracoes?secao=lembrete', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Lembrete de prática' })).toBeVisible() },
+  { name: 'diagnóstico de áudio', path: '/diagnostico', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Diagnóstico de áudio' })).toBeVisible() },
 ];
 
 test.beforeEach(async ({ page }) => {
@@ -69,6 +70,8 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
           await expect(page.locator('html')).toHaveAttribute('data-theme', tema);
           await expectFits(page);
           expect(await tooSmallTargets(page)).toEqual([]);
+          // A mesma régua das telas do celular (celular-telas.spec.ts): um toque não pode acertar o vizinho
+          expect(await overlappingTargets(page), 'controles sobrepostos').toEqual([]);
           expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);
         });
       }

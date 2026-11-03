@@ -26,6 +26,25 @@ describe('TuningCard', () => {
     expect(screen.getByRole('img', { name: 'Sua afinação nos últimos 2 segundos: afinado' })).toBeInTheDocument();
   });
 
+  it('celular: nota com oitava e Hz, onde tocar e a régua no lugar do traço', () => {
+    renderScreen(<TuningCard target={RE5} trace={[]} liveCents={6} a4={442} explanation={null} compact />);
+    expect(screen.getByText('Ré5')).toBeInTheDocument();
+    expect(screen.getByText('corda Lá · 3º dedo')).toBeInTheDocument();
+    // +6 ¢ na régua de ±50 ¢: a agulha 6% à direita do meio
+    expect(screen.getByRole('img', { name: 'Afinação: +6 ¢' }).querySelector('b')).toHaveStyle({ left: '56%' });
+    expect(screen.getByText('+6 ¢ · AFINADO')).toBeInTheDocument();
+  });
+
+  it('celular sem som: a régua fica sem agulha', () => {
+    renderScreen(<TuningCard target={RE5} trace={[]} liveCents={null} a4={442} explanation={null} compact />);
+    expect(screen.getByRole('img', { name: 'Afinação: sem som' }).querySelector('b')).toBeNull();
+  });
+
+  it('desktop: sem a régua do celular', () => {
+    renderScreen(<TuningCard target={RE5} trace={[]} liveCents={6} a4={442} explanation={null} />);
+    expect(screen.queryByRole('img', { name: /^Afinação:/ })).not.toBeInTheDocument();
+  });
+
   it('com erro recente, explica o motivo', () => {
     const explanation = explainJudgment(
       { index: 0, noteIndex: 0, measure: 0, string: 2, midi: 74, judgment: 'miss', issue: 'wrong-note', offsetMs: 0, cents: 0, playedMidi: 76, points: 0 },

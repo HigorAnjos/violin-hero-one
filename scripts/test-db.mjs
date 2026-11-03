@@ -31,6 +31,7 @@ const ALLOWED_FUNCTIONS = [
   'authenticated violinhero.create_challenge(uuid,integer)',
   'authenticated violinhero.create_class(text)',
   'authenticated violinhero.create_guardian_invite(uuid)',
+  'authenticated violinhero.delete_my_account()',
   'authenticated violinhero.ensure_my_profile()',
   'authenticated violinhero.get_assignment(uuid)',
   'authenticated violinhero.get_challenge(text)',
@@ -45,6 +46,7 @@ const ALLOWED_FUNCTIONS = [
   'authenticated violinhero.list_my_challenges()',
   'authenticated violinhero.list_my_children()',
   'authenticated violinhero.list_my_classes()',
+  'authenticated violinhero.remove_student(uuid)',
   'authenticated violinhero.reset_student_pin(uuid)',
   'authenticated violinhero.review_submission(uuid,integer,text,text)',
   'authenticated violinhero.set_student_active(uuid,boolean)',
@@ -2205,6 +2207,200 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         await denied(as(c, t, `select * from ${S}.audio_to_purge()`));
         await denied(as(c, t, `select ${S}.audio_purged(array['x'])`));
         await denied(as(c, t, `select * from ${S}.audio_trash`));
+      });
+    });
+
+    describe('exclusão de conta (0022)', () => {
+      const deleteMe = (uid) => rpc(uid, 'delete_my_account');
+      const count = async (table, column, uid) =>
+        Number((await c.query(`select count(*) as n from ${S}.${table} where ${column} = $1`, [uid])).rows[0].n);
+      const OWN = [['profiles', 'id'], ['plays', 'user_id'], ['records', 'user_id'], ['badges_earned', 'user_id'], ['play_days', 'user_id'],
+        ['streaks', 'user_id'], ['songs', 'owner_id'], ['challenges', 'creator_id'], ['challenge_entries', 'user_id']];
+      /** Linhas de `uid` em cada tabela que a exclusão apaga. */
+      const snapshot = async (uid) => Object.fromEntries(await Promise.all(OWN.map(async ([t, col]) => [t, await count(t, col, uid)])));
+      const challenge = (uid, playId) => rpc(uid, 'create_challenge', [playId, 2]);
+
+      it('apaga perfil, partidas, recordes, selos, sequência, músicas e desafios do jogador; os do outro jogador NÃO somem', async () => {
+        const song = await serverSong(c, { notes: 4 });
+        const ana = await newUser(c, { anonymous: false });
+        const beto = await newUser(c, { anonymous: false });
+        await serverSong(c, { owner: ana });
+        await serverSong(c, { owner: beto });
+        const daAna = await challenge(ana, (await submit(c, ana, fullPlay(song))).play_id);
+        const doBeto = await challenge(beto, (await submit(c, beto, fullPlay(song))).play_id);
+        await rpc(ana, 'accept_challenge', [doBeto.code]);
+        await rpc(beto, 'accept_challenge', [daAna.code]);
+        const before = await snapshot(ana);
+        for (const [table, n] of Object.entries(before)) assert.ok(n > 0, `cena sem ${table} da Ana`);
+        const betoBefore = await snapshot(beto);
+
+        assert.deepEqual(await deleteMe(ana), { audio: [], students: [] });
+
+        assert.deepEqual(Object.values(await snapshot(ana)), OWN.map(() => 0));
+        // Do Beto só sai a entrada dele no desafio da Ana (o desafio era dela)
+        assert.deepEqual(await snapshot(beto), { ...betoBefore, challenge_entries: betoBefore.challenge_entries - 1 });
+        assert.equal(await count('challenges', 'code', doBeto.code), 1);
+        // De novo (o auth falhou da primeira vez): não quebra e não leva nada a mais
+        assert.deepEqual(await deleteMe(ana), { audio: [], students: [] });
+        assert.deepEqual(await snapshot(beto), { ...betoBefore, challenge_entries: betoBefore.challenge_entries - 1 });
+      });
+
+      it('convidado (anônimo) também apaga; sem sessão NÃO', async () => {
+        const song = await serverSong(c, { notes: 4 });
+        const guest = await newUser(c);
+        await submit(c, guest, fullPlay(song));
+        await deleteMe(guest);
+        assert.deepEqual(Object.values(await snapshot(guest)), OWN.map(() => 0));
+        await denied(as(c, null, `select ${S}.delete_my_account()`));
+      });
+
+      it('aluno de turma NÃO apaga sozinho (PT403): quem remove é o professor, e nada some', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const ana = await studentOf(t, cls.id, 'Ana');
+        await submit(c, ana.user, fullPlay(await serverSong(c, { notes: 4 })));
+        const before = await snapshot(ana.user);
+        await assert.rejects(deleteMe(ana.user), (e) => e.code === 'PT403');
+        assert.deepEqual(await snapshot(ana.user), before);
+        // Aluno tirado da turma (inativo) continua aluno: a conta é da turma
+        await rpc(t, 'set_student_active', [ana.id, false]);
+        await assert.rejects(deleteMe(ana.user), (e) => e.code === 'PT403');
+      });
+
+      it('professor leva turmas, tarefas, entregas e as contas dos alunos delas, com o áudio; a turma de outro professor e o responsável ficam', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const ana = await studentOf(t, cls.id, 'Ana');
+        const bia = await studentOf(t, cls.id, 'Bia');
+        const nunca = await studentOf(t, cls.id, 'Caio', { join: false });
+        const song = await serverSong(c, { notes: 4 });
+        const task = await rpc(t, 'create_assignment', [cls.id, song, 'easy', 'arcade', new Date(Date.now() + 86400e3).toISOString(), null, null]);
+        await submit(c, ana.user, fullPlay(song));
+        await submit(c, bia.user, fullPlay(song));
+        const path = `${cls.id}/${ana.id}/${task.id}/take.webm`;
+        await rpc(ana.user, 'submit_assignment', [task.id, null, path]);
+        const mae = await newUser(c, { anonymous: false });
+        await rpc(mae, 'accept_guardian_invite', [(await rpc(t, 'create_guardian_invite', [ana.id])).code]);
+        const outro = await teacher();
+        const outraTurma = await classOf(outro, 'Tarde');
+        const zeca = await studentOf(outro, outraTurma.id, 'Zeca');
+        await submit(c, zeca.user, fullPlay(song));
+        const zecaBefore = await snapshot(zeca.user);
+
+        const result = await deleteMe(t);
+        assert.deepEqual(result.audio, [path]);
+        assert.deepEqual([...result.students].sort(), [ana.user, bia.user].sort());
+        assert.ok(!result.students.includes(nunca.user));
+        // A fila guarda os alunos até a Edge Function tirá-los do auth: o retry depois de uma falha ainda os recebe,
+        // mesmo com a turma já apagada
+        assert.deepEqual([...(await deleteMe(t)).students].sort(), [ana.user, bia.user].sort());
+        await c.query(`delete from ${S}.auth_deletions where user_id = $1`, [ana.user]);
+        assert.deepEqual((await deleteMe(t)).students, [bia.user]);
+
+        assert.equal(await count('classes', 'teacher_id', t), 0);
+        assert.equal(await count('class_members', 'class_id', cls.id), 0);
+        assert.equal(await count('assignments', 'class_id', cls.id), 0);
+        assert.equal(await count('profiles', 'id', t), 0);
+        for (const kid of [ana.user, bia.user]) assert.deepEqual(Object.values(await snapshot(kid)), OWN.map(() => 0));
+        // O áudio fica também na fila da limpeza diária, caso o Storage falhe na Edge Function
+        assert.equal(await count('audio_trash', 'path', path), 1);
+        assert.equal(await count('guardian_links', 'guardian_id', mae), 0);
+        assert.equal(await count('profiles', 'id', mae), 1);
+        assert.equal(await count('classes', 'id', outraTurma.id), 1);
+        assert.equal(await count('class_members', 'user_id', zeca.user), 1);
+        assert.deepEqual(await snapshot(zeca.user), zecaBefore);
+      });
+
+      it('responsável apaga a conta: sai só o vínculo; o filho, a turma e o professor ficam', async () => {
+        const t = await teacher();
+        const cls = await classOf(t);
+        const ana = await studentOf(t, cls.id, 'Ana');
+        await submit(c, ana.user, fullPlay(await serverSong(c, { notes: 4 })));
+        const mae = await newUser(c, { anonymous: false });
+        await rpc(mae, 'accept_guardian_invite', [(await rpc(t, 'create_guardian_invite', [ana.id])).code]);
+        const anaBefore = await snapshot(ana.user);
+        assert.deepEqual(await deleteMe(mae), { audio: [], students: [] });
+        assert.equal(await count('guardian_links', 'guardian_id', mae), 0);
+        assert.deepEqual(await snapshot(ana.user), anaBefore);
+        assert.equal(await count('class_members', 'id', ana.id), 1);
+        assert.equal(await count('classes', 'teacher_id', t), 1);
+      });
+
+      it('o app NÃO chama a limpeza de outro usuário (wipe_user_data) nem lê a fila do auth', async () => {
+        const a = await newUser(c);
+        const b = await newUser(c);
+        await denied(as(c, a, `select ${S}.wipe_user_data($1)`, [b]));
+        await denied(as(c, a, `select ${S}.queued_auth_deletions($1)`, [b]));
+        await denied(as(c, a, `select * from ${S}.auth_deletions`));
+        assert.equal(await count('profiles', 'id', b), 1);
+      });
+
+      describe('professor apaga o aluno (remove_student)', () => {
+        const removeStudent = (uid, memberId) => rpc(uid, 'remove_student', [memberId]);
+
+        it('apaga cadastro, PIN, entregas, vínculo do responsável e os dados da conta do aluno; o colega e o resto da turma ficam', async () => {
+          const t = await teacher();
+          const cls = await classOf(t);
+          const ana = await studentOf(t, cls.id, 'Ana');
+          const bia = await studentOf(t, cls.id, 'Bia');
+          const song = await serverSong(c, { notes: 4 });
+          const task = await rpc(t, 'create_assignment', [cls.id, song, 'easy', 'arcade', new Date(Date.now() + 86400e3).toISOString(), null, null]);
+          await submit(c, ana.user, fullPlay(song));
+          await submit(c, bia.user, fullPlay(song));
+          const path = `${cls.id}/${ana.id}/${task.id}/take.webm`;
+          await rpc(ana.user, 'submit_assignment', [task.id, null, path]);
+          await rpc(bia.user, 'submit_assignment', [task.id, null, null]);
+          const mae = await newUser(c, { anonymous: false });
+          await rpc(mae, 'accept_guardian_invite', [(await rpc(t, 'create_guardian_invite', [ana.id])).code]);
+          const biaBefore = await snapshot(bia.user);
+
+          assert.deepEqual(await removeStudent(t, ana.id), { audio: [path], students: [ana.user] });
+
+          assert.equal(await count('class_members', 'id', ana.id), 0);
+          assert.equal(await count('class_member_pins', 'member_id', ana.id), 0);
+          assert.equal(await count('submissions', 'member_id', ana.id), 0);
+          assert.equal(await count('guardian_links', 'member_id', ana.id), 0);
+          assert.deepEqual(Object.values(await snapshot(ana.user)), OWN.map(() => 0));
+          assert.equal(await count('auth_deletions', 'user_id', ana.user), 1);
+          assert.equal(await count('audio_trash', 'path', path), 1);
+          // O resto fica: colega, turma, tarefa, professor e a conta da mãe
+          assert.deepEqual(await snapshot(bia.user), biaBefore);
+          assert.equal(await count('submissions', 'member_id', bia.id), 1);
+          assert.equal(await count('assignments', 'id', task.id), 1);
+          assert.equal(await count('profiles', 'id', t), 1);
+          assert.equal(await count('profiles', 'id', mae), 1);
+          // Retry (o auth falhou): o mesmo aluno volta da fila
+          assert.deepEqual(await removeStudent(t, ana.id), { audio: [], students: [ana.user] });
+        });
+
+        it('aluno que nunca entrou: só o cadastro sai, sem conta na fila; em turma encerrada também', async () => {
+          const t = await teacher();
+          const cls = await classOf(t);
+          const caio = await studentOf(t, cls.id, 'Caio', { join: false });
+          await rpc(t, 'close_class', [cls.id]);
+          assert.deepEqual(await removeStudent(t, caio.id), { audio: [], students: [] });
+          assert.equal(await count('class_members', 'id', caio.id), 0);
+        });
+
+        it('outro professor NÃO apaga (404), nem o próprio aluno, o colega, o responsável ou o convidado (28000); nada some', async () => {
+          const t = await teacher();
+          const cls = await classOf(t);
+          const ana = await studentOf(t, cls.id, 'Ana');
+          const bia = await studentOf(t, cls.id, 'Bia');
+          await submit(c, ana.user, fullPlay(await serverSong(c, { notes: 4 })));
+          const mae = await newUser(c, { anonymous: false });
+          await rpc(mae, 'accept_guardian_invite', [(await rpc(t, 'create_guardian_invite', [ana.id])).code]);
+          const before = await snapshot(ana.user);
+          await notFound(removeStudent(await teacher(), ana.id));
+          await notFound(removeStudent(t, randomUUID()));
+          for (const who of [ana.user, bia.user, await newUser(c)]) await needsAccount(removeStudent(who, ana.id));
+          // A mãe tem conta de e-mail: passa por require_teacher, mas o aluno não é de turma dela
+          await notFound(removeStudent(mae, ana.id));
+          await denied(as(c, null, `select ${S}.remove_student($1)`, [ana.id]));
+          assert.equal(await count('class_members', 'id', ana.id), 1);
+          assert.deepEqual(await snapshot(ana.user), before);
+          assert.equal(await count('auth_deletions', 'user_id', ana.user), 0);
+        });
       });
     });
   });

@@ -2,8 +2,9 @@
 // entram, o que é do jogador continua só dele, e o que não pode entrar é recusado com o código certo. class-login: o
 // aluno entra com código + nome + PIN, e errar, insistir ou turma encerrada são recusados. Storage do áudio e
 // purge-submission-audio: só quem pode sobe e ouve, e a retenção apaga o vencido (pulam onde o Storage não roda).
-// Variáveis: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL; FUNCTION_URL, CLASS_LOGIN_URL e
-// PURGE_URL opcionais (padrão SUPABASE_URL/functions/v1/<função>; servem para apontar a função rodando no Deno da máquina).
+// delete-account: o jogador apaga a própria conta (o aluno de turma não), e o professor leva os alunos das turmas.
+// Variáveis: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL; FUNCTION_URL, CLASS_LOGIN_URL,
+// PURGE_URL e DELETE_URL opcionais (padrão SUPABASE_URL/functions/v1/<função>; servem para apontar a função rodando no Deno da máquina).
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -20,6 +21,7 @@ if (process.env.CI && !ready) throw new Error('Supabase local sem URL/chaves na 
 const FUNCTION_URL = process.env.FUNCTION_URL || `${SUPABASE_URL}/functions/v1/import-song`;
 const CLASS_LOGIN_URL = process.env.CLASS_LOGIN_URL || `${SUPABASE_URL}/functions/v1/class-login`;
 const PURGE_URL = process.env.PURGE_URL || `${SUPABASE_URL}/functions/v1/purge-submission-audio`;
+const DELETE_URL = process.env.DELETE_URL || `${SUPABASE_URL}/functions/v1/delete-account`;
 const FIXTURES = new URL('../content/import-fixtures/', import.meta.url);
 const S = 'violinhero';
 
@@ -354,6 +356,101 @@ describe('turmas: class-login, áudio das entregas e retenção', { skip: !ready
         assert.equal(r.status, 400, JSON.stringify(body));
         assert.equal(r.body.error.code, 'bad_request');
       }
+    });
+  });
+
+  describe('Edge Function delete-account', () => {
+    const remove = (token) => fetch(DELETE_URL, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_ANON_KEY, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    }).then(async (res) => ({ status: res.status, body: await res.json() }));
+    const tokenOf = async (client) => (await client.auth.getSession()).data.session.access_token;
+    const inAuth = async (id) => (await db.query('select 1 from auth.users where id = $1', [id])).rowCount === 1;
+
+    it('sem sessão: 401', async () => {
+      assert.equal((await remove(null)).status, 401);
+      assert.equal((await remove(SUPABASE_ANON_KEY)).status, 401);
+    });
+
+    it('convidado: os dados e o usuário do auth somem; outro jogador fica', async () => {
+      const guest = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { ...options, db: { schema: S } });
+      const { data, error } = await guest.auth.signInAnonymously();
+      if (error) throw error;
+      accounts.push(data.user.id);
+      const outro = await account();
+      const res = await remove(data.session.access_token);
+      assert.deepEqual([res.status, res.body], [200, { deleted: true }]);
+      assert.equal(await inAuth(data.user.id), false);
+      assert.equal((await db.query(`select 1 from ${S}.profiles where id = $1`, [data.user.id])).rowCount, 0);
+      assert.equal(await inAuth(outro.id), true);
+    });
+
+    it('aluno da turma: 403 e nada some; o professor apaga e leva a conta do aluno junto', async () => {
+      const { teacher, cls, pin } = await classWithStudent('Ana');
+      const entered = await login({ code: cls.code, name: 'Ana', pin });
+      assert.equal(entered.status, 200, JSON.stringify(entered.body));
+      const kid = await studentClient(entered.body.session);
+      const denied = await remove(await tokenOf(kid));
+      assert.deepEqual([denied.status, denied.body.error.code], [403, 'student']);
+      assert.equal(await inAuth(entered.body.user_id), true);
+
+      const res = await remove(await tokenOf(teacher.client));
+      assert.equal(res.status, 200, JSON.stringify(res.body));
+      assert.equal(await inAuth(teacher.id), false);
+      assert.equal(await inAuth(entered.body.user_id), false);
+      assert.equal((await db.query(`select 1 from ${S}.classes where id = $1`, [cls.id])).rowCount, 0);
+    });
+
+    it('o auth falha num aluno: 500, o professor continua e o retry apaga o aluno que ficou e depois ele', async () => {
+      const { teacher, cls, pin } = await classWithStudent('Bia');
+      const entered = await login({ code: cls.code, name: 'Bia', pin });
+      assert.equal(entered.status, 200, JSON.stringify(entered.body));
+      const kid = entered.body.user_id;
+      // Uma referência sem cascata segura o usuário no auth: o deleteUser dele falha como numa queda do GoTrue
+      await db.query('create table public.tf_hold_user (id uuid references auth.users)');
+      try {
+        await db.query('insert into public.tf_hold_user values ($1)', [kid]);
+        const first = await remove(await tokenOf(teacher.client));
+        assert.equal(first.status, 500, JSON.stringify(first.body));
+        assert.equal(await inAuth(kid), true);
+        assert.equal(await inAuth(teacher.id), true, 'o professor só sai depois dos alunos');
+        assert.equal((await db.query(`select 1 from ${S}.classes where id = $1`, [cls.id])).rowCount, 0);
+        assert.equal((await db.query(`select 1 from ${S}.auth_deletions where user_id = $1`, [kid])).rowCount, 1);
+      } finally {
+        await db.query('drop table public.tf_hold_user');
+      }
+      const retry = await remove(await tokenOf(teacher.client));
+      assert.equal(retry.status, 200, JSON.stringify(retry.body));
+      assert.equal(await inAuth(kid), false);
+      assert.equal(await inAuth(teacher.id), false);
+      assert.equal((await db.query(`select 1 from ${S}.auth_deletions where requested_by = $1`, [teacher.id])).rowCount, 0);
+    });
+
+    it('professor apaga um aluno da turma: o aluno sai do auth, o professor e a turma ficam; outro professor e o aluno NÃO', async () => {
+      const { teacher, cls, student, pin } = await classWithStudent('Caio');
+      const entered = await login({ code: cls.code, name: 'Caio', pin });
+      assert.equal(entered.status, 200, JSON.stringify(entered.body));
+      const removeStudent = async (token, id) => {
+        const res = await fetch(DELETE_URL, {
+          method: 'POST',
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_id: id }),
+        });
+        return { status: res.status, body: await res.json() };
+      };
+      const outro = await account();
+      assert.deepEqual((await removeStudent(await tokenOf(outro.client), student.id)).status, 404);
+      const kid = await studentClient(entered.body.session);
+      assert.deepEqual((await removeStudent(await tokenOf(kid), student.id)).body.error.code, 'not_teacher');
+      assert.equal((await removeStudent(await tokenOf(teacher.client), 'nao-e-uuid')).status, 400);
+      assert.equal(await inAuth(entered.body.user_id), true);
+
+      const res = await removeStudent(await tokenOf(teacher.client), student.id);
+      assert.deepEqual([res.status, res.body], [200, { deleted: true }]);
+      assert.equal(await inAuth(entered.body.user_id), false);
+      assert.equal(await inAuth(teacher.id), true);
+      assert.equal((await db.query(`select 1 from ${S}.classes where id = $1`, [cls.id])).rowCount, 1);
+      assert.equal((await db.query(`select 1 from ${S}.class_members where id = $1`, [student.id])).rowCount, 0);
     });
   });
 

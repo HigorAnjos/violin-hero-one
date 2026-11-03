@@ -5,6 +5,8 @@ on:
     # Só main e as branches de ciclo; o resto roda pelo pull_request (sem isso cada job do PR roda 2×)
     branches: [main, 'task/ciclo-*']
   pull_request:
+  # À mão, em qualquer branch: o único jeito de rodar os jobs do celular fora do push (ver android e ios)
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -33,6 +35,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      # Regra do versionCode das lojas (a mesma do android/app/build.gradle)
+      - run: node --test scripts/app-version.test.mjs
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -103,3 +107,59 @@ jobs:
             playwright-report
             test-results
           retention-days: 7
+
+  # App de celular (Capacitor). Só no push (main e branches de ciclo) e à mão (workflow_dispatch): o runner de macOS
+  # custa 10× o minuto do Ubuntu, e PR de tela não mexe no nativo; quebrou o nativo, a branch do ciclo ou a main acusa.
+  # As variáveis do Supabase são as públicas do build da web (Actions › Variables); sem elas o app abre sem conta.
+  android:
+    name: android (apk de debug)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # O Capacitor 8 pede JDK 21; o SDK do Android já vem no runner
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+      - run: npm run android:debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: violin-hero-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  # Prova que o iOS compila, sem assinatura: a conta da Apple Developer ainda não existe (sem certificado nem perfil)
+  ios:
+    name: ios (xcodebuild sem assinatura)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: xcodebuild
+        run: >-
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release
+          -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath ios/build
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=''
+          build

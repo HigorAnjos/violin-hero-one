@@ -6,7 +6,7 @@ import styled, { css } from 'styled-components';
 import { ANIMAL_LOOK } from '../components/AvatarPicker/AvatarPicker';
 import { Badge } from '../components/Badge/Badge';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { formatPercent, formatPoints } from '../components/ScoreCard/ScoreCard';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import type { StringName } from '../assets/styles/themes';

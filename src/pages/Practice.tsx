@@ -11,7 +11,7 @@ import { sheetCaption } from '../components/SheetPanel/sheetCaption';
 import { SheetPanel } from '../components/SheetPanel/SheetPanel';
 import { SpeedPicker, speedLabel } from '../components/SpeedPicker/SpeedPicker';
 import { Toggle } from '../components/Toggle/Toggle';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { songDurationSeconds } from '../game/notation/song';
 import { prefersReducedMotion } from '../game/render/present';
 import type { LoopRange } from '../game/synth';

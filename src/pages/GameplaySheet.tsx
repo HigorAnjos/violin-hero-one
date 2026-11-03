@@ -1,6 +1,6 @@
 import React from 'react';
 import styled, { useTheme } from 'styled-components';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { JudgmentCallout } from '../components/JudgmentCallout/JudgmentCallout';
 import { LiveTuning } from '../components/LiveTuning/LiveTuning';
 import { NowPlaying, type PlayingNote } from '../components/NowPlaying/NowPlaying';

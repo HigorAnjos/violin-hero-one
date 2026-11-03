@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { A4Picker } from '../components/A4Picker/A4Picker';
 import { AccountPanel } from '../components/AccountPanel/AccountPanel';
+import { AppVersion } from '../components/AppVersion/AppVersion';
 import { Button } from '../components/Button/Button';
 import { SettingsControls, SettingsPanel, SettingsRange, SettingsRow, SettingsValue } from '../components/SettingsPanel/SettingsPanel';
 import { ThemePicker } from '../components/ThemePicker/ThemePicker';
@@ -299,6 +300,7 @@ export const Settings: React.FC = () => {
             {s.label}
           </Link>
         ))}
+        <AppVersion />
       </Nav>
       <BackCorner><BackLink /></BackCorner>
       <Content data-reminder={section === 'lembrete' ? '' : undefined}>

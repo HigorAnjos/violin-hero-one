@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createMicSession, type MicSessionDeps, type Microphone, type PitchListener, type VisibilitySource } from '../game/audio';
+import { onAppPause } from '../services/platform';
 import { reading } from './fakeEar';
 import { createMicrophoneEar } from './microphoneEar';
+
+vi.mock('../services/platform', () => ({ onAppPause: vi.fn(() => () => undefined) }));
 
 function setup() {
   const mic = { context: {}, source: {}, stream: {}, label: 'mic', stop: vi.fn().mockResolvedValue(undefined) } as unknown as Microphone;
@@ -83,6 +86,12 @@ describe('createMicrophoneEar', () => {
     await f.ear.start();
     f.ear.stop();
     expect(onClosed).toHaveBeenLastCalledWith('stopped');
+  });
+
+  it('o Ouvido de verdade escuta o app ir para o fundo (celular)', () => {
+    vi.mocked(onAppPause).mockClear();
+    createMicrophoneEar();
+    expect(onAppPause).toHaveBeenCalledOnce();
   });
 
   it('record grava sobre o microfone já aberto, sem pedir outro', async () => {

@@ -1,7 +1,7 @@
 import React from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import { secondsPerBeat, type Song } from '../../game/notation/song';
-import { countInView, type CountInView } from './countIn';
+import { countInView, type CountInView } from './countInTiming';
 
 /**
  * Relógio do compasso de entrada: um tick por tempo, a partir do momento em que a tela abre.

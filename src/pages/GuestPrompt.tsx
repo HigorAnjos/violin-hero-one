@@ -11,7 +11,7 @@ import { AccountError, authErrorFromUrl, LINK_EMAIL_SENT, linkEmail, linkGoogle,
 import { supabase } from '../services/supabase';
 import { useProgress } from '../shell/progress';
 import { parseAccountUrl, type AccountReason } from '../shell/routes';
-import { useAuthProviders, useSession } from '../shell/useAccount';
+import { useAuthProviders, useAuthReturnError, useSession } from '../shell/useAccount';
 
 const Backdrop = styled.main`
   min-height: 100vh;
@@ -193,6 +193,7 @@ export const GuestPrompt: React.FC = () => {
     const kind = authErrorFromUrl(window.location.href);
     return kind ? { text: new AccountError(kind).message, error: true } : null;
   });
+  useAuthReturnError((text) => setNotice({ text, error: true }));
   const titleId = React.useId();
   const switching = useSwitchConfirm();
 

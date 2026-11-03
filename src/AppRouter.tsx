@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { GlobalStyles } from './assets/styles/global';
 import { Countdown } from './pages/Countdown';
 import { lazyGameScreen } from './pages/loadGameScreens';
@@ -31,10 +31,11 @@ import { ProfileSync, useRemoteProfile } from './shell/profileSync';
 import { EarProvider, type Ear } from './shell/Ear';
 import { MicGuard } from './shell/MicGuard';
 import { createMicrophoneEar } from './shell/microphoneEar';
+import { useNativeAuthReturn } from './shell/nativeAuthReturn';
 import { ROUTES } from './shell/routes';
 import { ThemeChoiceProvider } from './shell/ThemeChoice';
 import { UpdatePrompt } from './shell/UpdatePrompt';
-import { useReminderTimer } from './shell/useReminderTimer';
+import { useReminderOpen, useReminderTimer } from './shell/useReminderTimer';
 
 const Calibration = lazyGameScreen('Calibration');
 const Gameplay = lazyGameScreen('Gameplay');
@@ -44,6 +45,8 @@ const Practice = lazyGameScreen('Practice');
 const GameOver = lazyGameScreen('GameOver');
 const BadgeEarned = lazyGameScreen('BadgeEarned');
 const Results = lazyGameScreen('Results');
+const Privacy = React.lazy(() => import('./pages/Privacy').then((module) => ({ default: module.Privacy })));
+const Diagnostics = React.lazy(() => import('./pages/Diagnostics').then((module) => ({ default: module.Diagnostics })));
 const Parent = React.lazy(() => import('./pages/Parent').then(module => ({ default: module.Parent })));
 const Plans = React.lazy(() => import('./pages/Plans').then(module => ({ default: module.Plans })));
 const JoinClass = React.lazy(() => import('./pages/JoinClass').then((module) => ({ default: module.JoinClass })));
@@ -53,6 +56,24 @@ const TaskResult = React.lazy(() => import('./pages/TaskResult').then((module) =
 const Teacher = React.lazy(() => import('./pages/Teacher').then((module) => ({ default: module.Teacher })));
 const AssignTask = React.lazy(() => import('./pages/AssignTask').then((module) => ({ default: module.AssignTask })));
 const TeacherReview = React.lazy(() => import('./pages/TeacherReview').then((module) => ({ default: module.TeacherReview })));
+
+/** Volta da conta no celular (deep link): dentro do roteador, para abrir a tela que pediu a conta. */
+const NativeAuthReturn: React.FC = () => {
+  useNativeAuthReturn();
+  return null;
+};
+
+/** Toque na notificação do lembrete (celular): dentro do roteador, para abrir a tela inicial. */
+const ReminderOpen: React.FC = () => {
+  useReminderOpen();
+  return null;
+};
+
+/** ?diagnostico em qualquer endereço abre o diagnóstico de áudio, que não tem link em lugar nenhum. */
+const DiagnosticsGate: React.FC = () => {
+  const { search } = useLocation();
+  return new URLSearchParams(search).has('diagnostico') ? <Navigate to={ROUTES.diagnostics} replace /> : null;
+};
 
 /** Primeira vez no aparelho: boas-vindas (começar sem cadastro ou entrar numa conta). Depois, a tela inicial. */
 const Home: React.FC = () => (isOnboarded() ? <Main /> : <FirstVisit />);
@@ -79,6 +100,9 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
       <EarProvider ear={chosen}>
         <BrowserRouter>
           <MicGuard />
+          <NativeAuthReturn />
+          <ReminderOpen />
+          <DiagnosticsGate />
           <React.Suspense fallback={null}>
             <Routes>
             <Route path={ROUTES.home} element={<Home />} />
@@ -106,7 +130,9 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.profile} element={<Profile />} />
             <Route path={ROUTES.badges} element={<Badges />} />
             <Route path={ROUTES.reminder} element={<Navigate to={settingsUrl('lembrete')} replace />} />
+            <Route path={ROUTES.diagnostics} element={<Diagnostics />} />
             <Route path={ROUTES.login} element={<Login />} />
+            <Route path={ROUTES.privacy} element={<Privacy />} />
             <Route path={ROUTES.account} element={<GuestPrompt />} />
             <Route path={ROUTES.parent} element={<Parent />} />
             <Route path={ROUTES.plans} element={<Plans />} />

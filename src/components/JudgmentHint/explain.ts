@@ -3,7 +3,7 @@ import { DEFAULT_TOLERANCE_CENTS, DEFAULT_WINDOWS, TUNING_GREAT, TUNING_PERFECT 
 import type { Judgment, NoteJudgment, TimingWindows } from '../../game/engine/types';
 import type { Finger } from '../../game/notation/song';
 import { OPEN_STRING_MIDI, STRING_SOLFEGE, type StringIndex } from '../../game/notation/violin';
-import { noteName } from '../CountIn/countIn';
+import { noteName } from '../CountIn/countInTiming';
 
 const ORDINAL = ['', '1º', '2º', '3º', '4º'];
 

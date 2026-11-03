@@ -70,9 +70,19 @@ const Row = styled.div`
     ${clampLines(1)}
   }
 
+  /* Celular deitado (MobileGameplay): "128 · 98,4%"; o "de acertos" sai da vista, não do leitor de tela */
   @media (max-height: 500px) {
     gap: 0.5rem;
     font-size: 0.875rem;
+
+    > span:last-child > span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
 `;
 
@@ -168,7 +178,8 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({ score, multiplier, combo, 
         <Mult aria-label={`multiplicador ${multiplier} vezes`}>×{multiplier}</Mult>
         <span>
           {combo > 1 && <>{combo} · </>}
-          {formatPercent(accuracy)} de acertos
+          {formatPercent(accuracy)}
+          <span> de acertos</span>
         </span>
       </Row>
       {showSections && (

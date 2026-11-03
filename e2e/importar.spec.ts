@@ -10,7 +10,8 @@ const upload = (name: string) => ({ name, mimeType: 'application/xml', buffer: B
 
 test('importar, escolher parte, jogar e apagar da biblioteca', async ({ page }) => {
   await page.goto('/biblioteca');
-  await page.getByRole('link', { name: 'Importar música' }).click();
+  // No celular deitado o botão é o "＋ Importar" do design (MobileLibrary)
+  await page.getByRole('link', { name: /^Importar( música)?$/ }).click();
   await expect(page).toHaveURL(/\/importar$/);
   await page.goto('/importar?importacao=simulada');
   await page.getByLabel('Escolher partitura').setInputFiles(upload('quarteto.xml'));

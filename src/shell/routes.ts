@@ -30,7 +30,11 @@ export const ROUTES = {
   profile: '/perfil',
   settings: '/configuracoes',
   reminder: '/lembrete',
+  /** Escondida: ?diagnostico em qualquer endereço ou 5 toques na versão em Configurações. */
+  diagnostics: '/diagnostico',
   login: '/entrar',
+  /** Política de privacidade: pública, sem sessão (as lojas e o rodapé do site linkam aqui). */
+  privacy: '/privacidade',
   account: '/conta',
   parent: '/responsavel',
   plans: '/planos',
@@ -108,6 +112,7 @@ export const MIC_ROUTES: ReadonlySet<string> = new Set([
   ROUTES.results,
   ROUTES.taskResult,
   ROUTES.dictation,
+  ROUTES.diagnostics,
 ]);
 
 export function needsMicrophone(pathname: string): boolean {

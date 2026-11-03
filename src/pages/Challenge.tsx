@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { formatPoints } from '../components/ScoreCard/ScoreCard';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import {

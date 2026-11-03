@@ -1,9 +1,23 @@
 export type { PitchListener, PitchReading } from './types';
+export {
+  OBOE_LIMITS,
+  PROCESSING,
+  createLiveStats,
+  formatReport,
+  oboeSignals,
+  readInput,
+  soundToJudgmentMs,
+  type Calibrated,
+  type InputReport,
+  type LiveSnapshot,
+  type LiveStats,
+} from './diagnostics';
 export { RAW_AUDIO, micTrouble, openMicrophone, type MicTrouble, type Microphone } from './microphone';
 export { startPitch, type PitchHandle, type PitchOptions } from './pitch';
 export {
   MicClosedError,
   createMicSession,
+  type BackgroundSource,
   isMicClosed,
   type MicAudio,
   type MicCloseReason,

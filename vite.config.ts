@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import { loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -78,9 +79,11 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), themeBootScript(), noConverterInApp(), offlineApp()],
     server: { port: 5173, strictPort: true },
-    define: Object.fromEntries(
-      PUBLIC_ENV.map((key) => [`import.meta.env.${key}`, JSON.stringify(env[key] ?? '')])
-    ),
+    define: {
+      ...Object.fromEntries(PUBLIC_ENV.map((key) => [`import.meta.env.${key}`, JSON.stringify(env[key] ?? '')])),
+      // A versão do package.json, em Configurações (5 toques nela abrem o diagnóstico de áudio)
+      __APP_VERSION__: JSON.stringify((JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }).version),
+    },
     test: {
       globals: true,
       environment: 'jsdom',

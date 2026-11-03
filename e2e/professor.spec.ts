@@ -81,6 +81,33 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
   }
 }
 
+for (const tema of ['caderno', 'palco', '8-bits'] as const) {
+  test(`${tema}: apagar o aluno fora da turma pede confirmação que cabe na tela, e ele some`, async ({ page }) => {
+    await page.addInitScript((id) => localStorage.setItem('vh:theme', id), tema);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/professor?turmas=simulada');
+    await page.getByLabel('Nome da turma').fill('Cordas');
+    await page.getByRole('button', { name: 'Criar turma' }).click();
+    for (const name of ['Ana', 'Bruno']) {
+      await page.getByRole('textbox', { name: 'Nome do aluno' }).fill(name);
+      await page.getByRole('button', { name: 'Cadastrar' }).click();
+      await page.getByRole('alertdialog', { name: `PIN de ${name}` }).getByRole('button', { name: 'Anotei o PIN' }).click();
+    }
+    await fontsReady(page, tema);
+    await expect(page.getByRole('button', { name: 'Apagar Bruno' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Desativar Bruno' }).click();
+    await page.getByRole('button', { name: 'Apagar Bruno' }).click();
+    const dialog = page.getByRole('alertdialog', { name: 'Apagar Bruno' });
+    await expect(dialog.getByRole('button', { name: 'Manter' })).toBeFocused();
+    await dialog.scrollIntoViewIfNeeded();
+    await expect(dialog).toBeInViewport({ ratio: 1 });
+    await checkScreen(page, 'apagar aluno');
+    await dialog.getByRole('button', { name: 'Apagar para sempre' }).click();
+    await expect(page.getByRole('button', { name: 'Reativar Bruno' })).toHaveCount(0);
+    await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
+  });
+}
+
 test('"Sou professor" na entrada; sem backend, a área avisa que está sem conexão', async ({ page }) => {
   await page.goto('/entrar');
   await page.getByRole('link', { name: /Sou professor/ }).click();

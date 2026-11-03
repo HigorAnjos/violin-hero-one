@@ -28,6 +28,21 @@ const Head = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.xs};
+
+  /* Rótulo inteiro em cada tamanho: um <span> no meio da frase mudaria o desenho do texto no desktop */
+  [data-narrow] {
+    display: none;
+  }
+
+  @media (max-height: 500px) {
+    [data-wide] {
+      display: none;
+    }
+
+    [data-narrow] {
+      display: inline;
+    }
+  }
 `;
 
 const Pill = styled.span`
@@ -103,6 +118,10 @@ const Text = styled.p<{ $tone?: 'warning' | 'info' | 'danger' }>`
   line-height: 1.1875rem;
   color: ${({ theme, $tone }) => ($tone ? theme.colors[$tone].text : theme.colors.textMuted)};
 
+  [data-narrow] {
+    display: none;
+  }
+
   @media (max-height: 500px) {
     font-size: 0.75rem;
     line-height: 1rem;
@@ -111,9 +130,36 @@ const Text = styled.p<{ $tone?: 'warning' | 'info' | 'danger' }>`
     [data-wide] {
       display: none;
     }
+
+    [data-narrow] {
+      display: inline;
+    }
   }
 `;
 
+/** Só no celular deitado (MobileCalibration): o volume do microfone, que no desktop fica no cartão Microfone. */
+const Meter = styled.div`
+  display: none;
+
+  @media (max-height: 500px) {
+    display: flex;
+    align-items: center;
+    gap: ${({ theme }) => theme.spacing.xs};
+    margin-top: ${({ theme }) => theme.spacing.xxs};
+    font-size: 0.75rem;
+    color: ${({ theme }) => theme.colors.textMuted};
+
+    > :last-child {
+      flex: 1;
+    }
+  }
+`;
+
+/**
+ * "Começar" ocupa o resto da linha. No celular deitado o painel é estreito demais para "Medir de novo" e "Começar"
+ * numa linha só (o "Começar" saía cortado de 800 a 932 px de largura): lá o primeiro diz só "Medir", e o valor medido
+ * logo acima já conta que é de novo.
+ */
 const Actions = styled.div`
   display: flex;
   gap: 0.625rem;
@@ -121,6 +167,12 @@ const Actions = styled.div`
 
   > :last-child {
     flex: 1;
+  }
+
+  @media (max-height: 500px) {
+    [data-again] {
+      display: none;
+    }
   }
 `;
 
@@ -153,19 +205,24 @@ export interface LatencyPanelProps {
   onMeasure: () => void;
   onStart: () => void;
   canMeasure: boolean;
+  /** Medidor de volume do microfone, mostrado só no celular deitado. */
+  volume?: React.ReactNode;
 }
 
 const YES_NO = ['sim', 'nao'] as const;
 
 /** Latência do aparelho (tela 4): fone, valor medido, a medida automática e o "Começar". */
-export const LatencyPanel: React.FC<LatencyPanelProps> = ({ phase, seconds, measured, headphones, onHeadphones, onMeasure, onStart, canMeasure }) => {
+export const LatencyPanel: React.FC<LatencyPanelProps> = ({ phase, seconds, measured, headphones, onHeadphones, onMeasure, onStart, canMeasure, volume }) => {
   const radio = useRadioGroup(YES_NO, headphones ? 'sim' : 'nao', (v) => onHeadphones(v === 'sim'));
   const running = phase.kind === 'counting' || phase.kind === 'measuring';
   const status = phaseText(phase);
   return (
     <Panel aria-label="Latência">
       <Head>
-        <Kicker>Latência do aparelho</Kicker>
+        <Kicker>
+          <span data-wide>Latência do aparelho</span>
+          <span data-narrow>Latência</span>
+        </Kicker>
         <Pill>{measured ? 'AUTOMÁTICA' : 'PADRÃO'}</Pill>
       </Head>
       <Question>
@@ -194,17 +251,30 @@ export const LatencyPanel: React.FC<LatencyPanelProps> = ({ phase, seconds, meas
       ) : (
         <Text data-extra>O jogo toca um clique e mede quanto o microfone demora para ouvir. Esse tempo é descontado de cada nota.</Text>
       )}
-      <Text $tone="warning" data-extra>
-        ▲ Fone Bluetooth soma 150 a 250 ms. Prefira fone com fio.
+      <Text $tone="warning">
+        ▲ <span data-wide>Fone Bluetooth soma 150 a 250 ms. Prefira fone com fio.</span>
+        <span data-narrow>Evite fone Bluetooth.</span>
       </Text>
       {status && (
         <Text role="status" $tone={status.tone}>
           {status.text}
         </Text>
       )}
+      {volume && (
+        <Meter>
+          <span aria-hidden="true">Volume</span>
+          {volume}
+        </Meter>
+      )}
       <Actions>
         <Button type="button" $variant="ghost" onClick={onMeasure} disabled={running || !canMeasure}>
-          {measured || phase.kind === 'done' ? 'Medir de novo' : 'Medir'}
+          {measured || phase.kind === 'done' ? (
+            <>
+              Medir <span data-again="">de novo</span>
+            </>
+          ) : (
+            'Medir'
+          )}
         </Button>
         <Button type="button" onClick={onStart} disabled={running}>
           Começar <span aria-hidden="true">▸</span>

@@ -1,4 +1,5 @@
 import { createMicSession, isMicClosed, startRecording, type MicAudio, type MicCloseReason, type MicSession, type Recorder } from '../game/audio';
+import { onAppPause } from '../services/platform';
 import type { Ear } from './Ear';
 
 /** O Ouvido de verdade e o que as telas de jogo precisam além dele: relógio e fonte, Lá e aviso de fechamento. */
@@ -9,8 +10,11 @@ export interface MicrophoneEar extends Ear {
   record(): Recorder;
 }
 
-/** Porta das telas sobre a MicSession, a dona única do microfone. */
-export function createMicrophoneEar(session: MicSession = createMicSession()): MicrophoneEar {
+/**
+ * Porta das telas sobre a MicSession, a dona única do microfone. No celular, o app indo para o fundo fecha o
+ * microfone como a aba oculta: a partida pausa e nada é gravado com a tela apagada.
+ */
+export function createMicrophoneEar(session: MicSession = createMicSession({ background: onAppPause })): MicrophoneEar {
   return {
     async start() {
       try {

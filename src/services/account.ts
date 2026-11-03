@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { deviceData, type DeviceData } from './deviceData';
+import { NATIVE_AUTH_RETURN } from './nativeAuth';
+import { isNative, openExternal } from './platform';
 import { signedIn, type SessionState } from './session';
 
 /**
@@ -12,7 +14,7 @@ export type AccountClient = {
   auth: Pick<SupabaseClient['auth'], 'updateUser' | 'linkIdentity' | 'signInWithOtp' | 'signInWithOAuth' | 'signOut' | 'signInAnonymously'>;
 };
 
-export type AccountErrorKind = 'invalid-email' | 'google-taken' | 'expired' | 'wait' | 'pending' | 'offline' | 'server';
+export type AccountErrorKind = 'invalid-email' | 'google-taken' | 'expired' | 'wait' | 'pending' | 'student' | 'offline' | 'server';
 
 /**
  * O que a tela diz depois de pedir o link, tenha o e-mail conta ou não: nem o login nem a criação de conta revelam
@@ -30,6 +32,7 @@ const MESSAGES: Record<AccountErrorKind, string> = {
   'google-taken': 'Essa conta Google já é de outro jogador. Entre por ela na tela de entrada.',
   wait: 'Muitos pedidos seguidos. Espere um minuto e tente de novo.',
   pending: 'As partidas deste aparelho ainda não subiram. Conecte à internet e tente de novo.',
+  student: 'Esta conta é da turma: quem apaga é o professor, na área do professor. Peça na escola ou pelo responsável.',
   offline: 'Sem conexão. A conta precisa de internet.',
   server: 'Não foi possível falar com o servidor agora. Tente de novo em instantes.',
 };
@@ -78,9 +81,24 @@ export function normalizeEmail(raw: string): string | null {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
-/** Endereço completo para onde o link mágico e o Google voltam (o caminho da tela que pediu a conta). */
-export function returnUrl(path: string, origin: string = window.location.origin): string {
+/**
+ * Endereço completo para onde o link mágico e o Google voltam (o caminho da tela que pediu a conta). No celular, o
+ * deep link do app (app.violinhero://auth/<caminho>), que o nativeAuth troca pela sessão.
+ */
+export function returnUrl(path: string, origin: string = isNative() ? NATIVE_AUTH_RETURN : window.location.origin): string {
   return new URL(path, origin).toString();
+}
+
+/**
+ * Google: na web o supabase-js leva a própria página até lá. No celular o Google não deixa entrar por WebView: o
+ * endereço vem de volta (skipBrowserRedirect) e abre no navegador do sistema.
+ */
+function providerOptions(back: string): { redirectTo: string; skipBrowserRedirect?: boolean } {
+  return isNative() ? { redirectTo: returnUrl(back), skipBrowserRedirect: true } : { redirectTo: returnUrl(back) };
+}
+
+async function openProvider(url: string | null | undefined): Promise<void> {
+  if (isNative() && url) await openExternal(url);
 }
 
 function requireEmail(raw: string): string {
@@ -107,8 +125,9 @@ export async function linkEmail(client: AccountClient | null, raw: string, back:
 /** Criar conta pelo Google: o navegador vai ao Google e volta em `back` com o mesmo user id. */
 export async function linkGoogle(client: AccountClient | null, back: string): Promise<void> {
   const db = requireClient(client);
-  const { error } = await db.auth.linkIdentity({ provider: 'google', options: { redirectTo: returnUrl(back) } });
+  const { data, error } = await db.auth.linkIdentity({ provider: 'google', options: providerOptions(back) });
   fail(error);
+  await openProvider(data?.url);
 }
 
 /** Antes de trocar de usuário: a fila do anônimo sobe na conta anônima; sem conseguir, nada de trocar. */
@@ -137,8 +156,9 @@ export async function sendLoginLink(client: AccountClient | null, session: Sessi
 export async function loginWithGoogle(client: AccountClient | null, session: SessionState, back: string, data: DeviceData = deviceData()): Promise<void> {
   const db = requireClient(client);
   await flushBeforeSwitch(session, data);
-  const { error } = await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: returnUrl(back) } });
+  const { data: provider, error } = await db.auth.signInWithOAuth({ provider: 'google', options: providerOptions(back) });
   fail(error);
+  await openProvider(provider?.url);
 }
 
 /** Antes de sair: tenta subir a fila; o que não subiu é o que sair agora descartaria. */
@@ -162,6 +182,34 @@ export async function signOut(client: AccountClient | null, session: SessionStat
   const { error } = await db.auth.signOut({ scope: 'local' });
   fail(error);
   if (session.status === 'signed-in') await data.forget(session.userId);
+  const fresh = await db.auth.signInAnonymously();
+  if (fresh.error || !fresh.data.user) return { status: 'offline' };
+  return signedIn(fresh.data.user);
+}
+
+/** A Edge Function que apaga a conta (só ela tem a chave de serviço para tirar o usuário do auth). */
+export const DELETE_ACCOUNT_FUNCTION = 'delete-account';
+
+export type DeleteAccountClient = AccountClient & { functions: Pick<SupabaseClient['functions'], 'invoke'> };
+
+/**
+ * Apagar a conta (ou, no convidado, os dados): o servidor apaga perfil, partidas, recordes, selos, desafios, músicas,
+ * vínculos e turmas que ele dá, e o usuário do auth (supabase/functions/delete-account). O que estava na fila do
+ * aparelho vai junto, sem subir. Depois, como em sair, o aparelho esquece o usuário e volta a ser um convidado novo.
+ * Conta de aluno de turma: 'student' (quem apaga é o professor).
+ */
+export async function deleteAccount(client: DeleteAccountClient | null, session: SessionState, data: DeviceData = deviceData()): Promise<SessionState> {
+  const db = requireClient(client) as DeleteAccountClient;
+  if (session.status !== 'signed-in') throw new AccountError('offline');
+  const { error } = await db.functions.invoke(DELETE_ACCOUNT_FUNCTION, { method: 'POST' });
+  if (error) {
+    const context = (error as { context?: { status?: number } }).context;
+    if (!context) throw new AccountError((error as { name?: string }).name === 'FunctionsFetchError' ? 'offline' : 'server', error);
+    throw new AccountError(context.status === 403 ? 'student' : 'server', error);
+  }
+  // O usuário já não existe no servidor: a sessão local sai mesmo que o auth responda erro
+  await db.auth.signOut({ scope: 'local' }).catch(() => undefined);
+  await data.forget(session.userId);
   const fresh = await db.auth.signInAnonymously();
   if (fresh.error || !fresh.data.user) return { status: 'offline' };
   return signedIn(fresh.data.user);

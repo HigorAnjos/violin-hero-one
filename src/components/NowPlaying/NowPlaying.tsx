@@ -1,9 +1,9 @@
 import React from 'react';
 import styled, { useTheme } from 'styled-components';
 import { STRING_LETTERS, type StringIndex } from '../../game/notation/violin';
-import { noteName } from '../CountIn/countIn';
+import { noteName } from '../CountIn/countInTiming';
 import { clampLines, Kicker } from '../Screen/Screen';
-import { holdText, placeLine } from './nowPlaying';
+import { holdText, placeLine } from './nowPlayingText';
 
 const Panel = styled.section`
   display: flex;
