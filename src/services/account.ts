@@ -14,7 +14,7 @@ export type AccountClient = {
   auth: Pick<SupabaseClient['auth'], 'updateUser' | 'linkIdentity' | 'signInWithOtp' | 'signInWithOAuth' | 'signOut' | 'signInAnonymously'>;
 };
 
-export type AccountErrorKind = 'invalid-email' | 'google-taken' | 'expired' | 'wait' | 'pending' | 'offline' | 'server';
+export type AccountErrorKind = 'invalid-email' | 'google-taken' | 'expired' | 'wait' | 'pending' | 'student' | 'offline' | 'server';
 
 /**
  * O que a tela diz depois de pedir o link, tenha o e-mail conta ou não: nem o login nem a criação de conta revelam
@@ -32,6 +32,7 @@ const MESSAGES: Record<AccountErrorKind, string> = {
   'google-taken': 'Essa conta Google já é de outro jogador. Entre por ela na tela de entrada.',
   wait: 'Muitos pedidos seguidos. Espere um minuto e tente de novo.',
   pending: 'As partidas deste aparelho ainda não subiram. Conecte à internet e tente de novo.',
+  student: 'Esta conta é da turma: quem apaga é o professor. Peça na escola ou pelo responsável.',
   offline: 'Sem conexão. A conta precisa de internet.',
   server: 'Não foi possível falar com o servidor agora. Tente de novo em instantes.',
 };
@@ -181,6 +182,34 @@ export async function signOut(client: AccountClient | null, session: SessionStat
   const { error } = await db.auth.signOut({ scope: 'local' });
   fail(error);
   if (session.status === 'signed-in') await data.forget(session.userId);
+  const fresh = await db.auth.signInAnonymously();
+  if (fresh.error || !fresh.data.user) return { status: 'offline' };
+  return signedIn(fresh.data.user);
+}
+
+/** A Edge Function que apaga a conta (só ela tem a chave de serviço para tirar o usuário do auth). */
+export const DELETE_ACCOUNT_FUNCTION = 'delete-account';
+
+export type DeleteAccountClient = AccountClient & { functions: Pick<SupabaseClient['functions'], 'invoke'> };
+
+/**
+ * Apagar a conta (ou, no convidado, os dados): o servidor apaga perfil, partidas, recordes, selos, desafios, músicas,
+ * vínculos e turmas que ele dá, e o usuário do auth (supabase/functions/delete-account). O que estava na fila do
+ * aparelho vai junto, sem subir. Depois, como em sair, o aparelho esquece o usuário e volta a ser um convidado novo.
+ * Conta de aluno de turma: 'student' (quem apaga é o professor).
+ */
+export async function deleteAccount(client: DeleteAccountClient | null, session: SessionState, data: DeviceData = deviceData()): Promise<SessionState> {
+  const db = requireClient(client) as DeleteAccountClient;
+  if (session.status !== 'signed-in') throw new AccountError('offline');
+  const { error } = await db.functions.invoke(DELETE_ACCOUNT_FUNCTION, { method: 'POST' });
+  if (error) {
+    const context = (error as { context?: { status?: number } }).context;
+    if (!context) throw new AccountError((error as { name?: string }).name === 'FunctionsFetchError' ? 'offline' : 'server', error);
+    throw new AccountError(context.status === 403 ? 'student' : 'server', error);
+  }
+  // O usuário já não existe no servidor: a sessão local sai mesmo que o auth responda erro
+  await db.auth.signOut({ scope: 'local' }).catch(() => undefined);
+  await data.forget(session.userId);
   const fresh = await db.auth.signInAnonymously();
   if (fresh.error || !fresh.data.user) return { status: 'offline' };
   return signedIn(fresh.data.user);

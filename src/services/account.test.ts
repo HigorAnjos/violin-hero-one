@@ -3,6 +3,8 @@ import {
   AccountError,
   accountErrorKind,
   authErrorFromUrl,
+  DELETE_ACCOUNT_FUNCTION,
+  deleteAccount,
   fetchAuthProviders,
   linkEmail,
   linkGoogle,
@@ -191,6 +193,48 @@ describe('sair da conta', () => {
   it('sem rede para o convidado novo: offline', async () => {
     const { client } = fakeAuth({ signInAnonymously: vi.fn().mockResolvedValue({ data: { user: null }, error: new Error('rede') }) });
     expect(await signOut(client, account, fakeDevice().data)).toEqual({ status: 'offline' });
+  });
+});
+
+describe('apagar a conta', () => {
+  function withFunction(result: { data?: unknown; error: unknown }) {
+    const { client, auth } = fakeAuth();
+    const invoke = vi.fn().mockResolvedValue({ data: result.data ?? null, error: result.error });
+    return { client: { ...client, functions: { invoke } } as never, auth, invoke };
+  }
+
+  it('o servidor apaga; o aparelho esquece o usuário e volta como convidado novo', async () => {
+    const { client, auth, invoke } = withFunction({ data: { deleted: true }, error: null });
+    const { data, calls } = fakeDevice();
+    expect(await deleteAccount(client, account, data)).toEqual({ status: 'signed-in', userId: 'anon-2', anonymous: true });
+    expect(invoke).toHaveBeenCalledWith(DELETE_ACCOUNT_FUNCTION, { method: 'POST' });
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    // A fila do aparelho não sobe: era desta conta
+    expect(calls).toEqual(['forget:conta-1']);
+  });
+
+  it('convidado também apaga os dados', async () => {
+    const { client } = withFunction({ data: { deleted: true }, error: null });
+    const { data, calls } = fakeDevice();
+    await deleteAccount(client, anon, data);
+    expect(calls).toEqual(['forget:anon-1']);
+  });
+
+  it('conta de aluno (403): student, e nada é esquecido', async () => {
+    const { client, auth } = withFunction({ error: { name: 'FunctionsHttpError', context: { status: 403 } } });
+    const { data, calls } = fakeDevice();
+    await rejectsAs(deleteAccount(client, account, data), 'student');
+    expect(new AccountError('student').message).toMatch(/professor/);
+    expect(calls).toEqual([]);
+    expect(auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('sem rede: offline; erro do servidor: server; nada é esquecido', async () => {
+    const { data, calls } = fakeDevice();
+    await rejectsAs(deleteAccount(withFunction({ error: { name: 'FunctionsFetchError' } }).client, account, data), 'offline');
+    await rejectsAs(deleteAccount(withFunction({ error: { name: 'FunctionsHttpError', context: { status: 500 } } }).client, account, data), 'server');
+    await rejectsAs(deleteAccount(null, account, data), 'offline');
+    expect(calls).toEqual([]);
   });
 });
 
