@@ -61,6 +61,22 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
         });
       }
 
+      test('afinar em celular deitado mais largo (800×450 e 932×430): "Começar" inteiro, sem cortar o texto', async ({ page }) => {
+        test.skip(!compact(page), 'tamanhos de celular deitado');
+        for (const viewport of [{ width: 800, height: 450 }, { width: 932, height: 430 }]) {
+          await page.setViewportSize(viewport);
+          await page.goto(SCREENS[2].path);
+          await SCREENS[2].ready(page);
+          await (fonte === 'real' ? fontsReady(page, tema) : fallbackFontsReady(page, tema));
+          const start = page.getByRole('button', { name: /Começar/ });
+          const clipped = await start.evaluate((el) => el.scrollWidth - el.clientWidth);
+          expect(clipped, `Começar cortado em ${viewport.width}×${viewport.height}`).toBeLessThanOrEqual(0);
+          await expectFits(page);
+          expect(await tooSmallTargets(page)).toEqual([]);
+          expect(await overlappingTargets(page)).toEqual([]);
+        }
+      });
+
       test('biblioteca: a lupa do celular abre a busca e a ordem sem cortar nada', async ({ page }) => {
         test.skip(!compact(page), 'a lupa é só do celular deitado; no desktop a busca fica sempre na barra');
         await page.goto('/biblioteca');

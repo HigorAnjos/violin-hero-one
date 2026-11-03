@@ -155,6 +155,11 @@ const Meter = styled.div`
   }
 `;
 
+/**
+ * "Começar" ocupa o resto da linha. No celular deitado o painel é estreito demais para "Medir de novo" e "Começar"
+ * numa linha só (o "Começar" saía cortado de 800 a 932 px de largura): lá o primeiro diz só "Medir", e o valor medido
+ * logo acima já conta que é de novo.
+ */
 const Actions = styled.div`
   display: flex;
   gap: 0.625rem;
@@ -162,6 +167,12 @@ const Actions = styled.div`
 
   > :last-child {
     flex: 1;
+  }
+
+  @media (max-height: 500px) {
+    [data-again] {
+      display: none;
+    }
   }
 `;
 
@@ -257,7 +268,13 @@ export const LatencyPanel: React.FC<LatencyPanelProps> = ({ phase, seconds, meas
       )}
       <Actions>
         <Button type="button" $variant="ghost" onClick={onMeasure} disabled={running || !canMeasure}>
-          {measured || phase.kind === 'done' ? 'Medir de novo' : 'Medir'}
+          {measured || phase.kind === 'done' ? (
+            <>
+              Medir <span data-again="">de novo</span>
+            </>
+          ) : (
+            'Medir'
+          )}
         </Button>
         <Button type="button" onClick={onStart} disabled={running}>
           Começar <span aria-hidden="true">▸</span>
