@@ -11,6 +11,40 @@ export function isNative(): boolean {
   return Capacitor.isNativePlatform();
 }
 
+/** 'android', 'ios' ou 'web': o caminho dos ajustes do sistema muda de um para o outro. */
+export function nativePlatform(): 'android' | 'ios' | 'web' {
+  const platform = Capacitor.getPlatform();
+  return platform === 'android' || platform === 'ios' ? platform : 'web';
+}
+
+/**
+ * O app foi para o fundo (outro app, tela apagada, bloqueio): no nativo, pelo `pause` do Capacitor, que chega mesmo
+ * quando o WebView não avisa a página pelo visibilitychange. Na web, nunca chama (a página tem o visibilitychange).
+ * Devolve o cancelar.
+ */
+export function onAppPause(listener: () => void): () => void {
+  if (!isNative()) return () => undefined;
+  let stopped = false;
+  const handle = App.addListener('pause', () => {
+    if (!stopped) listener();
+  });
+  return () => {
+    stopped = true;
+    void handle.then((h) => h.remove());
+  };
+}
+
+/** Versão e build do app instalado (nativo), para o diagnóstico; na web, null. */
+export async function nativeAppInfo(): Promise<{ version: string; build: string } | null> {
+  if (!isNative()) return null;
+  try {
+    const info = await App.getInfo();
+    return { version: info.version, build: info.build };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Tela acesa (durante a partida): no nativo, pelo plugin de keep-awake; na web não faz nada. Devolve o desligar.
  * Falha do plugin não para o jogo: a tela só pode apagar como antes.

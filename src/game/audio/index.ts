@@ -4,6 +4,7 @@ export { startPitch, type PitchHandle, type PitchOptions } from './pitch';
 export {
   MicClosedError,
   createMicSession,
+  type BackgroundSource,
   isMicClosed,
   type MicAudio,
   type MicCloseReason,

@@ -168,6 +168,29 @@ describe('createMicSession', () => {
     await vi.waitFor(() => expect(f.mics[0].stop).toHaveBeenCalledOnce());
   });
 
+  it('app no fundo (nativo) fecha como a aba oculta; dispose para de escutar', async () => {
+    let toBackground: () => void = () => undefined;
+    const stop = vi.fn();
+    const background = vi.fn((listener: () => void) => {
+      toBackground = listener;
+      return stop;
+    });
+    const f = setup();
+    const session = createMicSession({ deps: f.spies as unknown as MicSessionDeps, document: null, background });
+    const onClose = vi.fn();
+    session.onClose(onClose);
+    await session.open();
+    toBackground();
+    expect(onClose).toHaveBeenCalledExactlyOnceWith('hidden');
+    expect(session.audio()).toBeNull();
+    await vi.waitFor(() => expect(f.mics[0].stop).toHaveBeenCalledOnce());
+    // Ir para o fundo de novo, já fechado, não avisa outra vez
+    toBackground();
+    expect(onClose).toHaveBeenCalledOnce();
+    session.dispose();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
   it('sem nada aberto, ocultar a aba ou fechar não avisa ninguém', () => {
     const f = setup();
     const onClose = vi.fn();

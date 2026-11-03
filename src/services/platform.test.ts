@@ -5,26 +5,30 @@ const native = vi.hoisted(() => ({
   keepAwake: vi.fn(async () => undefined),
   allowSleep: vi.fn(async () => undefined),
   launchUrl: undefined as string | undefined,
+  platform: 'web',
   urlListener: undefined as ((event: { url: string }) => void) | undefined,
+  pauseListener: undefined as (() => void) | undefined,
   remove: vi.fn(async () => undefined),
   open: vi.fn(async () => undefined),
   close: vi.fn(async () => undefined),
 }));
 
-vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => native.isNative } }));
+vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => native.isNative, getPlatform: () => native.platform } }));
 vi.mock('@capacitor-community/keep-awake', () => ({ KeepAwake: { keepAwake: native.keepAwake, allowSleep: native.allowSleep } }));
 vi.mock('@capacitor/browser', () => ({ Browser: { open: native.open, close: native.close } }));
 vi.mock('@capacitor/app', () => ({
   App: {
     getLaunchUrl: async () => (native.launchUrl ? { url: native.launchUrl } : undefined),
-    addListener: async (_event: string, listener: (event: { url: string }) => void) => {
-      native.urlListener = listener;
+    getInfo: async () => ({ version: '1.2.0', build: '7' }),
+    addListener: async (event: string, listener: (event: { url: string }) => void) => {
+      if (event === 'pause') native.pauseListener = listener as () => void;
+      else native.urlListener = listener;
       return { remove: native.remove };
     },
   },
 }));
 
-import { closeExternal, isNative, keepScreenOn, onAppUrl, openExternal } from './platform';
+import { closeExternal, isNative, keepScreenOn, nativeAppInfo, nativePlatform, onAppPause, onAppUrl, openExternal } from './platform';
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -32,6 +36,8 @@ beforeEach(() => {
   native.isNative = false;
   native.launchUrl = undefined;
   native.urlListener = undefined;
+  native.pauseListener = undefined;
+  native.platform = 'web';
 });
 
 afterEach(() => {
@@ -51,6 +57,15 @@ describe('platform na web', () => {
     expect(native.urlListener).toBeUndefined();
     expect(native.close).not.toHaveBeenCalled();
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('ir para o fundo fica com o visibilitychange da página; sem versão nativa', async () => {
+    const listener = vi.fn();
+    onAppPause(listener)();
+    await flush();
+    expect(native.pauseListener).toBeUndefined();
+    expect(nativePlatform()).toBe('web');
+    expect(await nativeAppInfo()).toBeNull();
   });
 
   it('a página de fora abre na própria aba', async () => {
@@ -95,6 +110,25 @@ describe('platform no nativo', () => {
     expect(native.remove).toHaveBeenCalledOnce();
     native.urlListener?.({ url: 'app.violinhero://auth/?code=c' });
     expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it('avisa quando o app vai para o fundo, até cancelar', async () => {
+    const listener = vi.fn();
+    const stop = onAppPause(listener);
+    await flush();
+    native.pauseListener?.();
+    expect(listener).toHaveBeenCalledOnce();
+    stop();
+    native.pauseListener?.();
+    expect(listener).toHaveBeenCalledOnce();
+    await flush();
+    expect(native.remove).toHaveBeenCalledOnce();
+  });
+
+  it('plataforma e versão do app instalado', async () => {
+    native.platform = 'android';
+    expect(nativePlatform()).toBe('android');
+    expect(await nativeAppInfo()).toEqual({ version: '1.2.0', build: '7' });
   });
 
   it('a página de fora abre no navegador do sistema, e fecha na volta', async () => {
