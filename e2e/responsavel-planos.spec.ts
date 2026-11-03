@@ -29,6 +29,8 @@ for (const theme of ['caderno', 'palco', '8-bits']) {
       await page.goto('/planos?turmas=simulada');
       await expect(page.getByText('20 turmas × 40 alunos')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Assinatura chega em breve' })).toBeDisabled();
+      // Sem conta de professor (aqui, sem rede): nada de "Seu plano: Grátis · 0 de 2 turmas abertas"
+      await expect(page.getByText(/Seu plano/)).toHaveCount(0);
       await expectFits(page);
       expect(await tooSmallTargets(page)).toEqual([]);
       expect(await tinyText(page)).toEqual([]);
