@@ -28,6 +28,7 @@ const SCREENS = [
   { name: 'perfil', path: '/perfil', ready: (p: Page) => expect(p.getByRole('region', { name: 'Conquistas' })).toBeVisible() },
   { name: 'selos', path: '/selos', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Seus selos' })).toBeVisible() },
   { name: 'lembrete', path: '/configuracoes?secao=lembrete', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Lembrete de prática' })).toBeVisible() },
+  { name: 'diagnóstico de áudio', path: '/diagnostico', ready: (p: Page) => expect(p.getByRole('heading', { name: 'Diagnóstico de áudio' })).toBeVisible() },
 ];
 
 test.beforeEach(async ({ page }) => {

@@ -21,3 +21,18 @@ test('o Ouvido de verdade abre e o onboarding passa do microfone para as cordas'
     .toBe(true);
   await expect(page).toHaveURL(/\/primeira-vez\/cordas$/);
 });
+
+test('diagnóstico de áudio: o Chromium desliga o processamento de voz e informa taxa e latências', async ({ page }) => {
+  await page.goto('/configuracoes?diagnostico');
+  await expect(page).toHaveURL(/\/diagnostico$/);
+  await page.getByRole('button', { name: 'Ligar o microfone' }).click();
+  const report = page.getByRole('textbox', { name: 'Diagnóstico em texto' });
+  await expect(report).toHaveValue(/aplicado: echoCancellation=desligado noiseSuppression=desligado autoGainControl=desligado/);
+  await expect(report).toHaveValue(/ignorado pelo WebView: nenhum/);
+  await expect(report).toHaveValue(/taxa: contexto \d+ Hz · microfone \d+ Hz/);
+  await expect(report).toHaveValue(/latência: base \d+\.\d ms · saída \d+\.\d ms/);
+  // O bipe do microfone falso chega ao medidor de nível
+  await expect(report).toHaveValue(/nível: -?\d+\.\d dBFS/, { timeout: 8000 });
+  await page.getByRole('button', { name: 'Desligar o microfone' }).click();
+  await expect(report).toHaveValue(/microfone: fechado/);
+});

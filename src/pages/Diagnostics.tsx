@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { BackLink, NavigationScreen } from '../components/BackLink/BackLink';
+import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { Kicker } from '../components/Screen/Screen';
 import {
@@ -21,11 +21,47 @@ import { settingsUrl } from './Settings';
 /** De quanto em quanto a tela relê as medidas ao vivo: a afinação chega a ~100 leituras por segundo. */
 const REFRESH_MS = 250;
 
-const Header = styled.header`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+/**
+ * Cabe na janela sem rolar a página: o texto do relatório rola por dentro. No celular deitado, controles à esquerda e
+ * o relatório à direita.
+ */
+const Page = styled.main`
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-areas:
+    'header back'
+    'actions actions'
+    'live live'
+    'report report';
   gap: 1rem;
+  overflow: hidden;
+  ${navigationPageInsets}
+
+  > [data-back] {
+    grid-area: back;
+  }
+
+  @media (max-height: 500px) {
+    grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      'header back'
+      'actions report'
+      'live report';
+    gap: 0.5rem 1rem;
+
+    > [data-back] {
+      justify-self: end;
+    }
+  }
+`;
+
+const Header = styled.header`
+  grid-area: header;
+  min-width: 0;
 
   h1 {
     font-family: ${({ theme }) => theme.fonts.display};
@@ -39,23 +75,55 @@ const Header = styled.header`
     font-size: 0.875rem;
     color: ${({ theme }) => theme.colors.textMuted};
   }
+
+  @media (max-height: 500px) {
+    h1 {
+      font-size: 1.25rem;
+      line-height: 1.5rem;
+    }
+
+    p {
+      display: none;
+    }
+  }
 `;
 
 const Actions = styled.div`
+  grid-area: actions;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem 0.75rem;
+
+  > [role='status'],
+  > [role='alert'] {
+    font-size: 0.875rem;
+  }
 
   > [role='status'] {
-    font-size: 0.875rem;
     color: ${({ theme }) => theme.colors.info.text};
+  }
+
+  > [role='alert'] {
+    flex-basis: 100%;
+    color: ${({ theme }) => theme.colors.warning.text};
+  }
+
+  @media (max-height: 500px) {
+    > [role='status'],
+    > [role='alert'] {
+      font-size: 0.75rem;
+    }
   }
 `;
 
 const Live = styled.dl`
+  grid-area: live;
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-content: start;
   gap: 0.75rem;
 
   > div {
@@ -78,12 +146,26 @@ const Live = styled.dl`
     color: ${({ theme }) => theme.colors.text};
     overflow-wrap: anywhere;
   }
+
+  @media (max-height: 500px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.375rem;
+
+    > div {
+      padding: 0.25rem 0.5rem;
+    }
+
+    dd {
+      font-size: 0.875rem;
+    }
+  }
 `;
 
 const Report = styled.textarea`
+  grid-area: report;
   width: 100%;
-  min-height: 16rem;
-  flex: 1;
+  min-height: 0;
+  height: 100%;
   padding: 0.75rem;
   border: 2px solid ${({ theme }) => theme.colors.surfaceBorder};
   border-radius: ${({ theme }) => theme.borderRadius.sm};
@@ -92,12 +174,7 @@ const Report = styled.textarea`
   font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   font-size: 0.75rem;
   line-height: 1.125rem;
-  resize: vertical;
-`;
-
-const Problem = styled.p`
-  font-size: 0.875rem;
-  color: ${({ theme }) => theme.colors.warning.text};
+  resize: none;
 `;
 
 const EMPTY: LiveSnapshot = { level: null, reading: null, lag: null, steadiness: null };
@@ -206,15 +283,13 @@ export const Diagnostics: React.FC = () => {
 
   const reading = live.reading;
   return (
-    <NavigationScreen $gap="1rem">
+    <Page>
       <Header>
-        <div>
-          <Kicker>Escondido</Kicker>
-          <h1>Diagnóstico de áudio</h1>
-          <p>Ligue o microfone, toque e segure uma corda solta por uns segundos, depois copie tudo.</p>
-        </div>
-        <BackLink to={settingsUrl('audio')} label="Configurações" />
+        <Kicker>Escondido</Kicker>
+        <h1>Diagnóstico de áudio</h1>
+        <p>Ligue o microfone, toque e segure uma corda solta por uns segundos, depois copie tudo.</p>
       </Header>
+      <BackLink to={settingsUrl('audio')} label="Configurações" />
 
       <Actions>
         {input ? (
@@ -230,8 +305,8 @@ export const Diagnostics: React.FC = () => {
           Copiar tudo
         </Button>
         <span role="status">{copied}</span>
+        {problem && <p role="alert">{problem}</p>}
       </Actions>
-      {problem && <Problem role="alert">{problem}</Problem>}
 
       <Live aria-label="Ao vivo">
         <div>
@@ -257,6 +332,6 @@ export const Diagnostics: React.FC = () => {
       </Live>
 
       <Report ref={report} readOnly aria-label="Diagnóstico em texto" value={fullText} spellCheck={false} />
-    </NavigationScreen>
+    </Page>
   );
 };
