@@ -8,6 +8,7 @@ const native = vi.hoisted(() => ({
   platform: 'web',
   urlListener: undefined as ((event: { url: string }) => void) | undefined,
   pauseListener: undefined as (() => void) | undefined,
+  resumeListener: undefined as (() => void) | undefined,
   remove: vi.fn(async () => undefined),
   open: vi.fn(async () => undefined),
   close: vi.fn(async () => undefined),
@@ -22,13 +23,14 @@ vi.mock('@capacitor/app', () => ({
     getInfo: async () => ({ version: '1.2.0', build: '7' }),
     addListener: async (event: string, listener: (event: { url: string }) => void) => {
       if (event === 'pause') native.pauseListener = listener as () => void;
+      else if (event === 'resume') native.resumeListener = listener as () => void;
       else native.urlListener = listener;
       return { remove: native.remove };
     },
   },
 }));
 
-import { closeExternal, isNative, keepScreenOn, nativeAppInfo, nativePlatform, onAppPause, onAppUrl, openExternal } from './platform';
+import { closeExternal, isNative, keepScreenOn, nativeAppInfo, nativePlatform, onAppPause, onAppResume, onAppUrl, openExternal } from './platform';
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -37,6 +39,7 @@ beforeEach(() => {
   native.launchUrl = undefined;
   native.urlListener = undefined;
   native.pauseListener = undefined;
+  native.resumeListener = undefined;
   native.platform = 'web';
 });
 
@@ -123,6 +126,17 @@ describe('platform no nativo', () => {
     expect(listener).toHaveBeenCalledOnce();
     await flush();
     expect(native.remove).toHaveBeenCalledOnce();
+  });
+
+  it('avisa a volta do fundo separado da ida', async () => {
+    const paused = vi.fn();
+    const resumed = vi.fn();
+    onAppPause(paused);
+    onAppResume(resumed);
+    await flush();
+    native.resumeListener?.();
+    expect(resumed).toHaveBeenCalledOnce();
+    expect(paused).not.toHaveBeenCalled();
   });
 
   it('plataforma e versão do app instalado', async () => {

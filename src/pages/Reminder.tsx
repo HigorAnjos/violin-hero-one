@@ -2,19 +2,18 @@ import React from 'react';
 import styled from 'styled-components';
 import { Kicker } from '../components/Screen/Screen';
 import { Toggle } from '../components/Toggle/Toggle';
+import { onAppResume } from '../services/platform';
 import {
   daysLabel,
-  ensurePermission,
   loadReminder,
   REMINDER_BODY,
   REMINDER_TITLE,
-  reminderSupport,
   saveReminder,
-  syncReminderWorker,
   WEEK,
   type Reminder as ReminderChoice,
   type Weekday,
 } from '../services/reminder';
+import { reminderDelivery, systemSettingsPath, type ReminderPermission } from '../services/reminderDelivery';
 import { REMINDER_CHANGED } from '../shell/useReminderTimer';
 
 const Page = styled.section`
@@ -220,28 +219,69 @@ const SUPPORT_NOTE = {
   none: 'Este navegador não mostra notificações.',
 } as const;
 
+/** No celular: o que o sistema deixa, conferido ao abrir a tela e ao voltar dos ajustes do sistema. */
+const NATIVE_NOTE: Partial<Record<ReminderPermission, string>> = {
+  granted: 'Notificações permitidas. O lembrete chega mesmo com o Violin Hero fechado.',
+  prompt: 'Ao ligar, o celular pergunta se o Violin Hero pode mandar notificações.',
+  unsupported: 'Este aparelho não mostra notificações.',
+};
+
 function useReminder(): [ReminderChoice, (next: ReminderChoice) => void] {
   const [reminder, setReminder] = React.useState(loadReminder);
   const update = (next: ReminderChoice) => {
     setReminder(next);
     saveReminder(next);
     dispatchEvent(new Event(REMINDER_CHANGED));
-    void syncReminderWorker(next);
+    void reminderDelivery().apply(next);
   };
   return [reminder, update];
 }
 
-/** 18 · Lembrete de prática: notificação local da PWA, no horário e nos dias escolhidos. Sem servidor de push. */
+/** A permissão do sistema no celular; na web, null (a tela segue como antes, só avisa depois de negar). */
+function useNativePermission(reminder: ReminderChoice): [ReminderPermission | null, (p: ReminderPermission) => void] {
+  const [permission, setPermission] = React.useState<ReminderPermission | null>(null);
+  const latest = React.useRef(reminder);
+  React.useEffect(() => {
+    latest.current = reminder;
+  }, [reminder]);
+  React.useEffect(() => {
+    const delivery = reminderDelivery();
+    if (!delivery.native) return;
+    let alive = true;
+    const check = () =>
+      void delivery.permission().then((p) => {
+        if (!alive) return;
+        setPermission(p);
+        // Liberado nos ajustes do sistema com o lembrete ligado: a agenda volta na hora
+        if (p === 'granted' && latest.current.enabled) void delivery.apply(latest.current);
+      });
+    check();
+    const stop = onAppResume(check);
+    return () => {
+      alive = false;
+      stop();
+    };
+  }, []);
+  return [permission, setPermission];
+}
+
+/**
+ * 18 · Lembrete de prática: notificação local no horário e nos dias escolhidos, sem servidor de push. Na web, da PWA;
+ * no celular, agendada no sistema.
+ */
 export const Reminder: React.FC = () => {
+  const [delivery] = React.useState(reminderDelivery);
   const [reminder, update] = useReminder();
   const [blocked, setBlocked] = React.useState(false);
-  const [support] = React.useState(reminderSupport);
+  const [support] = React.useState(delivery.support);
+  const [permission, setPermission] = useNativePermission(reminder);
 
   const toggle = async (on: boolean) => {
     if (!on) return update({ ...reminder, enabled: false });
     // A permissão só é pedida aqui, quando o jogador liga
-    const granted = await ensurePermission();
+    const granted = await delivery.request();
     setBlocked(!granted);
+    if (delivery.native) setPermission(granted ? 'granted' : 'denied');
     if (granted) update({ ...reminder, enabled: true });
   };
   const toggleDay = (day: Weekday) => {
@@ -292,7 +332,14 @@ export const Reminder: React.FC = () => {
             </button>
           ))}
         </Days>
-        {blocked ? (
+        {delivery.native && permission === 'denied' ? (
+          <Note role="alert" $tone="warning">
+            As notificações do Violin Hero estão desligadas no celular. Para ligar, abra {systemSettingsPath()} e volte
+            aqui.
+          </Note>
+        ) : delivery.native ? (
+          permission && <Note>{NATIVE_NOTE[permission]}</Note>
+        ) : blocked ? (
           <Note role="alert" $tone="warning">
             O navegador não deixou mostrar notificações. Libere nas configurações do navegador e tente de novo.
           </Note>

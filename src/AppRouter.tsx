@@ -35,7 +35,7 @@ import { useNativeAuthReturn } from './shell/nativeAuthReturn';
 import { ROUTES } from './shell/routes';
 import { ThemeChoiceProvider } from './shell/ThemeChoice';
 import { UpdatePrompt } from './shell/UpdatePrompt';
-import { useReminderTimer } from './shell/useReminderTimer';
+import { useReminderOpen, useReminderTimer } from './shell/useReminderTimer';
 
 const Calibration = lazyGameScreen('Calibration');
 const Gameplay = lazyGameScreen('Gameplay');
@@ -58,6 +58,12 @@ const TeacherReview = React.lazy(() => import('./pages/TeacherReview').then((mod
 /** Volta da conta no celular (deep link): dentro do roteador, para abrir a tela que pediu a conta. */
 const NativeAuthReturn: React.FC = () => {
   useNativeAuthReturn();
+  return null;
+};
+
+/** Toque na notificação do lembrete (celular): dentro do roteador, para abrir a tela inicial. */
+const ReminderOpen: React.FC = () => {
+  useReminderOpen();
   return null;
 };
 
@@ -87,6 +93,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
         <BrowserRouter>
           <MicGuard />
           <NativeAuthReturn />
+          <ReminderOpen />
           <React.Suspense fallback={null}>
             <Routes>
             <Route path={ROUTES.home} element={<Home />} />

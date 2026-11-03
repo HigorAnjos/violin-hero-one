@@ -23,11 +23,21 @@ export function nativePlatform(): 'android' | 'ios' | 'web' {
  * Devolve o cancelar.
  */
 export function onAppPause(listener: () => void): () => void {
+  return onAppState('pause', listener);
+}
+
+/** O app voltou do fundo (por exemplo, dos ajustes do sistema): no nativo; na web, nunca chama. */
+export function onAppResume(listener: () => void): () => void {
+  return onAppState('resume', listener);
+}
+
+function onAppState(event: 'pause' | 'resume', listener: () => void): () => void {
   if (!isNative()) return () => undefined;
   let stopped = false;
-  const handle = App.addListener('pause', () => {
+  const deliver = () => {
     if (!stopped) listener();
-  });
+  };
+  const handle = event === 'pause' ? App.addListener('pause', deliver) : App.addListener('resume', deliver);
   return () => {
     stopped = true;
     void handle.then((h) => h.remove());
