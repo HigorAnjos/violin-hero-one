@@ -82,6 +82,13 @@ describe('AppRouter', () => {
     expect(ear.open).toBe(false);
   }, APP_FLOW_TIMEOUT_MS);
 
+  it('?diagnostico em qualquer endereço abre o diagnóstico de áudio escondido', async () => {
+    markOnboarded();
+    renderApp('/configuracoes?diagnostico');
+    expect(await screen.findByRole('heading', { name: 'Diagnóstico de áudio' })).toBeInTheDocument();
+    expect(window.location.pathname + window.location.search).toBe('/diagnostico');
+  });
+
   it('caminho desconhecido volta para a raiz', async () => {
     renderApp('/nao-existe');
     expect(await screen.findByRole('heading', { name: 'Como você quer começar?' })).toBeInTheDocument();

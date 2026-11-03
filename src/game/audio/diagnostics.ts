@@ -231,7 +231,7 @@ export function formatReport({ when, app, device, input, live, calibrated, a4 }:
   );
   if (input) {
     const judgment = soundToJudgmentMs(input, live, calibrated);
-    lines.push(`som→julgamento estimado: ${judgment === null ? 'falta calibrar ou o contexto não informa a saída' : `${Math.round(judgment)} ms`}`);
+    lines.push(`som→julgamento estimado: ${judgment === null ? 'precisa de calibração, de uma nota tocada e da latência de saída do contexto' : `${Math.round(judgment)} ms`}`);
     const signals = oboeSignals(input, live, calibrated);
     lines.push(`sinais de Oboe: ${signals.length ? '' : 'nenhum'}`, ...signals.map((s) => `- ${s}`));
   }
