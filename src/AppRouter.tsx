@@ -45,6 +45,7 @@ const Practice = lazyGameScreen('Practice');
 const GameOver = lazyGameScreen('GameOver');
 const BadgeEarned = lazyGameScreen('BadgeEarned');
 const Results = lazyGameScreen('Results');
+const Privacy = React.lazy(() => import('./pages/Privacy').then((module) => ({ default: module.Privacy })));
 const Diagnostics = React.lazy(() => import('./pages/Diagnostics').then((module) => ({ default: module.Diagnostics })));
 const Parent = React.lazy(() => import('./pages/Parent').then(module => ({ default: module.Parent })));
 const Plans = React.lazy(() => import('./pages/Plans').then(module => ({ default: module.Plans })));
@@ -131,6 +132,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
             <Route path={ROUTES.reminder} element={<Navigate to={settingsUrl('lembrete')} replace />} />
             <Route path={ROUTES.diagnostics} element={<Diagnostics />} />
             <Route path={ROUTES.login} element={<Login />} />
+            <Route path={ROUTES.privacy} element={<Privacy />} />
             <Route path={ROUTES.account} element={<GuestPrompt />} />
             <Route path={ROUTES.parent} element={<Parent />} />
             <Route path={ROUTES.plans} element={<Plans />} />

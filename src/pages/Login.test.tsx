@@ -42,6 +42,11 @@ describe('Login (0)', () => {
     expect(screen.getByRole('link', { name: /Começar a tocar/ })).toHaveAttribute('href', '/');
   });
 
+  it('a política de privacidade fica a um toque', () => {
+    open();
+    expect(screen.getByRole('link', { name: 'Política de privacidade' })).toHaveAttribute('href', '/privacidade');
+  });
+
   it('o botão do Google só aparece com o provedor ligado', () => {
     const { unmount } = open();
     expect(screen.queryByRole('button', { name: 'Entrar com Google' })).not.toBeInTheDocument();

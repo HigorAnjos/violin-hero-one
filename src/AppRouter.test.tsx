@@ -89,6 +89,12 @@ describe('AppRouter', () => {
     expect(window.location.pathname + window.location.search).toBe('/diagnostico');
   });
 
+  it('a política de privacidade abre direto, sem boas-vindas nem onboarding (as lojas linkam para ela)', async () => {
+    renderApp('/privacidade');
+    expect(await screen.findByRole('heading', { name: 'Política de privacidade' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/privacidade');
+  });
+
   it('caminho desconhecido volta para a raiz', async () => {
     renderApp('/nao-existe');
     expect(await screen.findByRole('heading', { name: 'Como você quer começar?' })).toBeInTheDocument();
