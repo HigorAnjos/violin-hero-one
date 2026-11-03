@@ -14,6 +14,33 @@ const score = (...measures: string[]) =>
   measures.map((m, i) => (m.startsWith('<measure') ? m : `<measure number="${i + 1}">${m}</measure>`)).join('') +
   `</part></score-partwise>`;
 
+describe('parseMusicXml: corda e dedo escritos', () => {
+  const technical = (inner: string) => `<notations><technical>${inner}</technical></notations>`;
+
+  it('<string> (1 = Mi … 4 = Sol) e <fingering> viram a dica da nota; sem <technical>, nota sem dica', () => {
+    const s = parseMusicXml(
+      score(
+        attributes() +
+          tempo(60) +
+          note('E', 5, 4, technical('<fingering>4</fingering><string>2</string>')) +
+          note('E', 5, 4, technical('<string>1</string>')) +
+          note('A', 4, 4, `<notations><articulations><staccato/></articulations></notations>${technical('<fingering>4</fingering>')}`) +
+          note('D', 4, 4),
+      ),
+    );
+    expect(s.measures[0].notes.map((n) => n.hint)).toEqual([{ string: 2, finger: 4 }, { string: 3 }, { finger: 4 }, undefined]);
+    expect(s.measures[0].notes[3]).not.toHaveProperty('hint');
+  });
+
+  it('acorde: fica a dica da nota mais aguda; valor que não é número segue como NaN para o dedilhado avisar', () => {
+    const s = parseMusicXml(
+      score(attributes() + tempo(60) + note('D', 4, 4, technical('<string>3</string>')) + note('A', 4, 4, `<chord/>${technical('<fingering>4</fingering>')}`) + note('B', 4, 4, technical('<fingering>x</fingering>')) + rest(8)),
+    );
+    expect(s.measures[0].notes[0]).toEqual({ beat: 0, beats: 1, midi: 69, hint: { finger: 4 } });
+    expect(s.measures[0].notes[1].hint?.finger).toBeNaN();
+  });
+});
+
 describe('parseMusicXml', () => {
   it('lê título, compositor, tonalidade, compasso, andamento e notas', () => {
     const s = parseMusicXml(score(attributes() + tempo(96) + note('D', 4, 4) + note('F#', 4, 4) + note('Bb', 4, 8)));

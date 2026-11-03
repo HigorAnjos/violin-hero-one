@@ -34,6 +34,8 @@ export interface SongFile {
   sheet: SongSheet;
   source: { format: 'musicxml'; content: string };
   charts: Record<Level, Song>;
+  /** Dicas de corda e dedo da partitura que algum nível ignorou (não cabem nele); o seed mostra. */
+  warnings: string[];
 }
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -59,12 +61,15 @@ export function convertSongFile(input: { name: string; content: string }): SongF
   const id = songIdFromFileName(input.name);
   return inFile(input.name, () => {
     const score = parseMusicXml(input.content);
-    const charts = Object.fromEntries(LEVELS.map((level) => [level, levelChart(score, id, level)])) as Record<Level, Song>;
+    const warnings: string[] = [];
+    const warn = (message: string) => warnings.push(`${input.name}: ${message}`);
+    const charts = Object.fromEntries(LEVELS.map((level) => [level, levelChart(score, id, level, warn)])) as Record<Level, Song>;
     const { title, composer, bpm, timeSignature } = charts.hard;
     return {
       sheet: { id, title, composer, key: charts.hard.key, bpm, timeSignature, durationSeconds: songDurationSeconds(charts.hard) },
       source: { format: 'musicxml', content: input.content },
       charts,
+      warnings,
     };
   });
 }

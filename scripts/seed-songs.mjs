@@ -90,6 +90,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     process.exit(1);
   }
   const entries = await loadCatalog();
+  for (const warning of entries.flatMap((e) => e.warnings ?? [])) console.warn(`aviso: ${warning}`);
   // O Postgres do `supabase start` (127.0.0.1:54322) não aceita SSL; o da nuvem exige
   const local = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(process.env.DATABASE_URL);
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: local ? false : { rejectUnauthorized: false } });
