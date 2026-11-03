@@ -57,7 +57,8 @@ export function createAppUpdate(
      * Página sem controlador (primeira visita, recarga forçada) não recebe controllerchange, e a versão nova pode nem
      * ter esperado (ativou sozinha): o updateServiceWorker do vite-plugin-pwa não fazia nada e o app seguia na versão
      * velha. Aqui vale o estado do service worker: o que espera ativa e a página recarrega quando ele termina; sem
-     * nenhum esperando, a versão nova já está ativa e basta recarregar.
+     * nenhum esperando, a versão nova já está ativa e basta recarregar. O que espera e vira redundant (falhou ao
+     * ativar ou outro mais novo tomou o lugar) também recarrega: o clique nunca fica sem efeito.
      */
     apply() {
       const next = registration?.waiting;
@@ -66,7 +67,7 @@ export function createAppUpdate(
         return;
       }
       next.addEventListener('statechange', () => {
-        if (next.state === 'activated') reload();
+        if (next.state === 'activated' || next.state === 'redundant') reload();
       });
       next.postMessage(SKIP_WAITING);
     },

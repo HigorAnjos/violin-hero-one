@@ -75,6 +75,17 @@ describe('createAppUpdate', () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
+  it('a versão que esperava vira redundant (falhou ou outra tomou o lugar): o clique ainda recarrega', () => {
+    const sw = fakeRegister();
+    const reload = vi.fn();
+    const update = createAppUpdate(sw.register, 1000, reload);
+    const next = waitingWorker();
+    sw.options().onRegisteredSW?.('/sw.js', { waiting: next.worker, update: vi.fn() } as unknown as ServiceWorkerRegistration);
+    update.apply();
+    next.become('redundant');
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
   it('confere versão nova de tempos em tempos e engole a falha sem internet', async () => {
     vi.useFakeTimers();
     const sw = fakeRegister();
