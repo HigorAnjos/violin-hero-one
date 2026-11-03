@@ -125,8 +125,24 @@ describe('createGameSession', () => {
     const judgments = events.filter((e) => e.type === 'judgment');
     expect(judgments).toHaveLength(session.engine.notes.length);
     expect(judgments.every((e) => e.judgment === 'miss' && e.issue === 'not-played')).toBe(true);
-    // Passado o fim e a janela da última nota, no máximo o atraso limitado (e um quadro) depois
-    expect(context.currentTime).toBeLessThanOrEqual(end + 1 + MAX_EXPIRY_LAG_SECONDS + 1);
+    // Passado o fim e a janela da última nota, no máximo o atraso limitado mais o quadro anterior (e este) depois
+    expect(context.currentTime).toBeLessThanOrEqual(end + 1 + MAX_EXPIRY_LAG_SECONDS + 2);
+  });
+
+  it('travada única de 3 s: o piso do atraso não expira a nota tocada nela antes das leituras da fila', () => {
+    const { audio, context } = fakeAudio(10);
+    const events: SessionEvent[] = [];
+    const session = createGameSession(base(audio, { onEvent: (e) => events.push(e) }));
+    const first = session.engine.notes[0];
+    while (context.currentTime < first.time - 0.2) {
+      context.currentTime += 1 / 60;
+      session.frame();
+    }
+    context.currentTime += 3;
+    session.frame();
+    expect(events).toEqual([]);
+    for (let i = 0; i < 8; i++) session.push(reading(first.time + 0.1 + i * 0.01, first.midi));
+    expect(events[0]).toMatchObject({ type: 'judgment', index: 0, judgment: 'perfect' });
   });
 
   it('todo quadro a 1 s sem tocar, com falha: a orquestra para', () => {
