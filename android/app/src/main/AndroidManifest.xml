@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="false"
@@ -50,4 +51,8 @@
     <!-- Microfone: o WebView pede na primeira partida (getUserMedia); sem câmera nem localização -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Lembrete de prática (@capacitor/local-notifications): POST_NOTIFICATIONS (Android 13+) vem do plugin e é
+         pedida só quando o jogador liga o lembrete. O alarme exato sai: o lembrete é agendado inexato (uns minutos de
+         folga), e a Play só aceita SCHEDULE_EXACT_ALARM em app de despertador e agenda. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
 </manifest>
