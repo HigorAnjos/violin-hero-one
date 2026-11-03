@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { progressKeys } from './progress';
-import { ANIMALS, type Animal, type ProfileClient } from './profile';
+import { ANIMALS, publicNameKey, type Animal, type ProfileClient } from './profile';
 import { ensureSession, type SessionState } from './session';
 import { supabase } from './supabase';
 
@@ -25,8 +24,7 @@ export async function myPublicName(client: ProfileClient | null, session: Sessio
   return rankingName(row.animal as Animal, row.nickname_tag);
 }
 
-/** Debaixo de progressKeys.all: troca de conta refaz o nome junto. */
-export const publicNameKey = [...progressKeys.all, 'public-name'] as const;
+export { publicNameKey };
 
 export function useMyPublicName(client: ProfileClient | null = supabase): string | null {
   const queryClient = useQueryClient();

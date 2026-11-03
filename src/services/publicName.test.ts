@@ -1,6 +1,9 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook } from '@testing-library/react';
+import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { ProfileClient } from './profile';
-import { myPublicName, rankingName } from './publicName';
+import { useSaveStartProfile, type ProfileClient } from './profile';
+import { myPublicName, publicNameKey, rankingName } from './publicName';
 
 function fakeClient(result: { data: unknown; error: unknown }) {
   const query = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn().mockResolvedValue(result) };
@@ -30,5 +33,19 @@ describe('nome público', () => {
     expect(await myPublicName(fakeClient({ data: null, error: { code: 'x' } }).client, signedIn)).toBeNull();
     expect(await myPublicName(fakeClient({ data: { animal: null, nickname_tag: 4821 }, error: null }).client, signedIn)).toBeNull();
     expect(await myPublicName(fakeClient({ data: { animal: 'dragon', nickname_tag: 48213 }, error: null }).client, signedIn)).toBeNull();
+  });
+
+  it('salvar o bicho relê o nome público: o servidor pode ter trocado o número (par de outra conta)', async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['session'], { status: 'signed-in', userId: 'u1', anonymous: false });
+    queryClient.setQueryData(publicNameKey, 'Gato 48213');
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn(() => ({ eq }));
+    const client = { auth: {}, from: vi.fn(() => ({ update })) } as unknown as ProfileClient;
+    const wrapper = ({ children }: { children: React.ReactNode }) => React.createElement(QueryClientProvider, { client: queryClient }, children);
+    const { result } = renderHook(() => useSaveStartProfile(client), { wrapper });
+    await act(() => result.current.mutateAsync({ level: 'beginner', nickname: null, animal: 'fox' }));
+    expect(update).toHaveBeenCalledWith({ level: 'beginner', nickname: null, animal: 'fox' });
+    expect(queryClient.getQueryState(publicNameKey)?.isInvalidated).toBe(true);
   });
 });

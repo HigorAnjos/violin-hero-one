@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { publicNameKey } from '../services/profile';
 import { PROFILE_QUERY_KEY, syncProfileNow, type ProfileSyncClient } from '../services/profileSync';
 import { supabase } from '../services/supabase';
 import { sessionQuery } from './deviceSync';
@@ -13,7 +14,12 @@ export function useRemoteProfile(client: ProfileSyncClient | null = supabase) {
   const queryClient = useQueryClient();
   return useQuery({
     queryKey: PROFILE_QUERY_KEY,
-    queryFn: async () => syncProfileNow(client, await sessionQuery(queryClient)()),
+    queryFn: async () => {
+      const row = await syncProfileNow(client, await sessionQuery(queryClient)());
+      // O bicho pendente pode ter subido agora, com número novo (0021): o nome público é relido
+      if (row) void queryClient.invalidateQueries({ queryKey: publicNameKey });
+      return row;
+    },
     staleTime: Infinity,
     retry: false,
     // Sem rede a sessão cai para Offline e devolve null na hora: pausar a query deixaria a primeira tela em branco
