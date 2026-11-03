@@ -29,9 +29,18 @@ const Head = styled.div`
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.xs};
 
+  /* Rótulo inteiro em cada tamanho: um <span> no meio da frase mudaria o desenho do texto no desktop */
+  [data-narrow] {
+    display: none;
+  }
+
   @media (max-height: 500px) {
     [data-wide] {
       display: none;
+    }
+
+    [data-narrow] {
+      display: inline;
     }
   }
 `;
@@ -200,7 +209,8 @@ export const LatencyPanel: React.FC<LatencyPanelProps> = ({ phase, seconds, meas
     <Panel aria-label="Latência">
       <Head>
         <Kicker>
-          Latência<span data-wide> do aparelho</span>
+          <span data-wide>Latência do aparelho</span>
+          <span data-narrow>Latência</span>
         </Kicker>
         <Pill>{measured ? 'AUTOMÁTICA' : 'PADRÃO'}</Pill>
       </Head>
