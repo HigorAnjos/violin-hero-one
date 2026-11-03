@@ -111,7 +111,8 @@ export const PRIVACY_SECTIONS: readonly PrivacySection[] = [
       'Você pode ver e mudar seu perfil no próprio jogo, e apagar tudo a qualquer momento em Configurações › Conta › Apagar minha conta ' +
         '(no convidado, “Apagar meus dados”). A exclusão tira do servidor o perfil, as partidas, os recordes, os selos, as músicas, os desafios e os vínculos, e não dá para desfazer.',
       'Professor que apaga a conta leva junto as turmas, as tarefas, as entregas e as contas dos alunos delas.',
-      'A conta de aluno da turma é apagada pelo professor: o aluno ou o responsável pede a ele.',
+      'A conta de aluno da turma é apagada pelo professor, na área do professor (o aluno sai da turma e o professor toca em Apagar): ' +
+        'saem o cadastro, as entregas, o vínculo do responsável e a conta com todo o progresso. O aluno ou o responsável pede ao professor.',
       'Para outros pedidos (acesso, correção, dúvida), escreva para o contato abaixo.',
     ],
     review: true,

@@ -87,6 +87,36 @@ describe('P1 · painel do professor', () => {
     expect(await screen.findByRole('button', { name: 'Desativar Carla' })).toBeInTheDocument();
   });
 
+  it('apagar o aluno: só fora da turma, confirmado antes (Manter é o padrão), e ele some da lista', async () => {
+    const { api, klass } = await withClass();
+    const ana = (await api.addStudent(klass.id, 'Ana')).student;
+    await api.addStudent(klass.id, 'Bruno');
+    await api.setStudentActive(ana.id, false);
+    const user = userEvent.setup();
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    await screen.findByRole('button', { name: 'Reativar Ana' });
+    expect(screen.queryByRole('button', { name: 'Apagar Bruno' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Apagar Ana' }));
+    const dialog = await screen.findByRole('alertdialog', { name: 'Apagar Ana' });
+    expect(dialog).toHaveTextContent('a conta do aluno com todo o progresso');
+    expect(within(dialog).getByRole('button', { name: 'Manter' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reativar Ana' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Apagar Ana' }));
+    await user.click(await screen.findByRole('button', { name: 'Apagar para sempre' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Reativar Ana' })).not.toBeInTheDocument());
+    expect((await api.getClass(klass.id)).students.map((s) => s.name)).toEqual(['Bruno']);
+  });
+
+  it('turma encerrada: todo aluno pode ser apagado', async () => {
+    const { api, klass } = await withClass();
+    await api.addStudent(klass.id, 'Ana');
+    await api.closeClass(klass.id);
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    expect(await screen.findByRole('button', { name: 'Apagar Ana' })).toBeInTheDocument();
+  });
+
   it('o código da turma aparece em dois blocos e copia', async () => {
     const { api, klass } = await withClass();
     const user = userEvent.setup();

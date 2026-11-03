@@ -530,6 +530,13 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
   const reset = useTeacherMutation((s: ClassStudent) => api.resetStudentPin(s.id));
   const active = useTeacherMutation(({ s, on }: { s: ClassStudent; on: boolean }) => api.setStudentActive(s.id, on));
   const invite = useTeacherMutation((s: ClassStudent) => api.createGuardianInvite(s.id));
+  const remove = useTeacherMutation((s: ClassStudent) => api.removeStudent(s.id));
+  // Apagar o aluno (o caminho de exclusão da conta dele): só fora da turma ou com a turma encerrada, e confirmado antes
+  const [erasing, setErasing] = React.useState<ClassStudent | null>(null);
+  const keep = React.useRef<HTMLButtonElement>(null);
+  React.useEffect(() => {
+    if (erasing) keep.current?.focus();
+  }, [erasing]);
   const nameField = React.useRef<HTMLInputElement>(null);
   const closed = !!klass.closedAt;
   const activeCount = klass.students.filter((s) => s.active).length;
@@ -644,6 +651,19 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
                       {s.active ? 'Desativar' : 'Reativar'}
                     </Button>
                   )}
+                  {(closed || !s.active) && (
+                    <Button
+                      type="button"
+                      $variant="link"
+                      aria-label={`Apagar ${s.name}`}
+                      onClick={() => {
+                        setProblem(null);
+                        setErasing(s);
+                      }}
+                    >
+                      Apagar
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -662,6 +682,25 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
             nameField.current?.focus();
           }}
         />
+      )}
+      {erasing && (
+        <Confirm role="alertdialog" aria-label={`Apagar ${erasing.name}`}>
+          <span>
+            Apagar <b>{erasing.name}</b> para sempre? Saem o cadastro, as entregas, o vínculo do responsável e a conta do aluno com todo o progresso. Não dá
+            para desfazer.
+          </span>
+          <Button ref={keep} type="button" $variant="ghost" onClick={() => setErasing(null)}>
+            Manter
+          </Button>
+          <Danger
+            type="button"
+            $variant="link"
+            disabled={remove.isPending}
+            onClick={() => remove.mutate(erasing, { onSuccess: () => setErasing(null), onError: (cause) => (setErasing(null), fail(cause)) })}
+          >
+            Apagar para sempre
+          </Danger>
+        </Confirm>
       )}
       {shown?.kind === 'invite' && (
         <Confirm role="status">

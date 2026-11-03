@@ -169,7 +169,7 @@ export const AccountPanel: React.FC<{ client?: (DeleteAccountClient & Parameters
         <SettingsRow>
           <span>
             Apagar a conta
-            <small>Esta conta é da turma: quem apaga é o professor. Peça na escola ou pelo responsável.</small>
+            <small>{new AccountError('student').message}</small>
           </span>
         </SettingsRow>
       )}

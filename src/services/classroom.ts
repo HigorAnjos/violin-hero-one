@@ -351,6 +351,11 @@ export interface ClassroomApi {
   addStudent(classId: string, name: string): Promise<NewStudent>;
   resetStudentPin(studentId: string): Promise<{ studentId: string; pin: string }>;
   setStudentActive(studentId: string, active: boolean): Promise<ClassDetail>;
+  /**
+   * Apaga o aluno para sempre: cadastro, PIN, entregas, vínculo do responsável e a conta dele com o progresso (Edge
+   * Function delete-account, que tem a chave para tirar a conta do auth). É o caminho de exclusão da conta do aluno.
+   */
+  removeStudent(studentId: string): Promise<void>;
   closeClass(classId: string): Promise<ClassDetail>;
   createAssignment(input: NewAssignment): Promise<AssignmentDetail>;
   listClassAssignments(classId: string): Promise<AssignmentSummary[]>;
@@ -505,7 +510,20 @@ export type ClassroomClient = {
   rpc: SupabaseClient['rpc'];
   from: SupabaseClient['from'];
   storage: Pick<SupabaseClient['storage'], 'from'>;
+  functions: Pick<SupabaseClient['functions'], 'invoke'>;
 };
+
+/** Nome da Edge Function que apaga contas (supabase/functions/delete-account); o professor manda { student_id }. */
+export const DELETE_ACCOUNT_FUNCTION = 'delete-account';
+
+/** Resposta de erro da delete-account → o tipo da tela. */
+function removeErrorKind(error: unknown): ClassroomErrorKind {
+  const context = (error as { context?: { status?: number } }).context;
+  if (!context) return (error as { name?: string }).name === 'FunctionsFetchError' ? 'offline' : 'server';
+  if (context.status === 404) return 'not-found';
+  if (context.status === 403) return 'needs-account';
+  return 'server';
+}
 
 /** A API de verdade: as funções do schema violinhero e o bucket submissions, com a sessão do aparelho. */
 export function supabaseClassroom(client: ClassroomClient | null): ClassroomApi {
@@ -534,6 +552,11 @@ export function supabaseClassroom(client: ClassroomClient | null): ClassroomApi 
     resetStudentPin: (studentId) =>
       call('reset_student_pin', { p_member_id: studentId }, (r) => ({ studentId: str(r.student_id), pin: str(r.pin) })),
     setStudentActive: (studentId, active) => call('set_student_active', { p_member_id: studentId, p_active: active }, toClass),
+    removeStudent: async (studentId) => {
+      if (!client) throw new ClassroomError('offline');
+      const { error } = await client.functions.invoke(DELETE_ACCOUNT_FUNCTION, { body: { student_id: studentId } });
+      if (error) throw new ClassroomError(removeErrorKind(error), error);
+    },
     closeClass: (classId) => call('close_class', { p_class_id: classId }, toClass),
     createAssignment: (input) =>
       call('create_assignment', {

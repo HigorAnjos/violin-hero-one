@@ -12,7 +12,7 @@ Resumo do que está pronto no repositório:
 | Envio ao TestFlight | `.github/workflows/testflight-ios.yml` (à mão; para com aviso enquanto faltar a conta) |
 | Versão dos apps | `version` do `package.json` (regra abaixo) |
 | Política de privacidade | https://violin-hero-one.vercel.app/privacidade |
-| Exclusão de conta | no app: Configurações › Conta › Apagar minha conta (e no site, no mesmo lugar) |
+| Exclusão de conta | no app: Configurações › Conta › Apagar minha conta (e no site, no mesmo lugar); conta de aluno de turma: o professor apaga na área do professor (aluno fora da turma › Apagar) |
 | Ícone 512 e gráfico 1024×500 | `store/` (`npm run store:graphics` refaz, junto com os ícones nativos) |
 | Capturas de tela | `store/screenshots/play/` (1920×1080) e `store/screenshots/appstore/` (2796×1290), por `npm run store:screenshots` |
 

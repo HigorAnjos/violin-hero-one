@@ -106,6 +106,27 @@ describe('supabaseClassroom', () => {
   });
 });
 
+describe('apagar o aluno (delete-account)', () => {
+  const withFunction = (error: unknown) => {
+    const invoke = vi.fn().mockResolvedValue({ data: error ? null : { deleted: true }, error });
+    return { api: supabaseClassroom({ ...rpcClient(null).client, functions: { invoke } } as unknown as ClassroomClient), invoke };
+  };
+
+  it('manda o aluno à Edge Function, que apaga também a conta dele', async () => {
+    const { api, invoke } = withFunction(null);
+    await api.removeStudent('aluno-1');
+    expect(invoke).toHaveBeenCalledWith('delete-account', { body: { student_id: 'aluno-1' } });
+  });
+
+  it('aluno de outro professor: not-found; quem não é professor: needs-account; sem rede: offline', async () => {
+    const kind = (error: unknown) => withFunction(error).api.removeStudent('aluno-1').catch((e: ClassroomError) => e.kind);
+    expect(await kind({ name: 'FunctionsHttpError', context: { status: 404 } })).toBe('not-found');
+    expect(await kind({ name: 'FunctionsHttpError', context: { status: 403 } })).toBe('needs-account');
+    expect(await kind({ name: 'FunctionsHttpError', context: { status: 500 } })).toBe('server');
+    expect(await kind({ name: 'FunctionsFetchError' })).toBe('offline');
+  });
+});
+
 describe('áudio da entrega', () => {
   it('tipo sem parâmetros e caminho na pasta do aluno', () => {
     expect(submissionAudioType('audio/webm;codecs=opus')).toBe('audio/webm');

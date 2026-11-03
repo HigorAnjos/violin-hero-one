@@ -334,6 +334,13 @@ export function fakeClassroom({
         m.active = active;
         return classView(k);
       }),
+    removeStudent: (studentId) =>
+      run(() => {
+        const m = ownMember(studentId);
+        members.splice(members.indexOf(m), 1);
+        for (let i = submissions.length - 1; i >= 0; i--) if (submissions[i].memberId === m.id) submissions.splice(i, 1);
+        for (let i = guardians.length - 1; i >= 0; i--) if (guardians[i].memberId === m.id) guardians.splice(i, 1);
+      }),
     closeClass: (classId) =>
       run(() => {
         const k = ownClass(classId);

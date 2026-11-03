@@ -32,7 +32,7 @@ const MESSAGES: Record<AccountErrorKind, string> = {
   'google-taken': 'Essa conta Google já é de outro jogador. Entre por ela na tela de entrada.',
   wait: 'Muitos pedidos seguidos. Espere um minuto e tente de novo.',
   pending: 'As partidas deste aparelho ainda não subiram. Conecte à internet e tente de novo.',
-  student: 'Esta conta é da turma: quem apaga é o professor. Peça na escola ou pelo responsável.',
+  student: 'Esta conta é da turma: quem apaga é o professor, na área do professor. Peça na escola ou pelo responsável.',
   offline: 'Sem conexão. A conta precisa de internet.',
   server: 'Não foi possível falar com o servidor agora. Tente de novo em instantes.',
 };
