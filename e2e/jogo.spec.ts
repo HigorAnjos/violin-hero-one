@@ -102,3 +102,19 @@ test('?simular com erros demais para a orquestra', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'A orquestra parou… por hoje!' })).toBeVisible({ timeout: 40000 });
 });
 
+test('com todo quadro a 1 s, como o Chrome em segundo plano, a partida sem tocar termina com as notas como erro', async ({ page }) => {
+  test.setTimeout(60000);
+  // O ouvido simulado (setInterval de 10 ms) fica mudo e o requestAnimationFrame vem a cada 1 s
+  await page.addInitScript(() => {
+    const interval = window.setInterval.bind(window);
+    window.setInterval = ((handler: TimerHandler, ms?: number, ...args: unknown[]) => (ms === 10 ? 0 : interval(handler, ms, ...args))) as typeof window.setInterval;
+    window.requestAnimationFrame = (callback) => window.setTimeout(() => callback(performance.now()), 1000);
+    window.cancelAnimationFrame = (id) => window.clearTimeout(id);
+  });
+  await page.goto('/jogo?ouvido=simulado&musica=ciranda-cirandinha');
+  await expect(page).toHaveURL(/\/(resultado|selo-novo|orquestra-parou)$/, { timeout: 40000 });
+  const result = await page.evaluate(() => (window as Window & { __vhResult?: GameResult }).__vhResult);
+  expect(result?.judgments.length).toBeGreaterThan(0);
+  expect(result?.judgments.filter((j) => j.judgment !== 'miss' || j.issue !== 'not-played')).toEqual([]);
+});
+

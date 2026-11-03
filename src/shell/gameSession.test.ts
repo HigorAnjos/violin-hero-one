@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ODE, reading } from '../game/engine/testing';
 import type { EarAudio } from './Ear';
-import { countInTimes, createGameSession, LEAD_SECONDS, type GameSessionOptions, type SessionEvent } from './gameSession';
+import { countInTimes, createGameSession, LEAD_SECONDS, MAX_EXPIRY_LAG_SECONDS, type GameSessionOptions, type SessionEvent } from './gameSession';
 import type { GameOrchestra } from './orchestra';
 
 function fakeAudio(start = 10) {
@@ -109,6 +109,51 @@ describe('createGameSession', () => {
       session.frame();
     }
     expect(events.find((e) => e.type === 'judgment' && e.index === 1)).toMatchObject({ judgment: 'miss', issue: 'not-played' });
+  });
+
+  it('todo quadro a 1 s (Chrome em segundo plano): a expiração anda assim mesmo e a partida termina', () => {
+    const { audio, context } = fakeAudio(10);
+    const events: SessionEvent[] = [];
+    const session = createGameSession(base(audio, { noFail: true, onEvent: (e) => events.push(e) }));
+    const end = session.engine.notes.at(-1)!.time;
+    while (session.engine.status === 'playing' && context.currentTime < end + 30) {
+      context.currentTime += 1;
+      session.frame();
+    }
+    const done = events.find((e) => e.type === 'done');
+    expect(done && done.type === 'done' && done.result.counts.miss).toBe(session.engine.notes.length);
+    const judgments = events.filter((e) => e.type === 'judgment');
+    expect(judgments).toHaveLength(session.engine.notes.length);
+    expect(judgments.every((e) => e.judgment === 'miss' && e.issue === 'not-played')).toBe(true);
+    // Passado o fim e a janela da última nota, no máximo o atraso limitado mais o quadro anterior (e este) depois
+    expect(context.currentTime).toBeLessThanOrEqual(end + 1 + MAX_EXPIRY_LAG_SECONDS + 2);
+  });
+
+  it('travada única de 3 s: o piso do atraso não expira a nota tocada nela antes das leituras da fila', () => {
+    const { audio, context } = fakeAudio(10);
+    const events: SessionEvent[] = [];
+    const session = createGameSession(base(audio, { onEvent: (e) => events.push(e) }));
+    const first = session.engine.notes[0];
+    while (context.currentTime < first.time - 0.2) {
+      context.currentTime += 1 / 60;
+      session.frame();
+    }
+    context.currentTime += 3;
+    session.frame();
+    expect(events).toEqual([]);
+    for (let i = 0; i < 8; i++) session.push(reading(first.time + 0.1 + i * 0.01, first.midi));
+    expect(events[0]).toMatchObject({ type: 'judgment', index: 0, judgment: 'perfect' });
+  });
+
+  it('todo quadro a 1 s sem tocar, com falha: a orquestra para', () => {
+    const { audio, context } = fakeAudio(10);
+    const events: SessionEvent[] = [];
+    const session = createGameSession(base(audio, { onEvent: (e) => events.push(e) }));
+    while (session.engine.status === 'playing' && context.currentTime < 120) {
+      context.currentTime += 1;
+      session.frame();
+    }
+    expect(events.at(-1)).toMatchObject({ type: 'gameover' });
   });
 
   it('no modo simulado ignora o microfone', () => {
