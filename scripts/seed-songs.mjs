@@ -42,20 +42,21 @@ export async function seedCatalog(client, entries) {
   for (const [position, { sheet, source, charts }] of entries.entries()) {
     const song = await client.query(
       `insert into violinhero.songs
-         (id, title, composer, bpm, time_beats, time_unit, key, duration_seconds, origin, owner_id, visibility, catalog_position)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, 'catalog', null, 'public', $9)
+         (id, title, composer, bpm, time_beats, time_unit, key, duration_seconds, origin, owner_id, visibility, catalog_position, category)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, 'catalog', null, 'public', $9, $10)
        on conflict (id) do update set
          title = excluded.title, composer = excluded.composer, bpm = excluded.bpm,
          time_beats = excluded.time_beats, time_unit = excluded.time_unit, key = excluded.key,
-         duration_seconds = excluded.duration_seconds, catalog_position = excluded.catalog_position
+         duration_seconds = excluded.duration_seconds, catalog_position = excluded.catalog_position,
+         category = excluded.category
        where songs.origin = 'catalog'
          and (songs.title, songs.composer, songs.bpm, songs.time_beats, songs.time_unit, songs.key,
-              songs.duration_seconds, songs.catalog_position)
+              songs.duration_seconds, songs.catalog_position, songs.category)
              is distinct from
              (excluded.title, excluded.composer, excluded.bpm, excluded.time_beats, excluded.time_unit,
-              excluded.key, excluded.duration_seconds, excluded.catalog_position)`,
+              excluded.key, excluded.duration_seconds, excluded.catalog_position, excluded.category)`,
       [sheet.id, sheet.title, sheet.composer ?? '', sheet.bpm, sheet.timeSignature.beats, sheet.timeSignature.unit,
-        sheet.key ?? '', Math.round(sheet.durationSeconds * 100) / 100, position]);
+        sheet.key ?? '', Math.round(sheet.durationSeconds * 100) / 100, position, sheet.category ?? 'musica']);
     changed.songs += song.rowCount;
     const { rows } = await client.query(`select origin from violinhero.songs where id = $1`, [sheet.id]);
     if (rows[0]?.origin !== 'catalog') throw new Error(`${sheet.id}: já existe e não é do catálogo`);
