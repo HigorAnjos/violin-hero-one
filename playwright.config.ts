@@ -8,7 +8,8 @@ const baseURL = `http://localhost:${port}`;
 export default defineConfig({
   testDir: './e2e',
   // e2e/catalogo/ precisa do Supabase local: roda pelo playwright.catalogo.config.ts (npm run test:e2e:catalogo)
-  testIgnore: 'catalogo/**',
+  // e2e/lojas/ são as capturas das fichas das lojas (npm run store:screenshots), não teste
+  testIgnore: ['catalogo/**', 'lojas/**'],
   // Grava os WAV do microfone falso (e2e/audio/synthetic/) antes dos testes
   globalSetup: './e2e/global-setup.ts',
   timeout: 30000,
