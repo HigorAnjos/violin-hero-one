@@ -400,6 +400,58 @@ describe('turmas: class-login, áudio das entregas e retenção', { skip: !ready
       assert.equal(await inAuth(entered.body.user_id), false);
       assert.equal((await db.query(`select 1 from ${S}.classes where id = $1`, [cls.id])).rowCount, 0);
     });
+
+    it('o auth falha num aluno: 500, o professor continua e o retry apaga o aluno que ficou e depois ele', async () => {
+      const { teacher, cls, pin } = await classWithStudent('Bia');
+      const entered = await login({ code: cls.code, name: 'Bia', pin });
+      assert.equal(entered.status, 200, JSON.stringify(entered.body));
+      const kid = entered.body.user_id;
+      // Uma referência sem cascata segura o usuário no auth: o deleteUser dele falha como numa queda do GoTrue
+      await db.query('create table public.tf_hold_user (id uuid references auth.users)');
+      try {
+        await db.query('insert into public.tf_hold_user values ($1)', [kid]);
+        const first = await remove(await tokenOf(teacher.client));
+        assert.equal(first.status, 500, JSON.stringify(first.body));
+        assert.equal(await inAuth(kid), true);
+        assert.equal(await inAuth(teacher.id), true, 'o professor só sai depois dos alunos');
+        assert.equal((await db.query(`select 1 from ${S}.classes where id = $1`, [cls.id])).rowCount, 0);
+        assert.equal((await db.query(`select 1 from ${S}.auth_deletions where user_id = $1`, [kid])).rowCount, 1);
+      } finally {
+        await db.query('drop table public.tf_hold_user');
+      }
+      const retry = await remove(await tokenOf(teacher.client));
+      assert.equal(retry.status, 200, JSON.stringify(retry.body));
+      assert.equal(await inAuth(kid), false);
+      assert.equal(await inAuth(teacher.id), false);
+      assert.equal((await db.query(`select 1 from ${S}.auth_deletions where requested_by = $1`, [teacher.id])).rowCount, 0);
+    });
+
+    it('professor apaga um aluno da turma: o aluno sai do auth, o professor e a turma ficam; outro professor e o aluno NÃO', async () => {
+      const { teacher, cls, student, pin } = await classWithStudent('Caio');
+      const entered = await login({ code: cls.code, name: 'Caio', pin });
+      assert.equal(entered.status, 200, JSON.stringify(entered.body));
+      const removeStudent = async (token, id) => {
+        const res = await fetch(DELETE_URL, {
+          method: 'POST',
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_id: id }),
+        });
+        return { status: res.status, body: await res.json() };
+      };
+      const outro = await account();
+      assert.deepEqual((await removeStudent(await tokenOf(outro.client), student.id)).status, 404);
+      const kid = await studentClient(entered.body.session);
+      assert.deepEqual((await removeStudent(await tokenOf(kid), student.id)).body.error.code, 'not_teacher');
+      assert.equal((await removeStudent(await tokenOf(teacher.client), 'nao-e-uuid')).status, 400);
+      assert.equal(await inAuth(entered.body.user_id), true);
+
+      const res = await removeStudent(await tokenOf(teacher.client), student.id);
+      assert.deepEqual([res.status, res.body], [200, { deleted: true }]);
+      assert.equal(await inAuth(entered.body.user_id), false);
+      assert.equal(await inAuth(teacher.id), true);
+      assert.equal((await db.query(`select 1 from ${S}.classes where id = $1`, [cls.id])).rowCount, 1);
+      assert.equal((await db.query(`select 1 from ${S}.class_members where id = $1`, [student.id])).rowCount, 0);
+    });
   });
 
   describe('Storage do áudio e purge-submission-audio', { skip: !storageUp && 'Storage fora do ar neste Supabase local' }, () => {

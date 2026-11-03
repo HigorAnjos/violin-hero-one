@@ -46,6 +46,7 @@ const ALLOWED_FUNCTIONS = [
   'authenticated violinhero.list_my_challenges()',
   'authenticated violinhero.list_my_children()',
   'authenticated violinhero.list_my_classes()',
+  'authenticated violinhero.remove_student(uuid)',
   'authenticated violinhero.reset_student_pin(uuid)',
   'authenticated violinhero.review_submission(uuid,integer,text,text)',
   'authenticated violinhero.set_student_active(uuid,boolean)',
@@ -2290,6 +2291,11 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         assert.deepEqual(result.audio, [path]);
         assert.deepEqual([...result.students].sort(), [ana.user, bia.user].sort());
         assert.ok(!result.students.includes(nunca.user));
+        // A fila guarda os alunos até a Edge Function tirá-los do auth: o retry depois de uma falha ainda os recebe,
+        // mesmo com a turma já apagada
+        assert.deepEqual([...(await deleteMe(t)).students].sort(), [ana.user, bia.user].sort());
+        await c.query(`delete from ${S}.auth_deletions where user_id = $1`, [ana.user]);
+        assert.deepEqual((await deleteMe(t)).students, [bia.user]);
 
         assert.equal(await count('classes', 'teacher_id', t), 0);
         assert.equal(await count('class_members', 'class_id', cls.id), 0);
@@ -2320,11 +2326,81 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         assert.equal(await count('classes', 'teacher_id', t), 1);
       });
 
-      it('o app NÃO chama a limpeza de outro usuário (wipe_user_data)', async () => {
+      it('o app NÃO chama a limpeza de outro usuário (wipe_user_data) nem lê a fila do auth', async () => {
         const a = await newUser(c);
         const b = await newUser(c);
         await denied(as(c, a, `select ${S}.wipe_user_data($1)`, [b]));
+        await denied(as(c, a, `select ${S}.queued_auth_deletions($1)`, [b]));
+        await denied(as(c, a, `select * from ${S}.auth_deletions`));
         assert.equal(await count('profiles', 'id', b), 1);
+      });
+
+      describe('professor apaga o aluno (remove_student)', () => {
+        const removeStudent = (uid, memberId) => rpc(uid, 'remove_student', [memberId]);
+
+        it('apaga cadastro, PIN, entregas, vínculo do responsável e os dados da conta do aluno; o colega e o resto da turma ficam', async () => {
+          const t = await teacher();
+          const cls = await classOf(t);
+          const ana = await studentOf(t, cls.id, 'Ana');
+          const bia = await studentOf(t, cls.id, 'Bia');
+          const song = await serverSong(c, { notes: 4 });
+          const task = await rpc(t, 'create_assignment', [cls.id, song, 'easy', 'arcade', new Date(Date.now() + 86400e3).toISOString(), null, null]);
+          await submit(c, ana.user, fullPlay(song));
+          await submit(c, bia.user, fullPlay(song));
+          const path = `${cls.id}/${ana.id}/${task.id}/take.webm`;
+          await rpc(ana.user, 'submit_assignment', [task.id, null, path]);
+          await rpc(bia.user, 'submit_assignment', [task.id, null, null]);
+          const mae = await newUser(c, { anonymous: false });
+          await rpc(mae, 'accept_guardian_invite', [(await rpc(t, 'create_guardian_invite', [ana.id])).code]);
+          const biaBefore = await snapshot(bia.user);
+
+          assert.deepEqual(await removeStudent(t, ana.id), { audio: [path], students: [ana.user] });
+
+          assert.equal(await count('class_members', 'id', ana.id), 0);
+          assert.equal(await count('class_member_pins', 'member_id', ana.id), 0);
+          assert.equal(await count('submissions', 'member_id', ana.id), 0);
+          assert.equal(await count('guardian_links', 'member_id', ana.id), 0);
+          assert.deepEqual(Object.values(await snapshot(ana.user)), OWN.map(() => 0));
+          assert.equal(await count('auth_deletions', 'user_id', ana.user), 1);
+          assert.equal(await count('audio_trash', 'path', path), 1);
+          // O resto fica: colega, turma, tarefa, professor e a conta da mãe
+          assert.deepEqual(await snapshot(bia.user), biaBefore);
+          assert.equal(await count('submissions', 'member_id', bia.id), 1);
+          assert.equal(await count('assignments', 'id', task.id), 1);
+          assert.equal(await count('profiles', 'id', t), 1);
+          assert.equal(await count('profiles', 'id', mae), 1);
+          // Retry (o auth falhou): o mesmo aluno volta da fila
+          assert.deepEqual(await removeStudent(t, ana.id), { audio: [], students: [ana.user] });
+        });
+
+        it('aluno que nunca entrou: só o cadastro sai, sem conta na fila; em turma encerrada também', async () => {
+          const t = await teacher();
+          const cls = await classOf(t);
+          const caio = await studentOf(t, cls.id, 'Caio', { join: false });
+          await rpc(t, 'close_class', [cls.id]);
+          assert.deepEqual(await removeStudent(t, caio.id), { audio: [], students: [] });
+          assert.equal(await count('class_members', 'id', caio.id), 0);
+        });
+
+        it('outro professor NÃO apaga (404), nem o próprio aluno, o colega, o responsável ou o convidado (28000); nada some', async () => {
+          const t = await teacher();
+          const cls = await classOf(t);
+          const ana = await studentOf(t, cls.id, 'Ana');
+          const bia = await studentOf(t, cls.id, 'Bia');
+          await submit(c, ana.user, fullPlay(await serverSong(c, { notes: 4 })));
+          const mae = await newUser(c, { anonymous: false });
+          await rpc(mae, 'accept_guardian_invite', [(await rpc(t, 'create_guardian_invite', [ana.id])).code]);
+          const before = await snapshot(ana.user);
+          await notFound(removeStudent(await teacher(), ana.id));
+          await notFound(removeStudent(t, randomUUID()));
+          for (const who of [ana.user, bia.user, await newUser(c)]) await needsAccount(removeStudent(who, ana.id));
+          // A mãe tem conta de e-mail: passa por require_teacher, mas o aluno não é de turma dela
+          await notFound(removeStudent(mae, ana.id));
+          await denied(as(c, null, `select ${S}.remove_student($1)`, [ana.id]));
+          assert.equal(await count('class_members', 'id', ana.id), 1);
+          assert.deepEqual(await snapshot(ana.user), before);
+          assert.equal(await count('auth_deletions', 'user_id', ana.user), 0);
+        });
       });
     });
   });
