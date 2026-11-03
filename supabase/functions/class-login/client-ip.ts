@@ -8,7 +8,9 @@ export function clientIp(req: Request, mode = ''): string {
   let value: string | null | undefined;
   if (!mode || mode === 'xff-last') value = req.headers.get('x-forwarded-for')?.split(',').at(-1);
   else if (mode === 'xff-first') value = req.headers.get('x-forwarded-for')?.split(',')[0];
-  else if (IP_HEADERS.some((header) => header === mode)) value = req.headers.get(mode);
+  else if (mode !== 'forwarded' && IP_HEADERS.some((header) => header === mode)) value = req.headers.get(mode);
+  // Configuração inválida ou cabeçalho ausente: conserva a origem histórica.
+  if (!value?.trim()) value = req.headers.get('x-forwarded-for')?.split(',').at(-1);
   return (value?.trim() || '').slice(0, 64);
 }
 

@@ -9,12 +9,13 @@ Deno.test('seleção de IP: padrão histórico, primeiro e último XFF', () => {
   equal(clientIp(req), '99.82.164.142');
   equal(clientIp(req, 'xff-last'), '99.82.164.142');
   equal(clientIp(req, 'xff-first'), '38.4.177.200');
-  equal(clientIp(req, 'inválido'), '');
-  equal(clientIp(req, 'x-real-ip'), '');
+  equal(clientIp(req, 'inválido'), '99.82.164.142');
+  equal(clientIp(req, 'x-real-ip'), '99.82.164.142');
+  equal(clientIp(req, 'forwarded'), '99.82.164.142');
   equal(clientIp(new Request('https://example.test')), '');
 });
 
-for (const header of IP_HEADERS) {
+for (const header of IP_HEADERS.filter((header) => header !== 'forwarded')) {
   Deno.test(`seleciona cabeçalho ${header} e limita a 64 caracteres`, () => {
     const req = new Request('https://example.test', { headers: { [header]: `  ${'a'.repeat(80)}  ` } });
     equal(clientIp(req, header), 'a'.repeat(64));

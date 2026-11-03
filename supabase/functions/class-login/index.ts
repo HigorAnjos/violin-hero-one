@@ -5,11 +5,13 @@
 // Nenhum segredo vai para o app além da sessão do próprio aluno. A chave de serviço só existe no ambiente do Supabase.
 //
 // CLASS_LOGIN_IP_DEBUG=on registra só cabeçalhos candidatos; padrão desligado.
-// CLASS_LOGIN_IP_HEADER escolhe xff-first, xff-last ou um cabeçalho candidato; padrão último XFF.
+// CLASS_LOGIN_IP_HEADER escolhe xff-first, xff-last ou cabeçalho candidato exceto forwarded; padrão último XFF.
 // Deploy (não há sessão antes da entrada):
 // npx supabase functions deploy class-login --project-ref fgymtxxjlikbfhwxifpu --no-verify-jwt --use-api
 // Diagnóstico após deploy:
 // npx supabase secrets set CLASS_LOGIN_IP_DEBUG=on --project-ref fgymtxxjlikbfhwxifpu
+// Desligue logo após coletar e registre em Decisões o cabeçalho escolhido e o diagnóstico temporário:
+// npx supabase secrets unset CLASS_LOGIN_IP_DEBUG --project-ref fgymtxxjlikbfhwxifpu
 //
 // POST application/json { code, name, pin } (com a chave anon no apikey, como o supabase-js manda)
 // Resposta (o contrato de src/services/classroom.ts, studentLogin):
