@@ -293,11 +293,15 @@ export class ClassroomError extends Error {
   }
 }
 
-/** Códigos das funções de 0011–0014; sem código, a requisição nem chegou ao banco. */
+/**
+ * Códigos das funções de 0011–0014; sem código, a requisição nem chegou ao banco. "Não encontrado" é PT404 (HTTP 404,
+ * 0021); P0002 é o de antes, para o banco ainda sem a 0021.
+ */
 export function classroomErrorKind(error: { code?: string }): ClassroomErrorKind {
   switch (error.code) {
     case '28000':
       return 'needs-account';
+    case 'PT404':
     case 'P0002':
       return 'not-found';
     case '22023':

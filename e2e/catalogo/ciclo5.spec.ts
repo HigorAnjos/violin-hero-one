@@ -88,13 +88,13 @@ async function rpcOk<T>(page: Page, fn: string, args: Record<string, unknown> = 
 }
 
 /**
- * A função nega como o banco nega quem não é dono (0011–0013): de outro ou inexistente dá o mesmo P0002, com a
- * mensagem de "não encontrado". O PostgREST não tem status HTTP para P0002 e responde 500; o app decide pelo código
- * (classroomErrorKind). Outro código (42501, um erro de verdade) é falha, não negação.
+ * A função nega como o banco nega quem não é dono (0011–0013): de outro ou inexistente dá o mesmo PT404, com a
+ * mensagem de "não encontrado", que o PostgREST responde como HTTP 404 (0021; antes, P0002 virava 500 como erro de
+ * servidor). O app decide pelo código (classroomErrorKind). Outro código (42501, um erro de verdade) é falha, não negação.
  */
 async function expectNotFound(page: Page, fn: string, args: Record<string, unknown>, what: string) {
   const reply = await rpc<{ code?: string; message?: string }>(page, fn, args);
-  expect({ status: reply.status, code: reply.body?.code }, what).toEqual({ status: 500, code: 'P0002' });
+  expect({ status: reply.status, code: reply.body?.code }, what).toEqual({ status: 404, code: 'PT404' });
   expect(reply.body?.message, what).toMatch(/não encontrad/);
 }
 

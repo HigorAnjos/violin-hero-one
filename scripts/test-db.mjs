@@ -126,7 +126,10 @@ function playOf(songId, { sequence = ['perfect'], ...overrides } = {}) {
 
 const submit = (c, uid, play) => as(c, uid, `select ${S}.submit_play($1) as r`, [JSON.stringify(play)]).then((res) => res.rows[0].r);
 const invalid = (promise, message) => assert.rejects(promise, (e) => e.code === '22023', message);
-const notFound = (promise) => assert.rejects(promise, (e) => e.code === 'P0002');
+/** "Não encontrado" das funções que o app chama: PT404, que o PostgREST responde como HTTP 404 (0021). */
+const notFound = (promise) => assert.rejects(promise, (e) => e.code === 'PT404');
+/** O de antes (P0002, HTTP 500 no PostgREST): submit_play e o que só o servidor chama (import_song, class_link_*). */
+const serverNotFound = (promise) => assert.rejects(promise, (e) => e.code === 'P0002');
 const PROGRESS_TABLES = ['plays', 'records', 'badges_earned', 'play_days', 'streaks'];
 
 // ---------- helpers ----------
@@ -582,9 +585,9 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
     it('música inexistente, nível que ela não tem e importada alheia dão o mesmo "não encontrada"', async () => {
       const u = await newUser(c);
       const dono = await newUser(c);
-      await notFound(submit(c, u, playOf('nao-existe')));
-      await notFound(submit(c, u, playOf(await serverSong(c), { level: 'hard' })));
-      await notFound(submit(c, u, playOf(await serverSong(c, { owner: dono }))));
+      await serverNotFound(submit(c, u, playOf('nao-existe')));
+      await serverNotFound(submit(c, u, playOf(await serverSong(c), { level: 'hard' })));
+      await serverNotFound(submit(c, u, playOf(await serverSong(c, { owner: dono }))));
       // A própria importada vale
       await submit(c, dono, playOf(await serverSong(c, { owner: dono })));
     });
@@ -1367,10 +1370,10 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       const r = await importSong(dono, { ...editor, id, replace: true, levels: ['medium'], title: 'Nova' });
       assert.deepEqual([r.id, r.title, r.levels], [id, 'Nova', ['medium']]);
       assert.equal((await c.query(`select count(*)::int as n from ${S}.songs where owner_id = $1`, [dono])).rows[0].n, 1);
-      await notFound(importSong(await newUser(c), { ...editor, id, replace: true }));
+      await serverNotFound(importSong(await newUser(c), { ...editor, id, replace: true }));
       const imported = await importSong(dono);
-      await notFound(importSong(dono, { ...editor, id: imported.id, replace: true }));
-      await notFound(importSong(dono, { ...editor, id: randomUUID(), replace: true }));
+      await serverNotFound(importSong(dono, { ...editor, id: imported.id, replace: true }));
+      await serverNotFound(importSong(dono, { ...editor, id: randomUUID(), replace: true }));
     });
 
     it('entrada forjada é recusada: catálogo, sem chart, chart de outra música ou nível, formato de original desconhecido', async () => {
@@ -1707,7 +1710,7 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         const cls = await classOf(t);
         const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
         const link = () => asServer(c, `select ${S}.class_link_existing($1) as r`, [aluno.id]).then((res) => res.rows[0].r);
-        await notFound(link());
+        await serverNotFound(link());
         const orphan = randomUUID();
         await c.query(`insert into auth.users (id, instance_id, aud, role, email, is_anonymous) values ($1, $2, 'authenticated', 'authenticated', $3, false)`,
           [orphan, ZERO, `aluno-${aluno.id}@alunos.violinhero.invalid`]);
@@ -2189,6 +2192,13 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         [S]);
       const exposed = rows.map((r) => `${r.role} ${r.fn}`);
       assert.deepEqual(exposed, [...ALLOWED_FUNCTIONS].sort());
+    });
+
+    it('"não encontrado" NÃO sai como P0002 (HTTP 500 no PostgREST), fora de submit_play e do que só o servidor chama', async () => {
+      const { rows } = await c.query(
+        `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = $1 and p.prosrc like '%P0002%' order by 1`, [S]);
+      assert.deepEqual(rows.map((r) => r.proname), ['class_link_existing', 'class_link_user', 'import_song', 'submit_play']);
     });
   });
 });

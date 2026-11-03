@@ -32,9 +32,12 @@ export interface RankingQuery {
 /** Quantas linhas a tela pede; a do jogador vem a mais quando ele está fora delas. */
 export const RANKING_LIMIT = 20;
 
-/** Códigos do get_ranking (0007_ranking.sql); sem código, a requisição nem chegou ao banco. */
+/**
+ * Códigos do get_ranking (0007_ranking.sql); sem código, a requisição nem chegou ao banco. "Não encontrado" é PT404
+ * (HTTP 404, 0021); P0002 é o de antes, para o banco ainda sem a 0021.
+ */
 function errorKind(error: { code?: string }): ProgressErrorKind {
-  if (error.code === 'P0002') return 'not-found';
+  if (error.code === 'PT404' || error.code === 'P0002') return 'not-found';
   if (error.code === '42501' || !error.code) return 'offline';
   return 'server';
 }

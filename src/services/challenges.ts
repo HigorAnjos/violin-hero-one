@@ -68,10 +68,13 @@ export class ChallengeError extends Error {
   }
 }
 
-/** Códigos de 0008_challenges.sql; sem código, a requisição nem chegou ao banco. */
+/**
+ * Códigos de 0008_challenges.sql; sem código, a requisição nem chegou ao banco. "Não encontrado" é PT404 (HTTP 404,
+ * 0021); P0002 é o de antes, para o banco ainda sem a 0021.
+ */
 function errorKind(error: { code?: string }): ChallengeErrorKind {
   if (error.code === '28000') return 'needs-account';
-  if (error.code === 'P0002') return 'not-found';
+  if (error.code === 'PT404' || error.code === 'P0002') return 'not-found';
   if (error.code === '22023') return 'refused';
   if (error.code === '42501' || !error.code) return 'offline';
   return 'server';
