@@ -115,6 +115,19 @@ describe('estante', () => {
     expect(savedCount(offlineShelf([{ sheet: ENTRY, levels: ['easy'] }]))).toBe(1);
   });
 
+  it('a categoria vai para a estante; ficha guardada antes da categoria vale música', () => {
+    const exercise = { ...ENTRY, id: 'staccato-la-maior', category: 'exercicio' as const };
+    expect(catalogShelf([ENTRY, exercise]).map((s) => s.category)).toEqual(['musica', 'exercicio']);
+    // ENTRY não tem categoria, como a ficha guardada no aparelho antes da 0020
+    expect(ENTRY).not.toHaveProperty('category');
+    const offline = offlineShelf([{ sheet: exercise, levels: ['easy'] }, { sheet: { ...ENTRY, id: 'jingle-bells' }, levels: ['easy'] }]);
+    expect(offline.slice(-2).map((s) => [s.id, s.category])).toEqual([
+      ['staccato-la-maior', 'exercicio'],
+      ['jingle-bells', 'musica'],
+    ]);
+    expect(EMBEDDED_SHELF.every((s) => s.category === 'musica')).toBe(true);
+  });
+
   it('catalogShelf marca as baixadas', () => {
     const shelf = catalogShelf([ENTRY, { ...ENTRY, id: 'jingle-bells' }], [{ sheet: ENTRY, levels: ['easy'] }]);
     expect(shelf.map((s) => s.saved)).toEqual([true, false]);

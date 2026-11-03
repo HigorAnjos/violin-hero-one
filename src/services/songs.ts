@@ -6,6 +6,8 @@ import { songCache, type SavedSong, type SongCache } from './songCache';
 import { supabase } from './supabase';
 
 export type SongOrigin = 'catalog' | 'imported' | 'editor';
+/** Grupo da Biblioteca (songs.category, migração 0020): só o catálogo tem exercício. */
+export type SongCategory = 'musica' | 'exercicio';
 
 /** Ficha da música (violinhero.songs), sem as notas. */
 export interface SongSheet {
@@ -17,7 +19,11 @@ export interface SongSheet {
   key: string;
   durationSeconds: number;
   origin: SongOrigin;
+  /** Falta na ficha guardada no aparelho antes da 0020: vale música (categoryOfSheet). */
+  category?: SongCategory;
 }
+
+export const categoryOfSheet = (sheet: Pick<SongSheet, 'category'>): SongCategory => sheet.category ?? 'musica';
 
 export interface CatalogEntry extends SongSheet {
   /** Níveis com chart gravado, na ordem fácil → difícil. */
@@ -63,6 +69,7 @@ interface SheetRow {
   key: string;
   duration_seconds: number | string;
   origin: SongOrigin;
+  category: SongCategory;
 }
 
 interface CatalogRow extends SheetRow {
@@ -76,7 +83,7 @@ interface GetSongRow extends SheetRow {
   hash: string;
 }
 
-const SHEET_COLUMNS = 'id, title, composer, bpm, time_beats, time_unit, key, duration_seconds, origin';
+const SHEET_COLUMNS = 'id, title, composer, bpm, time_beats, time_unit, key, duration_seconds, origin, category';
 
 // numeric chega como string pelo PostgREST
 function toSheet(row: SheetRow): SongSheet {
@@ -89,6 +96,7 @@ function toSheet(row: SheetRow): SongSheet {
     key: row.key,
     durationSeconds: Number(row.duration_seconds),
     origin: row.origin,
+    category: row.category ?? 'musica',
   };
 }
 

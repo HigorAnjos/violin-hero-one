@@ -30,6 +30,7 @@ const SHEET_ROW = {
   key: 'D major',
   duration_seconds: '32.00',
   origin: 'catalog',
+  category: 'musica',
 };
 
 const SHEET = {
@@ -41,6 +42,7 @@ const SHEET = {
   key: 'D major',
   durationSeconds: 32,
   origin: 'catalog',
+  category: 'musica',
 };
 
 function fakeClient({ select = { data: [] as unknown, error: null as unknown }, rpc = { data: [] as unknown, error: null as unknown } } = {}) {
@@ -96,6 +98,13 @@ describe('listCatalog', () => {
     expect(from).toHaveBeenCalledWith('songs');
     expect(query.eq).toHaveBeenCalledWith('origin', 'catalog');
     expect(query.order).toHaveBeenCalledExactlyOnceWith('catalog_position', { ascending: true });
+  });
+
+  it('pede e devolve a categoria: o exercício técnico vem como exercicio', async () => {
+    const row = { ...SHEET_ROW, id: 'staccato-la-maior', category: 'exercicio', song_charts: [{ level: 'easy' }] };
+    const { client, query } = fakeClient({ select: { data: [row], error: null } });
+    expect(await listCatalog(client, SIGNED_IN)).toEqual([{ ...SHEET, id: 'staccato-la-maior', category: 'exercicio', levels: ['easy'] }]);
+    expect(query.select).toHaveBeenCalledWith(expect.stringMatching(/\bcategory\b/));
   });
 
   it('deixa de fora a música que saiu da estante (posição nula)', async () => {
