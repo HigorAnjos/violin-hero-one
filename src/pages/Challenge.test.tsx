@@ -131,14 +131,37 @@ describe('Desafiar um amigo (/desafio)', () => {
     expect(await screen.findByText(/Link copiado/)).toBeInTheDocument();
   });
 
-  it('sem conta: pede a conta pelo motivo desafio e volta para cá', () => {
+  it('sem conta: pede a conta pelo motivo desafio e volta para cá com a partida', () => {
     session = { status: 'signed-in', userId: 'u2', anonymous: true };
-    renderScreen(<Challenge />, { path: '/desafio?partida=p1' });
+    plays = { data: PLAYS };
+    renderScreen(<Challenge />, { path: '/desafio?partida=p2' });
     expect(screen.getByRole('link', { name: 'Criar conta' })).toHaveAttribute(
       'href',
-      '/conta?motivo=desafio&depois=%2Fdesafio&voltar=%2Fdesafio'
+      '/conta?motivo=desafio&depois=%2Fdesafio%3Fpartida%3Dp2&voltar=%2Fdesafio%3Fpartida%3Dp2'
     );
     expect(screen.queryByRole('region', { name: 'Seus desafios' })).not.toBeInTheDocument();
+  });
+
+  it('sem conta: o pedido de conta espera as partidas, para não voltar sem a escolhida', () => {
+    session = { status: 'signed-in', userId: 'u2', anonymous: true };
+    const { unmount } = renderScreen(<Challenge />, { path: '/desafio' });
+    expect(screen.queryByRole('link', { name: 'Criar conta' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Criar conta' })).toBeDisabled();
+    unmount();
+    // Sem partida na URL: carregadas, a primeira (o recorde mais recente) vai junto
+    plays = { data: PLAYS };
+    renderScreen(<Challenge />, { path: '/desafio' });
+    expect(screen.getByRole('link', { name: 'Criar conta' })).toHaveAttribute('href', expect.stringContaining('depois=%2Fdesafio%3Fpartida%3Dp1&'));
+  });
+
+  it('sem conta e erro ao listar as partidas: o pedido não fica preso e leva a partida da URL', () => {
+    session = { status: 'signed-in', userId: 'u2', anonymous: true };
+    plays = { error: new ChallengeError('server') };
+    renderScreen(<Challenge />, { path: '/desafio?partida=p2' });
+    expect(screen.getByRole('link', { name: 'Criar conta' })).toHaveAttribute(
+      'href',
+      '/conta?motivo=desafio&depois=%2Fdesafio%3Fpartida%3Dp2&voltar=%2Fdesafio%3Fpartida%3Dp2'
+    );
   });
 
   it('sem recorde: chama para tocar; erro de limite aparece no status', () => {
