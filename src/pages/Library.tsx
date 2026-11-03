@@ -14,7 +14,7 @@ import { savedCount, useShelf, type ShelfSong } from '../services/shelf';
 import { modesUrl } from '../shell/choice';
 import { ROUTES } from '../shell/routes';
 import { LibraryEmpty } from './LibraryEmpty';
-import { deleteOwnSong, songKeys, useOwnSongs, useSavedSongs } from '../services/songs';
+import { categoryOfSheet, deleteOwnSong, songKeys, useOwnSongs, useSavedSongs } from '../services/songs';
 import { songCache } from '../services/songCache';
 import { DEV_TOOLS } from '../shell/devTools';
 import { rgba } from '../assets/styles/themes/color';
@@ -27,6 +27,15 @@ export const SORTS = {
   length: { label: 'Duração', compare: (a: ShelfSong, b: ShelfSong) => a.durationSeconds - b.durationSeconds },
 } as const;
 type SortKey = keyof typeof SORTS;
+
+/** Os exercícios técnicos ficam num grupo próprio, separado das músicas; "Todas" mostra os dois. */
+export const FILTERS = {
+  all: { label: 'Todas', keep: () => true },
+  musica: { label: 'Músicas', keep: (s: ShelfSong) => s.category === 'musica' },
+  exercicio: { label: 'Exercícios técnicos', keep: (s: ShelfSong) => s.category === 'exercicio' },
+  app: { label: 'No app', keep: (s: ShelfSong) => s.embedded },
+} as const;
+type FilterKey = keyof typeof FILTERS;
 
 const Header = styled.header`
   display: flex;
@@ -65,9 +74,15 @@ const Toolbar = styled.div`
 const Tabs = styled.div`
   display: flex;
   gap: ${({ theme }) => theme.spacing.xs};
+  min-width: 0;
+  /* no celular deitado os quatro filtros rolam de lado em vez de empurrar a busca */
+  overflow-x: auto;
+  padding: 4px;
+  margin: -4px;
 `;
 
 const Tab = styled.button`
+  flex: none;
   min-height: 2.75rem;
   padding: 0 1rem;
   border: 1px solid ${({ theme }) => theme.colors.surfaceBorder};
@@ -285,18 +300,28 @@ export const Library: React.FC = () => {
     }
   };
   const [query, setQuery] = React.useState('');
-  const [onlyApp, setOnlyApp] = React.useState(false);
+  const [filter, setFilter] = React.useState<FilterKey>('all');
   const [sort, setSort] = React.useState<SortKey>('shelf');
 
   const mine = own.data ?? (kept.data ?? []).filter((s) => s.sheet.origin !== 'catalog').map((s) => ({ ...s.sheet, levels: s.levels }));
   const byId = new Map<string, ShelfSong & { origin?: string }>((shelf.status === 'ready' ? shelf.songs : []).map((s) => [s.id, s]));
-  for (const song of mine) byId.set(song.id, { ...song, embedded: false, saved: !!kept.data?.some((s) => s.sheet.id === song.id) });
+  for (const song of mine) {
+    byId.set(song.id, { ...song, category: categoryOfSheet(song), embedded: false, saved: !!kept.data?.some((s) => s.sheet.id === song.id) });
+  }
   const songs = [...byId.values()];
   const empty = shelf.status === 'ready' && !shelf.fallback && songs.length === 0;
-  const visible = songs.filter((s) => (!onlyApp || s.embedded) && matchesSearch(query, s.title, s.composer)).sort(SORTS[sort].compare);
+  const visible = songs.filter((s) => FILTERS[filter].keep(s) && matchesSearch(query, s.title, s.composer)).sort(SORTS[sort].compare);
+  const exercises = songs.filter((s) => s.category === 'exercicio').length;
   const embedded = songs.filter((s) => s.embedded).length;
   const saved = savedCount(songs);
-  const kicker = [`${songs.length} músicas`, `${embedded} no app`, saved ? `${saved} ${saved === 1 ? 'baixada' : 'baixadas'}` : ''].filter(Boolean).join(' · ');
+  const kicker = [
+    `${songs.length - exercises} músicas`,
+    exercises ? `${exercises} ${exercises === 1 ? 'exercício' : 'exercícios'}` : '',
+    `${embedded} no app`,
+    saved ? `${saved} ${saved === 1 ? 'baixada' : 'baixadas'}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <Screen $gap="1.125rem">
@@ -325,12 +350,11 @@ export const Library: React.FC = () => {
         <>
           <Toolbar>
             <Tabs role="group" aria-label="Filtro">
-              <Tab type="button" aria-pressed={!onlyApp} onClick={() => setOnlyApp(false)}>
-                Todas
-              </Tab>
-              <Tab type="button" aria-pressed={onlyApp} onClick={() => setOnlyApp(true)}>
-                No app
-              </Tab>
+              {(Object.keys(FILTERS) as FilterKey[]).map((key) => (
+                <Tab key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)}>
+                  {FILTERS[key].label}
+                </Tab>
+              ))}
             </Tabs>
             <span />
             <Search label="Buscar na biblioteca" value={query} onChange={setQuery} />

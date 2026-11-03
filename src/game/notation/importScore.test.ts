@@ -86,6 +86,41 @@ describe('as 5 partituras reais de content/import-fixtures', () => {
   });
 });
 
+describe('importFile: corda e dedo escritos na partitura', () => {
+  // Ré5 Mi5 Ré5: sem dica o Fácil toca o Mi solto e o Médio o 4º dedo na corda Lá
+  const xml = (hint: string) =>
+    new TextEncoder().encode(
+      `<score-partwise><part-list><score-part id="P1"><part-name>Violin</part-name></score-part></part-list><part id="P1"><measure number="1">` +
+        `<attributes><divisions>1</divisions><key><fifths>2</fifths></key><time><beats>3</beats><beat-type>4</beat-type></time></attributes>` +
+        `<note><pitch><step>D</step><octave>5</octave></pitch><duration>1</duration></note>` +
+        `<note><pitch><step>E</step><octave>5</octave></pitch><duration>1</duration>${hint}</note>` +
+        `<note><pitch><step>D</step><octave>5</octave></pitch><duration>1</duration></note></measure></part></score-partwise>`,
+    );
+  const middle = (song: ImportedSong, level: 'easy' | 'medium' | 'hard') => {
+    const { string, finger } = song.charts[level]!.measures[0].notes[1];
+    return { string, finger };
+  };
+
+  it('a dica vale nos 3 níveis: 4º dedo na corda Lá até no Fácil, Mi solto até no Médio', async () => {
+    const plain = songOf(await importFile({ fileName: 'p.musicxml', bytes: xml('') }, ID));
+    expect([middle(plain, 'easy'), middle(plain, 'medium')]).toEqual([
+      { string: 3, finger: 0 },
+      { string: 2, finger: 4 },
+    ]);
+    const fourth = songOf(await importFile({ fileName: 'q.musicxml', bytes: xml('<notations><technical><fingering>4</fingering><string>2</string></technical></notations>') }, ID));
+    const open = songOf(await importFile({ fileName: 'r.musicxml', bytes: xml('<notations><technical><string>1</string></technical></notations>') }, ID));
+    for (const level of ['easy', 'medium', 'hard'] as const) {
+      expect(middle(fourth, level), level).toEqual({ string: 2, finger: 4 });
+      expect(middle(open, level), level).toEqual({ string: 3, finger: 0 });
+    }
+  });
+
+  it('dica impossível não impede o import', async () => {
+    const song = songOf(await importFile({ fileName: 's.musicxml', bytes: xml('<notations><technical><string>4</string></technical></notations>') }, ID));
+    expect(song.levels).toEqual(['easy', 'medium', 'hard']);
+  });
+});
+
 describe('importFile: escolha da parte', () => {
   const xml = (...parts: [string, string, string][]) =>
     new TextEncoder().encode(

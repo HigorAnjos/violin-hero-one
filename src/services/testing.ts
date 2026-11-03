@@ -1,4 +1,4 @@
-// Só para testes: o banco do catálogo de mentira, com as 10 músicas da estante e os 3 níveis.
+// Só para testes: o banco do catálogo de mentira, com as músicas e os exercícios da estante e os 3 níveis.
 import { vi } from 'vitest';
 import { CATALOG_ORDER } from '../game/notation/catalog';
 import { LEVELS, songDurationSeconds, type Level, type Song } from '../game/notation/song';
@@ -6,6 +6,8 @@ import { FIXED_SONGS } from '../game/notation/songs';
 import type { SongsClient } from './songs';
 
 const titleOf = (id: string) => id.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+/** Na ordem do catálogo, os exercícios técnicos vêm depois das 10 músicas. */
+const EXERCISES = new Set(CATALOG_ORDER.slice(CATALOG_ORDER.indexOf('staccato-la-maior')));
 
 /** Chart de qualquer música do catálogo: as notas de uma embutida, com id, título e nível trocados. */
 export function fakeChart(id: string, level: Level): Song {
@@ -26,6 +28,7 @@ function sheetRow(id: string) {
     key: chart.key,
     duration_seconds: String(songDurationSeconds(chart)),
     origin: 'catalog',
+    category: EXERCISES.has(id) ? 'exercicio' : 'musica',
   };
 }
 

@@ -69,3 +69,51 @@ describe('fingerMelody', () => {
     expect(fingerMelody([], FIRST)).toEqual([]);
   });
 });
+
+describe('fingerMelody com dica da partitura', () => {
+  const NO_OPEN: FingeringRules = { ...FIRST, openCost: 1 };
+  const hinted = (rules: FingeringRules, notes: Parameters<typeof fingerMelody>[0], warn?: (m: string) => void) =>
+    fingerMelody(notes, rules, warn).map((p) => `${'GDAE'[p.string]}${p.finger}`);
+
+  it('dica de corda e dedo vence a preferência do nível, até o 4º dedo no lugar da solta na 1ª posição', () => {
+    // sem dica, o Fácil prefere o Mi solto
+    expect(hinted(FIRST, [{ midi: 74 }, { midi: 76 }, { midi: 74 }])).toEqual(['A3', 'E0', 'A3']);
+    expect(hinted(FIRST, [{ midi: 74 }, { midi: 76, hint: { string: 2, finger: 4 } }, { midi: 74 }])).toEqual(['A3', 'A4', 'A3']);
+    // e o contrário: Mi solto pedido onde o algoritmo poria o 4º dedo
+    expect(hinted(NO_OPEN, [{ midi: 74 }, { midi: 76 }, { midi: 74 }])).toEqual(['A3', 'A4', 'A3']);
+    expect(hinted(NO_OPEN, [{ midi: 74 }, { midi: 76, hint: { string: 3, finger: 0 } }, { midi: 74 }])).toEqual(['A3', 'E0', 'A3']);
+  });
+
+  it('só a corda ou só o dedo: o que falta o algoritmo escolhe', () => {
+    expect(hinted(FIRST, [{ midi: 69, hint: { string: 1 } }])).toEqual(['D4']);
+    expect(hinted(FIRST, [{ midi: 69, hint: { finger: 4 } }])).toEqual(['D4']);
+    expect(fingerMelody([{ midi: 81, hint: { string: 2 } }], THIRD)[0]).toMatchObject({ string: 2, finger: 4, position: 3 });
+  });
+
+  it('dica que não cabe no nível ou no violino é ignorada com aviso, sem erro', () => {
+    const warnings: string[] = [];
+    const notes = [
+      { midi: 81, hint: { string: 2 } }, // Lá5 na corda Lá só a partir da 3ª posição
+      { midi: 74, hint: { finger: 1 } }, // Ré5 com o 1º dedo só a partir da 3ª
+      { midi: 69, hint: { string: -1 } }, // <string>5</string>
+      { midi: 69, hint: { finger: Number.NaN } },
+    ];
+    expect(hinted(FIRST, notes, (m) => warnings.push(m))).toEqual(hinted(FIRST, notes.map(({ midi }) => ({ midi }))));
+    expect(warnings).toHaveLength(4);
+    expect(warnings[0]).toBe('nota 1 (midi 81): dica corda 2 não cabe até a 1ª posição, ignorada');
+  });
+
+  it('nota ligada ignora a dica e repete a anterior', () => {
+    const warn = (m: string) => {
+      throw new Error(m);
+    };
+    expect(hinted(FIRST, [{ midi: 69 }, { midi: 69, tie: true, hint: { string: 1, finger: 4 } }], warn)).toEqual(['A0', 'A0']);
+  });
+
+  it('dica igual à escolha do algoritmo não muda nada', () => {
+    const midis = [62, 64, 66, 67, 69, 71, 73, 74];
+    const plain = fingerMelody(melody(...midis), THIRD);
+    const notes = plain.map((p, i) => ({ midi: midis[i], hint: { string: p.string, finger: p.finger } }));
+    expect(fingerMelody(notes, THIRD)).toEqual(plain);
+  });
+});

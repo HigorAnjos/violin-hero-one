@@ -3,8 +3,9 @@
 import { levelChart } from './levels';
 import { parseMusicXml } from './musicxml';
 import { LEVELS, songDurationSeconds, type Level, type Song, type TimeSignature } from './song';
+import { child, children, parseXml } from './xml';
 
-/** Ordem do catálogo decidida pelo Higor (nota Decisões). */
+/** Ordem do catálogo decidida pelo Higor (nota Decisões): as músicas e, depois delas, os exercícios técnicos. */
 export const CATALOG_ORDER: readonly string[] = [
   'escala-re-maior',
   'brilha-brilha-estrelinha',
@@ -16,13 +17,36 @@ export const CATALOG_ORDER: readonly string[] = [
   'greensleeves',
   'jingle-bells',
   'aleluia',
+  'staccato-la-maior',
+  'moto-perpetuo-la-maior',
+  'moto-perpetuo-quarto-dedo',
+  'variacao-semicolcheias',
+  'preparacao-variacao',
+  'quarto-dedo-primeiro-preso',
+  'tonalizacao-re-0-2-0-3',
+  'tonalizacao-re-0-3-1-3',
+  'escala-re-maior-minimas',
 ];
+
+/** Grupo na Biblioteca: música ou exercício técnico (<miscellaneous-field name="categoria"> do MusicXML). */
+export type SongCategory = 'musica' | 'exercicio';
+const CATEGORIES: readonly SongCategory[] = ['musica', 'exercicio'];
+
+/** Sem o campo, música; valor desconhecido é erro (a partitura do catálogo é corrigida na fonte). */
+export function categoryOf(content: string): SongCategory {
+  const fields = children(child(child(parseXml(content), 'identification'), 'miscellaneous'), 'miscellaneous-field');
+  const raw = fields.find((f) => f.attributes.name === 'categoria')?.text.trim();
+  if (raw === undefined) return 'musica';
+  if (!(CATEGORIES as readonly string[]).includes(raw)) throw new RangeError(`categoria "${raw}" desconhecida (use ${CATEGORIES.join(' ou ')})`);
+  return raw as SongCategory;
+}
 
 export interface SongSheet {
   /** Slug do arquivo, estável entre seeds. */
   id: string;
   title: string;
   composer: string;
+  category: SongCategory;
   /** Tonalidade da partitura; o Fácil pode vir transposto (cada chart traz a sua). */
   key: string;
   bpm: number;
@@ -34,6 +58,8 @@ export interface SongFile {
   sheet: SongSheet;
   source: { format: 'musicxml'; content: string };
   charts: Record<Level, Song>;
+  /** Dicas de corda e dedo da partitura que algum nível ignorou (não cabem nele); o seed mostra. */
+  warnings: string[];
 }
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -59,12 +85,24 @@ export function convertSongFile(input: { name: string; content: string }): SongF
   const id = songIdFromFileName(input.name);
   return inFile(input.name, () => {
     const score = parseMusicXml(input.content);
-    const charts = Object.fromEntries(LEVELS.map((level) => [level, levelChart(score, id, level)])) as Record<Level, Song>;
+    const warnings: string[] = [];
+    const warn = (message: string) => warnings.push(`${input.name}: ${message}`);
+    const charts = Object.fromEntries(LEVELS.map((level) => [level, levelChart(score, id, level, warn)])) as Record<Level, Song>;
     const { title, composer, bpm, timeSignature } = charts.hard;
     return {
-      sheet: { id, title, composer, key: charts.hard.key, bpm, timeSignature, durationSeconds: songDurationSeconds(charts.hard) },
+      sheet: {
+        id,
+        title,
+        composer,
+        category: categoryOf(input.content),
+        key: charts.hard.key,
+        bpm,
+        timeSignature,
+        durationSeconds: songDurationSeconds(charts.hard),
+      },
       source: { format: 'musicxml', content: input.content },
       charts,
+      warnings,
     };
   });
 }

@@ -109,14 +109,14 @@ export function simplifyRhythm(measures: readonly ScoreMeasure[], gridBeats: num
   return out;
 }
 
-/** Song de um nível, validada por parseSong. */
-export function levelChart(score: Score, id: string, level: Level): Song {
+/** Song de um nível, validada por parseSong. Dica de corda e dedo que não cabe no nível vai para `warn`. */
+export function levelChart(score: Score, id: string, level: Level, warn?: (message: string) => void): Song {
   const rules = LEVEL_RULES[level];
   const shift = levelShift(score, rules);
   const grid = rules.gridQuarters === null ? null : (rules.gridQuarters * score.timeSignature.unit) / 4;
   const measures = simplifyRhythm(score.measures, grid);
-  const flat = measures.flatMap((m) => m.notes.map((n) => ({ midi: n.midi + shift, tie: n.tie })));
-  const fingers = fingerMelody(flat, rules.fingering);
+  const flat = measures.flatMap((m) => m.notes.map((n) => ({ midi: n.midi + shift, tie: n.tie, hint: n.hint })));
+  const fingers = fingerMelody(flat, rules.fingering, warn && ((message) => warn(`${level}: ${message}`)));
   let i = 0;
   const song: Song = {
     formatVersion: SONG_FORMAT_VERSION,
