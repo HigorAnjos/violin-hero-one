@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RegisterSWOptions } from 'vite-plugin-pwa/types';
-import { createAppUpdate } from './appUpdate';
+import { createAppUpdate, startAppUpdate } from './appUpdate';
 
 function fakeRegister() {
   const reload = vi.fn(async () => undefined);
@@ -94,5 +94,35 @@ describe('createAppUpdate', () => {
     sw.options().onRegisteredSW?.('/sw.js', registration);
     await vi.advanceTimersByTimeAsync(2500);
     expect(registration.update).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('startAppUpdate', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('no celular não registra o service worker nem avisa versão nova (a versão vem da loja)', () => {
+    vi.stubGlobal('navigator', { ...navigator, serviceWorker: {} });
+    const sw = fakeRegister();
+    expect(startAppUpdate({ native: true, forcePending: false, register: sw.register })).toBeUndefined();
+    expect(startAppUpdate({ native: true, forcePending: true, register: sw.register })).toBeUndefined();
+    expect(sw.register).not.toHaveBeenCalled();
+  });
+
+  it('na web registra o service worker do build', () => {
+    vi.stubGlobal('navigator', { ...navigator, serviceWorker: {} });
+    const sw = fakeRegister();
+    const update = startAppUpdate({ native: false, forcePending: false, register: sw.register });
+    expect(sw.register).toHaveBeenCalledOnce();
+    expect(update?.waiting()).toBe(false);
+  });
+
+  it('na web sem service worker não há aviso; ?nova-versao força o aviso sem registrar', () => {
+    const sw = fakeRegister();
+    expect('serviceWorker' in navigator).toBe(false);
+    expect(startAppUpdate({ native: false, forcePending: false, register: sw.register })).toBeUndefined();
+    expect(startAppUpdate({ native: false, forcePending: true, register: sw.register })?.waiting()).toBe(true);
+    expect(sw.register).not.toHaveBeenCalled();
   });
 });
