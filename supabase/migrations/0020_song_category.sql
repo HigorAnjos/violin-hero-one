@@ -1,6 +1,7 @@
 -- 0020_song_category.sql — Categoria da música: música ou exercício técnico (grupo próprio na Biblioteca).
 -- Vem do MusicXML do catálogo pelo seed (<miscellaneous-field name="categoria">); a importada e a do editor são
 -- sempre música. O exercício do catálogo vale ranking e selo como qualquer música: nada além da estante olha a coluna.
+-- O app publicado antes desta migração continua de pé: sem a coluna, listCatalog refaz a consulta sem ela (songs.ts).
 
 create type violinhero.song_category as enum ('musica', 'exercicio');
 

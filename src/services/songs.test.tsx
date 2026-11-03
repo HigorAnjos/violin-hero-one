@@ -107,6 +107,46 @@ describe('listCatalog', () => {
     expect(query.select).toHaveBeenCalledWith(expect.stringMatching(/\bcategory\b/));
   });
 
+  it.each(['42703', 'PGRST204'])('banco sem a 0020 (%s): refaz sem a categoria e tudo vale música', async (code) => {
+    // o app novo publicado antes do migrate: a coluna category não existe
+    const asked: string[] = [];
+    const from = vi.fn(() => {
+      let columns = '';
+      const query = {
+        select: vi.fn((c: string) => ((columns = c), asked.push(c), query)),
+        eq: vi.fn(() => query),
+        neq: vi.fn(() => query),
+        not: vi.fn(() => query),
+        order: vi.fn(() => query),
+        then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
+          Promise.resolve(
+            /\bcategory\b/.test(columns)
+              ? { data: null, error: { code, message: 'column songs.category does not exist' } }
+              : { data: [{ ...SHEET_ROW, category: undefined, song_charts: [{ level: 'easy' }] }], error: null },
+          ).then(resolve, reject),
+      };
+      return query;
+    });
+    const { client } = fakeClient();
+    const old = { ...client, from } as unknown as SongsClient;
+    expect(await listCatalog(old, SIGNED_IN)).toEqual([{ ...SHEET, levels: ['easy'] }]);
+    expect(await listOwnSongs(old, SIGNED_IN)).toEqual([{ ...SHEET, levels: ['easy'] }]);
+    expect(asked.map((c) => /\bcategory\b/.test(c))).toEqual([true, false, true, false]);
+  });
+
+  it('get_song de antes da 0020 (sem a coluna) também dá música', async () => {
+    const old: Record<string, unknown> = { ...SHEET_ROW, level: 'easy', format_version: 1, chart: CHART, hash: 'a'.repeat(64) };
+    delete old.category;
+    const { client } = fakeClient({ rpc: { data: [old], error: null } });
+    expect((await getSong(client, SIGNED_IN, 'escala-re-maior', 'easy')).sheet.category).toBe('musica');
+  });
+
+  it('outro erro do banco não refaz a consulta', async () => {
+    const { client, query } = fakeClient({ select: { data: null, error: { code: '42501', message: 'nope' } } });
+    await expect(listCatalog(client, SIGNED_IN)).rejects.toMatchObject({ kind: 'server' });
+    expect(query.select).toHaveBeenCalledOnce();
+  });
+
   it('deixa de fora a música que saiu da estante (posição nula)', async () => {
     const { client, query } = fakeClient();
     await listCatalog(client, SIGNED_IN);

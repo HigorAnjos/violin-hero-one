@@ -34,6 +34,13 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
     await expect(cards).toHaveCount(MUSICS.length);
     await expectFits(page);
 
+    // o último filtro também se alcança (no celular deitado os filtros rolam de lado)
+    const app = page.getByRole('group', { name: 'Filtro' }).getByRole('button', { name: 'No app' });
+    await app.click();
+    await expect(app).toHaveAttribute('aria-pressed', 'true');
+    await expect(app).toBeInViewport();
+    await expectFits(page);
+
     // exercício abre como música: modo, seleção e níveis
     await group.click();
     await cards.first().click();

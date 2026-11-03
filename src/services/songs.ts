@@ -6,8 +6,9 @@ import { songCache, type SavedSong, type SongCache } from './songCache';
 import { supabase } from './supabase';
 
 export type SongOrigin = 'catalog' | 'imported' | 'editor';
-/** Grupo da Biblioteca (songs.category, migração 0020): só o catálogo tem exercício. */
-export type SongCategory = 'musica' | 'exercicio';
+// Só o tipo (songs.category, migração 0020): o conversor não entra no pacote do app
+import type { SongCategory } from '../game/notation/catalog';
+export type { SongCategory };
 
 /** Ficha da música (violinhero.songs), sem as notas. */
 export interface SongSheet {
@@ -69,7 +70,8 @@ interface SheetRow {
   key: string;
   duration_seconds: number | string;
   origin: SongOrigin;
-  category: SongCategory;
+  /** Falta com o banco antes da 0020 (selectSheets) e no get_song de antes dela. */
+  category?: SongCategory;
 }
 
 interface CatalogRow extends SheetRow {
@@ -83,7 +85,29 @@ interface GetSongRow extends SheetRow {
   hash: string;
 }
 
-const SHEET_COLUMNS = 'id, title, composer, bpm, time_beats, time_unit, key, duration_seconds, origin, category';
+const BASE_COLUMNS = 'id, title, composer, bpm, time_beats, time_unit, key, duration_seconds, origin';
+const SHEET_COLUMNS = `${BASE_COLUMNS}, category`;
+
+/** Coluna que o banco não tem: 42703 do Postgres, PGRST204 do cache de schema do PostgREST. */
+const missingColumn = (error: { code?: string } | null) => error?.code === '42703' || error?.code === 'PGRST204';
+
+/**
+ * Fichas com a categoria. Banco ainda sem a 0020 (o app publicado antes do migrate): refaz sem a coluna e toCatalog
+ * assume música, em vez de deixar a Biblioteca sem catálogo.
+ */
+async function selectSheets(run: (columns: string) => PromiseLike<{ data: unknown; error: { code?: string } | null }>): Promise<CatalogRow[]> {
+  let { data, error } = await run(`${SHEET_COLUMNS}, song_charts(level)`);
+  if (missingColumn(error)) ({ data, error } = await run(`${BASE_COLUMNS}, song_charts(level)`));
+  if (error) throw new SongError('server', error);
+  return (data ?? []) as CatalogRow[];
+}
+
+function toCatalog(rows: readonly CatalogRow[]): CatalogEntry[] {
+  return rows.map((row) => {
+    const levels = new Set((row.song_charts ?? []).map((c) => c.level));
+    return { ...toSheet(row), levels: LEVELS.filter((l) => levels.has(l)) };
+  });
+}
 
 // numeric chega como string pelo PostgREST
 function toSheet(row: SheetRow): SongSheet {
@@ -112,17 +136,11 @@ function requireSession(client: SongsClient | null, session: SessionState): Song
  */
 export async function listCatalog(client: SongsClient | null, session: SessionState): Promise<CatalogEntry[]> {
   const db = requireSession(client, session);
-  const { data, error } = await db
-    .from('songs')
-    .select(`${SHEET_COLUMNS}, song_charts(level)`)
-    .eq('origin', 'catalog')
-    .not('catalog_position', 'is', null)
-    .order('catalog_position', { ascending: true });
-  if (error) throw new SongError('server', error);
-  return ((data ?? []) as CatalogRow[]).map((row) => {
-    const levels = new Set((row.song_charts ?? []).map((c) => c.level));
-    return { ...toSheet(row), levels: LEVELS.filter((l) => levels.has(l)) };
-  });
+  return toCatalog(
+    await selectSheets((columns) =>
+      db.from('songs').select(columns).eq('origin', 'catalog').not('catalog_position', 'is', null).order('catalog_position', { ascending: true }),
+    ),
+  );
 }
 
 /**
@@ -131,16 +149,7 @@ export async function listCatalog(client: SongsClient | null, session: SessionSt
  */
 export async function listOwnSongs(client: SongsClient | null, session: SessionState): Promise<CatalogEntry[]> {
   const db = requireSession(client, session);
-  const { data, error } = await db
-    .from('songs')
-    .select(`${SHEET_COLUMNS}, song_charts(level)`)
-    .neq('origin', 'catalog')
-    .order('created_at', { ascending: false });
-  if (error) throw new SongError('server', error);
-  return ((data ?? []) as CatalogRow[]).map((row) => {
-    const levels = new Set((row.song_charts ?? []).map((c) => c.level));
-    return { ...toSheet(row), levels: LEVELS.filter((l) => levels.has(l)) };
-  });
+  return toCatalog(await selectSheets((columns) => db.from('songs').select(columns).neq('origin', 'catalog').order('created_at', { ascending: false })));
 }
 
 /** A RLS restringe a exclusão ao dono; o filtro também protege o catálogo. */
