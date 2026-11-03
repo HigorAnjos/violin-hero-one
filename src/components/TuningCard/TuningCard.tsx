@@ -6,7 +6,8 @@ import { JudgmentHint } from '../JudgmentHint/JudgmentHint';
 import { placeOf, type Explanation, type TargetNote } from '../JudgmentHint/explain';
 import { formatCents, formatHz } from '../OpenStringCard/openStringCheck';
 import { Kicker } from '../Screen/Screen';
-import { DEFAULT_BANDS, type TuningBands } from '../Tuner/tuner';
+import { DEFAULT_BANDS, needlePercent, type TuningBands } from '../Tuner/tuner';
+import { rgba } from '../../assets/styles/themes/color';
 
 /** Janela do traço de afinação, em segundos. */
 export const TRACE_SECONDS = 2;
@@ -33,6 +34,12 @@ export function tuningStatus(cents: number, bands: TuningBands = DEFAULT_BANDS):
   if (Math.abs(cents) <= bands.perfect) return { text: `Afinado! ${formatCents(cents)}`, tuned: true };
   return { text: `${cents > 0 ? 'Alto' : 'Baixo'} · ${formatCents(cents)}`, tuned: false };
 }
+
+/** Faixa de ±cents na régua do celular, em % da largura. */
+const meterBand = (cents: number, bands: TuningBands) => ({
+  left: `${needlePercent(-cents, bands)}%`,
+  width: `${needlePercent(cents, bands) - needlePercent(-cents, bands)}%`,
+});
 
 /** "Ré" (sem oitava), como no "Toque" do design. */
 const solfege = (midi: number) => noteName(midi).replace(/-?\d+$/, '');
@@ -130,6 +137,35 @@ const Status = styled.span<{ $color: string }>`
   }
 `;
 
+/** Onde tocar, no celular deitado (MobileGameplay: "corda Lá · 3º dedo"); no desktop vai no canto do cabeçalho. */
+const Place = styled.span`
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: ${({ theme }) => theme.colors.textMuted};
+`;
+
+/** Régua de afinação do celular deitado, no lugar do traço dos últimos 2 s. */
+const Meter = styled.div`
+  position: relative;
+  height: 0.875rem;
+  background-color: ${({ theme }) => theme.game.track};
+  border: 1px solid ${({ theme }) => theme.colors.surfaceBorder};
+
+  i {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+  }
+
+  b {
+    position: absolute;
+    top: -0.25rem;
+    bottom: -0.25rem;
+    width: 3px;
+    margin-left: -1.5px;
+  }
+`;
+
 export interface TuningCardProps {
   target: TargetNote | null;
   trace: readonly TracePoint[];
@@ -168,6 +204,13 @@ export const TuningCard: React.FC<TuningCardProps> = ({ target, trace, liveCents
           </span>
         )}
       </Head>
+      {compact && target && <Place>{placeOf(target.string, target.finger).replace(', ', ' · ')}</Place>}
+      {compact && (
+        <Meter role="img" aria-label={`Afinação: ${liveCents === null ? 'sem som' : formatCents(liveCents)}`}>
+          <i style={{ ...meterBand(bands.perfect, bands), background: rgba(theme.colors.text, 0.14) }} />
+          {liveCents !== null && <b style={{ left: `${needlePercent(liveCents, bands)}%`, background: traceColor }} />}
+        </Meter>
+      )}
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Sua afinação nos últimos 2 segundos: ${status ? (status.tuned ? 'afinado' : status.text.toLowerCase()) : 'sem som'}`} style={{ background: theme.colors.background }}>
         <rect x="0" y={H / 2 - bands.perfect * px} width={W} height={bands.perfect * px * 2} fill={theme.colors.info.surface} />
         <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke={theme.colors.textMuted} strokeDasharray="4 4" />

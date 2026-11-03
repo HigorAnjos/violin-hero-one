@@ -19,7 +19,8 @@ describe('ScoreCard', () => {
     const { container } = renderScreen(<ScoreCard score={1284560} multiplier={4} combo={128} accuracy={98.4} level={3} />);
     expect(screen.getByText('1.284.560')).toBeInTheDocument();
     expect(screen.getByLabelText('multiplicador 4 vezes')).toHaveTextContent('×4');
-    expect(screen.getByText(/98,4% de acertos/)).toBeInTheDocument();
+    // No celular o "de acertos" fica só para o leitor de tela: o texto inteiro segue no mesmo elemento
+    expect(screen.getByText('de acertos').parentElement).toHaveTextContent('128 · 98,4% de acertos');
     expect(screen.getByRole('img', { name: /^cordas, madeiras e metais tocando/ })).toBeInTheDocument();
     expect(container.querySelectorAll('[data-on]')).toHaveLength(3);
   });
