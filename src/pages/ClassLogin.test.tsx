@@ -49,6 +49,15 @@ async function typePin(digits: string) {
 }
 
 describe('ClassLogin (A0)', () => {
+  it('o retorno ao Menu é o último controle do cabeçalho, na ponta direita como nas outras telas', () => {
+    open();
+    const back = screen.getByRole('link', { name: 'Menu' });
+    expect(back).toHaveAttribute('href', '/');
+    expect(back).toHaveAttribute('data-back', '');
+    const controls = back.closest('header')!.querySelectorAll('a, button, input, select');
+    expect(controls[controls.length - 1]).toBe(back);
+  });
+
   it('com o código do link: nome e PIN pelo teclado, a fila do convidado sobe antes e o aluno vira o usuário do aparelho', async () => {
     const queryClient = open();
     expect(screen.getByText(`código ${code.slice(0, 4)}-${code.slice(4)} ✓`)).toBeInTheDocument();

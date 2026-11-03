@@ -67,6 +67,15 @@ describe.each([
 });
 
 describe('ScoreEditor', () => {
+  it('o retorno à Biblioteca é o último controle do cabeçalho, na ponta direita como nas outras telas', () => {
+    renderEditor();
+    const back = screen.getByRole('link', { name: 'Biblioteca' });
+    expect(back).toHaveAttribute('href', ROUTES.library);
+    expect(back).toHaveAttribute('data-back', '');
+    const controls = back.closest('header')!.querySelectorAll('a, button, input, select');
+    expect(controls[controls.length - 1]).toBe(back);
+  });
+
   it('a pauta recebe o foco e as letras escrevem a escala de Ré maior, com o dedilhado sugerido', async () => {
     renderEditor();
     expect(screen.getByRole('group', { name: /Pauta/ })).toHaveFocus();

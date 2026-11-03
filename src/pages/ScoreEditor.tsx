@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { DictationPanel } from '../components/DictationPanel/DictationPanel';
 import { NoteInspector, type InspectedNote } from '../components/NoteInspector/NoteInspector';
@@ -73,6 +74,11 @@ const TitleBlock = styled.div`
   flex-direction: column;
   min-width: 0;
   flex: 1 1 13rem;
+
+  /* Celular deitado: título estreito para o retorno caber na mesma linha, na ponta direita */
+  @media (max-height: 500px) {
+    flex-basis: 7rem;
+  }
 `;
 
 const TitleInput = styled.input`
@@ -496,9 +502,6 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
   return (
     <Page $gap="0.75rem" onKeyDown={onKeyDown}>
       <Header>
-        <Button as={Link} to={ROUTES.library} $variant="ghost">
-          <span aria-hidden="true">◂</span>Biblioteca
-        </Button>
         <TitleBlock>
           <KickerRow>
             <Kicker>Escrever partitura</Kicker>
@@ -530,9 +533,17 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
           </Meta>
         </Metas>
         <Grow />
-        <Button type="button" $variant="ghost" aria-pressed={playing !== null} disabled={!notes || dictating} onClick={() => void toggleListen()}>
+        <Button
+          type="button"
+          $variant="ghost"
+          aria-pressed={playing !== null}
+          aria-label={compact ? (playing ? 'Parar' : 'Ouvir') : undefined}
+          disabled={!notes || dictating}
+          onClick={() => void toggleListen()}
+        >
           <span aria-hidden="true">{playing ? '■' : '▶'}</span>
-          {playing ? 'Parar' : 'Ouvir'}
+          {/* No celular só o símbolo: o retorno cabe na primeira linha */}
+          {!compact && (playing ? 'Parar' : 'Ouvir')}
         </Button>
         {saved ? (
           <Button as={Link} to={modesUrl(undefined, saved.id)}>
@@ -543,6 +554,8 @@ export const ScoreEditor: React.FC<ScoreEditorProps> = ({ importer: given, liste
             {saving.status === 'saving' ? 'Salvando…' : compact ? 'Salvar' : 'Salvar na biblioteca'}
           </Button>
         )}
+        {/* O retorno fica por último, na ponta direita do cabeçalho, como nas outras telas */}
+        <BackLink to={ROUTES.library} label="Biblioteca" />
       </Header>
 
       <Body>
