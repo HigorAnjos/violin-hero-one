@@ -41,6 +41,11 @@ export const METRONOME_AHEAD_SECONDS = 0.5;
  * Bem acima de um quadro a 10 fps.
  */
 export const STALL_SECONDS = 0.2;
+/**
+ * A expiração nunca fica mais que isto atrás do quadro anterior: com todo quadro lento (Chrome em segundo plano entrega
+ * o requestAnimationFrame a cada ~1 s) ela anda assim mesmo, e a partida termina até isto mais um quadro depois.
+ */
+export const MAX_EXPIRY_LAG_SECONDS = 2;
 
 /** O que a pista precisa da partida (src/game/render), sem carregar o Pixi aqui. */
 export interface GameTrack {
@@ -464,9 +469,12 @@ export function createGameSession(options: GameSessionOptions): GameSession {
         engine.push(simulated[nextSimulated++].reading);
       }
       // Depois da travada a expiração fica parada e alcança a hora no dobro da velocidade, já com as leituras da fila
-      const step = t - lastFrame;
+      // O piso vem do quadro anterior: depois de uma travada de qualquer tamanho a fila ainda tem este quadro para chegar
+      const prev = lastFrame;
+      const step = t - prev;
       lastFrame = t;
       if (step <= STALL_SECONDS) expiredTo = Math.min(t, expiredTo + 2 * Math.max(step, 0));
+      expiredTo = Math.max(expiredTo, prev - MAX_EXPIRY_LAG_SECONDS);
       engine.advance(expiredTo);
       track?.update(t);
       return t;
