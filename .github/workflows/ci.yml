@@ -35,6 +35,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      # Regra do versionCode das lojas (a mesma do android/app/build.gradle)
+      - run: node --test scripts/app-version.test.mjs
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
