@@ -53,6 +53,14 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) test.describe(`${tem
     await openWithState(page, '/orquestra-parou', { song: ODE, result: played(16, false) });
     await expect(page.getByRole('heading', { name: 'A orquestra parou… por hoje!' })).toBeVisible();
     await checkScreen(page);
+    // Pontos/Precisão/Mais errado e o "E agora?" ficam acima das cadeiras do fundo (no celular deitado elas somem)
+    const chairs = await page.locator('main > svg').boundingBox();
+    if (chairs) {
+      for (const card of [page.locator('main dl'), page.getByRole('navigation')]) {
+        const box = (await card.boundingBox())!;
+        expect(box.y + box.height, 'cartão por cima das cadeiras').toBeLessThanOrEqual(chairs.y);
+      }
+    }
   });
 
   test('selo novo, parado com reduzir movimento', async ({ page }) => {

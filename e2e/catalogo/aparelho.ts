@@ -85,8 +85,8 @@ export const serverRows = <T = Record<string, unknown>>(page: Page, query: strin
     [process.env.E2E_SUPABASE_URL!, process.env.E2E_SUPABASE_ANON_KEY!, query] as const
   ) as Promise<T[]>;
 
-/** O nome público gerado (bicho + número) que o ranking e o desafio mostram no lugar do e-mail. */
-export const GENERATED_NAME = /(Raposa|Pinguim|Gato|Violinista) \d{4}/;
+/** O nome público gerado (bicho + número de 5 dígitos) que o ranking e o desafio mostram no lugar do e-mail. */
+export const GENERATED_NAME = /(Raposa|Pinguim|Gato) \d{5}/;
 
 /**
  * `newDevice()`: aparelho novo, com contexto próprio (sem a sessão do sessao.setup.ts) no tamanho e no toque do

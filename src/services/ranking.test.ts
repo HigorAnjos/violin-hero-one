@@ -57,6 +57,7 @@ describe('getRanking', () => {
   });
 
   it.each([
+    ['PT404', 'not-found'],
     ['P0002', 'not-found'],
     ['42501', 'offline'],
     [undefined, 'offline'],

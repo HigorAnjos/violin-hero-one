@@ -477,6 +477,16 @@ function trendPoints(weeks: readonly (number | null)[], max: number): string {
     .join(' ');
 }
 
+/**
+ * Barras dos minutos por dia na escala dos minutos inteiros que o rótulo mostra: dia de poucos segundos é 0 min e
+ * fica vazio (antes, sendo o maior, enchia a barra com "maior: 0 min"). Maior dia 0: nenhuma barra cheia.
+ */
+export function minuteBars(seconds: number[]): { minutes: number[]; tallest: number; heights: number[] } {
+  const minutes = seconds.map((s) => Math.round(s / 60));
+  const tallest = Math.max(0, ...minutes);
+  return { minutes, tallest, heights: minutes.map((m) => (tallest ? (m / tallest) * 100 : 0)) };
+}
+
 /** 11 · Perfil e progresso: quem joga, sequência, minutos, afinação por corda e conquistas. */
 export const Profile: React.FC = () => {
   const progress = useProgress();
@@ -493,7 +503,7 @@ export const Profile: React.FC = () => {
   // A sequência é a do servidor: o dia de prática soma minutos, mas não acende a bolinha
   const marked = history ? markedDays(history.days, today, 7) : null;
   const fortnight = history ? lastDays(history.days, today, 14) : null;
-  const tallest = fortnight ? Math.max(...fortnight) : 0;
+  const bars = fortnight ? minuteBars(fortnight) : null;
   const tuning = history ? tuningAverage(history.plays, today) : null;
   const trend = history ? stringTrend(history.plays, today) : null;
   const trendMax = trend ? Math.max(5, ...trend.flat().filter((v): v is number => v !== null)) : 5;
@@ -575,16 +585,16 @@ export const Profile: React.FC = () => {
             <Kicker>Minutos por dia</Kicker>
             <Sub>últimos 14 dias</Sub>
           </PanelHead>
-          {fortnight ? (
+          {bars ? (
             <>
-              <Bars role="img" aria-label={`Minutos praticados por dia nos últimos 14 dias; hoje ${Math.round(fortnight[13] / 60)}, maior dia ${Math.round(tallest / 60)} minutos`}>
-                {fortnight.map((seconds, i) => (
-                  <i key={i} style={{ height: `${tallest ? (seconds / tallest) * 100 : 0}%` }} data-empty={seconds ? undefined : ''} data-today={i === 13 ? '' : undefined} />
+              <Bars role="img" aria-label={`Minutos praticados por dia nos últimos 14 dias; hoje ${bars.minutes[13]}, maior dia ${bars.tallest} minutos`}>
+                {bars.minutes.map((minutes, i) => (
+                  <i key={i} style={{ height: `${bars.heights[i]}%` }} data-empty={minutes ? undefined : ''} data-today={i === 13 ? '' : undefined} />
                 ))}
               </Bars>
               <Axis aria-hidden="true">
                 <span>{dayLabel.format(new Date(`${shiftDay(today, 13)}T12:00:00Z`))}</span>
-                <span>maior: {Math.round(tallest / 60)} min</span>
+                <span>maior: {bars.tallest} min</span>
                 <span>hoje</span>
               </Axis>
             </>

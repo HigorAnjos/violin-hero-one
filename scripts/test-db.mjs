@@ -126,7 +126,10 @@ function playOf(songId, { sequence = ['perfect'], ...overrides } = {}) {
 
 const submit = (c, uid, play) => as(c, uid, `select ${S}.submit_play($1) as r`, [JSON.stringify(play)]).then((res) => res.rows[0].r);
 const invalid = (promise, message) => assert.rejects(promise, (e) => e.code === '22023', message);
-const notFound = (promise) => assert.rejects(promise, (e) => e.code === 'P0002');
+/** "Não encontrado" das funções que o app chama: PT404, que o PostgREST responde como HTTP 404 (0021). */
+const notFound = (promise) => assert.rejects(promise, (e) => e.code === 'PT404');
+/** O de antes (P0002, HTTP 500 no PostgREST): submit_play e o que só o servidor chama (import_song, class_link_*). */
+const serverNotFound = (promise) => assert.rejects(promise, (e) => e.code === 'P0002');
 const PROGRESS_TABLES = ['plays', 'records', 'badges_earned', 'play_days', 'streaks'];
 
 // ---------- helpers ----------
@@ -612,9 +615,9 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
     it('música inexistente, nível que ela não tem e importada alheia dão o mesmo "não encontrada"', async () => {
       const u = await newUser(c);
       const dono = await newUser(c);
-      await notFound(submit(c, u, playOf('nao-existe')));
-      await notFound(submit(c, u, playOf(await serverSong(c), { level: 'hard' })));
-      await notFound(submit(c, u, playOf(await serverSong(c, { owner: dono }))));
+      await serverNotFound(submit(c, u, playOf('nao-existe')));
+      await serverNotFound(submit(c, u, playOf(await serverSong(c), { level: 'hard' })));
+      await serverNotFound(submit(c, u, playOf(await serverSong(c, { owner: dono }))));
       // A própria importada vale
       await submit(c, dono, playOf(await serverSong(c, { owner: dono })));
     });
@@ -778,9 +781,9 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       for (const r of rows) assert.ok(r.since >= 0 && r.since < 7);
       await as(c, u, `update ${S}.profiles set animal = 'fox' where id = $1`, [u]);
       const { rows: [p] } = await c.query(`select ${S}.ranking_name(animal, nickname_tag) as name, nickname_tag from ${S}.profiles where id = $1`, [u]);
-      assert.match(p.name, /^Raposa \d{4}$/);
-      assert.ok(p.nickname_tag >= 1000 && p.nickname_tag <= 9999);
-      await denied(as(c, u, `update ${S}.profiles set nickname_tag = 1234 where id = $1`, [u]));
+      assert.match(p.name, /^Raposa \d{5}$/);
+      assert.ok(p.nickname_tag >= 10000 && p.nickname_tag <= 99999);
+      await denied(as(c, u, `update ${S}.profiles set nickname_tag = 12345 where id = $1`, [u]));
     });
 
     it('sem login (anon) NÃO envia partida, NÃO pede perfil e NÃO lê progresso', async () => {
@@ -788,6 +791,69 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       await denied(as(c, null, `select ${S}.submit_play($1)`, [JSON.stringify(playOf(id))]));
       await denied(as(c, null, `select ${S}.ensure_my_profile()`));
       for (const table of PROGRESS_TABLES) await denied(as(c, null, `select * from ${S}.${table}`));
+    });
+  });
+
+  describe('nome público (bicho + número)', () => {
+    const ANIMALS = ['fox', 'penguin', 'cat'];
+    const publicName = async (id) =>
+      (await c.query(`select animal, nickname_tag, ${S}.ranking_name(animal, nickname_tag) as name from ${S}.profiles where id = $1`, [id])).rows[0];
+    /** Um número que nenhum perfil usa, com bicho nenhum: o par montado com ele é só do teste. */
+    const freeTag = async () =>
+      (await c.query(`select t from generate_series(10000, 99999) t
+                       where not exists (select 1 from ${S}.profiles p where p.nickname_tag = t) order by random() limit 1`)).rows[0].t;
+
+    it('perfil novo ganha bicho sorteado da lista e número de 5 dígitos; nunca "Violinista"', async () => {
+      const names = [];
+      for (let i = 0; i < 30; i++) names.push(await publicName(await newUser(c, { anonymous: i % 2 === 0 })));
+      for (const p of names) {
+        assert.ok(ANIMALS.includes(p.animal), p.animal);
+        assert.ok(p.nickname_tag >= 10000 && p.nickname_tag <= 99999, String(p.nickname_tag));
+        assert.match(p.name, /^(Raposa|Pinguim|Gato) \d{5}$/);
+      }
+      // Sorteio, não um bicho fixo (30 perfis com o mesmo bicho: 3 em 3^30)
+      assert.ok(new Set(names.map((p) => p.animal)).size > 1);
+    });
+
+    it('o jogador troca o bicho; bicho nulo mantém o que tinha; bicho fora da lista e número NÃO', async () => {
+      const u = await newUser(c);
+      const before = await publicName(u);
+      const other = ANIMALS.find((a) => a !== before.animal);
+      await as(c, u, `update ${S}.profiles set animal = $2 where id = $1`, [u, other]);
+      assert.equal((await publicName(u)).animal, other);
+      // O app manda animal nulo quando o jogador não escolheu: o sorteado fica
+      await as(c, u, `update ${S}.profiles set animal = null, nickname = 'Ana' where id = $1`, [u]);
+      assert.equal((await publicName(u)).animal, other);
+      await assert.rejects(as(c, u, `update ${S}.profiles set animal = 'dragon' where id = $1`, [u]), (e) => e.code === '23514');
+      await denied(as(c, u, `update ${S}.profiles set nickname_tag = 12345 where id = $1`, [u]));
+    });
+
+    it('bicho + número NÃO se repete: o par de outra conta faz sortear outro número', async () => {
+      const tag = await freeTag();
+      const [a, b] = [await newUser(c), await newUser(c)];
+      await c.query(`update ${S}.profiles set animal = 'cat', nickname_tag = $2 where id = $1`, [a, tag]);
+      await c.query(`update ${S}.profiles set animal = 'fox', nickname_tag = $2 where id = $1`, [b, tag]);
+      assert.equal((await publicName(b)).nickname_tag, tag);
+      // b troca para o bicho de a pelo app: a RLS não mostra a ele o perfil de a, e mesmo assim o número muda
+      await as(c, b, `update ${S}.profiles set animal = 'cat' where id = $1`, [b]);
+      const after = await publicName(b);
+      assert.equal(after.animal, 'cat');
+      assert.notEqual(after.nickname_tag, tag);
+      // O servidor forçando o par também não consegue
+      await c.query(`update ${S}.profiles set nickname_tag = $2 where id = $1`, [b, tag]);
+      assert.notEqual((await publicName(b)).nickname_tag, tag);
+      assert.equal((await publicName(a)).name, `Gato ${tag}`);
+    });
+
+    it('sem o sorteio, o índice único NÃO deixa o par repetir', async () => {
+      const tag = await freeTag();
+      const [a, b] = [await newUser(c), await newUser(c)];
+      await c.query(`update ${S}.profiles set animal = 'cat', nickname_tag = $2 where id = $1`, [a, tag]);
+      // Só dentro desta transação (revertida no fim)
+      await c.query(`alter table ${S}.profiles disable trigger profiles_public_name`);
+      await c.query('savepoint dup');
+      await assert.rejects(c.query(`update ${S}.profiles set animal = 'cat', nickname_tag = $2 where id = $1`, [b, tag]), (e) => e.code === '23505');
+      await c.query('rollback to savepoint dup');
     });
   });
 
@@ -816,7 +882,7 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       // Na mesma transação now() não anda: b chegou antes de a
       await c.query(`update ${S}.plays set created_at = now() - interval '1 minute' where user_id = $1`, [b.id]);
       assert.deepEqual(await rowsOf(a.id, id), [[1, b.name, 400, false], [2, a.name, 400, true], [3, d.name, 200, false]]);
-      assert.match(a.name, /^Raposa \d{4}$/);
+      assert.match(a.name, /^Raposa \d{5}$/);
       assert.equal(Number((await ranking(d.id, id)).rows[2].accuracy), 50);
     });
 
@@ -1334,10 +1400,10 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
       const r = await importSong(dono, { ...editor, id, replace: true, levels: ['medium'], title: 'Nova' });
       assert.deepEqual([r.id, r.title, r.levels], [id, 'Nova', ['medium']]);
       assert.equal((await c.query(`select count(*)::int as n from ${S}.songs where owner_id = $1`, [dono])).rows[0].n, 1);
-      await notFound(importSong(await newUser(c), { ...editor, id, replace: true }));
+      await serverNotFound(importSong(await newUser(c), { ...editor, id, replace: true }));
       const imported = await importSong(dono);
-      await notFound(importSong(dono, { ...editor, id: imported.id, replace: true }));
-      await notFound(importSong(dono, { ...editor, id: randomUUID(), replace: true }));
+      await serverNotFound(importSong(dono, { ...editor, id: imported.id, replace: true }));
+      await serverNotFound(importSong(dono, { ...editor, id: randomUUID(), replace: true }));
     });
 
     it('entrada forjada é recusada: catálogo, sem chart, chart de outra música ou nível, formato de original desconhecido', async () => {
@@ -1674,7 +1740,7 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         const cls = await classOf(t);
         const aluno = await studentOf(t, cls.id, 'Rita', { join: false });
         const link = () => asServer(c, `select ${S}.class_link_existing($1) as r`, [aluno.id]).then((res) => res.rows[0].r);
-        await notFound(link());
+        await serverNotFound(link());
         const orphan = randomUUID();
         await c.query(`insert into auth.users (id, instance_id, aud, role, email, is_anonymous) values ($1, $2, 'authenticated', 'authenticated', $3, false)`,
           [orphan, ZERO, `aluno-${aluno.id}@alunos.violinhero.invalid`]);
@@ -2156,6 +2222,13 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
         [S]);
       const exposed = rows.map((r) => `${r.role} ${r.fn}`);
       assert.deepEqual(exposed, [...ALLOWED_FUNCTIONS].sort());
+    });
+
+    it('"não encontrado" NÃO sai como P0002 (HTTP 500 no PostgREST), fora de submit_play e do que só o servidor chama', async () => {
+      const { rows } = await c.query(
+        `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = $1 and p.prosrc like '%P0002%' order by 1`, [S]);
+      assert.deepEqual(rows.map((r) => r.proname), ['class_link_existing', 'class_link_user', 'import_song', 'submit_play']);
     });
   });
 });

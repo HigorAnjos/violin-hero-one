@@ -79,6 +79,7 @@ describe('desafios', () => {
 
   it.each([
     ['28000', 'needs-account'],
+    ['PT404', 'not-found'],
     ['P0002', 'not-found'],
     ['22023', 'refused'],
     ['42501', 'offline'],

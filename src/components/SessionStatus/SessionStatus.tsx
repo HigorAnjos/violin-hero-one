@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { useQuery } from '@tanstack/react-query';
 import { ensureSession, type SessionState } from '../../services/session';
 import { supabase } from '../../services/supabase';
-import { accountUrl, ROUTES } from '../../shell/routes';
+import { ROUTES } from '../../shell/routes';
 
 type Tone = 'on' | 'off';
 
@@ -78,8 +78,8 @@ export const SessionStatus: React.FC<{ client?: Parameters<typeof ensureSession>
   return (
     <>
       <SessionBadge state={state} />
-      {/* O convidado cria a conta (ou entra na que já tem) pela GuestPrompt, sem perder o que jogou */}
-      {accountLink && guest && <AccountLink to={accountUrl('aparelho', ROUTES.home)}>Entrar ou criar conta</AccountLink>}
+      {/* O convidado vai ao Login, com todas as portas: conta por e-mail, código da turma, responsável e professor */}
+      {accountLink && guest && <AccountLink to={ROUTES.login}>Entrar ou criar conta</AccountLink>}
     </>
   );
 };

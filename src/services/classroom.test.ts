@@ -29,8 +29,8 @@ function device(flush: DeviceData['flush'] = async () => {}): DeviceData & { flu
 
 describe('classroomErrorKind', () => {
   it('traduz os códigos das funções do banco', () => {
-    expect(['28000', 'P0002', '22023', '23505', 'VHLIM', '42501', undefined, 'XX000'].map((code) => classroomErrorKind({ code }))).toEqual([
-      'needs-account', 'not-found', 'refused', 'duplicate', 'limit', 'offline', 'offline', 'server',
+    expect(['28000', 'PT404', 'P0002', '22023', '23505', 'VHLIM', '42501', undefined, 'XX000'].map((code) => classroomErrorKind({ code }))).toEqual([
+      'needs-account', 'not-found', 'not-found', 'refused', 'duplicate', 'limit', 'offline', 'offline', 'server',
     ]);
   });
 });

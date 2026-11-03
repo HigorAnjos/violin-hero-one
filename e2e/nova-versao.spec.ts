@@ -1,3 +1,5 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { skipOnboarding } from './choose';
 import { fontsReady } from './fonts';
@@ -79,3 +81,77 @@ for (const [name, path] of MENUS) {
     expect(await page.evaluate(() => getComputedStyle(document.body).paddingBottom)).toBe('0px');
   });
 }
+
+/**
+ * Com o service worker de verdade: o sw.js do build ganha uma versão 2 (que responde "v2" a quem perguntar) enquanto o
+ * app está aberto, o aviso aparece e um clique em Atualizar põe a página na versão 2.
+ */
+test.describe('versão nova de verdade: um clique em Atualizar troca de versão', () => {
+  test.use({ serviceWorkers: 'allow' });
+  const SW = path.resolve(import.meta.dirname, '../dist/sw.js');
+  const V2 = `\nself.addEventListener('message', (e) => { if (e.data === 'versao') e.ports[0].postMessage('v2'); });\n`;
+
+  /** Pergunta a versão ao service worker que controla a página; a versão 1 não responde. */
+  const version = (page: Page) =>
+    page.evaluate(
+      () =>
+        new Promise<string>((resolve) => {
+          const controller = navigator.serviceWorker.controller;
+          if (!controller) return resolve('sem controlador');
+          const channel = new MessageChannel();
+          channel.port1.onmessage = (e) => resolve(e.data);
+          controller.postMessage('versao', [channel.port2]);
+          setTimeout(() => resolve('v1'), 1000);
+        })
+    );
+  const registration = (page: Page) =>
+    page.evaluate(async () => {
+      const r = await navigator.serviceWorker.getRegistration();
+      return { waiting: !!r?.waiting, installing: !!r?.installing };
+    });
+
+  let original: string;
+  test.beforeEach(async ({ page }) => {
+    original = await readFile(SW, 'utf8');
+    await skipOnboarding(page);
+  });
+  test.afterEach(async () => {
+    await writeFile(SW, original);
+  });
+
+  // A versão 2 sai enquanto o app está aberto; a conferência de hora em hora (ou a próxima navegação) a encontra
+  async function deployAndFind(page: Page) {
+    await writeFile(SW, original + V2);
+    await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())!.update());
+    await expect(notice(page)).toBeVisible({ timeout: 15000 });
+  }
+
+  async function updateOnce(page: Page) {
+    const reloaded = page.waitForEvent('load');
+    await notice(page).getByRole('button', { name: 'Atualizar' }).click();
+    await reloaded;
+    await expect(notice(page)).toHaveCount(0);
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    expect(await version(page)).toBe('v2');
+    expect(await registration(page)).toEqual({ waiting: false, installing: false });
+  }
+
+  test('página já controlada pela versão 1: a versão 2 espera e entra no primeiro clique', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    expect(await version(page)).toBe('v1');
+    await deployAndFind(page);
+    expect((await registration(page)).waiting).toBe(true);
+    await updateOnce(page);
+  });
+
+  test('primeira visita (página sem controlador): a versão 2 ativa sozinha e o primeiro clique a carrega', async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    expect(await version(page)).toBe('sem controlador');
+    await deployAndFind(page);
+    await updateOnce(page);
+  });
+});

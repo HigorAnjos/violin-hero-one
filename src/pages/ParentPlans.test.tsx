@@ -43,12 +43,28 @@ describe.each([cadernoTheme, palcoTheme, pixelTheme])('responsável e planos: $i
 
   it.each([[1280, 720], [844, 390]])('%i × %i: planos reais e pro sem assinatura', async () => {
     const api = fakeClassroom(); api.actAs('professor');
-    renderScreen(<Plans api={api} />, { theme, path: '/planos' });
+    renderScreen(<Plans api={api} />, { theme, path: '/planos', queryClient: client() });
     expect(await screen.findByText('2 turmas × 10 alunos')).toBeInTheDocument();
     expect(await screen.findByText('20 turmas × 40 alunos')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Assinatura chega em breve' })).toBeDisabled();
-    expect(screen.getByText('Seu plano atual')).toBeInTheDocument();
+    expect(await screen.findByText('Seu plano atual')).toBeInTheDocument();
+    expect(screen.getByText(/de 2 turmas abertas/)).toBeInTheDocument();
   });
+});
+
+it.each([
+  ['convidado', { status: 'signed-in', userId: 'anon', anonymous: true }],
+  ['aluno da turma (sem e-mail)', { status: 'signed-in', userId: 'aluno', anonymous: false }],
+  ['sem rede', { status: 'offline' }],
+])('planos para %s: os planos aparecem, mas nada de "Seu plano" nem consulta ao plano', async (_who, session) => {
+  const api = fakeClassroom(); api.actAs('professor');
+  const getMyPlan = vi.spyOn(api, 'getMyPlan');
+  renderScreen(<Plans api={api} />, { path: '/planos', queryClient: client(session) });
+  expect(await screen.findByText('2 turmas × 10 alunos')).toBeInTheDocument();
+  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  expect(screen.queryByText(/Seu plano/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/\d+ de \d+ turmas abertas/)).not.toBeInTheDocument();
+  expect(getMyPlan).not.toHaveBeenCalled();
 });
 
 it.each([

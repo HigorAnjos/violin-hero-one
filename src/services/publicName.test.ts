@@ -1,6 +1,9 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook } from '@testing-library/react';
+import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { ProfileClient } from './profile';
-import { myPublicName, rankingName } from './publicName';
+import { useSaveStartProfile, type ProfileClient } from './profile';
+import { myPublicName, publicNameKey, rankingName } from './publicName';
 
 function fakeClient(result: { data: unknown; error: unknown }) {
   const query = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn().mockResolvedValue(result) };
@@ -10,23 +13,39 @@ function fakeClient(result: { data: unknown; error: unknown }) {
 }
 
 describe('nome público', () => {
-  it('bicho + número, como violinhero.ranking_name; sem bicho, Violinista', () => {
-    expect(rankingName('fox', 1234)).toBe('Raposa 1234');
-    expect(rankingName('penguin', 9999)).toBe('Pinguim 9999');
-    expect(rankingName('cat', 1000)).toBe('Gato 1000');
-    expect(rankingName(null, 4321)).toBe('Violinista 4321');
+  it('bicho + número de 5 dígitos, como violinhero.ranking_name', () => {
+    expect(rankingName('fox', 12345)).toBe('Raposa 12345');
+    expect(rankingName('penguin', 99999)).toBe('Pinguim 99999');
+    expect(rankingName('cat', 10000)).toBe('Gato 10000');
   });
 
   it('lê só o bicho e o número do próprio perfil, nunca o apelido', async () => {
-    const { client, query } = fakeClient({ data: { animal: 'cat', nickname_tag: 4821 }, error: null });
-    expect(await myPublicName(client, { status: 'signed-in', userId: 'u1', anonymous: false })).toBe('Gato 4821');
+    const { client, query } = fakeClient({ data: { animal: 'cat', nickname_tag: 48213 }, error: null });
+    expect(await myPublicName(client, { status: 'signed-in', userId: 'u1', anonymous: false })).toBe('Gato 48213');
     expect(query.select).toHaveBeenCalledWith('animal, nickname_tag');
     expect(query.eq).toHaveBeenCalledWith('id', 'u1');
   });
 
-  it('sem sessão, sem perfil ou com erro: sem nome', async () => {
+  it('sem sessão, sem perfil, com erro ou perfil sem bicho (banco sem a 0021): sem nome, nunca "Violinista"', async () => {
+    const signedIn = { status: 'signed-in', userId: 'u1', anonymous: true } as const;
     expect(await myPublicName(null, { status: 'offline' })).toBeNull();
-    expect(await myPublicName(fakeClient({ data: null, error: null }).client, { status: 'signed-in', userId: 'u1', anonymous: true })).toBeNull();
-    expect(await myPublicName(fakeClient({ data: null, error: { code: 'x' } }).client, { status: 'signed-in', userId: 'u1', anonymous: true })).toBeNull();
+    expect(await myPublicName(fakeClient({ data: null, error: null }).client, signedIn)).toBeNull();
+    expect(await myPublicName(fakeClient({ data: null, error: { code: 'x' } }).client, signedIn)).toBeNull();
+    expect(await myPublicName(fakeClient({ data: { animal: null, nickname_tag: 4821 }, error: null }).client, signedIn)).toBeNull();
+    expect(await myPublicName(fakeClient({ data: { animal: 'dragon', nickname_tag: 48213 }, error: null }).client, signedIn)).toBeNull();
+  });
+
+  it('salvar o bicho relê o nome público: o servidor pode ter trocado o número (par de outra conta)', async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['session'], { status: 'signed-in', userId: 'u1', anonymous: false });
+    queryClient.setQueryData(publicNameKey, 'Gato 48213');
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn(() => ({ eq }));
+    const client = { auth: {}, from: vi.fn(() => ({ update })) } as unknown as ProfileClient;
+    const wrapper = ({ children }: { children: React.ReactNode }) => React.createElement(QueryClientProvider, { client: queryClient }, children);
+    const { result } = renderHook(() => useSaveStartProfile(client), { wrapper });
+    await act(() => result.current.mutateAsync({ level: 'beginner', nickname: null, animal: 'fox' }));
+    expect(update).toHaveBeenCalledWith({ level: 'beginner', nickname: null, animal: 'fox' });
+    expect(queryClient.getQueryState(publicNameKey)?.isInvalidated).toBe(true);
   });
 });

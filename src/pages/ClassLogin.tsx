@@ -51,17 +51,18 @@ const Header = styled.header`
     min-width: 0;
   }
 
-  > span {
-    font-size: 0.8125rem;
-    color: ${({ theme }) => theme.colors.textMuted};
-  }
-
   @media (max-height: 500px) {
     margin: 0;
+  }
+`;
 
-    > span {
-      display: none;
-    }
+/** "Sem e-mail e sem senha de letras", ao lado do retorno; no celular deitado não cabe. */
+const HeaderNote = styled.span`
+  font-size: 0.8125rem;
+  color: ${({ theme }) => theme.colors.textMuted};
+
+  @media (max-height: 500px) {
+    display: none;
   }
 `;
 
@@ -255,7 +256,6 @@ export const ClassLogin: React.FC = () => {
       <Form onSubmit={submit} noValidate>
         <Header>
           <div>
-            <BackLink />
             {!editCode && (
               <CodeChip>
                 Turma <span>código {formatClassCode(code)} ✓</span>
@@ -265,7 +265,11 @@ export const ClassLogin: React.FC = () => {
               </CodeChip>
             )}
           </div>
-          <span>Sem e-mail e sem senha de letras</span>
+          {/* O retorno fica na ponta direita do cabeçalho, como nas outras telas */}
+          <div>
+            <HeaderNote>Sem e-mail e sem senha de letras</HeaderNote>
+            <BackLink />
+          </div>
         </Header>
 
         <Body>

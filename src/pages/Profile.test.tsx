@@ -6,7 +6,7 @@ import { shiftDay } from '../services/history';
 import { todayInBrazil } from '../services/progress';
 import { loadLocalProgress, type Progress } from '../shell/progress';
 import { renderScreen } from '../shell/testing';
-import { goalFor, Profile } from './Profile';
+import { goalFor, minuteBars, Profile } from './Profile';
 
 // Sem Supabase no teste o hook só tem o aparelho; aqui ele pode devolver um progresso pronto
 let fake: Progress | null = null;
@@ -95,6 +95,26 @@ describe('Profile', () => {
     expect(streak.getByRole('img', { name: 'Tocou em 2 dos últimos 7 dias' })).toBeInTheDocument();
     expect(streak.getByText('Toque hoje para manter')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Prática na semana' })).getByText('2h 32min')).toBeInTheDocument();
+  });
+
+  it('minutos por dia na escala dos minutos inteiros: máximo 0 não enche barra nenhuma', () => {
+    // Só 20 s hoje: 0 min, nenhuma barra cheia (antes a de hoje enchia com "maior: 0 min")
+    expect(minuteBars([...Array(13).fill(0), 20])).toEqual({ minutes: Array(14).fill(0), tallest: 0, heights: Array(14).fill(0) });
+    expect(minuteBars(Array(14).fill(0)).heights.every((h) => h === 0)).toBe(true);
+    const { tallest, heights } = minuteBars([...Array(12).fill(0), 600, 300]);
+    expect(tallest).toBe(10);
+    expect(heights.slice(-2)).toEqual([100, 50]);
+  });
+
+  it('só segundos hoje: a barra de hoje fica vazia e o rótulo diz maior: 0 min', () => {
+    const base = withHistory();
+    fake = { ...base, history: { ...base.history!, days: [{ day: today, seconds: 20, marked: false }] } };
+    renderScreen(<Profile />);
+    const card = screen.getByRole('region', { name: 'Minutos por dia' });
+    expect(within(card).getByRole('img', { name: /hoje 0, maior dia 0 minutos/ })).toBeInTheDocument();
+    const bars = card.querySelectorAll<HTMLElement>('[role="img"] i');
+    expect([...bars].map((b) => b.style.height)).toEqual(Array(14).fill('0%'));
+    expect(bars[13]).toHaveAttribute('data-empty');
   });
 
   it('metas no imperativo para cada selo', () => {

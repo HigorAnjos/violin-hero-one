@@ -523,14 +523,21 @@ const MyChallenges: React.FC<{ width: string }> = ({ width }) => {
   );
 };
 
-const AccountNeeded: React.FC<{ next: string; children: React.ReactNode }> = ({ next, children }) => (
+/** `ready` falso: o destino ainda vai mudar (a partida não carregou), e o botão espera para não voltar sem ela. */
+const AccountNeeded: React.FC<{ next: string; ready?: boolean; children: React.ReactNode }> = ({ next, ready = true, children }) => (
   <>
     <Text>{children}</Text>
     <Muted>Com conta, seu nome no desafio é gerado (bicho + número): nunca o seu apelido nem o e-mail.</Muted>
     <Actions>
-      <Button as={Link} to={accountUrl('desafio', next)}>
-        Criar conta
-      </Button>
+      {ready ? (
+        <Button as={Link} to={accountUrl('desafio', next)}>
+          Criar conta
+        </Button>
+      ) : (
+        <Button type="button" disabled>
+          Criar conta
+        </Button>
+      )}
     </Actions>
   </>
 );
@@ -554,7 +561,8 @@ export const Challenge: React.FC = () => {
   const options = plays.data ?? [];
   const chosen = options.find((p) => p.playId === playId) ?? options[0] ?? null;
   const created = create.data && create.data.code ? create.data : null;
-  const here = newChallengeUrl(chosen?.playId ?? undefined);
+  // Antes de as partidas chegarem, a da URL (?partida=) é a escolhida
+  const here = newChallengeUrl(chosen?.playId ?? playId ?? undefined);
   const playsError = errorKindOf(plays.error);
   const createError = errorKindOf(create.error);
   const link = created ? challengeLink(created.code) : null;
@@ -572,7 +580,11 @@ export const Challenge: React.FC = () => {
 
   let center: React.ReactNode;
   if (anonymous) {
-    center = <AccountNeeded next={here}>Desafiar alguém pede uma conta: o desafio guarda o seu placar e mostra o resultado para os dois.</AccountNeeded>;
+    center = (
+      <AccountNeeded next={here} ready={Boolean(plays.data || plays.error)}>
+        Desafiar alguém pede uma conta: o desafio guarda o seu placar e mostra o resultado para os dois.
+      </AccountNeeded>
+    );
   } else if (playsError) {
     center = <Text role="status">{ERROR_TEXT[playsError]}</Text>;
   } else if (!plays.data) {

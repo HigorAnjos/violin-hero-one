@@ -43,6 +43,26 @@ test('os retornos nomeiam e abrem o Menu ou a tela mãe', async ({ page }) => {
   await expect(page).toHaveURL(/\/tocar\?modo=partitura/);
 });
 
+test('entrada da turma e editor: o retorno fica na ponta direita do cabeçalho, não à esquerda', async ({ page }) => {
+  for (const [path, label, to] of [['/turma/entrar', 'Menu', '/'], ['/editor', 'Biblioteca', '/biblioteca']] as const) {
+    await page.goto(path);
+    const back = page.locator('[data-back]');
+    await expect(back).toHaveText(`◂${label}`);
+    await expect(back).toHaveAttribute('href', to);
+    await fontsReady(page);
+    const box = (await back.boundingBox())!;
+    const width = page.viewportSize()!.width;
+    expect(width - box.x - box.width, path).toBeLessThanOrEqual(64);
+    expect(box.x, path).toBeGreaterThan(width / 2);
+    // No editor o retorno não custa uma linha a mais: fica na linha do título, também no celular
+    if (path === '/editor') {
+      const title = (await page.getByRole('textbox', { name: 'Título da música' }).boundingBox())!;
+      expect(Math.abs(box.y + box.height / 2 - (title.y + title.height / 2)), 'mesma linha do título').toBeLessThan(24);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'rolagem horizontal').toBeLessThanOrEqual(0);
+  }
+});
+
 for (const theme of ['caderno', 'palco', '8-bits']) {
   test(`${theme}: retornos têm o mesmo topo e recuo da direita`, async ({ page }) => {
     await page.addInitScript((id) => localStorage.setItem('vh:theme', id), theme);

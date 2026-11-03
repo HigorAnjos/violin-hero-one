@@ -2,8 +2,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PLAYER_LEVELS, type PlayerLevel } from '../game/engine/levels';
 import { clearProfilePending, markProfilePending } from './profilePending';
+import { progressKeys } from './progress';
 import { ensureSession, type AuthClient, type SessionState } from './session';
 import { supabase } from './supabase';
+
+/**
+ * O nome público (bicho + número, publicName.ts). Debaixo de progressKeys.all: troca de conta refaz o nome junto. Mora
+ * aqui porque salvar o bicho o refaz (o servidor pode trocar o número quando o par já é de outra conta).
+ */
+export const publicNameKey = [...progressKeys.all, 'public-name'] as const;
 
 export const ANIMALS = ['fox', 'penguin', 'cat'] as const;
 export type Animal = (typeof ANIMALS)[number];
@@ -96,6 +103,10 @@ export function useSaveStartProfile(client: ProfileClient | null = supabase) {
       const synced = await syncProfile(client, session, profile);
       if (synced) clearProfilePending(profile);
       return synced;
+    },
+    // Bicho novo pode vir com número novo (0021): o nome público é relido do servidor
+    onSuccess: (synced) => {
+      if (synced) void queryClient.invalidateQueries({ queryKey: publicNameKey });
     },
   });
 }
