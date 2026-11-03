@@ -6,11 +6,16 @@ import { chooseSong } from '../choose';
 import { CATALOG } from './catalogo';
 
 /**
- * As 10 do catálogo, nos 3 níveis, de ponta a ponta contra o Supabase local: estante → modo → música → nível →
- * carregando (get_song) → afinar → contagem → partida inteira com o ouvido simulado (toca as notas certas no tempo)
- * → resultado. Cada música × nível toca uma vez, num modo que gira (quadrado latino): toda música passa por todos
- * os modos e todo modo por todos os níveis, sem tocar 10 × 3 × modos partidas em tempo real.
+ * As 10 músicas do catálogo e 2 exercícios técnicos, nos 3 níveis, de ponta a ponta contra o Supabase local:
+ * estante → modo → música → nível → carregando (get_song) → afinar → contagem → partida inteira com o ouvido
+ * simulado (toca as notas certas no tempo) → resultado. Cada música × nível toca uma vez, num modo que gira (quadrado
+ * latino): toda música passa por todos os modos e todo modo por todos os níveis, sem tocar 12 × 3 × modos partidas
+ * em tempo real. Os exercícios que tocam são os do 4º dedo (a dica de corda e dedo da partitura chega ao jogo); os
+ * outros 7 entram na estante e na Biblioteca (exercicios.spec), sem partida inteira.
  */
+const PLAYED_EXERCISES = ['moto-perpetuo-quarto-dedo', 'quarto-dedo-primeiro-preso'];
+const PLAYED = CATALOG.filter((s) => s.sheet.category === 'musica' || PLAYED_EXERCISES.includes(s.sheet.id));
+
 const MODES = [
   { name: 'Arcade', route: /\/jogo$/ },
   { name: 'Partitura', route: /\/jogo\/partitura$/ },
@@ -21,7 +26,7 @@ const ALL_BADGES: BadgeId[] = ['primeira-musica', 'sem-erros', 'combo-25', 'comb
 
 test.skip(({ isMobile }) => isMobile, 'as partidas do catálogo só no desktop: o celular confere as telas');
 
-test('a estante traz as 10 do banco na ordem do catálogo, com os 3 níveis', async ({ page }) => {
+test('a estante traz as músicas e os exercícios do banco na ordem do catálogo, com os 3 níveis', async ({ page }) => {
   await page.goto('/tocar/musica?modo=arcade');
   const songs = page.getByRole('radiogroup', { name: 'Músicas' }).getByRole('radio');
   // A primeira consulta ao PostgREST recém-subido monta o cache do schema: leva alguns segundos
@@ -38,7 +43,7 @@ test('a estante traz as 10 do banco na ordem do catálogo, com os 3 níveis', as
   await expect(page.getByRole('list', { name: 'Músicas' }).getByRole('link')).toHaveCount(CATALOG.length);
 });
 
-CATALOG.forEach(({ sheet, charts }, songIndex) => {
+PLAYED.forEach(({ sheet, charts }, songIndex) => {
   LEVELS.forEach((level: Level, levelIndex) => {
     const mode = MODES[(songIndex + levelIndex) % MODES.length];
     const chart = charts[level];

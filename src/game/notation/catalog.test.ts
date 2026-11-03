@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { CATALOG_ORDER, convertSongChart, convertSongFile, songIdFromFileName } from './catalog';
+import { CATALOG_ORDER, categoryOf, convertSongChart, convertSongFile, songIdFromFileName } from './catalog';
 import { placements } from './fingering';
 import { LEVEL_RULES } from './levels';
-import { attacks, LEVELS, parseSong, songDurationBeats, timeline } from './song';
+import { parseMusicXml } from './musicxml';
+import { attacks, LEVELS, parseSong, songDurationBeats, timeline, type Song } from './song';
 
 const FILES = import.meta.glob('../../../content/songs/*.musicxml', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const converted = Object.entries(FILES).map(([path, content]) => convertSongFile({ name: path, content }));
@@ -20,10 +21,19 @@ const SCORES: Record<string, { measures: number; beats: number; time: string; ke
   greensleeves: { measures: 31, beats: 90, time: '3/4', key: 'A minor' },
   'jingle-bells': { measures: 16, beats: 64, time: '4/4', key: 'G major' },
   aleluia: { measures: 16, beats: 64, time: '4/4', key: 'D major' },
+  'staccato-la-maior': { measures: 12, beats: 48, time: '4/4', key: 'A major' },
+  'moto-perpetuo-la-maior': { measures: 16, beats: 64, time: '4/4', key: 'A major' },
+  'moto-perpetuo-quarto-dedo': { measures: 16, beats: 64, time: '4/4', key: 'A major' },
+  'variacao-semicolcheias': { measures: 8, beats: 32, time: '4/4', key: 'A major' },
+  'preparacao-variacao': { measures: 4, beats: 16, time: '4/4', key: 'A major' },
+  'quarto-dedo-primeiro-preso': { measures: 8, beats: 32, time: '4/4', key: 'D major' },
+  'tonalizacao-re-0-2-0-3': { measures: 5, beats: 20, time: '4/4', key: 'D major' },
+  'tonalizacao-re-0-3-1-3': { measures: 5, beats: 20, time: '4/4', key: 'D major' },
+  'escala-re-maior-minimas': { measures: 8, beats: 32, time: '4/4', key: 'D major' },
 };
 
 describe('catálogo do ciclo 2', () => {
-  it('as 10 músicas decididas, na ordem do catálogo, uma por arquivo', () => {
+  it('as 10 músicas e os 9 exercícios decididos, na ordem do catálogo, uma por arquivo', () => {
     expect(converted.map((c) => c.sheet.id).sort()).toEqual([...CATALOG_ORDER].sort());
     expect(Object.keys(SCORES).sort()).toEqual([...CATALOG_ORDER].sort());
   });
@@ -105,6 +115,134 @@ describe('catálogo do ciclo 2', () => {
       expect(notes.map((n) => n.at)).toEqual([...Array(15).keys()]);
       expect(notes.every((n) => n.beats === 1)).toBe(true);
     }
+  });
+});
+
+const EXERCISES = CATALOG_ORDER.slice(10);
+const MUSICS = CATALOG_ORDER.slice(0, 10);
+const placed = (song: Song) => timeline(song).map((n) => ({ midi: n.midi, string: n.string, finger: n.finger }));
+
+describe('exercícios técnicos', () => {
+  const docs = Object.values(import.meta.glob('../../../content/songs/EXERCICIOS.md', { query: '?raw', import: 'default', eager: true }))[0] as string;
+
+  it('os 9 são da categoria exercicio, do Violin Hero, CC0; as 10 músicas continuam músicas', () => {
+    expect(EXERCISES.map((id) => byId(id).sheet.title)).toEqual([
+      'Staccato em Lá maior',
+      'Moto perpétuo em Lá maior',
+      'Moto perpétuo com 4º dedo',
+      'Variação em semicolcheias',
+      'Preparação da variação',
+      '4º dedo com o 1º preso',
+      'Tonalização em Ré (0-2-0-3)',
+      'Tonalização em Ré (0-3-1-3)',
+      'Escala de Ré maior em mínimas',
+    ]);
+    for (const id of EXERCISES) {
+      const { sheet, source } = byId(id);
+      expect(sheet).toMatchObject({ category: 'exercicio', composer: 'Violin Hero' });
+      expect(source.content).toContain('<!-- Composição original do projeto Violin Hero, CC0');
+      expect(source.content).toContain('Objetivo técnico:');
+      expect(source.content).toContain('<rights>Composição original do projeto Violin Hero, CC0</rights>');
+      expect(docs, `${id} no EXERCICIOS.md`).toContain(`\`${id}.musicxml\``);
+    }
+    for (const id of MUSICS) expect(byId(id).sheet.category).toBe('musica');
+    // a escala que já existia fica, ao lado da nova
+    expect(byId('escala-re-maior').sheet.title).toBe('Escala de Ré maior');
+  });
+
+  it('nenhuma dica de corda e dedo é ignorada em nenhum nível', () => {
+    expect(converted.flatMap((c) => c.warnings)).toEqual([]);
+  });
+
+  it('as 10 músicas não têm dica: o dedilhado delas é o do algoritmo, como antes', () => {
+    for (const id of MUSICS) {
+      const score = parseMusicXml(byId(id).source.content);
+      expect(score.measures.flatMap((m) => m.notes).filter((n) => n.hint), id).toEqual([]);
+    }
+  });
+
+  describe.each([...LEVELS])('%s', (level) => {
+    const chart = (id: string) => byId(id).charts[level];
+
+    it('staccato, moto perpétuo, variação e preparação: cordas Lá e Mi, dedos 0 a 3, Mi e Lá soltos', () => {
+      for (const id of ['staccato-la-maior', 'moto-perpetuo-la-maior', 'variacao-semicolcheias', 'preparacao-variacao']) {
+        for (const n of placed(chart(id))) {
+          expect([2, 3], `${id} ${n.midi}`).toContain(n.string);
+          expect(n.finger, `${id} ${n.midi}`).toBeLessThanOrEqual(3);
+          if (n.midi === 69 || n.midi === 76) expect(n.finger, `${id} ${n.midi}`).toBe(0);
+        }
+      }
+    });
+
+    it('moto perpétuo com 4º dedo: os 17 Mi marcados com o 4º dedo na corda Lá, os outros 7 soltos', () => {
+      const notes = placed(chart('moto-perpetuo-quarto-dedo'));
+      const mis = notes.filter((n) => n.midi === 76);
+      expect(mis.filter((n) => n.string === 2 && n.finger === 4)).toHaveLength(17);
+      expect(mis.filter((n) => n.string === 3 && n.finger === 0)).toHaveLength(7);
+      for (const n of notes) expect([2, 3]).toContain(n.string);
+    });
+
+    it('4º dedo com o 1º preso: Lá e Mi sempre com o 4º dedo, nas cordas Ré e Lá, nenhuma solta', () => {
+      for (const n of placed(chart('quarto-dedo-primeiro-preso'))) {
+        expect([1, 2]).toContain(n.string);
+        expect(n.finger).not.toBe(0);
+        if (n.midi === 69) expect(n).toMatchObject({ string: 1, finger: 4 });
+        if (n.midi === 76) expect(n).toMatchObject({ string: 2, finger: 4 });
+      }
+    });
+
+    it.each([
+      ['tonalizacao-re-0-2-0-3', [0, 2, 0, 3, 0, 2, 0, 3, 0], [1, 1, 1, 1, 2, 2, 2, 2, 1]],
+      ['tonalizacao-re-0-3-1-3', [0, 3, 1, 3, 0, 3, 1, 3, 0], [1, 1, 1, 1, 2, 2, 2, 2, 1]],
+      ['escala-re-maior-minimas', [0, 1, 2, 3, 0, 1, 2, 3, 2, 1, 0, 3, 2, 1, 0], [1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1]],
+    ])('%s: dedos e cordas pedidos, em mínimas e semibreve', (id, fingers, strings) => {
+      const notes = timeline(chart(id));
+      expect(notes.map((n) => n.finger)).toEqual(fingers);
+      expect(notes.map((n) => n.string)).toEqual(strings);
+      expect(new Set(notes.map((n) => n.beats))).toEqual(new Set([2, 4]));
+    });
+  });
+
+  it('variação: no Médio e no Difícil cada colcheia dos compassos 1 a 8 do moto perpétuo vira duas semicolcheias; o Fácil volta às colcheias', () => {
+    const moto = byId('moto-perpetuo-la-maior').charts.hard.measures.slice(0, 8).flatMap((m) => m.notes);
+    expect(moto).toHaveLength(64);
+    for (const level of ['medium', 'hard'] as const) {
+      const variation = timeline(byId('variacao-semicolcheias').charts[level]);
+      expect(variation.map((n) => n.midi)).toEqual(moto.flatMap((n) => [n.midi, n.midi]));
+      expect(variation.every((n) => n.beats === 0.25)).toBe(true);
+    }
+    const easy = timeline(byId('variacao-semicolcheias').charts.easy);
+    expect(easy.map((n) => [n.midi, n.beats])).toEqual(moto.map((n) => [n.midi, 0.5]));
+  });
+
+  it('preparação: duas semicolcheias e a pausa de colcheia em cada tempo; o Fácil fica com uma colcheia e a pausa', () => {
+    const notes = (level: (typeof LEVELS)[number]) => byId('preparacao-variacao').charts[level].measures.flatMap((m) => m.notes);
+    for (const level of ['medium', 'hard'] as const) {
+      expect(notes(level).map((n) => [n.beat % 1, n.beats])).toEqual(
+        [...Array(16)].flatMap(() => [
+          [0, 0.25],
+          [0.25, 0.25],
+        ]),
+      );
+    }
+    expect(notes('easy').map((n) => [n.beat, n.beats])).toEqual([...Array(16).keys()].map((i) => [i % 4, 0.5]));
+  });
+});
+
+describe('categoryOf', () => {
+  const xml = (field: string) => `<score-partwise><identification><miscellaneous>${field}</miscellaneous></identification></score-partwise>`;
+
+  it('sem o campo é música; com ele, o que diz', () => {
+    expect(categoryOf('<score-partwise/>')).toBe('musica');
+    expect(categoryOf(xml('<miscellaneous-field name="categoria"> exercicio </miscellaneous-field>'))).toBe('exercicio');
+    expect(categoryOf(xml('<miscellaneous-field name="outro">exercicio</miscellaneous-field>'))).toBe('musica');
+  });
+
+  it('categoria desconhecida é erro, e convertSongFile diz o arquivo', () => {
+    expect(() => categoryOf(xml('<miscellaneous-field name="categoria">estudo</miscellaneous-field>'))).toThrow(/categoria "estudo" desconhecida/);
+    const [path, content] = Object.entries(FILES)[0];
+    const bad = content.replace('<identification>', '<identification><miscellaneous><miscellaneous-field name="categoria">estudo</miscellaneous-field></miscellaneous>');
+    expect(() => convertSongFile({ name: path.split('/').pop()!, content: bad })).toThrow(/\.musicxml: categoria "estudo"/);
   });
 });
 

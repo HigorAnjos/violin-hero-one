@@ -1,7 +1,17 @@
 import { FIXED_SONGS, findFixedSong } from '../game/notation/songs';
 import { LEVELS, songDurationSeconds, type Level, type Song } from '../game/notation/song';
 import { songCache, type SavedSong, type SongCache } from './songCache';
-import { SongError, useCatalog, useSavedSongs, useSong, type CatalogEntry, type SongErrorKind, type SongsClient } from './songs';
+import {
+  categoryOfSheet,
+  SongError,
+  useCatalog,
+  useSavedSongs,
+  useSong,
+  type CatalogEntry,
+  type SongCategory,
+  type SongErrorKind,
+  type SongsClient,
+} from './songs';
 import { supabase } from './supabase';
 
 /** Música na estante: a ficha do catálogo ou de uma das embutidas, sem as notas. */
@@ -12,6 +22,8 @@ export interface ShelfSong {
   bpm: number;
   key: string;
   durationSeconds: number;
+  /** Música ou exercício técnico: o grupo na Biblioteca. */
+  category: SongCategory;
   /** Níveis que dá para tocar agora, de fácil a difícil. */
   levels: Level[];
   /** Vem no app: toca sem internet (só no Fácil). */
@@ -34,6 +46,8 @@ function embeddedSong(song: Song): ShelfSong {
     bpm: song.bpm,
     key: song.key,
     durationSeconds: songDurationSeconds(song),
+    // as embutidas são todas músicas (fixed-songs.mjs)
+    category: 'musica',
     levels: [song.level],
     embedded: true,
     saved: false,
@@ -51,13 +65,14 @@ export const EMBEDDED_SHELF: readonly ShelfSong[] = FIXED_SONGS.map(({ song }) =
 
 export function catalogShelf(entries: readonly CatalogEntry[], saved: readonly SavedSong[] = []): ShelfSong[] {
   const savedIds = new Set(saved.map((s) => s.sheet.id));
-  return entries.map(({ id, title, composer, bpm, key, durationSeconds, levels }) => ({
+  return entries.map(({ id, title, composer, bpm, key, durationSeconds, levels, category }) => ({
     id,
     title,
     composer,
     bpm,
     key,
     durationSeconds,
+    category: categoryOfSheet({ category }),
     levels,
     embedded: Boolean(findFixedSong(id)),
     saved: savedIds.has(id),
@@ -77,13 +92,14 @@ export function offlineShelf(saved: readonly SavedSong[]): ShelfSong[] {
   });
   const others = saved
     .filter((s) => !findFixedSong(s.sheet.id))
-    .map(({ sheet: { id, title, composer, bpm, key, durationSeconds }, levels }) => ({
-      id,
-      title,
-      composer,
-      bpm,
-      key,
-      durationSeconds,
+    .map(({ sheet, levels }) => ({
+      id: sheet.id,
+      title: sheet.title,
+      composer: sheet.composer,
+      bpm: sheet.bpm,
+      key: sheet.key,
+      durationSeconds: sheet.durationSeconds,
+      category: categoryOfSheet(sheet),
       levels,
       embedded: false,
       saved: true,

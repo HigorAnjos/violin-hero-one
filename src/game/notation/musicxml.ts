@@ -1,6 +1,7 @@
 // MusicXML (partwise) → melodia neutra (Score): a 1ª voz de uma parte, a nota mais aguda de cada acorde.
 // Os níveis (levels.ts) saem do Score; aqui não há dedilhado nem simplificação.
 // Imports com extensão .ts: a Edge Function import-song (Deno) lê estes mesmos arquivos.
+import type { FingeringHint } from './fingering.ts';
 import { unfoldRepeats, type RepeatMarks } from './repeats.ts';
 import type { TimeSignature } from './song.ts';
 import { child, children, parseXml, textAt, type XmlElement } from './xml.ts';
@@ -18,6 +19,8 @@ export interface ScoreNote {
   midi: number;
   /** Continua a nota anterior (ligadura de prolongamento), sem novo ataque. */
   tie?: boolean;
+  /** Corda e dedo escritos na partitura (<technical>); o dedilhado de cada nível respeita quando cabe. */
+  hint?: FingeringHint;
 }
 
 export interface ScoreMeasure {
@@ -78,6 +81,21 @@ function pitchMidi(note: XmlElement): number {
   return (octave + 1) * 12 + STEP_SEMITONES[step] + alter;
 }
 
+/**
+ * Corda (<string>: 1 = Mi … 4 = Sol) e dedo (<fingering>, o primeiro) de <notations><technical>. O que não é número
+ * vira NaN e o dedilhado ignora com aviso, como a dica que não cabe no nível.
+ */
+function fingeringHint(note: XmlElement): FingeringHint | undefined {
+  const hint: FingeringHint = {};
+  for (const technical of children(note, 'notations').flatMap((n) => children(n, 'technical'))) {
+    const string = textAt(technical, 'string');
+    const finger = textAt(technical, 'fingering');
+    if (string !== undefined && hint.string === undefined) hint.string = 4 - Number(string.trim() || NaN);
+    if (finger !== undefined && hint.finger === undefined) hint.finger = Number(finger.trim() || NaN);
+  }
+  return hint.string === undefined && hint.finger === undefined ? undefined : hint;
+}
+
 /** Andamento em semínimas por minuto, de um <direction>, <sound> ou <note> do compasso. */
 function quarterTempo(element: XmlElement): number | undefined {
   for (const sound of element.name === 'sound' ? [element] : children(element, 'sound')) {
@@ -104,7 +122,7 @@ interface RawMeasure {
   divisions: number;
   time: TimeSignature;
   extent: number;
-  notes: { start: number; length: number; midi: number; tieStop: boolean }[];
+  notes: { start: number; length: number; midi: number; tieStop: boolean; hint?: FingeringHint }[];
   marks: RepeatMarks;
 }
 
@@ -197,11 +215,13 @@ function readPart(part: XmlElement, lenient: boolean): RawPart {
         if (noteVoice !== voice) continue;
         const midi = pitchMidi(element);
         const tieStop = children(element, 'tie').some((t) => t.attributes.type === 'stop');
+        const hint = fingeringHint(element);
         if (chord && last && last.start === start) {
-          if (midi > last.midi) last.midi = midi;
+          // a dica é da nota que fica (a mais aguda do acorde)
+          if (midi > last.midi) Object.assign(last, { midi, hint });
           continue;
         }
-        last = { start, length, midi, tieStop };
+        last = { start, length, midi, tieStop, hint };
         raw.push(last);
       }
     }
@@ -249,6 +269,7 @@ function toScore(part: RawPart, header: { title: string; composer: string; tempo
       notes: m.notes.map((n) => {
         const note: ScoreNote = { beat: toBeats(n.start), beats: toBeats(n.length), midi: n.midi };
         if (n.tieStop) note.tie = true;
+        if (n.hint) note.hint = n.hint;
         return note;
       }),
     });

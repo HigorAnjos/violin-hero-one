@@ -445,8 +445,38 @@ describe('violinhero (transação revertida)', { skip: !process.env.DATABASE_URL
           const { rows } = await getSong(c, u, sheet.id, level);
           assert.equal(rows.length, 1, `${sheet.id} ${level}`);
           assert.deepEqual(rows[0].chart, JSON.parse(JSON.stringify(charts[level])));
+          assert.equal(rows[0].category, sheet.category, `${sheet.id} ${level}`);
         }
       }
+    });
+
+    it('seed grava a categoria do MusicXML: os exercícios técnicos vêm como exercicio, as músicas como musica', async () => {
+      const { loadCatalog, seedCatalog } = await import('./seed-songs.mjs');
+      const entries = await loadCatalog();
+      await seedCatalog(c, entries);
+      const { rows } = await c.query(`select id, category from ${S}.songs where id = any($1)`, [entries.map((e) => e.sheet.id)]);
+      const byId = Object.fromEntries(rows.map((r) => [r.id, r.category]));
+      assert.equal(entries.filter((e) => e.sheet.category === 'exercicio').length, 9);
+      for (const { sheet } of entries) assert.equal(byId[sheet.id], sheet.category, sheet.id);
+      // trocar a categoria no arquivo muda só a linha da ficha
+      const [first] = entries;
+      const flipped = { ...first, sheet: { ...first.sheet, category: first.sheet.category === 'musica' ? 'exercicio' : 'musica' } };
+      assert.deepEqual(await seedCatalog(c, [flipped, ...entries.slice(1)]), { songs: 1, song_sources: 0, song_charts: 0 });
+    });
+
+    it('exercício só no catálogo, e ninguém do app escreve a categoria', async () => {
+      const dono = await newUser(c);
+      const id = await serverSong(c, { owner: dono });
+      assert.equal((await getSong(c, dono, id)).rows[0].category, 'musica');
+      await c.query('savepoint cat');
+      await assert.rejects(c.query(`update ${S}.songs set category = 'exercicio' where id = $1`, [id]), /songs_category_catalog/);
+      await c.query('rollback to savepoint cat');
+      await denied(as(c, dono, `update ${S}.songs set category = 'exercicio' where id = $1`, [id]));
+      await denied(as(c, dono,
+        `insert into ${S}.songs (title, bpm, time_beats, time_unit, duration_seconds, origin, category) values ('X', 60, 4, 4, 4, 'imported', 'musica')`));
+      const catalogo = await serverSong(c);
+      await c.query(`update ${S}.songs set category = 'exercicio' where id = $1`, [catalogo]);
+      assert.equal((await getSong(c, dono, catalogo)).rows[0].category, 'exercicio');
     });
   });
 

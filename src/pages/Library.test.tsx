@@ -38,6 +38,9 @@ const SHEET = {
 
 const renderLibrary = (theme?: typeof palcoTheme) => renderScreen(<Library />, { path: ROUTES.library, route: ROUTES.library, theme });
 const cards = () => within(screen.getByRole('list', { name: 'Músicas' })).getAllByRole('link');
+/** Na ordem do catálogo, as 10 músicas e depois os exercícios técnicos. */
+const MUSICS = CATALOG_ORDER.indexOf('staccato-la-maior');
+const EXERCISES = CATALOG_ORDER.length - MUSICS;
 
 describe('Library', () => {
   afterEach(() => {
@@ -45,16 +48,39 @@ describe('Library', () => {
     saved.cache = null;
   });
 
-  it('com o catálogo: as 10 na ordem da estante, com níveis e as do app marcadas', async () => {
+  it('com o catálogo: músicas e exercícios na ordem da estante, com níveis e as do app marcadas', async () => {
     db.client = fakeCatalogClient().client;
     renderLibrary(palcoTheme);
     await waitFor(() => expect(cards()).toHaveLength(CATALOG_ORDER.length));
-    expect(screen.getByText(`${CATALOG_ORDER.length} músicas · ${FIXED_SONGS.length} no app`)).toBeInTheDocument();
+    expect(screen.getByText(`${MUSICS} músicas · ${EXERCISES} exercícios · ${FIXED_SONGS.length} no app`)).toBeInTheDocument();
     const first = cards()[0];
     // A música escolhida vai para a escolha de modo (Arcade, Partitura, Cordas 3D) antes da seleção
     expect(first).toHaveAttribute('href', `/tocar?musica=${CATALOG_ORDER[0]}`);
     expect(first).toHaveTextContent('Fácil · Médio · Difícil');
     expect(first).toHaveTextContent('No app');
+  });
+
+  it('"Exercícios técnicos" separa os exercícios das músicas, e "Músicas" fica sem eles', async () => {
+    db.client = fakeCatalogClient().client;
+    renderLibrary();
+    await waitFor(() => expect(cards()).toHaveLength(CATALOG_ORDER.length));
+    const exercises = screen.getByRole('button', { name: 'Exercícios técnicos' });
+    await userEvent.click(exercises);
+    expect(exercises).toHaveAttribute('aria-pressed', 'true');
+    expect(cards().map((c) => c.getAttribute('href'))).toEqual(CATALOG_ORDER.slice(MUSICS).map((id) => `/tocar?musica=${id}`));
+    await userEvent.click(screen.getByRole('button', { name: 'Músicas' }));
+    expect(cards().map((c) => c.getAttribute('href'))).toEqual(CATALOG_ORDER.slice(0, MUSICS).map((id) => `/tocar?musica=${id}`));
+    // a busca vale dentro do grupo
+    await userEvent.click(exercises);
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Buscar na biblioteca' }), 'jingle');
+    expect(screen.getByRole('status')).toHaveTextContent('Nenhuma música com “jingle”.');
+  });
+
+  it('sem internet, as embutidas são músicas: o grupo dos exercícios fica vazio', async () => {
+    renderLibrary();
+    expect(await screen.findByText('Sem internet', undefined, { timeout: 5000 })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Exercícios técnicos' }));
+    expect(screen.getByText('Nenhuma música neste filtro.')).toBeInTheDocument();
   });
 
   it('filtro "No app", busca e ordem por nome', async () => {
@@ -90,7 +116,7 @@ describe('Library', () => {
 
     db.client = fakeCatalogClient().client;
     const online = renderLibrary();
-    await waitFor(() => expect(screen.getByText(`${CATALOG_ORDER.length} músicas · ${FIXED_SONGS.length} no app · 1 baixada`)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(`${MUSICS} músicas · ${EXERCISES} exercícios · ${FIXED_SONGS.length} no app · 1 baixada`)).toBeInTheDocument());
     expect(cards().find((c) => c.textContent?.includes('Greensleeves'))).toHaveTextContent('Baixada');
     online.unmount();
 

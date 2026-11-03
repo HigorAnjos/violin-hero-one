@@ -267,7 +267,19 @@ export function withOwnSongs(shelf: readonly ShelfSong[], own: readonly CatalogE
   const savedIds = new Set(saved.map((s) => s.sheet.id));
   const mine = own
     .filter((s) => !ids.has(s.id))
-    .map(({ id, title, composer, bpm, key, durationSeconds, levels }) => ({ id, title, composer, bpm, key, durationSeconds, levels, embedded: false, saved: savedIds.has(id) }));
+    .map(({ id, title, composer, bpm, key, durationSeconds, levels }) => ({
+      id,
+      title,
+      composer,
+      bpm,
+      key,
+      durationSeconds,
+      // música do jogador nunca é exercício (songs_category_catalog)
+      category: 'musica' as const,
+      levels,
+      embedded: false,
+      saved: savedIds.has(id),
+    }));
   return [...shelf, ...mine];
 }
 

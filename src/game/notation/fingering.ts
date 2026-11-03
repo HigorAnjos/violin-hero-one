@@ -60,15 +60,36 @@ const stepCost = (rules: FingeringRules, p: Placement) =>
 const moveCost = (rules: FingeringRules, from: Placement, to: Placement) =>
   Math.abs(from.position - to.position) * rules.shiftCost + Math.abs(from.string - to.string) * rules.crossCost;
 
+/** Corda e/ou dedo pedidos pela partitura (MusicXML <string> e <fingering>); o que falta o algoritmo escolhe. */
+export interface FingeringHint {
+  /** Na numeração de StringIndex; fora de 0 a 3 a dica não cabe no violino. */
+  string?: number;
+  finger?: number;
+}
+
+const hintLabel = (hint: FingeringHint) =>
+  [hint.string !== undefined && `corda ${hint.string}`, hint.finger !== undefined && `dedo ${hint.finger}`].filter(Boolean).join(', ');
+
 /**
  * Dedilhado da melodia inteira. Nota ligada (`tie`) repete a corda e o dedo da anterior.
+ * Nota com `hint` fica só com as formas que batem com a dica; dica que não cabe até `maxPosition` é ignorada e
+ * avisada em `warn` (nota ligada ignora a dica: vale a da nota de antes).
  * Lança se alguma nota não cabe até `maxPosition`. Empate: a ordem de `placements` (corda grave, posição baixa).
  */
-export function fingerMelody(notes: readonly { midi: number; tie?: boolean }[], rules: FingeringRules): Placement[] {
+export function fingerMelody(
+  notes: readonly { midi: number; tie?: boolean; hint?: FingeringHint }[],
+  rules: FingeringRules,
+  warn?: (message: string) => void
+): Placement[] {
   if (notes.length === 0) return [];
   const options = notes.map((note, i) => {
     const found = placements(note.midi, rules.maxPosition);
     if (!found.length) throw new RangeError(`nota ${i + 1} (midi ${note.midi}) não cabe no violino até a ${rules.maxPosition}ª posição`);
+    const { hint } = note;
+    if (!hint || note.tie || (hint.string === undefined && hint.finger === undefined)) return found;
+    const matching = found.filter((p) => (hint.string === undefined || p.string === hint.string) && (hint.finger === undefined || p.finger === hint.finger));
+    if (matching.length) return matching;
+    warn?.(`nota ${i + 1} (midi ${note.midi}): dica ${hintLabel(hint)} não cabe até a ${rules.maxPosition}ª posição, ignorada`);
     return found;
   });
   let costs = options[0].map((p) => stepCost(rules, p));
