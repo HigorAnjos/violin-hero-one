@@ -55,7 +55,12 @@ test('escala de Ré maior: escrever, ouvir, salvar e abrir na escolha de modo', 
 
 test('a Biblioteca abre o editor', async ({ page }) => {
   await page.goto('/biblioteca');
-  await page.getByRole('link', { name: /Escrever música/ }).click();
+  if (page.viewportSize()!.height <= 500) {
+    // Celular deitado (MobileLibrary): o editor fica dentro do "＋ Importar"
+    await expect(page.getByRole('link', { name: /Escrever música/ })).toBeHidden();
+    await page.getByRole('link', { name: 'Importar', exact: true }).click();
+    await page.getByRole('link', { name: 'Escrever ou ditar' }).click();
+  } else await page.getByRole('link', { name: /Escrever música/ }).click();
   await expect(page).toHaveURL(/\/editor$/);
   await expect(staff(page)).toBeFocused();
 });
