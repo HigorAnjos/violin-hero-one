@@ -1,4 +1,11 @@
-import { clientIp, debugClientIp, IP_HEADERS } from './client-ip.ts';
+import { clientIp, debugClientIp, IP_HEADERS, throttleIp } from './client-ip.ts';
+
+Deno.test('limite por IP só liga com on; desligado envia vazio para a RPC', () => {
+  const req = new Request('https://example.test', { headers: { 'x-forwarded-for': 'cliente, proxy' } });
+  for (const flag of [undefined, '', 'off', 'ON']) equal(throttleIp(req, flag), '');
+  equal(throttleIp(req, 'on'), 'proxy');
+  equal(throttleIp(req, 'on', 'xff-first'), 'cliente');
+});
 
 function equal(actual: unknown, expected: unknown) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error(`${JSON.stringify(actual)} != ${JSON.stringify(expected)}`);

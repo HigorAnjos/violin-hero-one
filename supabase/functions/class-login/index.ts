@@ -4,6 +4,7 @@
 // senha) e devolve uma sessão Supabase dele, gerada por um link mágico do admin (não manda e-mail) trocado aqui mesmo.
 // Nenhum segredo vai para o app além da sessão do próprio aluno. A chave de serviço só existe no ambiente do Supabase.
 //
+// CLASS_LOGIN_IP_LIMIT=on liga o limite por IP; padrão desligado (requer migração 0019 antes do deploy).
 // CLASS_LOGIN_IP_DEBUG=on registra só cabeçalhos candidatos; padrão desligado.
 // CLASS_LOGIN_IP_HEADER escolhe xff-first, xff-last ou cabeçalho candidato exceto forwarded; padrão último XFF.
 // Deploy (não há sessão antes da entrada):
@@ -20,7 +21,7 @@
 //   4xx/5xx { error: { code, message } } — 400 bad_request, 401 invalid_credentials (código, nome ou PIN não conferem:
 //   sempre a mesma resposta), 429 too_many_attempts, 403 class_closed, 500 server
 import { createClient } from '@supabase/supabase-js';
-import { clientIp, debugClientIp } from './client-ip.ts';
+import { throttleIp, debugClientIp } from './client-ip.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -141,7 +142,7 @@ Deno.serve(async (req) => {
       p_code: credentials.code,
       p_name: credentials.name,
       p_pin: credentials.pin,
-      p_ip: clientIp(req, Deno.env.get('CLASS_LOGIN_IP_HEADER')),
+      p_ip: throttleIp(req, Deno.env.get('CLASS_LOGIN_IP_LIMIT'), Deno.env.get('CLASS_LOGIN_IP_HEADER')),
     });
     if (error) throw error;
     const checked = data as Checked;

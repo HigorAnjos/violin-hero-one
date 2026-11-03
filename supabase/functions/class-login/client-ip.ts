@@ -17,3 +17,7 @@ export function clientIp(req: Request, mode = ''): string {
 export function debugClientIp(req: Request, enabled: string | undefined, log = console.log): void {
   if (enabled === 'on') log('class-login ip headers', Object.fromEntries(IP_HEADERS.map((header) => [header, req.headers.get(header)])));
 }
+
+export function throttleIp(req: Request, enabled: string | undefined, mode?: string): string {
+  return enabled === 'on' ? clientIp(req, mode) : '';
+}
