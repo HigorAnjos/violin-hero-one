@@ -15,28 +15,30 @@ language sql volatile set search_path = '' as $$
   select 10000 + floor(random() * 90000)::int
 $$;
 
--- Trava a tabela antes de converter: perfil novo no meio da conversão ficaria com o número de 4 dígitos
-lock table violinhero.profiles in access exclusive mode;
--- A conversão não é edição do jogador: updated_at fica como estava
-alter table violinhero.profiles disable trigger profiles_touch;
-
-alter table violinhero.profiles
-  drop constraint profiles_nickname_tag_check,
-  drop constraint profiles_animal_check,
-  alter column nickname_tag drop default,
-  alter column nickname_tag type int;
-
-update violinhero.profiles set animal = violinhero.random_animal()
- where animal is null or animal not in ('fox', 'penguin', 'cat');
-
--- Cada número de 4 dígitos ganha um dígito sorteado entre os que ninguém do mesmo bicho tem; com os 10 tomados (11
--- contas no mesmo par), um número novo qualquer
-create index profiles_public_name_tmp on violinhero.profiles (animal, nickname_tag);
-do $$
+-- A conversão é um comando só (um bloco do): atômica também no supabase start, que aplica a migração comando a
+-- comando e fora de transação (lock table solto daria 25P01); no scripts/migrate.mjs ela roda dentro do begin dele.
+do $conv$
 declare
   r     record;
   v_tag int;
 begin
+  -- Trava a tabela antes de converter: perfil novo no meio da conversão ficaria com o número de 4 dígitos
+  lock table violinhero.profiles in access exclusive mode;
+  -- A conversão não é edição do jogador: updated_at fica como estava
+  alter table violinhero.profiles disable trigger profiles_touch;
+
+  alter table violinhero.profiles
+    drop constraint profiles_nickname_tag_check,
+    drop constraint profiles_animal_check,
+    alter column nickname_tag drop default,
+    alter column nickname_tag type int;
+
+  update violinhero.profiles set animal = violinhero.random_animal()
+   where animal is null or animal not in ('fox', 'penguin', 'cat');
+
+  -- Cada número de 4 dígitos ganha um dígito sorteado entre os que ninguém do mesmo bicho tem; com os 10 tomados (11
+  -- contas no mesmo par), um número novo qualquer
+  create index profiles_public_name_tmp on violinhero.profiles (animal, nickname_tag);
   for r in select id, animal, nickname_tag from violinhero.profiles where nickname_tag < 10000 order by created_at, id loop
     select t into v_tag
       from (select r.nickname_tag * 10 + d as t from generate_series(0, 9) d) c
@@ -47,17 +49,17 @@ begin
     end loop;
     update violinhero.profiles set nickname_tag = v_tag where id = r.id;
   end loop;
-end $$;
-drop index violinhero.profiles_public_name_tmp;
+  drop index violinhero.profiles_public_name_tmp;
 
-alter table violinhero.profiles enable trigger profiles_touch;
+  alter table violinhero.profiles enable trigger profiles_touch;
 
-alter table violinhero.profiles
-  alter column animal set not null,
-  add constraint profiles_animal_check check (animal in ('fox', 'penguin', 'cat')),
-  alter column nickname_tag set default violinhero.random_nickname_tag(),
-  add constraint profiles_nickname_tag_check check (nickname_tag between 10000 and 99999);
-create unique index profiles_public_name on violinhero.profiles (animal, nickname_tag);
+  alter table violinhero.profiles
+    alter column animal set not null,
+    add constraint profiles_animal_check check (animal in ('fox', 'penguin', 'cat')),
+    alter column nickname_tag set default violinhero.random_nickname_tag(),
+    add constraint profiles_nickname_tag_check check (nickname_tag between 10000 and 99999);
+  create unique index profiles_public_name on violinhero.profiles (animal, nickname_tag);
+end $conv$;
 
 /**
  * Bicho e número do perfil: sem bicho, sorteia (no insert) ou mantém o que tinha (o app manda animal nulo quando o
