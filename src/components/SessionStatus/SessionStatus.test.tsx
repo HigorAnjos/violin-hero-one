@@ -45,7 +45,7 @@ describe('SessionStatus', () => {
     expect(await screen.findByText('Jogando como convidado')).toBeInTheDocument();
   });
 
-  it('na tela inicial o convidado tem o caminho para entrar ou criar conta; quem tem conta não', async () => {
+  it('na tela inicial o convidado vai ao Login (todas as portas), não ao pedido de conta; quem tem conta não', async () => {
     const view = (user: { id: string; is_anonymous: boolean }) =>
       render(
         <MemoryRouter>
@@ -57,7 +57,7 @@ describe('SessionStatus', () => {
         </MemoryRouter>
       );
     const guest = view({ id: 'anon', is_anonymous: true });
-    expect(await screen.findByRole('link', { name: 'Entrar ou criar conta' })).toHaveAttribute('href', '/conta?motivo=aparelho&depois=%2F&voltar=%2F');
+    expect(await screen.findByRole('link', { name: 'Entrar ou criar conta' })).toHaveAttribute('href', '/entrar');
     guest.unmount();
     view({ id: 'u1', is_anonymous: false });
     expect(await screen.findByText('Conta ligada')).toBeInTheDocument();
