@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { rgba } from '../assets/styles/themes/color';
 import { Button } from '../components/Button/Button';
 import { CountIn, useCountIn } from '../components/CountIn/CountIn';
-import { firstNote, LEVEL_NAMES } from '../components/CountIn/countIn';
+import { firstNote, LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { OrchestraBackdrop } from '../components/OrchestraBackdrop/OrchestraBackdrop';
 import { Kicker, SongKicker } from '../components/Screen/Screen';
 import type { Song } from '../game/notation/song';

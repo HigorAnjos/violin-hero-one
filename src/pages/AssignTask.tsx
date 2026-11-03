@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import { TaskProgress } from '../components/TaskProgress/TaskProgress';
 import { LEVELS, type Level } from '../game/notation/song';

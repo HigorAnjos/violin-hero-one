@@ -2,7 +2,7 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { JudgmentCallout } from '../components/JudgmentCallout/JudgmentCallout';
 import { Orchestra } from '../components/Orchestra/Orchestra';
 import { PauseMenu } from '../components/PauseMenu/PauseMenu';

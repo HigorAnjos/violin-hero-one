@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { OfflineBanner } from '../components/OfflineBanner/OfflineBanner';
 import { clampLines, Kicker, Screen } from '../components/Screen/Screen';
 import { SongCover } from '../components/SongCover/SongCover';

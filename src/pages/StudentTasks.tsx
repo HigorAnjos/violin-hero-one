@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { ClassAvatar } from '../components/ClassBadge/ClassBadge';
-import { LEVEL_NAMES } from '../components/CountIn/countIn';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import { TaskCard } from '../components/TaskCard/TaskCard';
 import { dueLabel, percent, reviewMark, shortDate, taskStatus } from '../components/TaskCard/taskStatus';

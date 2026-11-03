@@ -4,7 +4,7 @@ import { rgba } from '../../assets/styles/themes/color';
 import { midiToFrequency, OPEN_STRING_MIDI, STRING_LETTERS, STRING_SOLFEGE, type StringIndex } from '../../game/notation/violin';
 import { formatCents, formatHz } from '../OpenStringCard/openStringCheck';
 import { Kicker } from '../Screen/Screen';
-import { DEFAULT_BANDS, needlePercent, tuneHint, tuneWord, type TunerState, type TuningBands } from './tuner';
+import { DEFAULT_BANDS, needlePercent, tuneHint, tuneWord, type TunerState, type TuningBands } from './tunerState';
 
 /** Faixa de ±cents na régua de ±bands.good, em % da largura. */
 const band = (cents: number, bands: TuningBands) => ({

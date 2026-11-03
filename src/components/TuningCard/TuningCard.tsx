@@ -1,12 +1,12 @@
 import React from 'react';
 import styled, { useTheme } from 'styled-components';
 import { midiToFrequency, STRING_LETTERS } from '../../game/notation/violin';
-import { noteName } from '../CountIn/countIn';
+import { noteName } from '../CountIn/countInTiming';
 import { JudgmentHint } from '../JudgmentHint/JudgmentHint';
 import { placeOf, type Explanation, type TargetNote } from '../JudgmentHint/explain';
 import { formatCents, formatHz } from '../OpenStringCard/openStringCheck';
 import { Kicker } from '../Screen/Screen';
-import { DEFAULT_BANDS, type TuningBands } from '../Tuner/tuner';
+import { DEFAULT_BANDS, type TuningBands } from '../Tuner/tunerState';
 
 /** Janela do traço de afinação, em segundos. */
 export const TRACE_SECONDS = 2;

@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { LEVEL_NAMES } from '../CountIn/countIn';
+import { LEVEL_NAMES } from '../CountIn/countInTiming';
 import { clampLines, Kicker } from '../Screen/Screen';
 import { SongCover } from '../SongCover/SongCover';
 import { durationLabel, keyLabel, noteCount, stringShares } from '../SongCover/songFacts';
