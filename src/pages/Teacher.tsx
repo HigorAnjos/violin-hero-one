@@ -613,7 +613,13 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
   const plan = useMyPlan(ready);
   // Quem está na turma conta na lista de turmas, nas tarefas e na situação de cada tarefa aberta
   const rosterChanged = (cache: TeacherCache) =>
-    cache.stale(classroomKeys.class(klass.id), classroomKeys.classes, ...tasks.map((t) => classroomKeys.assignment(t.id)));
+    // assignments(klass.id) já cai no prefixo de class(klass.id); fica explícito porque o studentCount da lista depende dele
+    cache.stale(
+      classroomKeys.class(klass.id),
+      classroomKeys.assignments(klass.id),
+      classroomKeys.classes,
+      ...tasks.map((t) => classroomKeys.assignment(t.id))
+    );
   const add = useTeacherMutation(ready, (n: string) => api.addStudent(klass.id, n), (cache, { student }) => {
     cache.update<ClassDetail>(classroomKeys.class(klass.id), (k) => ({ ...k, students: [...k.students, student] }));
     rosterChanged(cache);
