@@ -23,7 +23,7 @@ import { useShelf } from '../services/shelf';
 import { teacherClassUrl } from '../shell/routes';
 import { classroomErrorOf, errorText, useClassAssignments, useClassDetail, useTeacherMutation, type TeacherAccess } from '../shell/useTeacher';
 import { Actions, Alert, Chips, Column, Field, Header, Input, LimitNotice, Muted, Panel, Select, TeacherGate, TeacherPage, Text } from './teacherLayout';
-import { ASSIGNMENT_MODES, dateInputValue, dueAtFromDate, dueText, defaultDueDate, instructionOf, MODE_NAMES } from './teacherText';
+import { ASSIGNMENT_MODES, dateInputValue, dueAtFromDate, dueText, defaultDueDate, instructionOf, MODE_NAMES, taskLabel, taskVariant } from './teacherText';
 
 type Ready = Extract<TeacherAccess, { status: 'ready' }>;
 
@@ -321,8 +321,9 @@ function AssignForm({ ready, classId }: { ready: Ready; classId: string }) {
               {tasks.data && !tasks.data.length && <Muted>Esta é a primeira.</Muted>}
               <ul>
                 {tasks.data?.map((t) => (
-                  <Task key={t.id}>
+                  <Task key={t.id} aria-label={taskLabel(t)}>
                     <b>{t.songTitle}</b>
+                    <Muted>{taskVariant(t)}</Muted>
                     <TaskProgress studentCount={t.studentCount} submittedCount={t.submittedCount} reviewedCount={t.reviewedCount} />
                     <Muted>
                       {t.submittedCount} de {t.studentCount} entregaram · {t.reviewedCount} {t.reviewedCount === 1 ? 'revisada' : 'revisadas'} · {dueText(t)}
