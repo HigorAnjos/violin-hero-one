@@ -75,6 +75,30 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
           expect(await tinyText(page), 'texto abaixo de 12 px').toEqual([]);
         });
       }
+
+      // Pixel 9 deitado (924×412) e o celular das specs (844×390): o nome do selo cabe na pílula, longe da borda
+      for (const [width, height] of [[924, 412], [844, 390]]) {
+        test(`perfil ${width}×${height}: os nomes dos selos cabem nas pílulas de Conquistas`, async ({ page }) => {
+          await page.setViewportSize({ width, height });
+          await page.goto('/perfil');
+          await expect(page.getByRole('region', { name: 'Conquistas' })).toBeVisible();
+          await (fonte === 'real' ? fontsReady(page, tema) : fallbackFontsReady(page, tema));
+          const problems = await page.getByRole('region', { name: 'Conquistas' }).locator('li').evaluateAll((items) =>
+            items.flatMap((li) => {
+              const box = li.getBoundingClientRect();
+              const range = document.createRange();
+              range.selectNodeContents(li);
+              const text = range.getBoundingClientRect();
+              const name = li.textContent?.trim();
+              const out: string[] = [];
+              if (li.scrollWidth > li.clientWidth) out.push(`${name}: conteúdo mais largo que a pílula`);
+              if (text.right > box.right - 4 || text.left < box.left + 4) out.push(`${name}: texto colado ou além da borda`);
+              return out;
+            })
+          );
+          expect(problems).toEqual([]);
+        });
+      }
     });
   }
 }

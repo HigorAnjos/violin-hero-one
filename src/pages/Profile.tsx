@@ -446,12 +446,14 @@ const Achievements = styled.ul`
     color: ${({ theme }) => theme.colors.textMuted};
   }
 
+  /* Deitado: selo ao lado do nome; em 3 colunas "Afinação" não cabia junto do selo, então 2 (sobra altura no painel) */
   @media (max-height: 500px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.375rem;
 
     li {
       flex-direction: row;
-      padding: 0.25rem 0.375rem;
+      padding: 0.25rem 0.5rem;
       text-align: left;
     }
   }
