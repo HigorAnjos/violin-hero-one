@@ -10,12 +10,12 @@ import { levelSettings } from '../game/engine/levels';
 import { FIXED_SONGS, findFixedSong } from '../game/notation/songs';
 import { loadA4 } from '../services/playerAudio';
 import { loadLocalProfile } from '../services/profile';
-import { useShelf } from '../services/shelf';
 import { taskStatus } from '../components/TaskCard/taskStatus';
 import { modesUrl } from '../shell/choice';
 import { useMyAssignments, useStudent } from '../shell/classroom';
 import { DEFAULT_MODE, type PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
+import { useLibrarySongs } from './librarySongs';
 
 const Page = styled.main`
   position: relative;
@@ -174,13 +174,14 @@ const DEFAULT_LEVEL = 'beginner' as const;
 
 /** 1 · Tela inicial: tocar, biblioteca e afinar, com a música sugerida para o nível do jogador. */
 export const Main: React.FC = () => {
-  const shelf = useShelf();
+  const { shelf, songs } = useLibrarySongs();
   const [first] = React.useState(() => {
     const { firstSongId } = levelSettings(loadLocalProfile().level ?? DEFAULT_LEVEL);
     return findFixedSong(firstSongId) ?? FIXED_SONGS[0];
   });
   const [a4] = React.useState(loadA4);
-  const count = shelf.status === 'ready' ? String(shelf.songs.length) : '…';
+  // A mesma conta da Biblioteca: com as importadas e as escritas pelo jogador
+  const count = shelf.status === 'ready' ? String(songs.length) : '…';
   // Aluno da turma: as tarefas entram no menu, com quantas faltam
   const { student } = useStudent();
   const tasks = useMyAssignments(student);
