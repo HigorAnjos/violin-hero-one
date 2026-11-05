@@ -5,13 +5,16 @@ import { Orchestra } from '../components/Orchestra/Orchestra';
 import { PauseMenu } from '../components/PauseMenu/PauseMenu';
 import { ScoreCard } from '../components/ScoreCard/ScoreCard';
 import { SheetStrip, type SheetStripHandle } from '../components/SheetStrip/SheetStrip';
+import { StaffToggle } from '../components/StaffToggle/StaffToggle';
 import { TuningCard } from '../components/TuningCard/TuningCard';
 import { songDurationSeconds } from '../game/notation/song';
 import { stageBox } from '../game/render/layout';
 import { prefersReducedMotion } from '../game/render/present';
 import { useEar } from '../shell/Ear';
 import { gameRoute } from '../shell/play';
+import type { PlayPrefs } from '../shell/playPrefs';
 import { ROUTES } from '../shell/routes';
+import { viewportSize } from '../shell/safeArea';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { useGame, type GameDeps } from '../shell/useGame';
 import { pauseSettings, useEscapePause, usePlayScreen } from '../shell/usePlayScreen';
@@ -69,8 +72,15 @@ const PauseButton = styled.button`
   }
 `;
 
-/** Quadros de tela da pista e do resto: a mesma conta do design (stageBox). */
-const box = () => stageBox(window.innerWidth, window.innerHeight);
+/** Celular deitado: o botão Pauta à esquerda do Pausar, na mesma linha. */
+const Staff = styled(StaffToggle)`
+  position: absolute;
+  right: calc(max(0.875rem, env(safe-area-inset-right)) + 3.25rem);
+  top: 0.75rem;
+`;
+
+/** Quadros de tela da pista e do resto: a mesma conta do design (stageBox), com ou sem a pauta no celular deitado. */
+const box = (prefs: Pick<PlayPrefs, 'landscapeStaff'>) => stageBox(window.innerWidth, window.innerHeight, prefs.landscapeStaff);
 
 /** 5 · Gameplay (Arcade): pista, motor, orquestra e Ouvido no mesmo relógio. */
 export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
@@ -80,12 +90,12 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
   const compact = useMediaQuery(COMPACT_QUERY);
   const host = React.useRef<HTMLDivElement>(null);
   const sheet = React.useRef<SheetStripHandle>(null);
-  const [stage, setStage] = React.useState(box);
+  const [, setViewport] = React.useState(viewportSize);
   const total = React.useMemo(() => songDurationSeconds(play.song), [play.song]);
   const [trackOptions] = React.useState(() => ({ theme, reducedMotion: prefersReducedMotion() }));
 
   React.useEffect(() => {
-    const onResize = () => setStage(box());
+    const onResize = () => setViewport(viewportSize());
     addEventListener('resize', onResize);
     return () => removeEventListener('resize', onResize);
   }, []);
@@ -108,6 +118,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
   });
   const { phase, hud, pause, resume } = game;
   const paused = phase === 'paused' || phase === 'counting';
+  const stage = box(game.prefs);
 
   useEscapePause(phase, pause, resume);
 
@@ -129,6 +140,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
           </svg>
         </PauseButton>
       )}
+      {compact && <Staff pressed={game.prefs.landscapeStaff} onToggle={(on) => game.changePrefs({ landscapeStaff: on })} />}
       <SheetStrip
         ref={sheet}
         song={play.song}
@@ -139,6 +151,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
         next={target}
         paused={paused}
         compact={compact}
+        staff={game.prefs.landscapeStaff}
       />
       {paused && (
         <PauseMenu
