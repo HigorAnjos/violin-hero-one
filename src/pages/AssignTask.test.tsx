@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -113,6 +113,27 @@ describe('P2 · nova tarefa', () => {
     const list = queryClient.getQueryData<AssignmentSummary[]>(['classroom', 'class', klass.id, 'assignments', 'professor-1']);
     expect(list?.map((t) => [t.mode, t.studentCount, t.submittedCount])).toEqual([['arcade', 3, 0]]);
     release();
+  });
+
+  it('prazo no passado: aviso do app em pt-BR ao lado do campo e Enviar desligado, sem o balão do navegador', async () => {
+    const { api, klass } = await scene();
+    const user = userEvent.setup();
+    mount(api, klass.id);
+    const due = (await screen.findByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)) as HTMLInputElement;
+    await waitFor(() => expect(screen.getByRole('combobox')).not.toBeDisabled());
+    expect(due.closest('form')).toHaveAttribute('novalidate');
+    fireEvent.change(due, { target: { value: '2020-01-01' } });
+    expect(due).toHaveAccessibleName('Prazo');
+    expect(due).toHaveAttribute('aria-invalid', 'true');
+    expect(due).toHaveAccessibleDescription('O prazo não pode ser antes de hoje.');
+    expect(screen.getByRole('button', { name: /Enviar para 3 alunos/ })).toBeDisabled();
+    fireEvent.change(due, { target: { value: '' } });
+    expect(due).toHaveAccessibleDescription('Escolha o prazo.');
+    fireEvent.change(due, { target: { value: due.max } });
+    expect(due).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Enviar para 3 alunos/ }));
+    await waitFor(async () => expect(await api.listClassAssignments(klass.id)).toHaveLength(1));
   });
 
   it('o prazo vai até 59 dias e o erro do servidor aparece', async () => {
