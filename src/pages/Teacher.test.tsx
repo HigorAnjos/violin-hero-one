@@ -56,6 +56,13 @@ describe.each([cadernoTheme, palcoTheme, pixelTheme])('P1 · painel do professor
 });
 
 describe('P1 · painel do professor', () => {
+  it('sem turma: "Modo professor" uma vez só, na marca; o título tem o próprio kicker', async () => {
+    mount(fakeClassroom());
+    await screen.findByRole('heading', { name: 'Crie sua primeira turma' });
+    expect(screen.getAllByText('Modo professor')).toHaveLength(1);
+    expect(screen.getByText('Primeiro passo')).toBeInTheDocument();
+  });
+
   async function withClass() {
     const api = fakeClassroom();
     const klass = await api.createClass('Iniciantes · sábado');

@@ -877,7 +877,8 @@ function TeacherArea({ ready }: { ready: Ready }) {
         <Column>
           <Header>
             <div>
-              <Kicker>Modo professor</Kicker>
+              {/* "Modo professor" já está logo acima, na marca da barra das turmas */}
+              <Kicker>Primeiro passo</Kicker>
               <h1>Crie sua primeira turma</h1>
             </div>
             <Actions>
