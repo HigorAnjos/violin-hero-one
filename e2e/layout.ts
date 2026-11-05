@@ -78,6 +78,57 @@ export async function expectFits(page: Page) {
   expect(outside, 'elementos fora da janela').toEqual([]);
 }
 
+/**
+ * Celular em pé: a página rola na vertical, mas nada passa da largura. Sem rolagem de lado, nenhum elemento além das
+ * bordas e nenhum texto cortado de lado por um ancestral que esconde o que sobra (reticências e listas que rolam
+ * de lado de propósito valem).
+ */
+export async function expectFitsWidth(page: Page) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'rolagem horizontal').toBeLessThanOrEqual(0);
+  const problems = await page.evaluate(() => {
+    const out: string[] = [];
+    const label = (el: Element) => `${el.tagName.toLowerCase()} "${(el.textContent ?? '').trim().slice(0, 30)}"`;
+    for (const el of document.querySelectorAll('main *')) {
+      if (el.getClientRects().length === 0 || getComputedStyle(el).visibility === 'hidden' || el.closest('.sr-only')) continue;
+      const box = el.getBoundingClientRect();
+      if (box.width > 0 && (box.right > window.innerWidth + 0.5 || box.left < -0.5)) {
+        // O que um ancestral que rola de lado recorta conta só pela parte que aparece
+        let { left, right } = box;
+        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+          const style = getComputedStyle(p);
+          if (style.overflowX === 'visible') continue;
+          const clip = p.getBoundingClientRect();
+          left = Math.max(left, clip.left);
+          right = Math.min(right, clip.right);
+        }
+        if (right > window.innerWidth + 0.5 || left < -0.5) out.push(`${label(el)} fora da janela: ${Math.round(box.left)}..${Math.round(box.right)}`);
+      }
+    }
+    const walker = document.createTreeWalker(document.querySelector('main') ?? document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const el = node.parentElement;
+      if (!el || !node.textContent?.trim() || el.offsetParent === null || el.closest('.sr-only')) continue;
+      const style = getComputedStyle(el);
+      if (style.textOverflow === 'ellipsis' || style.webkitLineClamp !== 'none') continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const text = range.getBoundingClientRect();
+      if (text.width === 0) continue;
+      for (let p: HTMLElement | null = el; p && p !== document.body; p = p.parentElement) {
+        const own = getComputedStyle(p);
+        if (own.overflowX !== 'hidden' && own.overflowX !== 'clip') continue;
+        const clip = p.getBoundingClientRect();
+        if (text.right > clip.right + 1 || text.left < clip.left - 1) {
+          out.push(`texto "${node.textContent.trim().slice(0, 30)}" cortado de lado`);
+          break;
+        }
+      }
+    }
+    return out;
+  });
+  expect(problems, 'nada passa da largura nem fica cortado').toEqual([]);
+}
+
 /** Botões, links, campos e opções visíveis abaixo de 44 px de toque. */
 export async function tooSmallTargets(page: Page) {
   return page.evaluate(() =>
