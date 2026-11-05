@@ -3,12 +3,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate } from 'react-router-dom';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { StudentGuardianNotice } from '../components/StudentGuardianNotice';
 import { ClassroomError, classroomKeys, REVIEW_CONCEPTS, type Child, type ClassroomApi, type StudentAssignment } from '../services/classroom';
 import { accountUrl, ROUTES } from '../shell/routes';
 import { useSession } from '../shell/useAccount';
 import { isParentDemo, parentClassroom } from '../shell/parentClassroom';
 import { ClassroomCard, ClassroomContent, ClassroomGrid, ClassroomPage } from './classroomLayout';
+import { instructionOf, MODE_NAMES } from './teacherText';
 
 const message = (error: unknown) => error instanceof ClassroomError ? error.message : 'Não foi possível carregar agora. Tente de novo.';
 
@@ -24,9 +26,13 @@ function Delivery({ task, api }: { task: StudentAssignment; api: ClassroomApi })
     catch (cause) { setError(message(cause)); }
     finally { setBusy(false); }
   };
-  return <ClassroomCard aria-label={task.songTitle}>
-    <h2>{task.songTitle}</h2>
+  // Nível e modo no título, como o professor vê: duas tarefas da mesma música não saem iguais
+  const title = `${task.songTitle} · ${LEVEL_NAMES[task.level]} · ${MODE_NAMES[task.mode]}`;
+  const instruction = instructionOf(task);
+  return <ClassroomCard aria-label={title}>
+    <h2>{title}</h2>
     <p>{task.review ? 'Revisada' : audio ? 'Enviada' : 'Para fazer'} · Prazo: {new Date(task.dueAt).toLocaleDateString('pt-BR')}</p>
+    {instruction && <p>Recado do professor: {instruction}</p>}
     {audio?.accuracy != null && <p>Precisão da entrega: {audio.accuracy.toLocaleString('pt-BR')}%</p>}
     {task.best?.meanAbsCents != null && <p>Afinação da melhor partida: desvio médio de {task.best.meanAbsCents.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} cents</p>}
     {task.review && <div><b>Revisão do professor: {task.review.concept ? REVIEW_CONCEPTS[task.review.concept] : `${task.review.grade}/5`}</b><p>{task.review.comment}</p></div>}
