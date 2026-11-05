@@ -58,6 +58,8 @@ test('do afinar ao jogo o microfone segue aberto, e sair pela pausa o fecha', as
   expect(await liveTracks(page)).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Pausar' }).click();
   await page.getByRole('button', { name: 'Sair para músicas' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  // Volta para a lista do mesmo modo, com a música da partida marcada
+  await expect(page).toHaveURL(/\/tocar\/musica\?modo=arcade&musica=/);
+  await expect(page.getByRole('radiogroup', { name: 'Músicas' }).getByRole('radio', { name: /Escala/ })).toBeChecked();
   await expect.poll(() => liveTracks(page)).toBe(0);
 });

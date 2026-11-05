@@ -194,12 +194,21 @@ describe('Gameplay', () => {
     expect(screen.getByRole('region', { name: 'Afinação' }).querySelector('polyline')).toBeNull();
   });
 
-  it('sair para músicas na pausa', async () => {
+  it('sair para músicas na pausa: a lista do Arcade com a música da partida marcada', async () => {
     setup();
     await waitFor(() => expect(frames.length).toBeGreaterThan(0));
     await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
     await userEvent.click(screen.getByRole('button', { name: 'Sair para músicas' }));
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+    expect(screen.getByTestId('location')).toHaveTextContent(`${ROUTES.songs}?modo=arcade&musica=${FAST.id}`);
+  });
+
+  it('sair da pausa na partida de tarefa volta para a tarefa', async () => {
+    const task = { assignmentId: 'tarefa-1', classId: 'c', studentId: 's', dueAt: '2026-11-10T00:00:00Z', songTitle: FAST.title };
+    setup('', { song: FAST, mode: 'Arcade', recordAudio: true, task });
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sair para músicas' }));
+    expect(screen.getByTestId('location')).toHaveTextContent(`${ROUTES.tasks}?tarefa=tarefa-1`);
   });
 
   it('fora do celular deitado, sem o botão Pauta', async () => {

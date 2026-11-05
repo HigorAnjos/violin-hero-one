@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isReadyMode, levelFromSlug, loadingUrl, menuMode, modeFromSlug, modesUrl, parseRankingUrl, parseSongChoice, rankingUrl, READY_MODES, readyMode, songsUrl } from './choice';
+import type { Song } from '../game/notation/song';
+import { isReadyMode, levelFromSlug, loadingUrl, menuMode, modeFromSlug, modesUrl, parseRankingUrl, parseSongChoice, pauseExitUrl, rankingUrl, READY_MODES, readyMode, songsUrl } from './choice';
 import { GAME_MODES } from './play';
 import { needsMicrophone } from './routes';
 
@@ -40,6 +41,15 @@ describe('escolha na URL', () => {
     expect(songsUrl('Arcade')).toBe('/tocar/musica?modo=arcade');
     expect(songsUrl('Arcade', 'aleluia')).toBe('/tocar/musica?modo=arcade&musica=aleluia');
     for (const path of ['/tocar', '/tocar/musica', '/tocar/carregando', '/biblioteca']) expect(needsMicrophone(path)).toBe(false);
+  });
+
+  it('sair da pausa: a lista do mesmo modo com a música marcada; Prática vai à do padrão; tarefa volta à tarefa', () => {
+    const song = { id: 'aleluia' } as Song;
+    expect(pauseExitUrl({ mode: 'Arcade', song })).toBe('/tocar/musica?modo=arcade&musica=aleluia');
+    expect(pauseExitUrl({ mode: 'Partitura', song })).toBe('/tocar/musica?modo=partitura&musica=aleluia');
+    expect(pauseExitUrl({ mode: 'Prática', song })).toBe('/tocar/musica?modo=cordas-3d&musica=aleluia');
+    const task = { assignmentId: 't1', classId: 'c', studentId: 's', dueAt: '2026-11-10T00:00:00Z', songTitle: 'Aleluia' };
+    expect(pauseExitUrl({ mode: 'Arcade', song, task })).toBe('/tarefas?tarefa=t1');
   });
 
   it('ranking: ida e volta da música, do nível e do período; o que falta ou é desconhecido fica para a tela', () => {

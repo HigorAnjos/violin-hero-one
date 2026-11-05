@@ -12,6 +12,7 @@ import { playPayload, PLAY_MODE_OF } from '../services/progress';
 import { playSync } from '../services/sync';
 import { playedChart } from './deviceSync';
 import { DEV_TOOLS, devWindow } from './devTools';
+import { pauseExitUrl } from './choice';
 import { micFailure } from './Ear';
 import { readPlayState, taskCarry, type GameMode, type ResultState } from './play';
 import { playerLevelSettings } from './playerLevel';
@@ -37,7 +38,9 @@ export function usePlayScreen(mode: GameMode) {
     const params = new URLSearchParams(location.search);
     const chosen = DEV_TOOLS ? findFixedSong(params.get('musica') ?? '') : undefined;
     const recordAudio = state.recordAudio || (DEV_TOOLS && params.has('gravar'));
-    return { ...state, ...(chosen && { song: chosen.song }), recordAudio };
+    const song = chosen?.song ?? state.song;
+    // Para onde o "Sair para músicas" da pausa leva (pauseExitUrl)
+    return { ...state, song, recordAudio, exitTo: pauseExitUrl({ mode, song, task: state.task }) };
   }, [location.state, location.search, mode]);
   const [a4] = React.useState(loadA4);
   const [performance] = React.useState(() => (DEV_TOOLS ? parseSimulate(location.search) : null));
