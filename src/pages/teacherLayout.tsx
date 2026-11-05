@@ -6,9 +6,9 @@ import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import { ClassroomError, type ClassroomApi } from '../services/classroom';
+import { plansState } from '../shell/plansBack';
 import { accountUrl, ROUTES } from '../shell/routes';
 import { useTeacherAccess, type TeacherAccess } from '../shell/useTeacher';
-import { plansState } from './Plans';
 
 /** A moldura das telas do professor (P1–P3): a janela inteira, sem rolar a página; quem rola é o painel. */
 export const TeacherPage = styled.main`

@@ -9,7 +9,8 @@ import { renderScreen } from '../shell/testing';
 import { parentDemo } from '../shell/parentDemo';
 import { fakeClassroom } from '../services/classroomFake';
 import { Parent } from './Parent';
-import { Plans, plansState } from './Plans';
+import { plansState } from '../shell/plansBack';
+import { Plans } from './Plans';
 import { GuestPrompt } from './GuestPrompt';
 
 vi.mock('../services/supabase', () => ({ supabase: null }));

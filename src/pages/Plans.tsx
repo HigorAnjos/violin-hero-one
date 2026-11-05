@@ -5,6 +5,7 @@ import { Button } from '../components/Button/Button';
 import { classroomKeys, ClassroomError, type ClassroomApi } from '../services/classroom';
 import type { SessionState } from '../services/session';
 import { parentClassroom } from '../shell/parentClassroom';
+import { readPlansBack } from '../shell/plansBack';
 import { isStudentSession } from '../shell/studentSession';
 import { useSession } from '../shell/useAccount';
 import { ClassroomCard, ClassroomContent, ClassroomGrid, ClassroomPage } from './classroomLayout';
@@ -32,20 +33,6 @@ function PlanList({ api }: { api: ClassroomApi }) {
     <small>Sem cobrança neste momento. A assinatura será disponibilizada depois.</small>
   </ClassroomContent>;
 }
-/** De onde os Planos foram abertos (a turma, a nova tarefa): o voltar leva para lá, com o nome da tela. */
-export interface PlansBack {
-  to: string;
-  label: string;
-}
-
-export const plansState = (back: PlansBack) => ({ plansBack: back });
-
-/** Só caminho do próprio app; sem estado (link direto, outro lugar), o voltar é o Menu. */
-export function readPlansBack(state: unknown): PlansBack | null {
-  const back = (state as { plansBack?: Partial<PlansBack> } | null)?.plansBack;
-  return typeof back?.to === 'string' && back.to.startsWith('/') && !back.to.startsWith('//') && typeof back.label === 'string' && back.label ? { to: back.to, label: back.label } : null;
-}
-
 export function Plans({ api: provided }: { api?: ClassroomApi }) {
   const api = useQuery({ queryKey: ['plans-api'], queryFn: parentClassroom, enabled: !provided, staleTime: Infinity });
   const back = readPlansBack(useLocation().state);
