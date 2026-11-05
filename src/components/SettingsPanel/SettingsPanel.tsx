@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { portrait } from '../../assets/styles/media';
 import { Kicker } from '../Screen/Screen';
 
 const Panel = styled.section`
@@ -73,6 +74,19 @@ export const SettingsRow = styled.div`
       display: none;
     }
   }
+
+  /* Em pé: o controle desce para baixo do texto quando não cabe ao lado */
+  ${portrait} {
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    padding: 0.375rem 0;
+
+    > label,
+    > span:first-child {
+      flex: 1 1 10rem;
+      min-width: 0;
+    }
+  }
 `;
 
 /** Valor ao lado do controle (.vh-val): números alinhados, sem pular quando mudam. */
@@ -102,6 +116,21 @@ const RangeBox = styled.span`
 
     output {
       min-width: 3rem;
+    }
+  }
+
+  /* Em pé: o deslizante ganha a linha de baixo inteira */
+  ${portrait} {
+    flex: 1 1 100%;
+
+    input {
+      flex: 1;
+      width: auto;
+      min-width: 0;
+    }
+
+    output {
+      min-width: 5rem;
     }
   }
 `;
