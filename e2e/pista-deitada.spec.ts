@@ -138,14 +138,16 @@ const TOGGLE_MODES = [
 
 type ToggleMode = (typeof TOGGLE_MODES)[number];
 
-const toggleOf = (page: Page, mode: ToggleMode) => page.getByRole('button', { name: new RegExp(`^(Mostrar|Esconder) ${mode.thing}$`) });
+/** Nome fixo ("Pauta", "Painel") e o estado no aria-pressed. */
+const labelOf = (mode: ToggleMode) => (mode.thing === 'pauta' ? 'Pauta' : 'Painel');
+const toggleOf = (page: Page, mode: ToggleMode) => page.getByRole('button', { name: labelOf(mode), exact: true });
 
 /** O botão no estado `on`, e a tela como ela deve ficar nele; devolve a caixa da pista (ou da pauta, na Partitura). */
 async function expectToggleState(page: Page, mode: ToggleMode, on: boolean, where: string) {
   const toggle = toggleOf(page, mode);
   await expect(toggle, `aria-pressed em ${where}`).toHaveAttribute('aria-pressed', String(on));
-  await expect(toggle).toHaveAccessibleName(`${on ? 'Esconder' : 'Mostrar'} ${mode.thing}`);
-  await expect(toggle).toContainText(mode.thing === 'pauta' ? 'Pauta' : 'Painel');
+  await expect(toggle).toHaveAccessibleName(labelOf(mode));
+  await expect(toggle).toHaveText(labelOf(mode));
   const viewport = page.viewportSize()!;
   const host = page.getByTestId(mode.testId);
   const bottom = (r: Box) => r.y + r.height;
@@ -260,12 +262,12 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
             await expect(dialog).toBeVisible();
             const settings = page.getByRole('region', { name: 'Ajustes rápidos' });
             await expect(toggleOf(page, mode)).toHaveCount(1);
-            await expect(settings.getByRole('button', { name: new RegExp(`^(Mostrar|Esconder) ${mode.thing}$`) })).toBeVisible();
+            await expect(settings.getByRole('button', { name: labelOf(mode), exact: true })).toBeVisible();
             // O andamento da Pausa (escondido no celular deitado, mas no DOM) diz onde o relógio parou
             const andamento = dialog.locator('[role="progressbar"][aria-label="Andamento da música"]');
             const clock = await andamento.getAttribute('aria-valuenow');
             await expectClean(page, `${where}, pausa`);
-            await settings.getByRole('button', { name: new RegExp(`^(Mostrar|Esconder) ${mode.thing}$`) }).click();
+            await settings.getByRole('button', { name: labelOf(mode), exact: true }).click();
             await expect(toggleOf(page, mode)).toHaveAttribute('aria-pressed', String(mode.startsOn));
             await expect(dialog).toBeVisible();
             await expectClean(page, `${where}, pausa alternada`);
@@ -307,7 +309,7 @@ test('desktop 1280×720: pista, cordas e pauta como antes', async ({ page }, tes
 test('desktop 1280×720: sem botão Pauta nem Painel, mesmo com as escolhas do celular guardadas', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'tela do desktop');
   await page.addInitScript(() => localStorage.setItem('vh:ajustes', JSON.stringify({ landscapeStaff: true, landscapePanel: false })));
-  const toggles = page.getByRole('button', { name: /^(Mostrar|Esconder) (pauta|painel)$/ });
+  const toggles = page.getByRole('button', { name: /^(Pauta|Painel)$/ });
 
   await open(page, `/jogo?ouvido=simulado&${SONG}`, 'pista');
   expect(await rect(page.getByTestId('pista'))).toEqual({ x: 320, y: 0, width: 640, height: 550 });

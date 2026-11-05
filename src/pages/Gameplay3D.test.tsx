@@ -135,7 +135,7 @@ describe('Gameplay3D no celular deitado: botão Pauta', () => {
     await waitFor(() => expect(deps.loadStrings3D).toHaveBeenCalled());
     await waitFor(() => expect(frames.length).toBeGreaterThan(0));
     expect(vi.mocked(deps.loadStrings3D!).mock.calls[0][1]).toMatchObject({ width: 652, height: 390, framing: COMPACT_FRAMING });
-    await userEvent.click(screen.getByRole('button', { name: 'Mostrar pauta' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Pauta', pressed: false }));
     expect(screen.getByRole('region', { name: 'Partitura' })).toBeInTheDocument();
     expect(screen.getByTestId('cordas-3d')).toHaveStyle({ width: '652px', height: '274px' });
     expect(strings.resize).toHaveBeenLastCalledWith(652, 274, COMPACT_FRAMING);
@@ -147,7 +147,7 @@ describe('Gameplay3D no celular deitado: botão Pauta', () => {
     const { deps } = setup();
     await waitFor(() => expect(deps.loadStrings3D).toHaveBeenCalled());
     expect(vi.mocked(deps.loadStrings3D!).mock.calls[0][1]).toMatchObject({ width: 652, height: 274 });
-    expect(screen.getByRole('button', { name: 'Esconder pauta' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Pauta', pressed: true })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('na pausa, nos Ajustes rápidos, sem voltar o jogo', async () => {
@@ -155,7 +155,7 @@ describe('Gameplay3D no celular deitado: botão Pauta', () => {
     await waitFor(() => expect(deps.loadStrings3D).toHaveBeenCalled());
     await waitFor(() => expect(frames.length).toBeGreaterThan(0));
     await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
-    await userEvent.click(within(screen.getByRole('region', { name: 'Ajustes rápidos' })).getByRole('button', { name: 'Mostrar pauta' }));
+    await userEvent.click(within(screen.getByRole('region', { name: 'Ajustes rápidos' })).getByRole('button', { name: 'Pauta', pressed: false }));
     expect(strings.resize).toHaveBeenLastCalledWith(652, 274, COMPACT_FRAMING);
     expect(screen.getByRole('dialog', { name: 'PAUSADO' })).toBeInTheDocument();
     expect(context.resume).not.toHaveBeenCalled();

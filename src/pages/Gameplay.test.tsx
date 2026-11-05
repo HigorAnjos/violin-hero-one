@@ -223,14 +223,14 @@ describe('Gameplay no celular deitado: botão Pauta', () => {
     expect(screen.getByTestId('pista')).toHaveStyle({ height: '390px' });
     expect(screen.queryByRole('region', { name: 'Partitura' })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mostrar pauta' }));
-    expect(screen.getByRole('button', { name: 'Esconder pauta' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(screen.getByRole('button', { name: 'Pauta', pressed: false }));
+    expect(screen.getByRole('button', { name: 'Pauta', pressed: true })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('region', { name: 'Partitura' })).toBeInTheDocument();
     expect(screen.getByTestId('pista')).toHaveStyle({ height: '274px' });
     expect(track.resize).toHaveBeenLastCalledWith(844, 274, undefined);
     expect(JSON.parse(localStorage.getItem('vh:ajustes')!)).toMatchObject({ landscapeStaff: true });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Esconder pauta' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Pauta', pressed: true }));
     expect(track.resize).toHaveBeenLastCalledWith(844, 390, undefined);
     expect(screen.queryByRole('region', { name: 'Partitura' })).not.toBeInTheDocument();
   });
@@ -240,7 +240,7 @@ describe('Gameplay no celular deitado: botão Pauta', () => {
     const { deps } = setup();
     await waitFor(() => expect(deps.loadTrack).toHaveBeenCalled());
     expect(vi.mocked(deps.loadTrack!).mock.calls[0][1]).toMatchObject({ width: 844, height: 274 });
-    expect(screen.getByRole('button', { name: 'Esconder pauta' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Pauta', pressed: true })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('na pausa o botão vai para os Ajustes rápidos e alterna sem voltar o jogo', async () => {
@@ -249,8 +249,8 @@ describe('Gameplay no celular deitado: botão Pauta', () => {
     await waitFor(() => expect(frames.length).toBeGreaterThan(0));
     await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
     const settings = screen.getByRole('region', { name: 'Ajustes rápidos' });
-    expect(screen.getAllByRole('button', { name: 'Mostrar pauta' })).toHaveLength(1);
-    await userEvent.click(within(settings).getByRole('button', { name: 'Mostrar pauta' }));
+    expect(screen.getAllByRole('button', { name: 'Pauta', pressed: false })).toHaveLength(1);
+    await userEvent.click(within(settings).getByRole('button', { name: 'Pauta', pressed: false }));
     expect(track.resize).toHaveBeenLastCalledWith(844, 274, undefined);
     expect(screen.getByRole('dialog', { name: 'PAUSADO' })).toBeInTheDocument();
     expect(context.resume).not.toHaveBeenCalled();

@@ -103,14 +103,14 @@ describe('GameplaySheet no celular deitado: botão Painel', () => {
     const { deps, sheet } = setup();
     await waitFor(() => expect(deps.loadSheet).toHaveBeenCalled());
     await waitFor(() => expect(frames.length).toBeGreaterThan(0));
-    const button = screen.getByRole('button', { name: 'Esconder painel' });
+    const button = screen.getByRole('button', { name: 'Painel', pressed: true });
     expect(button).toHaveAttribute('aria-pressed', 'true');
     // Ao lado do Pausar, no cabeçalho
     expect(screen.getByRole('button', { name: 'Pausar' }).parentElement).toContainElement(button);
     sheet.resize.mockClear();
     await userEvent.click(button);
     // O painel some pelo CSS do celular deitado (o jsdom não aplica @media; o e2e mede)
-    expect(screen.getByRole('button', { name: 'Mostrar painel' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Painel', pressed: false })).toHaveAttribute('aria-pressed', 'false');
     expect(sheet.resize).toHaveBeenCalledTimes(1);
     expect(JSON.parse(localStorage.getItem('vh:ajustes')!)).toMatchObject({ landscapePanel: false });
   });
@@ -119,7 +119,7 @@ describe('GameplaySheet no celular deitado: botão Painel', () => {
     localStorage.setItem('vh:ajustes', JSON.stringify({ landscapePanel: false }));
     setup();
     await waitFor(() => expect(frames.length).toBeGreaterThan(0));
-    expect(screen.getByRole('button', { name: 'Mostrar painel' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Painel', pressed: false })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('na pausa, um botão só, nos Ajustes rápidos, sem voltar o jogo', async () => {
@@ -127,9 +127,9 @@ describe('GameplaySheet no celular deitado: botão Painel', () => {
     await waitFor(() => expect(deps.loadSheet).toHaveBeenCalled());
     await waitFor(() => expect(frames.length).toBeGreaterThan(0));
     await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
-    expect(screen.getAllByRole('button', { name: 'Esconder painel' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Painel', pressed: true })).toHaveLength(1);
     sheet.resize.mockClear();
-    await userEvent.click(within(screen.getByRole('region', { name: 'Ajustes rápidos' })).getByRole('button', { name: 'Esconder painel' }));
+    await userEvent.click(within(screen.getByRole('region', { name: 'Ajustes rápidos' })).getByRole('button', { name: 'Painel', pressed: true }));
     expect(sheet.resize).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('dialog', { name: 'PAUSADO' })).toBeInTheDocument();
   });

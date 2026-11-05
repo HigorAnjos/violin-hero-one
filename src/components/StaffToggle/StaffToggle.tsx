@@ -58,21 +58,16 @@ export interface StaffToggleProps {
   className?: string;
 }
 
-const TEXT = {
-  staff: { label: 'Pauta', show: 'Mostrar pauta', hide: 'Esconder pauta' },
-  panel: { label: 'Painel', show: 'Mostrar painel', hide: 'Esconder painel' },
-} as const;
+const LABEL = { staff: 'Pauta', panel: 'Painel' } as const;
 
 /**
  * Botão Pauta do celular deitado: mostra ou esconde o que fica no pé da tela, perto do Pausar (na Pausa, nos Ajustes
- * rápidos). O nome diz o que o toque faz e o aria-pressed, o estado; não mexe no relógio da partida.
+ * rápidos). Nome fixo, o do rótulo, e o estado no aria-pressed (o padrão de botão alternável do WAI-ARIA: o leitor diz
+ * "Pauta, botão, pressionado"); não mexe no relógio da partida.
  */
-export const StaffToggle: React.FC<StaffToggleProps> = ({ pressed, onToggle, kind = 'staff', className }) => {
-  const text = TEXT[kind];
-  return (
-    <Root type="button" className={className} aria-pressed={pressed} aria-label={pressed ? text.hide : text.show} onClick={() => onToggle(!pressed)}>
-      {kind === 'staff' ? <StaffIcon /> : <PanelIcon />}
-      <span aria-hidden="true">{text.label}</span>
-    </Root>
-  );
-};
+export const StaffToggle: React.FC<StaffToggleProps> = ({ pressed, onToggle, kind = 'staff', className }) => (
+  <Root type="button" className={className} aria-pressed={pressed} onClick={() => onToggle(!pressed)}>
+    {kind === 'staff' ? <StaffIcon /> : <PanelIcon />}
+    <span>{LABEL[kind]}</span>
+  </Root>
+);
