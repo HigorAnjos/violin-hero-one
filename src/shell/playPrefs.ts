@@ -8,9 +8,13 @@ export interface PlayPrefs {
   noteNames: boolean;
   /** Modo daltônico: cada corda com um padrão além da cor (a letra aparece sempre). */
   colorblind: boolean;
+  /** Celular deitado, Arcade e Cordas 3D: a pauta embaixo da pista (botão Pauta). Desligada, só o fio do andamento. */
+  landscapeStaff: boolean;
+  /** Celular deitado, Partitura: o painel de baixo (nota da vez, orquestra e afinação ao vivo). Desligado, a pauta ganha a altura. */
+  landscapePanel: boolean;
 }
 
-export const DEFAULT_PLAY_PREFS: Readonly<PlayPrefs> = { tuningLine: true, noteNames: false, colorblind: false };
+export const DEFAULT_PLAY_PREFS: Readonly<PlayPrefs> = { tuningLine: true, noteNames: false, colorblind: false, landscapeStaff: false, landscapePanel: true };
 
 /** O que está guardado; lixo ou chave desconhecida vira o padrão, campo a campo. */
 export function loadPlayPrefs(): PlayPrefs {
@@ -18,7 +22,13 @@ export function loadPlayPrefs(): PlayPrefs {
     const raw: unknown = JSON.parse(window.localStorage.getItem(PLAY_PREFS_STORAGE_KEY) ?? '{}');
     const value = raw && typeof raw === 'object' ? (raw as Partial<Record<keyof PlayPrefs, unknown>>) : {};
     const pick = (key: keyof PlayPrefs) => (typeof value[key] === 'boolean' ? (value[key] as boolean) : DEFAULT_PLAY_PREFS[key]);
-    return { tuningLine: pick('tuningLine'), noteNames: pick('noteNames'), colorblind: pick('colorblind') };
+    return {
+      tuningLine: pick('tuningLine'),
+      noteNames: pick('noteNames'),
+      colorblind: pick('colorblind'),
+      landscapeStaff: pick('landscapeStaff'),
+      landscapePanel: pick('landscapePanel'),
+    };
   } catch {
     return { ...DEFAULT_PLAY_PREFS };
   }

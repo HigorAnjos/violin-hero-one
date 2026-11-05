@@ -31,15 +31,21 @@ export const COMPACT_VIEWPORT_HEIGHT = 500;
  * Onde a caixa da pista fica na tela de jogo: centralizada no alto, entre os cartões laterais e
  * acima da partitura. 1280×720 dá 640×550, como no design. No celular deitado a pauta sai (a pista já mostra a corda
  * e o dedo de cada nota) e a caixa é a tela toda: o plano, mais estreito que ela (trackLayout), passa entre os cartões
- * dos cantos, e o feedback vai para a esquerda dele, embaixo do placar.
+ * dos cantos, e o feedback vai para a esquerda dele, embaixo do placar. Com o botão Pauta ligado (`staff`), a pauta
+ * volta embaixo e a caixa para em cima dela.
  */
-export function stageBox(viewportWidth: number, viewportHeight: number): Box {
-  if (viewportHeight <= COMPACT_VIEWPORT_HEIGHT) return { x: 0, y: 0, width: viewportWidth, height: viewportHeight };
+export function stageBox(viewportWidth: number, viewportHeight: number, staff = false): Box {
+  if (viewportHeight <= COMPACT_VIEWPORT_HEIGHT) return { x: 0, y: 0, width: viewportWidth, height: compactHeight(viewportHeight, staff) };
   const width = Math.round(Math.min(viewportWidth - SIDE_GUTTER * 2, Math.max(440, Math.min(640, viewportWidth * 0.5))));
   return { x: Math.round((viewportWidth - width) / 2), y: 0, width, height: Math.max(0, viewportHeight - sheetHeight(viewportHeight)) };
 }
 
 const sheetHeight = (viewportHeight: number) => Math.max(118, Math.round(viewportHeight * 0.236));
+
+/** Altura da pauta no pé da tela do celular deitado (SheetStrip compacta: 7,25rem, a do MobileGameplay.dc). */
+export const COMPACT_STAFF_HEIGHT = 116;
+
+const compactHeight = (viewportHeight: number, staff: boolean) => Math.max(0, viewportHeight - (staff ? COMPACT_STAFF_HEIGHT : 0));
 
 export interface Strings3DBox extends Box {
   framing: Framing;
@@ -59,12 +65,18 @@ const TUNING_GAP = 8;
  * onde o chão em perspectiva deixa espaço (1280×720 dá 1280×550). No celular deitado vai do topo ao pé da tela, sem a
  * pauta, da área segura da esquerda até a coluna do cartão de afinação, com o enquadramento do celular
  * (COMPACT_FRAMING): o placar fica por cima do canto de cima à esquerda, onde o chão não chega (844×390 dá 652×390).
+ * Com o botão Pauta ligado (`staff`), para em cima da pauta (844×390 dá 652×274).
  */
-export function strings3dBox(viewportWidth: number, viewportHeight: number, insets: { left: number; right: number } = { left: 0, right: 0 }): Strings3DBox {
+export function strings3dBox(
+  viewportWidth: number,
+  viewportHeight: number,
+  insets: { left: number; right: number } = { left: 0, right: 0 },
+  staff = false
+): Strings3DBox {
   if (viewportHeight <= COMPACT_VIEWPORT_HEIGHT) {
     const column = Math.max(TUNING_EDGE, insets.right) + TUNING_CARD + TUNING_GAP;
     const x = Math.round(insets.left);
-    return { x, y: 0, width: Math.max(0, Math.round(viewportWidth - column) - x), height: viewportHeight, framing: COMPACT_FRAMING };
+    return { x, y: 0, width: Math.max(0, Math.round(viewportWidth - column) - x), height: compactHeight(viewportHeight, staff), framing: COMPACT_FRAMING };
   }
   return { x: 0, y: 0, width: viewportWidth, height: Math.max(0, viewportHeight - sheetHeight(viewportHeight)), framing: DESIGN_FRAMING };
 }

@@ -12,8 +12,8 @@ describe('opções de tela da partida', () => {
   });
 
   it('guarda e lê de volta', () => {
-    savePlayPrefs({ tuningLine: false, noteNames: true, colorblind: true });
-    expect(loadPlayPrefs()).toEqual({ tuningLine: false, noteNames: true, colorblind: true });
+    savePlayPrefs({ tuningLine: false, noteNames: true, colorblind: true, landscapeStaff: true, landscapePanel: false });
+    expect(loadPlayPrefs()).toEqual({ tuningLine: false, noteNames: true, colorblind: true, landscapeStaff: true, landscapePanel: false });
   });
 
   it('lixo no armazenamento vira o padrão, campo a campo', () => {

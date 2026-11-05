@@ -4,6 +4,9 @@ export interface SideInsets {
   right: number;
 }
 
+/** Tamanho da janela agora: as telas de jogo guardam no estado para refazer as caixas a cada resize. */
+export const viewportSize = () => ({ width: window.innerWidth, height: window.innerHeight });
+
 /** O env(safe-area-inset-*) do CSS, lido num elemento de prova: o JS não tem outro jeito de ver o entalhe. */
 export function safeAreaInsets(): SideInsets {
   if (typeof document === 'undefined' || !document.body) return { left: 0, right: 0 };

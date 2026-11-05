@@ -1,6 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
+import { DEFAULT_PLAY_PREFS } from '../../shell/playPrefs';
 import { renderScreen } from '../../shell/testing';
 import { PauseMenu, type PauseMenuProps } from './PauseMenu';
 
@@ -86,7 +87,7 @@ describe('PauseMenu', () => {
 
   it('linha de afinação, nome das notas e padrões para daltonismo', async () => {
     const onPrefs = vi.fn();
-    renderScreen(<PauseMenu {...props({ prefs: { tuningLine: true, noteNames: false, colorblind: false }, onPrefs })} />);
+    renderScreen(<PauseMenu {...props({ prefs: { ...DEFAULT_PLAY_PREFS, tuningLine: true, noteNames: false, colorblind: false }, onPrefs })} />);
     expect(screen.getByRole('checkbox', { name: 'Mostrar linha de afinação' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Mostrar nome das notas' })).not.toBeChecked();
     await userEvent.click(screen.getByRole('checkbox', { name: 'Mostrar linha de afinação' }));
