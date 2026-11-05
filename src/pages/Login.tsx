@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { Button } from '../components/Button/Button';
 import { EmailLinkForm } from '../components/EmailLinkForm/EmailLinkForm';
 import { useSwitchConfirm } from '../components/SwitchConfirm/useSwitchConfirm';
@@ -17,6 +18,15 @@ const Page = styled.main`
   display: flex;
   overflow: hidden;
   background-color: ${({ theme }) => theme.colors.background};
+
+  /* Em pé: a arte vira uma faixa no alto e as escolhas descem embaixo, com a página rolando */
+  ${portrait} {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    flex-direction: column;
+    overflow: visible;
+  }
 `;
 
 const Art = styled.div`
@@ -26,6 +36,11 @@ const Art = styled.div`
 
   @media (max-height: 500px) {
     flex-basis: 34%;
+  }
+
+  ${portrait} {
+    flex: none;
+    height: calc(11rem + env(safe-area-inset-top));
   }
 `;
 
@@ -37,6 +52,11 @@ const Scene = styled(ViolinArt)`
   @media (max-height: 500px) {
     top: 5rem;
     height: calc(100% - 5rem);
+  }
+
+  ${portrait} {
+    top: 0;
+    height: 100%;
   }
 `;
 
@@ -77,6 +97,21 @@ const Brand = styled.div`
       font-size: 0.8125rem;
     }
   }
+
+  /* À esquerda do violino da arte */
+  ${portrait} {
+    left: max(1.25rem, env(safe-area-inset-left));
+    top: calc(1.75rem + env(safe-area-inset-top));
+    max-width: 11rem;
+
+    h1 {
+      font-size: 2.5rem;
+    }
+
+    p {
+      font-size: 0.875rem;
+    }
+  }
 `;
 
 const Perks = styled.ul`
@@ -107,6 +142,10 @@ const Perks = styled.ul`
   }
 
   @media (max-height: 500px) {
+    display: none;
+  }
+
+  ${portrait} {
     display: none;
   }
 `;
@@ -142,6 +181,19 @@ const Start = styled.section`
     h2 {
       font-size: 1.375rem;
       line-height: 1.75rem;
+    }
+  }
+
+  ${portrait} {
+    flex: 1 0 auto;
+    overflow: visible;
+    padding: 1.5rem max(1.25rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+    border-left: none;
+    border-top: 1px solid ${({ theme }) => theme.colors.surfaceBorder};
+
+    h2 {
+      font-size: 1.625rem;
+      line-height: 2rem;
     }
   }
 `;
@@ -265,6 +317,10 @@ const Choices = styled.div`
 
   > button {
     flex: 1;
+  }
+
+  ${portrait} {
+    flex-direction: column;
   }
 `;
 

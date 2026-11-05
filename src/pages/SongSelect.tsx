@@ -2,6 +2,7 @@ import React from 'react';
 import { BackLink, NavigationScreen as Screen } from '../components/BackLink/BackLink';
 import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { Button } from '../components/Button/Button';
 import { OfflineBanner } from '../components/OfflineBanner/OfflineBanner';
 import { useRadioGroup } from '../components/RadioGroup/useRadioGroup';
@@ -34,6 +35,13 @@ const Header = styled.header`
   align-items: flex-start;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.lg};
+
+  /* Em pé: busca e retorno no alto, o título embaixo */
+  ${portrait} {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: ${({ theme }) => theme.spacing.sm};
+  }
 `;
 
 const Intro = styled.div`
@@ -56,6 +64,10 @@ const Tools = styled.div`
   @media (max-height: 500px) {
     gap: ${({ theme }) => theme.spacing.xs};
   }
+
+  ${portrait} {
+    gap: ${({ theme }) => theme.spacing.xs};
+  }
 `;
 
 const Search = styled(SearchField)`
@@ -63,6 +75,11 @@ const Search = styled(SearchField)`
 
   @media (max-height: 500px) {
     width: 12.5rem;
+  }
+
+  ${portrait} {
+    flex: 1 1 0;
+    width: auto;
   }
 `;
 
@@ -92,6 +109,17 @@ const Body = styled.div`
       width: 24.5rem;
     }
   }
+
+  /* Em pé: a lista e, embaixo, a música escolhida; a página rola */
+  ${portrait} {
+    flex: none;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing.md};
+
+    > aside {
+      width: auto;
+    }
+  }
 `;
 
 const List = styled.div`
@@ -106,6 +134,11 @@ const List = styled.div`
 
   @media (max-height: 500px) {
     gap: ${({ theme }) => theme.spacing.xs};
+  }
+
+  ${portrait} {
+    flex: none;
+    overflow: visible;
   }
 `;
 
@@ -137,6 +170,11 @@ const Row = styled.div`
     grid-template-columns: 2.5rem minmax(0, 1fr) auto;
     gap: ${({ theme }) => theme.spacing.sm};
     padding: ${({ theme }) => `${theme.spacing.xxs} ${theme.spacing.sm}`};
+  }
+
+  ${portrait} {
+    gap: ${({ theme }) => theme.spacing.sm};
+    padding: ${({ theme }) => `${theme.spacing.xs} ${theme.spacing.sm}`};
   }
 `;
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait, portraitScroll } from '../assets/styles/media';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { Kicker } from '../components/Screen/Screen';
@@ -24,6 +25,13 @@ export const Page = styled.main`
     gap: 1rem;
     padding: 0.625rem max(1rem, env(safe-area-inset-right)) 0.625rem max(1rem, env(safe-area-inset-left));
   }
+
+  /* Em pé: o formulário e, embaixo, o que o professor vê */
+  ${portraitScroll}
+  ${portrait} {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
 `;
 
 const Main = styled.form`
@@ -35,6 +43,11 @@ const Main = styled.form`
 
   @media (max-height: 500px) {
     gap: 0.5rem;
+  }
+
+  ${portrait} {
+    flex: none;
+    gap: 1rem;
   }
 `;
 
@@ -67,6 +80,17 @@ const Heading = styled.div`
     p {
       font-size: 0.8125rem;
       line-height: 1.125rem;
+    }
+  }
+
+  ${portrait} {
+    h1 {
+      font-size: 2rem;
+    }
+
+    p {
+      font-size: 0.9375rem;
+      line-height: 1.375rem;
     }
   }
 `;
@@ -130,6 +154,12 @@ const Aside = styled.aside`
     width: 20rem;
     gap: 0.375rem;
     padding: 0.625rem 0.875rem;
+  }
+
+  ${portrait} {
+    width: auto;
+    align-self: stretch;
+    padding: 1rem;
   }
 `;
 

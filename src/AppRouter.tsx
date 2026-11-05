@@ -29,6 +29,7 @@ import { NotForStudents } from './shell/NotForStudents';
 import { useDeviceSync } from './shell/deviceSync';
 import { ProfileSync, useRemoteProfile } from './shell/profileSync';
 import { EarProvider, type Ear } from './shell/Ear';
+import { LandscapeGate } from './shell/LandscapeGate';
 import { MicGuard } from './shell/MicGuard';
 import { createMicrophoneEar } from './shell/microphoneEar';
 import { useNativeAuthReturn } from './shell/nativeAuthReturn';
@@ -104,6 +105,8 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
           <ReminderOpen />
           <DiagnosticsGate />
           <React.Suspense fallback={null}>
+            {/* Celular em pé numa tela que toca: o aviso de girar no lugar dela */}
+            <LandscapeGate>
             <Routes>
             <Route path={ROUTES.home} element={<Home />} />
             <Route path={ROUTES.modes} element={<ModeSelect />} />
@@ -150,6 +153,7 @@ export const AppRouter: React.FC<{ ear?: Ear; update?: AppUpdate }> = ({ ear, up
 
             <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
             </Routes>
+            </LandscapeGate>
           </React.Suspense>
           {/* Depois das telas: é o último no Tab e não tira o foco de nada */}
           <UpdatePrompt update={update} />

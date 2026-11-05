@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import type { StringName } from '../assets/styles/themes/types';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
@@ -47,6 +48,13 @@ const Body = styled.div`
   @media (max-height: 500px) {
     gap: 0.5rem;
   }
+
+  /* Em pé: alunos, a entrega e a revisão, um embaixo do outro */
+  ${portrait} {
+    flex: none;
+    flex-direction: column;
+    gap: 1rem;
+  }
 `;
 
 const RecordingPanel = styled(Panel)`
@@ -64,6 +72,10 @@ const MeasuresArea = styled.div`
   @media (max-height: 500px) {
     gap: 0.5rem;
   }
+
+  ${portrait} {
+    overflow: visible;
+  }
 `;
 
 /** A lista da tarefa: cada aluno com a situação. */
@@ -78,6 +90,11 @@ const Roster = styled.nav`
 
   @media (max-height: 500px) {
     width: 9.5rem;
+  }
+
+  ${portrait} {
+    width: auto;
+    overflow: visible;
   }
 `;
 
@@ -146,6 +163,11 @@ const Metrics = styled.dl`
       font-size: 0.9375rem;
     }
   }
+
+  ${portrait} {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
 `;
 
 const StringDot = styled.i<{ $string: StringName }>`
@@ -165,6 +187,10 @@ const Aside = styled(Panel)`
   @media (max-height: 500px) {
     width: 15.5rem;
     gap: 0.375rem;
+  }
+
+  ${portrait} {
+    width: auto;
   }
 `;
 

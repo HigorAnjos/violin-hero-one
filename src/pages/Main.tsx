@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { MenuLink } from '../components/MenuLink/MenuLink';
 import { SessionStatus } from '../components/SessionStatus/SessionStatus';
 import { StreakPill } from '../components/StreakPill/StreakPill';
@@ -30,6 +31,13 @@ const Page = styled.main`
   @media (max-height: 500px) {
     gap: ${({ theme }) => theme.spacing.xs};
     padding: 1.25rem max(1.5rem, env(safe-area-inset-left));
+  }
+
+  /* Em pé: estado e atalhos no alto, marca, menu e a arte embaixo, numa coluna que rola */
+  ${portrait} {
+    gap: 1.5rem;
+    padding: max(1.25rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom))
+      max(1.25rem, env(safe-area-inset-left));
   }
 `;
 
@@ -88,6 +96,10 @@ const Menu = styled.nav`
     width: 16.25rem;
     gap: ${({ theme }) => theme.spacing.xs};
   }
+
+  ${portrait} {
+    width: 100%;
+  }
 `;
 
 const Controls = styled.div`
@@ -125,6 +137,20 @@ const Controls = styled.div`
       pointer-events: auto;
     }
   }
+
+  ${portrait} {
+    position: static;
+    order: -1;
+    max-width: none;
+    justify-content: space-between;
+
+    > div {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: ${({ theme }) => theme.spacing.xs};
+    }
+  }
 `;
 
 // Celular deitado: menor e ancorado embaixo, para a voluta não ficar sob o seletor de tema
@@ -132,6 +158,15 @@ const Art = styled(ViolinArt)`
   @media (max-height: 500px) {
     transform: scale(0.8);
     transform-origin: 100% 100%;
+  }
+
+  /* Em pé: uma faixa no fim da coluna, depois do menu, nunca atrás dele */
+  ${portrait} {
+    position: relative;
+    order: 1;
+    flex: none;
+    height: 12rem;
+    margin-top: auto;
   }
 `;
 

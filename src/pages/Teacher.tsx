@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
@@ -75,6 +76,11 @@ const Nav = styled.nav`
     > b {
       display: none;
     }
+  }
+
+  ${portrait} {
+    width: auto;
+    overflow: visible;
   }
 `;
 
@@ -260,6 +266,12 @@ const Grid = styled.div`
       display: none;
     }
   }
+
+  ${portrait} {
+    flex: none;
+    grid-template-columns: minmax(0, 1fr);
+    max-height: none;
+  }
 `;
 
 /** .vh-inb do design: uma entrega na caixa "Para revisar". */
@@ -359,6 +371,24 @@ const Table = styled.table`
       display: none;
     }
   }
+
+  /* Em pé, como deitado: a situação da tarefa fica no painel de tarefas; as ações empilham na própria célula */
+  ${portrait} {
+    th[data-task],
+    td[data-task] {
+      display: none;
+    }
+
+    td:last-child {
+      white-space: normal;
+      padding-right: 0;
+
+      > button {
+        display: flex;
+        margin-left: auto;
+      }
+    }
+  }
 `;
 
 /** Os chips de situação do design (REVISADA, REVISAR, SEM ENTREGA). */
@@ -407,6 +437,10 @@ const Students = styled(Panel)`
   @media (max-height: 500px) {
     flex: none;
     overflow: visible;
+  }
+
+  ${portrait} {
+    flex: none;
   }
 `;
 

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createMicSession, type MicSessionDeps, type Microphone, type PitchListener, type VisibilitySource } from '../game/audio';
 import { onAppPause } from '../services/platform';
+import { PORTRAIT_QUERY } from '../assets/styles/media';
 import { reading } from './fakeEar';
-import { createMicrophoneEar } from './microphoneEar';
+import { createMicrophoneEar, pauseSources } from './microphoneEar';
 
 vi.mock('../services/platform', () => ({ onAppPause: vi.fn(() => () => undefined) }));
 
@@ -92,6 +93,32 @@ describe('createMicrophoneEar', () => {
     vi.mocked(onAppPause).mockClear();
     createMicrophoneEar();
     expect(onAppPause).toHaveBeenCalledOnce();
+  });
+
+  it('o celular ficando em pé fecha como o fundo ("hidden"): a partida pausa; deitando, não', async () => {
+    const listeners = new Set<() => void>();
+    const list = { matches: false, addEventListener: (_: string, l: () => void) => listeners.add(l), removeEventListener: (_: string, l: () => void) => listeners.delete(l) };
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => (query === PORTRAIT_QUERY ? list : { ...list, matches: false })));
+    try {
+      const mic = { context: {}, source: {}, stream: {}, label: 'mic', stop: vi.fn().mockResolvedValue(undefined) } as unknown as Microphone;
+      const deps = {
+        openMicrophone: vi.fn().mockResolvedValue(mic),
+        startPitch: vi.fn(async () => ({ context: {}, a4: 442, setA4: vi.fn(), stop: vi.fn().mockResolvedValue(undefined) })),
+        startLevelMeter: vi.fn(() => ({ stop: vi.fn() })),
+      };
+      const ear = createMicrophoneEar(createMicSession({ deps: deps as unknown as MicSessionDeps, background: pauseSources }));
+      const onClosed = vi.fn();
+      ear.onClosed(onClosed);
+      await ear.start();
+      listeners.forEach((l) => l());
+      expect(onClosed).not.toHaveBeenCalled();
+      list.matches = true;
+      listeners.forEach((l) => l());
+      expect(onClosed).toHaveBeenCalledWith('hidden');
+      expect(ear.audio()).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('record grava sobre o microfone já aberto, sem pedir outro', async () => {

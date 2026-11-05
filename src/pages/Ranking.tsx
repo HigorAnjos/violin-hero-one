@@ -3,6 +3,7 @@ import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink'
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { css } from 'styled-components';
+import { portrait, portraitScroll } from '../assets/styles/media';
 import { ANIMAL_LOOK } from '../components/AvatarPicker/AvatarPicker';
 import { Badge } from '../components/Badge/Badge';
 import { Button } from '../components/Button/Button';
@@ -38,6 +39,7 @@ const Page = styled.main`
     gap: 0.5rem;
   }
   ${navigationPageInsets}
+  ${portraitScroll}
 `;
 
 const Header = styled.header`
@@ -73,6 +75,13 @@ const Header = styled.header`
       line-height: 1.75rem;
     }
   }
+
+  /* Em pé: o título e, embaixo, os filtros em quantas linhas precisarem */
+  ${portrait} {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
 `;
 
 const Controls = styled.div`
@@ -87,6 +96,11 @@ const Controls = styled.div`
     > a {
       padding: 0 0.75rem;
     }
+  }
+
+  ${portrait} {
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 `;
 
@@ -139,6 +153,10 @@ const Select = styled.select<{ $wide?: boolean }>`
   @media (max-height: 500px) {
     max-width: ${({ $wide }) => ($wide ? '11rem' : '6rem')};
   }
+
+  ${portrait} {
+    max-width: ${({ $wide }) => ($wide ? '13rem' : '7.5rem')};
+  }
 `;
 
 const Body = styled.div`
@@ -153,6 +171,17 @@ const Body = styled.div`
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  /* Em pé: pódio e quadro, e os selos embaixo */
+  ${portrait} {
+    flex: none;
+    flex-direction: column;
+    gap: 1rem;
+
+    > div {
+      flex: none;
+    }
   }
 `;
 
@@ -234,6 +263,10 @@ const Board = styled.section`
   border: 1px solid ${({ theme }) => theme.colors.surfaceBorder};
   border-radius: ${({ theme }) => theme.borderRadius.sm};
   overflow: hidden;
+
+  ${portrait} {
+    flex: none;
+  }
 `;
 
 const rowGrid = css`
@@ -246,6 +279,12 @@ const rowGrid = css`
   @media (max-height: 500px) {
     grid-template-columns: 2rem 2.125rem minmax(0, 1fr) 4.5rem 6rem;
     gap: 0.5rem;
+  }
+
+  ${portrait} {
+    grid-template-columns: 1.5rem 2.125rem minmax(0, 1fr) 3.5rem 4.25rem;
+    gap: 0.375rem;
+    padding: 0 0.5rem;
   }
 `;
 
@@ -261,6 +300,10 @@ const Columns = styled.div`
   > span:nth-child(n + 4) {
     text-align: right;
   }
+
+  ${portrait} {
+    letter-spacing: 0.04em;
+  }
 `;
 
 /** Cabeçalho e linhas; só as linhas rolam. */
@@ -273,6 +316,10 @@ const Table = styled.div`
 const Rows = styled.div`
   min-height: 0;
   overflow-y: auto;
+
+  ${portrait} {
+    overflow: visible;
+  }
 `;
 
 const Row = styled.div<{ $me?: boolean }>`
@@ -419,6 +466,11 @@ const Aside = styled.aside`
   li[data-locked] {
     background-color: transparent;
     color: ${({ theme }) => theme.colors.textMuted};
+  }
+
+  ${portrait} {
+    width: auto;
+    overflow: visible;
   }
 `;
 

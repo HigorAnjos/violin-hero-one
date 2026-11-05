@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { portrait } from '../../assets/styles/media';
 import { LEVEL_NAMES } from '../CountIn/countInTiming';
 import { clampLines, Kicker } from '../Screen/Screen';
 import { SongCover } from '../SongCover/SongCover';
@@ -151,6 +152,15 @@ const Actions = styled.div`
 
   > :first-child {
     flex: 1;
+  }
+
+  /* Em pé: Tocar e Praticar quebram linha em vez de passar da borda */
+  ${portrait} {
+    flex-wrap: wrap;
+
+    > * {
+      flex: 1 1 auto;
+    }
   }
 `;
 

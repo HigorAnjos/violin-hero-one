@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { Kicker } from '../components/Screen/Screen';
 import { Toggle } from '../components/Toggle/Toggle';
 import { onAppResume } from '../services/platform';
@@ -28,6 +29,15 @@ const Page = styled.section`
   @media (max-height: 500px) {
     gap: 1rem;
     grid-template-columns: minmax(0, 0.5fr) minmax(0, 1fr);
+  }
+
+  /* Em pé: o cartão primeiro e a prévia da notificação embaixo */
+  ${portrait} {
+    grid-template-columns: minmax(0, 1fr);
+
+    > figure {
+      order: 1;
+    }
   }
 `;
 
@@ -147,6 +157,12 @@ const Card = styled.section`
       line-height: 1.5rem;
     }
   }
+
+  ${portrait} {
+    max-height: none;
+    overflow: visible;
+    padding: 1rem 0.625rem;
+  }
 `;
 
 const Row = styled.div`
@@ -199,6 +215,13 @@ const Days = styled.div`
   button:disabled {
     cursor: default;
     opacity: 0.6;
+  }
+
+  /* Em pé: cada dia com 44 px de toque; no celular mais estreito os últimos descem de linha */
+  ${portrait} {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr));
+    gap: 0.125rem;
   }
 `;
 

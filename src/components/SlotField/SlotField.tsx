@@ -1,5 +1,6 @@
 import React from 'react';
 import styled, { css } from 'styled-components';
+import { portrait } from '../../assets/styles/media';
 
 const Field = styled.div`
   position: relative;
@@ -27,6 +28,12 @@ const Field = styled.div`
 
   @media (max-height: 500px) {
     gap: 0.375rem;
+  }
+
+  /* Em pé: as casas dividem a largura da coluna, até o tamanho do desktop */
+  ${portrait} {
+    align-self: stretch;
+    gap: 0.25rem;
   }
 `;
 
@@ -63,6 +70,16 @@ const Slot = styled.span<{ $filled: boolean; $current: boolean; $gapAfter: boole
     margin-right: ${({ $gapAfter }) => ($gapAfter ? '0.5rem' : '0')};
     font-size: 1.375rem;
     box-shadow: none;
+  }
+
+  ${portrait} {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    max-width: ${({ $size }) => ($size === 'lg' ? '4.75rem' : '3.875rem')};
+    height: 3.5rem;
+    margin-right: ${({ $gapAfter }) => ($gapAfter ? '0.5rem' : '0')};
+    font-size: 1.75rem;
   }
 `;
 

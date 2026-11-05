@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait, portraitScroll } from '../assets/styles/media';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { ClassAvatar } from '../components/ClassBadge/ClassBadge';
@@ -31,6 +32,8 @@ const Page = styled.main`
     gap: 0.375rem;
     padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
   }
+
+  ${portraitScroll}
 `;
 
 const Header = styled.header`
@@ -68,6 +71,17 @@ const Header = styled.header`
       line-height: 1.5rem;
     }
   }
+
+  /* Em pé: retorno e título, e a turma embaixo */
+  ${portrait} {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+
+    h1 {
+      ${clampLines(2)}
+    }
+  }
 `;
 
 const Who = styled.div`
@@ -96,6 +110,13 @@ const Body = styled.div`
   @media (max-height: 500px) {
     gap: 0.625rem;
   }
+
+  /* Em pé: a lista de tarefas e, embaixo, a tarefa aberta */
+  ${portrait} {
+    flex: none;
+    flex-direction: column;
+    gap: 1rem;
+  }
 `;
 
 const List = styled.nav`
@@ -110,6 +131,12 @@ const List = styled.nav`
   @media (max-height: 500px) {
     width: 14.5rem;
     gap: 0.375rem;
+  }
+
+  ${portrait} {
+    width: auto;
+    overflow: visible;
+    padding: 0;
   }
 `;
 
@@ -145,6 +172,12 @@ const Panel = styled.section`
       line-height: 1.25rem;
     }
   }
+
+  ${portrait} {
+    flex: none;
+    overflow: visible;
+    padding: 1rem;
+  }
 `;
 
 const TitleRow = styled.div`
@@ -163,6 +196,11 @@ const TitleRow = styled.div`
     > span {
       font-size: 0.75rem;
     }
+  }
+
+  ${portrait} {
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
   }
 `;
 
@@ -202,6 +240,24 @@ const Goals = styled.dl`
 
     dd {
       font-size: 0.875rem;
+    }
+  }
+
+  /* Em pé: uma meta por linha, o valor inteiro à direita */
+  ${portrait} {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.375rem;
+
+    > div {
+      flex-direction: row;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    dd {
+      white-space: normal;
+      text-align: right;
     }
   }
 `;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { Badge, badgeColor } from '../components/Badge/Badge';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
@@ -79,6 +80,17 @@ const Header = styled.header`
       padding-bottom: 0.125rem;
     }
   }
+
+  /* Em pé: o título com a largura toda e, embaixo, compartilhar e o selo */
+  ${portrait} {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ${({ theme }) => theme.spacing.sm};
+
+    > div:first-child {
+      flex-basis: 100%;
+    }
+  }
 `;
 
 const NewBadge = styled.div<{ $color: string }>`
@@ -154,6 +166,21 @@ const Body = styled.div`
       gap: ${({ theme }) => theme.spacing.sm};
     }
   }
+
+  /* Em pé: as duas colunas viram uma, na mesma ordem */
+  ${portrait} {
+    flex-direction: column;
+    flex-grow: 0;
+
+    > div:first-child {
+      width: auto;
+      flex: none;
+    }
+
+    > div:last-child {
+      flex: none;
+    }
+  }
 `;
 
 const Panel = styled.section`
@@ -191,6 +218,10 @@ const Score = styled.span`
 
   @media (max-height: 500px) {
     font-size: 2rem;
+  }
+
+  ${portrait} {
+    font-size: 3rem;
   }
 `;
 
@@ -284,6 +315,11 @@ const Stats = styled.dl`
     dd {
       font-size: 1rem;
     }
+  }
+
+  ${portrait} {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: ${({ theme }) => theme.spacing.sm};
   }
 `;
 
@@ -413,6 +449,10 @@ const StarsRow = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.sm};
+
+  ${portrait} {
+    flex-wrap: wrap;
+  }
 `;
 
 /**
@@ -459,6 +499,24 @@ const Footer = styled.footer`
 
   > i {
     flex: 1;
+  }
+
+  /* Em pé: os botões quebram linha, o "Tocar de novo" por último e com a largura toda */
+  ${portrait} {
+    flex-wrap: wrap;
+    gap: ${({ theme }) => theme.spacing.xs};
+
+    > i {
+      display: none;
+    }
+
+    > * {
+      flex: 1 1 auto;
+    }
+
+    > :last-child {
+      flex-basis: 100%;
+    }
   }
 `;
 

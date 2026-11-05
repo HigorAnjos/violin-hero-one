@@ -1,5 +1,6 @@
 import React from 'react';
 import styled, { useTheme } from 'styled-components';
+import { portrait } from '../../assets/styles/media';
 import type { RadioProps } from '../RadioGroup/useRadioGroup';
 
 export type ModeArtKind = 'arcade' | 'sheet' | 'strings3d';
@@ -59,6 +60,10 @@ const Art = styled.div`
 
   @media (max-height: 500px) {
     display: none;
+  }
+
+  ${portrait} {
+    height: 6rem;
   }
 `;
 

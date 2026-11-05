@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { portrait, portraitScroll } from '../assets/styles/media';
 import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { Kicker } from '../components/Screen/Screen';
@@ -52,6 +53,23 @@ const Page = styled.main`
       'actions report'
       'live report';
     gap: 0.5rem 1rem;
+
+    > [data-back] {
+      justify-self: end;
+    }
+  }
+
+  /* Em pé: uma coluna que rola, com o retorno no alto à direita */
+  ${portraitScroll}
+  ${portrait} {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      'back'
+      'header'
+      'actions'
+      'live'
+      'report';
 
     > [data-back] {
       justify-self: end;
@@ -159,6 +177,11 @@ const Live = styled.dl`
       font-size: 0.875rem;
     }
   }
+
+  ${portrait} {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
 `;
 
 const Report = styled.textarea`
@@ -176,6 +199,11 @@ const Report = styled.textarea`
   font-size: 0.75rem;
   line-height: 1.125rem;
   resize: none;
+
+  ${portrait} {
+    height: auto;
+    min-height: 18rem;
+  }
 `;
 
 const EMPTY: LiveSnapshot = { level: null, reading: null, lag: null, steadiness: null };

@@ -3,6 +3,7 @@ import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink'
 import { Reminder } from './Reminder';
 import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { A4Picker } from '../components/A4Picker/A4Picker';
 import { AccountPanel } from '../components/AccountPanel/AccountPanel';
 import { AppVersion } from '../components/AppVersion/AppVersion';
@@ -34,6 +35,17 @@ const Page = styled.main`
     gap: 1rem;
   }
   ${navigationPageInsets}
+
+  /* Em pé: seções no alto, em botões que quebram linha, e o conteúdo embaixo; a página rola inteira */
+  ${portrait} {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 1rem;
+    overflow: visible;
+  }
 `;
 
 const Nav = styled.nav`
@@ -95,6 +107,33 @@ const Nav = styled.nav`
       font-size: 0.8125rem;
     }
   }
+
+  ${portrait} {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    overflow: visible;
+
+    h1 {
+      flex: 1 1 100%;
+      /* O "Menu" fica no canto, ao lado do título, na altura dele */
+      min-height: 2.75rem;
+      display: flex;
+      align-items: center;
+      padding-right: 7rem;
+      margin-bottom: 0.25rem;
+    }
+
+    > a:not([data-back]) {
+      border-left: none;
+      border: 1px solid ${({ theme }) => theme.colors.surfaceBorder};
+      border-radius: ${({ theme }) => theme.borderRadius.pill};
+    }
+
+    > a[aria-current='page'] {
+      border-color: ${({ theme }) => theme.colors.primary.main};
+    }
+  }
 `;
 
 const Content = styled.div`
@@ -120,6 +159,13 @@ const Content = styled.div`
     grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
     padding-top: 3.25rem;
+  }
+
+  ${portrait} {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    overflow: visible;
+    padding-top: 0.25rem;
   }
 `;
 
@@ -326,5 +372,10 @@ const BackCorner = styled.div`
   @media (max-height: 500px) {
     top: 0.75rem;
     right: 1rem;
+  }
+
+  ${portrait} {
+    top: max(1.25rem, env(safe-area-inset-top));
+    right: max(1rem, env(safe-area-inset-right));
   }
 `;

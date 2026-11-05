@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait, portraitScroll } from '../assets/styles/media';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { formatPoints } from '../components/ScoreCard/ScoreCard';
@@ -42,6 +43,8 @@ const Page = styled.main`
     gap: 0.5rem;
     padding: 0.625rem max(1rem, env(safe-area-inset-right)) 0.625rem max(1rem, env(safe-area-inset-left));
   }
+
+  ${portraitScroll}
 `;
 
 const Header = styled.header`
@@ -78,6 +81,21 @@ const Header = styled.header`
       line-height: 1.75rem;
     }
   }
+
+  /* Em pé: o retorno no alto, o título inteiro embaixo */
+  ${portrait} {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.5rem;
+
+    > :last-child {
+      align-self: flex-end;
+    }
+
+    h1 {
+      ${clampLines(2)}
+    }
+  }
 `;
 
 /** As três colunas do design 16: convite, montar (ou o desafio aberto) e a lista ao lado. */
@@ -89,6 +107,12 @@ const Body = styled.div`
 
   @media (max-height: 500px) {
     gap: 0.625rem;
+  }
+
+  ${portrait} {
+    flex: none;
+    flex-direction: column;
+    gap: 1rem;
   }
 `;
 
@@ -109,6 +133,13 @@ const Panel = styled.section<{ $width?: string }>`
   @media (max-height: 500px) {
     gap: 0.5rem;
     padding: 0.625rem 0.75rem;
+  }
+
+  ${portrait} {
+    flex: none;
+    width: auto;
+    overflow: visible;
+    padding: 1rem;
   }
 `;
 
