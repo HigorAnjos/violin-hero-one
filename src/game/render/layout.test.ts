@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMPACT_STAFF_HEIGHT,
   depthScale,
   entryAlpha,
   LEAD_SECONDS,
@@ -23,6 +24,17 @@ describe('stageBox', () => {
     expect(stageBox(932, 430)).toEqual({ x: 0, y: 0, width: 932, height: 430 });
   });
 
+  it('celular deitado com o botão Pauta ligado: a largura toda, parando em cima da pauta de 116 px', () => {
+    expect(COMPACT_STAFF_HEIGHT).toBe(116);
+    expect(stageBox(844, 390, true)).toEqual({ x: 0, y: 0, width: 844, height: 274 });
+    expect(stageBox(932, 430, true)).toEqual({ x: 0, y: 0, width: 932, height: 314 });
+  });
+
+  it('botão Pauta ligado não muda o desktop nem o celular em pé', () => {
+    expect(stageBox(1280, 720, true)).toEqual(stageBox(1280, 720));
+    expect(stageBox(390, 844, true)).toEqual(stageBox(390, 844));
+  });
+
   it('a partir de 501 px de altura, a caixa do design de novo', () => {
     expect(stageBox(1000, 501)).toEqual({ x: 250, y: 0, width: 500, height: 383 });
   });
@@ -41,6 +53,9 @@ const boxes = [
   [800, 600],
   [844, 390],
   [932, 430],
+  // Celular deitado com o botão Pauta ligado
+  [844, 274],
+  [932, 314],
 ] as const;
 
 describe('trackLayout com a descida do nível', () => {

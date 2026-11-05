@@ -100,4 +100,29 @@ describe('PauseMenu', () => {
     renderScreen(<PauseMenu {...props()} />);
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
+
+  it('celular deitado: o botão Pauta da tela fica nos Ajustes rápidos', () => {
+    renderScreen(
+      <PauseMenu
+        {...props({
+          layoutToggle: (
+            <button type="button" aria-pressed="false">
+              Pauta
+            </button>
+          ),
+        })}
+      />
+    );
+    expect(screen.getByRole('region', { name: 'Ajustes rápidos' })).toContainElement(screen.getByRole('button', { name: 'Pauta' }));
+  });
+
+  it('sem o botão Pauta (desktop), os Ajustes rápidos como antes', () => {
+    renderScreen(<PauseMenu {...props()} />);
+    expect(screen.queryByRole('button', { name: /pauta|painel/i })).not.toBeInTheDocument();
+  });
+
+  it('na contagem de volta, sem o botão Pauta', () => {
+    renderScreen(<PauseMenu {...props({ counting: 3, layoutToggle: <button type="button">Pauta</button> })} />);
+    expect(screen.queryByRole('button', { name: 'Pauta' })).not.toBeInTheDocument();
+  });
 });

@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { palcoTheme } from '../assets/styles/themes/palco';
@@ -8,6 +8,8 @@ import type { EarAudio } from '../shell/Ear';
 import { createFakeEar, type FakeEar } from '../shell/fakeEar';
 import type { PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
+import { COMPACT_FRAMING } from '../game/render/strings3dLayout';
+import { stubLandscapePhone } from '../shell/stubLandscape';
 import { renderScreen } from '../shell/testing';
 import { measureStarts, type GameDeps } from '../shell/useGame';
 import { Gameplay3D } from './Gameplay3D';
@@ -113,5 +115,49 @@ describe('Gameplay3D', () => {
     const { onFps } = vi.mocked(deps.loadStrings3D!).mock.calls[0][1];
     act(() => onFps?.({ frames: 60, averageFps: 59.6, worstMs: 21 }));
     expect(screen.getByRole('status', { name: 'Quadros por segundo' })).toHaveTextContent('60 fps · pior 21 ms');
+  });
+
+  it('fora do celular deitado, sem o botão Pauta', async () => {
+    setup();
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    expect(screen.queryByRole('button', { name: /pauta/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('Gameplay3D no celular deitado: botão Pauta', () => {
+  beforeEach(() => {
+    stubLandscapePhone();
+    strings.resize.mockClear();
+  });
+
+  it('ligar põe a pauta embaixo e refaz as cordas na caixa menor, com a câmera do celular', async () => {
+    const { deps } = setup();
+    await waitFor(() => expect(deps.loadStrings3D).toHaveBeenCalled());
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    expect(vi.mocked(deps.loadStrings3D!).mock.calls[0][1]).toMatchObject({ width: 652, height: 390, framing: COMPACT_FRAMING });
+    await userEvent.click(screen.getByRole('button', { name: 'Mostrar pauta' }));
+    expect(screen.getByRole('region', { name: 'Partitura' })).toBeInTheDocument();
+    expect(screen.getByTestId('cordas-3d')).toHaveStyle({ width: '652px', height: '274px' });
+    expect(strings.resize).toHaveBeenLastCalledWith(652, 274, COMPACT_FRAMING);
+    expect(JSON.parse(localStorage.getItem('vh:ajustes')!)).toMatchObject({ landscapeStaff: true });
+  });
+
+  it('a mesma escolha do Arcade vale aqui na próxima partida', async () => {
+    localStorage.setItem('vh:ajustes', JSON.stringify({ landscapeStaff: true }));
+    const { deps } = setup();
+    await waitFor(() => expect(deps.loadStrings3D).toHaveBeenCalled());
+    expect(vi.mocked(deps.loadStrings3D!).mock.calls[0][1]).toMatchObject({ width: 652, height: 274 });
+    expect(screen.getByRole('button', { name: 'Esconder pauta' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('na pausa, nos Ajustes rápidos, sem voltar o jogo', async () => {
+    const { context, deps } = setup();
+    await waitFor(() => expect(deps.loadStrings3D).toHaveBeenCalled());
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
+    await userEvent.click(within(screen.getByRole('region', { name: 'Ajustes rápidos' })).getByRole('button', { name: 'Mostrar pauta' }));
+    expect(strings.resize).toHaveBeenLastCalledWith(652, 274, COMPACT_FRAMING);
+    expect(screen.getByRole('dialog', { name: 'PAUSADO' })).toBeInTheDocument();
+    expect(context.resume).not.toHaveBeenCalled();
   });
 });
