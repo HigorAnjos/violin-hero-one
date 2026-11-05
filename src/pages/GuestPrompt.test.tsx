@@ -54,6 +54,15 @@ describe('GuestPrompt (0d)', () => {
     expect(screen.getByRole('button', { name: 'Continuar com Google' })).toBeInTheDocument();
   });
 
+  it('conta para o responsável: sem a linha "Menor de 13", que fica nos outros motivos', () => {
+    const { unmount } = open({ path: accountUrl('responsavel', '/responsavel', '/') });
+    expect(screen.queryByText(/Menor de 13/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Agora não' })).toBeInTheDocument();
+    unmount();
+    open();
+    expect(screen.getByText('Menor de 13? Peça para um responsável criar.')).toBeInTheDocument();
+  });
+
   it('e-mail: liga ao mesmo usuário e o link volta para onde a conta foi pedida', async () => {
     vi.mocked(linkEmail).mockResolvedValue();
     open();

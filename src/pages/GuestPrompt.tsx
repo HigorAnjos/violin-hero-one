@@ -145,6 +145,8 @@ const Foot = styled.div`
   color: ${({ theme }) => theme.colors.textMuted};
 
   a {
+    /* Sozinho (sem a linha do menor de 13), continua à direita */
+    margin-left: auto;
     display: inline-flex;
     align-items: center;
     min-height: 2.75rem;
@@ -315,7 +317,8 @@ export const GuestPrompt: React.FC = () => {
         )}
 
         <Foot>
-          <span>Menor de 13? Peça para um responsável criar.</span>
+          {/* Quem chega pela área do responsável já é o responsável */}
+          {reason !== 'responsavel' && <span>Menor de 13? Peça para um responsável criar.</span>}
           <Link to={back}>Agora não</Link>
         </Foot>
       </Dialog>
