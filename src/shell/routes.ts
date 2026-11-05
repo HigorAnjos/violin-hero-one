@@ -122,12 +122,26 @@ export function needsMicrophone(pathname: string): boolean {
 }
 
 /**
- * Telas que só funcionam deitado: as que ouvem o violino e o editor (a prévia na pista). Com o celular em pé elas dão
- * lugar ao aviso de girar, sem abrir o microfone.
+ * Telas que tocam e só funcionam deitado: afinar, contagem, partida (arcade, partitura, 3D, prática), o teste do
+ * microfone da primeira vez, o ditado e o editor (a prévia na pista). Com o celular em pé elas dão lugar ao aviso de
+ * girar, sem abrir o microfone. O fim da partida, o problema no microfone e o diagnóstico têm layout em pé (com o
+ * microfone fechado).
  */
+const LANDSCAPE_ROUTES: ReadonlySet<string> = new Set([
+  ROUTES.mic,
+  ROUTES.strings,
+  ROUTES.countdown,
+  ROUTES.calibration,
+  ROUTES.game,
+  ROUTES.sheet,
+  ROUTES.strings3d,
+  ROUTES.practice,
+  ROUTES.dictation,
+  ROUTES.editor,
+]);
+
 export function needsLandscape(pathname: string): boolean {
-  const path = normalized(pathname);
-  return MIC_ROUTES.has(path) || path === ROUTES.editor;
+  return LANDSCAPE_ROUTES.has(normalized(pathname));
 }
 
 const PROBLEM_SLUG: Record<MicProblem, string> = { 'no-sound': 'sem-som', noisy: 'barulho', blocked: 'sem-permissao' };

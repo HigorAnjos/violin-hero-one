@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait, portraitScroll } from '../assets/styles/media';
 import { Button } from '../components/Button/Button';
 import { Kicker, SongKicker } from '../components/Screen/Screen';
 import { percent } from '../components/TaskCard/taskStatus';
@@ -31,6 +32,13 @@ const Page = styled.main`
     gap: 0.75rem;
     padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
   }
+
+  /* Em pé: o que a partida cumpriu e, embaixo, a entrega; a página rola */
+  ${portraitScroll}
+  ${portrait} {
+    flex-direction: column;
+    gap: 1.25rem;
+  }
 `;
 
 const Summary = styled.div`
@@ -57,6 +65,15 @@ const Summary = styled.div`
 
     h1 {
       font-size: 1.375rem;
+    }
+  }
+
+  ${portrait} {
+    width: auto;
+    gap: 0.875rem;
+
+    h1 {
+      font-size: 2rem;
     }
   }
 `;
@@ -158,6 +175,12 @@ const Panel = styled.section`
   @media (max-height: 500px) {
     gap: 0.375rem;
     padding: 0.5rem 0.75rem;
+  }
+
+  ${portrait} {
+    flex: none;
+    overflow: visible;
+    padding: 1rem;
   }
 `;
 

@@ -26,11 +26,12 @@ describe('rotas', () => {
     expect(needsMicrophone(ROUTES.editor)).toBe(false);
   });
 
-  it('só deitado: as telas que ouvem e o editor; menus e contas não', () => {
-    for (const path of [ROUTES.calibration, ROUTES.game, ROUTES.countdown, ROUTES.dictation, ROUTES.editor, `${ROUTES.editor}/`]) {
+  it('só deitado: as telas que ouvem ao vivo e o editor; menus, contas e o fim da partida não', () => {
+    for (const path of [ROUTES.calibration, ROUTES.game, ROUTES.practice, ROUTES.countdown, ROUTES.dictation, ROUTES.editor, `${ROUTES.editor}/`]) {
       expect(needsLandscape(path)).toBe(true);
     }
-    for (const path of [ROUTES.home, ROUTES.login, ROUTES.library, ROUTES.import, ROUTES.settings, ROUTES.teacher, ROUTES.privacy]) {
+    const afterPlay = [ROUTES.results, ROUTES.gameOver, ROUTES.badge, ROUTES.taskResult, ROUTES.micTrouble, ROUTES.diagnostics];
+    for (const path of [ROUTES.home, ROUTES.login, ROUTES.library, ROUTES.import, ROUTES.settings, ROUTES.teacher, ROUTES.privacy, ...afterPlay]) {
       expect(needsLandscape(path)).toBe(false);
     }
   });

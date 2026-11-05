@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { Button } from '../components/Button/Button';
 import { Orchestra } from '../components/Orchestra/Orchestra';
 import { stringName } from '../components/ResultSummary/summary';
@@ -38,6 +39,19 @@ const Page = styled.main`
 
     > svg {
       display: none;
+    }
+  }
+
+  /* Em pé: a história, os números e o "E agora?" numa coluna que rola; as cadeiras num pé mais baixo */
+  ${portrait} {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 1.5rem;
+    padding: max(1.25rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) calc(20vh + 1rem) max(1rem, env(safe-area-inset-left));
+
+    > svg {
+      height: 20vh;
     }
   }
 `;
@@ -84,6 +98,19 @@ const Story = styled.div`
       line-height: 1.25rem;
     }
   }
+
+  ${portrait} {
+    width: auto;
+
+    h1 {
+      font-size: 2.25rem;
+    }
+
+    p {
+      font-size: 1rem;
+      line-height: 1.5rem;
+    }
+  }
 `;
 
 const Stopped = styled.div`
@@ -101,6 +128,12 @@ const Stopped = styled.div`
 
   @media (max-height: 500px) {
     display: none;
+  }
+
+  ${portrait} {
+    > div {
+      width: auto;
+    }
   }
 `;
 
@@ -126,6 +159,11 @@ const Stats = styled.dl`
     dd {
       font-size: 1.25rem;
     }
+  }
+
+  ${portrait} {
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
   }
 `;
 
@@ -162,6 +200,19 @@ const Next = styled.nav`
 
     small {
       display: none;
+    }
+  }
+
+  /* Em pé: a largura toda; o detalhe do botão desce de linha em vez de encostar no nome */
+  ${portrait} {
+    width: auto;
+    padding: 1rem;
+
+    > a {
+      flex-wrap: wrap;
+      gap: 0 0.75rem;
+      white-space: normal;
+      text-align: left;
     }
   }
 `;

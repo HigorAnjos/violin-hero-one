@@ -22,7 +22,7 @@ describe('MicGuard', () => {
     expect(ear.stopped).toBe(0);
   });
 
-  it.each([ROUTES.calibration, ROUTES.game])('fecha o microfone em %s com o celular em pé (aviso de girar)', (path) => {
+  it.each([ROUTES.calibration, ROUTES.game, ROUTES.results, ROUTES.taskResult])('fecha o microfone em %s com o celular em pé', (path) => {
     vi.stubGlobal(
       'matchMedia',
       vi.fn((query: string) => ({ matches: query === PORTRAIT_QUERY, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
