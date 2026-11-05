@@ -229,6 +229,14 @@ const Settings = styled(Panel)`
   }
 `;
 
+const SettingsHead = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
 const Warning = styled.div`
   display: flex;
   flex-direction: column;
@@ -317,6 +325,8 @@ export interface PauseMenuProps {
   /** Linha de afinação, nome das notas e modo daltônico; sem onPrefs, sem as caixas. */
   prefs?: PlayPrefs;
   onPrefs?: (change: Partial<PlayPrefs>) => void;
+  /** Celular deitado: o botão Pauta (ou Painel) da tela de jogo, ao lado do título dos ajustes, dentro do diálogo. */
+  layoutToggle?: React.ReactNode;
 }
 
 export const PRACTICE_WARNING = 'A partir daqui, esta partida conta como prática: sem selos e sem recorde.';
@@ -341,6 +351,7 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
   onMetronome,
   prefs,
   onPrefs,
+  layoutToggle,
 }) => {
   const first = React.useRef<HTMLButtonElement>(null);
   const [pendingSpeed, setPendingSpeed] = React.useState<number | null>(null);
@@ -401,7 +412,14 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
         <small>{micClosed ? 'O microfone fechou quando a tela saiu de vista: continuar abre de novo e conta 1 compasso.' : 'Ao continuar, o jogo conta 1 compasso antes da próxima nota.'}</small>
       </Menu>
       <Settings aria-label="Ajustes rápidos">
-        <Kicker>Ajustes rápidos</Kicker>
+        {layoutToggle ? (
+          <SettingsHead>
+            <Kicker>Ajustes rápidos</Kicker>
+            {layoutToggle}
+          </SettingsHead>
+        ) : (
+          <Kicker>Ajustes rápidos</Kicker>
+        )}
         {onSpeed && (
           <div role="group" aria-labelledby="pausa-velocidade">
             <span id="pausa-velocidade">

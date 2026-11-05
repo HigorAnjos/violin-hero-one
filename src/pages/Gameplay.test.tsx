@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { palcoTheme } from '../assets/styles/themes/palco';
@@ -11,6 +11,7 @@ import type { EarAudio } from '../shell/Ear';
 import { createFakeEar, type FakeEar } from '../shell/fakeEar';
 import type { PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
+import { stubLandscapePhone } from '../shell/stubLandscape';
 import { renderScreen } from '../shell/testing';
 import type { GameDeps } from '../shell/useGame';
 import { devWindow } from '../shell/devTools';
@@ -199,6 +200,60 @@ describe('Gameplay', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
     await userEvent.click(screen.getByRole('button', { name: 'Sair para músicas' }));
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+  });
+
+  it('fora do celular deitado, sem o botão Pauta', async () => {
+    setup();
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    expect(screen.queryByRole('button', { name: /pauta/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('Gameplay no celular deitado: botão Pauta', () => {
+  beforeEach(() => {
+    stubLandscapePhone();
+    track.resize.mockClear();
+  });
+
+  it('começa sem a pauta; ligar põe a pauta embaixo, encolhe a pista e guarda a escolha', async () => {
+    const { deps } = setup();
+    await waitFor(() => expect(deps.loadTrack).toHaveBeenCalled());
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    expect(vi.mocked(deps.loadTrack!).mock.calls[0][1]).toMatchObject({ width: 844, height: 390 });
+    expect(screen.getByTestId('pista')).toHaveStyle({ height: '390px' });
+    expect(screen.queryByRole('region', { name: 'Partitura' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pauta', pressed: false }));
+    expect(screen.getByRole('button', { name: 'Pauta', pressed: true })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('region', { name: 'Partitura' })).toBeInTheDocument();
+    expect(screen.getByTestId('pista')).toHaveStyle({ height: '274px' });
+    expect(track.resize).toHaveBeenLastCalledWith(844, 274, undefined);
+    expect(JSON.parse(localStorage.getItem('vh:ajustes')!)).toMatchObject({ landscapeStaff: true });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pauta', pressed: true }));
+    expect(track.resize).toHaveBeenLastCalledWith(844, 390, undefined);
+    expect(screen.queryByRole('region', { name: 'Partitura' })).not.toBeInTheDocument();
+  });
+
+  it('a escolha vale na próxima partida: a pista já nasce acima da pauta', async () => {
+    localStorage.setItem('vh:ajustes', JSON.stringify({ landscapeStaff: true }));
+    const { deps } = setup();
+    await waitFor(() => expect(deps.loadTrack).toHaveBeenCalled());
+    expect(vi.mocked(deps.loadTrack!).mock.calls[0][1]).toMatchObject({ width: 844, height: 274 });
+    expect(screen.getByRole('button', { name: 'Pauta', pressed: true })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('na pausa o botão vai para os Ajustes rápidos e alterna sem voltar o jogo', async () => {
+    const { context, deps } = setup('?simular=0');
+    await waitFor(() => expect(deps.loadTrack).toHaveBeenCalled());
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
+    const settings = screen.getByRole('region', { name: 'Ajustes rápidos' });
+    expect(screen.getAllByRole('button', { name: 'Pauta', pressed: false })).toHaveLength(1);
+    await userEvent.click(within(settings).getByRole('button', { name: 'Pauta', pressed: false }));
+    expect(track.resize).toHaveBeenLastCalledWith(844, 274, undefined);
+    expect(screen.getByRole('dialog', { name: 'PAUSADO' })).toBeInTheDocument();
+    expect(context.resume).not.toHaveBeenCalled();
   });
 });
 

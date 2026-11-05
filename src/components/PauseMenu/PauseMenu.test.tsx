@@ -1,6 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
+import { DEFAULT_PLAY_PREFS } from '../../shell/playPrefs';
 import { renderScreen } from '../../shell/testing';
 import { PauseMenu, type PauseMenuProps } from './PauseMenu';
 
@@ -86,7 +87,7 @@ describe('PauseMenu', () => {
 
   it('linha de afinação, nome das notas e padrões para daltonismo', async () => {
     const onPrefs = vi.fn();
-    renderScreen(<PauseMenu {...props({ prefs: { tuningLine: true, noteNames: false, colorblind: false }, onPrefs })} />);
+    renderScreen(<PauseMenu {...props({ prefs: { ...DEFAULT_PLAY_PREFS, tuningLine: true, noteNames: false, colorblind: false }, onPrefs })} />);
     expect(screen.getByRole('checkbox', { name: 'Mostrar linha de afinação' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Mostrar nome das notas' })).not.toBeChecked();
     await userEvent.click(screen.getByRole('checkbox', { name: 'Mostrar linha de afinação' }));
@@ -98,5 +99,30 @@ describe('PauseMenu', () => {
   it('sem onPrefs, sem as caixas', () => {
     renderScreen(<PauseMenu {...props()} />);
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('celular deitado: o botão Pauta da tela fica nos Ajustes rápidos', () => {
+    renderScreen(
+      <PauseMenu
+        {...props({
+          layoutToggle: (
+            <button type="button" aria-pressed="false">
+              Pauta
+            </button>
+          ),
+        })}
+      />
+    );
+    expect(screen.getByRole('region', { name: 'Ajustes rápidos' })).toContainElement(screen.getByRole('button', { name: 'Pauta' }));
+  });
+
+  it('sem o botão Pauta (desktop), os Ajustes rápidos como antes', () => {
+    renderScreen(<PauseMenu {...props()} />);
+    expect(screen.queryByRole('button', { name: /pauta|painel/i })).not.toBeInTheDocument();
+  });
+
+  it('na contagem de volta, sem o botão Pauta', () => {
+    renderScreen(<PauseMenu {...props({ counting: 3, layoutToggle: <button type="button">Pauta</button> })} />);
+    expect(screen.queryByRole('button', { name: 'Pauta' })).not.toBeInTheDocument();
   });
 });

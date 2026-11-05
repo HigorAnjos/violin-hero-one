@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { palcoTheme } from '../assets/styles/themes/palco';
@@ -7,6 +7,7 @@ import type { Song } from '../game/notation/song';
 import type { EarAudio } from '../shell/Ear';
 import { createFakeEar } from '../shell/fakeEar';
 import { ROUTES } from '../shell/routes';
+import { stubLandscapePhone } from '../shell/stubLandscape';
 import { renderScreen } from '../shell/testing';
 import type { GameDeps } from '../shell/useGame';
 import { GameplaySheet, playingNote } from './GameplaySheet';
@@ -86,6 +87,51 @@ describe('GameplaySheet', () => {
     expect(screen.getByRole('dialog', { name: 'PAUSADO' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Reiniciar música' }));
     expect(screen.getByTestId('location')).toHaveTextContent(ROUTES.countdown);
+  });
+
+  it('fora do celular deitado, sem o botão Painel', async () => {
+    setup();
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    expect(screen.queryByRole('button', { name: /painel/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('GameplaySheet no celular deitado: botão Painel', () => {
+  beforeEach(() => stubLandscapePhone());
+
+  it('começa com o painel; esconder dá a altura para a pauta, refaz a faixa e guarda a escolha', async () => {
+    const { deps, sheet } = setup();
+    await waitFor(() => expect(deps.loadSheet).toHaveBeenCalled());
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    const button = screen.getByRole('button', { name: 'Painel', pressed: true });
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    // Ao lado do Pausar, no cabeçalho
+    expect(screen.getByRole('button', { name: 'Pausar' }).parentElement).toContainElement(button);
+    sheet.resize.mockClear();
+    await userEvent.click(button);
+    // O painel some pelo CSS do celular deitado (o jsdom não aplica @media; o e2e mede)
+    expect(screen.getByRole('button', { name: 'Painel', pressed: false })).toHaveAttribute('aria-pressed', 'false');
+    expect(sheet.resize).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem('vh:ajustes')!)).toMatchObject({ landscapePanel: false });
+  });
+
+  it('a escolha vale na próxima partida', async () => {
+    localStorage.setItem('vh:ajustes', JSON.stringify({ landscapePanel: false }));
+    setup();
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    expect(screen.getByRole('button', { name: 'Painel', pressed: false })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('na pausa, um botão só, nos Ajustes rápidos, sem voltar o jogo', async () => {
+    const { deps, sheet } = setup();
+    await waitFor(() => expect(deps.loadSheet).toHaveBeenCalled());
+    await waitFor(() => expect(frames.length).toBeGreaterThan(0));
+    await userEvent.click(screen.getByRole('button', { name: 'Pausar' }));
+    expect(screen.getAllByRole('button', { name: 'Painel', pressed: true })).toHaveLength(1);
+    sheet.resize.mockClear();
+    await userEvent.click(within(screen.getByRole('region', { name: 'Ajustes rápidos' })).getByRole('button', { name: 'Painel', pressed: true }));
+    expect(sheet.resize).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('dialog', { name: 'PAUSADO' })).toBeInTheDocument();
   });
 });
 

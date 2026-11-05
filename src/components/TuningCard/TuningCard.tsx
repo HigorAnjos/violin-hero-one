@@ -44,7 +44,7 @@ const meterBand = (cents: number, bands: TuningBands) => ({
 /** "Ré" (sem oitava), como no "Toque" do design. */
 const solfege = (midi: number) => noteName(midi).replace(/-?\d+$/, '');
 
-const Card = styled.section`
+const Card = styled.section<{ $docked: boolean }>`
   position: absolute;
   right: 2.5rem;
   top: 2rem;
@@ -84,6 +84,19 @@ const Card = styled.section`
     svg {
       display: none;
     }
+
+    /*
+     * Botão Pauta ligado: o cartão para acima da pauta e o motivo do erro rola dentro dele. 4,125rem é o top acima;
+     * 7,25rem, a altura da pauta compacta, repetida em COMPACT_STAFF_HEIGHT (render/layout.ts) e no SheetStrip.
+     * Mudou uma, muda as três (o pista-deitada.spec.ts pega a sobreposição).
+     */
+    ${({ $docked }) =>
+      $docked &&
+      `
+      max-height: calc(100% - 4.125rem - 7.25rem - 0.5rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    `}
   }
 `;
 
@@ -179,10 +192,12 @@ export interface TuningCardProps {
   bands?: TuningBands;
   /** "Mostrar linha de afinação" (Pausa, Configurações): desligada, só o ponto de agora, sem o traço. */
   showLine?: boolean;
+  /** Celular deitado com o botão Pauta ligado: o cartão não desce sobre a pauta. */
+  docked?: boolean;
 }
 
 /** Cartão "Afinação" da Gameplay: a nota da vez, o traço dos últimos 2 s e o motivo do último erro (5d). */
-export const TuningCard: React.FC<TuningCardProps> = ({ target, trace, liveCents, a4, explanation, compact = false, bands = DEFAULT_BANDS, showLine = true }) => {
+export const TuningCard: React.FC<TuningCardProps> = ({ target, trace, liveCents, a4, explanation, compact = false, bands = DEFAULT_BANDS, showLine = true, docked = false }) => {
   const theme = useTheme();
   const color = target ? theme.game.strings[STRING_LETTERS[target.string]].main : theme.colors.textMuted;
   const status = liveCents === null ? null : tuningStatus(liveCents, bands);
@@ -193,7 +208,7 @@ export const TuningCard: React.FC<TuningCardProps> = ({ target, trace, liveCents
   const last = points.split(' ').pop()?.split(',');
 
   return (
-    <Card aria-label="Afinação">
+    <Card aria-label="Afinação" $docked={docked}>
       <Head>
         <div>
           <Kicker>Toque</Kicker>

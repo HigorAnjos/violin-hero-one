@@ -10,12 +10,14 @@ import { formatPercent, formatPoints } from '../components/ScoreCard/ScoreCard';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import { sheetCaption } from '../components/SheetPanel/sheetCaption';
 import { SheetPanel } from '../components/SheetPanel/SheetPanel';
+import { StaffToggle } from '../components/StaffToggle/StaffToggle';
 import type { EngineNote } from '../game/engine';
 import { songDurationSeconds, type Song } from '../game/notation/song';
 import { prefersReducedMotion } from '../game/render/present';
 import { useEar } from '../shell/Ear';
 import { gameRoute } from '../shell/play';
 import { ROUTES } from '../shell/routes';
+import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { useGame, type GameDeps } from '../shell/useGame';
 import { pauseSettings, useEscapePause, usePlayScreen } from '../shell/usePlayScreen';
 
@@ -75,6 +77,19 @@ const Header = styled.header`
       font-size: 0.875rem;
     }
   }
+`;
+
+/** O Pausar no meio do cabeçalho; no celular deitado, com o botão Pauta ao lado, como no Arcade. */
+const Controls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+/** Na Pausa o botão Painel vai para os Ajustes rápidos: o do cabeçalho some, sem mexer no lugar do Pausar. */
+const ToggleSlot = styled.span<{ $hidden: boolean }>`
+  display: flex;
+  visibility: ${({ $hidden }) => ($hidden ? 'hidden' : 'visible')};
 `;
 
 const PauseButton = styled.button`
@@ -154,7 +169,7 @@ const Callout = styled(JudgmentCallout)`
   }
 `;
 
-const Bottom = styled.div`
+const Bottom = styled.div<{ $hidden: boolean }>`
   flex: 0 0 16.875rem;
   min-height: 0;
   display: grid;
@@ -172,6 +187,8 @@ const Bottom = styled.div`
   @media (max-height: 500px) {
     flex-basis: 6.5rem;
     gap: 0.5rem;
+    /* Botão Painel desligado: a pauta fica com a altura */
+    ${({ $hidden }) => $hidden && 'display: none;'}
   }
 `;
 
@@ -213,6 +230,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
   const ear = useEar();
   const theme = useTheme();
   const { play, a4, performance, level, bands, finish, micError, navigate } = usePlayScreen('Partitura');
+  const compact = useMediaQuery(COMPACT_QUERY);
   const host = React.useRef<HTMLDivElement>(null);
   const total = React.useMemo(() => songDurationSeconds(play.song), [play.song]);
   const [trackOptions] = React.useState(() => ({ theme, reducedMotion: prefersReducedMotion() }));
@@ -236,6 +254,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
   });
   const { phase, hud, pause, resume } = game;
   const paused = phase === 'paused' || phase === 'counting';
+  const panelToggle = compact && <StaffToggle kind="panel" pressed={game.prefs.landscapePanel} onToggle={(on) => game.changePrefs({ landscapePanel: on })} />;
   useEscapePause(phase, pause, resume);
 
   const subtitle = `${play.song.title} · ${LEVEL_NAMES[play.song.level]}`;
@@ -248,12 +267,15 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
           <Kicker>Modo Partitura</Kicker>
           <span>{subtitle}</span>
         </div>
-        <PauseButton type="button" aria-label="Pausar" onClick={pause} disabled={phase !== 'playing'}>
-          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-            <rect x="3" y="2" width="3.5" height="12" fill="currentColor" />
-            <rect x="9.5" y="2" width="3.5" height="12" fill="currentColor" />
-          </svg>
-        </PauseButton>
+        <Controls>
+          <PauseButton type="button" aria-label="Pausar" onClick={pause} disabled={phase !== 'playing'}>
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <rect x="3" y="2" width="3.5" height="12" fill="currentColor" />
+              <rect x="9.5" y="2" width="3.5" height="12" fill="currentColor" />
+            </svg>
+          </PauseButton>
+          {panelToggle && <ToggleSlot $hidden={paused}>{panelToggle}</ToggleSlot>}
+        </Controls>
         <Score role="status" aria-label="Placar" aria-live="off">
           <b>{formatPoints(hud.score)}</b>
           <span>×{hud.multiplier}</span>
@@ -267,7 +289,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
         </Strip>
       </SheetArea>
 
-      <Bottom>
+      <Bottom $hidden={!game.prefs.landscapePanel} data-testid="painel">
         <NowPlaying now={playingNote(hud.target, play.song, speed)} next={playingNote(hud.next, play.song, speed)} />
         <Middle>
           <Kicker>Orquestra tocando com você</Kicker>
@@ -291,6 +313,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
           onExit={() => navigate(ROUTES.home)}
           counting={game.counting}
           micClosed={game.micClosed}
+          layoutToggle={panelToggle}
           {...pauseSettings(game)}
         />
       )}

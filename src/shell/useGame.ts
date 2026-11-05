@@ -122,8 +122,11 @@ export interface GameOptions {
   /** Padrão: a pista. Lido na montagem. */
   view?: GameView;
   trackOptions: Omit<TrackOptions, 'notes' | 'width' | 'height'>;
-  /** `framing`: o enquadramento das Cordas 3D nesta caixa (strings3dBox); os outros modos ignoram. */
-  box: () => { x: number; y: number; width: number; height: number; framing?: Framing };
+  /**
+   * `framing`: o enquadramento das Cordas 3D nesta caixa (strings3dBox); os outros modos ignoram. Recebe as opções de
+   * tela de agora: o botão Pauta (celular deitado) muda a caixa, e a pista se refaz sem mexer no relógio.
+   */
+  box: (prefs: PlayPrefs) => { x: number; y: number; width: number; height: number; framing?: Framing };
   onBeat?: (beat: number) => void;
   /** `recording`: só com `record`; a gravação da partida ou por que ela não saiu. */
   onFinish: (result: GameResult, recording?: Recording | RecordingError) => void;
@@ -374,7 +377,7 @@ export function useGame(options: GameOptions) {
 
       const host = opts.current.host.current;
       if (!host) return;
-      const box = opts.current.box();
+      const box = opts.current.box(shared.prefs);
       const { theme, reducedMotion, showFps, onFps } = opts.current.trackOptions;
       const view = opts.current.view;
       const { colorblind: patterns, noteNames } = shared.prefs;
@@ -431,7 +434,7 @@ export function useGame(options: GameOptions) {
       .catch((error: unknown) => alive && opts.current.onMicError(error));
 
     const onResize = () => {
-      const box = opts.current.box();
+      const box = opts.current.box(shared.prefs);
       track?.resize(box.width, box.height, box.framing);
     };
     addEventListener('resize', onResize);
@@ -517,6 +520,16 @@ export function useGame(options: GameOptions) {
     const surface = live.current.surface;
     if (surface && 'setLook' in surface) surface.setLook({ patterns: next.colorblind, noteNames: next.noteNames });
   }, []);
+
+  // Botão Pauta (celular deitado): depois que a tela troca de lugar a pauta ou o painel, a pista, as cordas ou a
+  // partitura se refazem na caixa nova, como no resize; pausada ou não, o relógio da partida segue onde estava
+  const { landscapeStaff, landscapePanel } = prefs;
+  React.useLayoutEffect(() => {
+    const surface = live.current.surface;
+    if (!surface) return;
+    const box = opts.current.box(live.current.prefs);
+    surface.resize(box.width, box.height, box.framing);
+  }, [landscapeStaff, landscapePanel]);
 
   const practice = React.useMemo<PracticeApi>(
     () => ({

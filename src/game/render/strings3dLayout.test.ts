@@ -48,6 +48,26 @@ describe('caixa das Cordas 3D na tela', () => {
   it('a partir de 501 px de altura, a do design', () => {
     expect(strings3dBox(1000, 501).framing).toBe(DESIGN_FRAMING);
   });
+
+  it('botão Pauta ligado no celular deitado: a mesma coluna, parando em cima da pauta de 116 px', () => {
+    expect(strings3dBox(844, 390, undefined, true)).toEqual({ x: 0, y: 0, width: 652, height: 274, framing: COMPACT_FRAMING });
+    expect(strings3dBox(932, 430, undefined, true)).toEqual({ x: 0, y: 0, width: 740, height: 314, framing: COMPACT_FRAMING });
+  });
+
+  it('botão Pauta ligado não muda o desktop', () => {
+    expect(strings3dBox(1280, 720, undefined, true)).toEqual(strings3dBox(1280, 720));
+  });
+
+  it.each([
+    [844, 390],
+    [932, 430],
+  ])('%i×%i com a pauta: as quatro cordas, as letras e o "CASA" ainda cabem na caixa menor', (w, h) => {
+    const { width, height, framing } = strings3dBox(w, h, undefined, true);
+    const l = strings3dLayout(width, height, MIN_COLUMNS, 2, framing);
+    expect(project(l, l.left - LETTER_OFFSET - LETTER_HEIGHT / 2, STRING_HEIGHTS[0], 0).x).toBeGreaterThanOrEqual(0);
+    expect(project(l, l.right + CASA_OFFSET + 0.6, 0, NUMBER_Z).x).toBeLessThanOrEqual(width);
+    expect(project(l, 0, 0, NUMBER_Z).y).toBeLessThanOrEqual(height);
+  });
 });
 
 describe('câmera do celular deitado', () => {
