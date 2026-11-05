@@ -256,6 +256,19 @@ describe('P1 · painel do professor', () => {
     expect(screen.getAllByText('Revisar').length).toBeGreaterThan(0);
   });
 
+  it('tarefas da mesma música: o painel mostra a música e, embaixo, nível, modo e prazo', async () => {
+    const { api, klass } = await withClass();
+    const dueAt = new Date(Date.now() + 86400e3).toISOString();
+    await api.createAssignment({ classId: klass.id, songId: 'brilha-brilha', level: 'easy', mode: 'arcade', dueAt });
+    await api.createAssignment({ classId: klass.id, songId: 'brilha-brilha', level: 'easy', mode: 'strings3d', dueAt });
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    const panel = await screen.findByRole('region', { name: 'Tarefas' });
+    expect(await within(panel).findAllByText('Brilha, brilha estrelinha')).toHaveLength(2);
+    expect(within(panel).getByText(/^Fácil · Arcade · até /)).toBeInTheDocument();
+    expect(within(panel).getByText(/^Fácil · Cordas 3D · até /)).toBeInTheDocument();
+    expect(within(panel).getByRole('link', { name: 'Entregas de Brilha, brilha estrelinha · Fácil · Cordas 3D' })).toBeInTheDocument();
+  });
+
   it('encerrar turma pede confirmação, com "Manter aberta" como padrão', async () => {
     const { api, klass } = await withClass();
     const user = userEvent.setup();
