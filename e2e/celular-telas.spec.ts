@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { stageBox } from '../src/game/render/layout';
+import { depthScale, stageBox, trackLayout } from '../src/game/render/layout';
 import { skipOnboarding } from './choose';
 import { blockWebFonts, fallbackFontsReady, fontsReady } from './fonts';
 import { launchWith } from './launch';
@@ -130,13 +130,15 @@ test('jogo: a pista só muda de tamanho e posição, na caixa do design (stageBo
   const { width, height } = page.viewportSize()!;
   const box = (await page.getByTestId('pista').boundingBox())!;
   expect({ x: box.x, y: box.y, width: box.width, height: box.height }).toEqual(stageBox(width, height));
-  if (compact(page)) expect(stageBox(width, height)).toEqual({ x: 202, y: 0, width: 440, height: 272 });
-  // Celular: placar à esquerda, pausar e afinação à direita, sem cobrir a pista
+  expect(stageBox(width, height)).toEqual(compact(page) ? { x: 0, y: 0, width: 844, height: 390 } : { x: 320, y: 0, width: 640, height: 550 });
+  // Celular: placar à esquerda, pausar e afinação à direita, sem cobrir o plano por onde as notas descem
   const score = (await page.getByRole('region', { name: 'Placar' }).boundingBox())!;
   const tuning = (await page.getByRole('region', { name: 'Afinação' }).boundingBox())!;
   if (compact(page)) {
-    expect(score.x + score.width, 'placar fora da pista').toBeLessThanOrEqual(box.x);
-    expect(tuning.x, 'afinação fora da pista').toBeGreaterThanOrEqual(box.x + box.width);
+    const l = trackLayout(box.width, box.height);
+    const half = (l.planeWidth / 2) * depthScale(l, 0);
+    expect(score.x + score.width, 'placar fora do plano').toBeLessThanOrEqual(box.x + l.originX - half);
+    expect(tuning.x, 'afinação fora do plano').toBeGreaterThanOrEqual(box.x + l.originX + half);
     await expect(page.getByRole('region', { name: 'Afinação' }).getByRole('img', { name: /^Afinação:/ })).toBeVisible();
   }
 });
