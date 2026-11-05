@@ -251,17 +251,14 @@ const Grid = styled.ul`
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  /*
+   * Celular deitado: colunas de cartões (4 em 844 px, 5 em 932 px) que rolam por dentro, com o cabeçalho e os filtros
+   * parados no alto; o último cartão sobe acima da barra de gestos
+   */
   @media (max-height: 500px) {
-    display: flex;
+    grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
     gap: ${({ theme }) => theme.spacing.sm};
-    overflow-x: auto;
-    overflow-y: hidden;
-    align-items: flex-start;
-
-    > li {
-      flex: none;
-      width: 11.5rem;
-    }
+    padding-bottom: calc(4px + env(safe-area-inset-bottom));
   }
 
   /* Em pé: duas colunas e a página rola, em vez de rolar por dentro */
@@ -363,7 +360,8 @@ const SongCard: React.FC<{ song: ShelfSong & { origin?: string }; offline: boole
   const tag = offlineTag(song, offline);
   return (
     <li>
-      <Card to={modesUrl(undefined, song.id)}>
+      {/* O foco por teclado num cartão meio à vista não rola a lista: rola até ele aparecer inteiro */}
+      <Card to={modesUrl(undefined, song.id)} onFocus={(e) => e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' })}>
         <Cover id={song.id}>{tag && <Badge>{tag}</Badge>}</Cover>
         <CardBody>
           <b>{song.title}</b>
