@@ -9,8 +9,8 @@ import { clock, keySignature, ledgerSteps, staffLayout, stepY } from '../../game
 const PX_PER_BEAT = 56;
 const HEIGHT = 116;
 /** Onde fica o "agora" (linha ciano) e a largura da clave. */
-const NOW_X = { wide: 240, compact: 150 };
-const CLEF_W = { wide: 100, compact: 84 };
+const NOW_X = 240;
+const CLEF_W = 100;
 const STAFF_STEPS = [30, 32, 34, 36, 38];
 
 const Section = styled.section<{ $paused: boolean }>`
@@ -29,21 +29,24 @@ const Section = styled.section<{ $paused: boolean }>`
   svg {
     display: block;
   }
+`;
 
-  @media (max-height: 500px) {
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 7.25rem;
-    padding-top: 0.25rem;
-    border-width: 1px 0 0;
-    border-radius: 0;
-    box-shadow: none;
-    background-color: ${({ theme }) => theme.game.track};
+/**
+ * Celular deitado: só o andamento, num fio no pé da tela. A pauta sai para a pista ocupar a altura toda: na pista
+ * Arcade e nas Cordas 3D cada nota já traz a corda (letra e cor) e o dedo, e ler a pauta é o modo Partitura.
+ */
+const Thread = styled.div`
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0.25rem;
+  background-color: ${({ theme }) => theme.colors.surfaceBorder};
 
-    svg {
-      margin-top: -0.75rem;
-    }
+  i {
+    display: block;
+    height: 100%;
+    background-color: ${({ theme }) => theme.colors.info.main};
   }
 `;
 
@@ -59,24 +62,6 @@ const Head = styled.div`
 
   > i {
     flex: 1;
-  }
-
-  @media (max-height: 500px) {
-    height: 0.75rem;
-
-    > :not([data-bar]) {
-      display: none;
-    }
-
-    > [data-bar] {
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 0;
-      width: auto;
-      height: 3px;
-      border-radius: 0;
-    }
   }
 `;
 
@@ -110,6 +95,7 @@ export interface SheetStripProps {
   /** A próxima nota, para o rótulo de leitura. */
   next: { midi: number; string: number; finger: number } | null;
   paused?: boolean;
+  /** Celular deitado: só o fio do andamento (Thread), sem a pauta. */
   compact?: boolean;
 }
 
@@ -121,17 +107,15 @@ export const SheetStrip = React.forwardRef<SheetStripHandle, SheetStripProps>(fu
   const theme = useTheme();
   const layout = React.useMemo(() => staffLayout(song), [song]);
   const group = React.useRef<SVGGElement>(null);
-  const nowX = compact ? NOW_X.compact : NOW_X.wide;
-  const clefW = compact ? CLEF_W.compact : CLEF_W.wide;
 
   React.useImperativeHandle(
     ref,
     () => ({
       setBeat(beat) {
-        group.current?.setAttribute('transform', `translate(${(nowX - beat * PX_PER_BEAT).toFixed(1)} 0)`);
+        group.current?.setAttribute('transform', `translate(${(NOW_X - beat * PX_PER_BEAT).toFixed(1)} 0)`);
       },
     }),
-    [nowX]
+    []
   );
 
   const color = (s: number) => theme.game.strings[STRING_LETTERS[s]].main;
@@ -140,6 +124,14 @@ export const SheetStrip = React.forwardRef<SheetStripHandle, SheetStripProps>(fu
     : 'Partitura';
   const progress = total > 0 ? Math.min(100, (elapsed / total) * 100) : 0;
   const line = theme.colors.textMuted;
+
+  if (compact) {
+    return (
+      <Thread role="progressbar" aria-label="Andamento da música" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
+        <i style={{ width: `${progress}%` }} />
+      </Thread>
+    );
+  }
 
   return (
     <Section aria-label={paused ? 'Partitura parada' : 'Partitura'} $paused={paused}>
@@ -153,7 +145,7 @@ export const SheetStrip = React.forwardRef<SheetStripHandle, SheetStripProps>(fu
         ) : (
           <>
             <span>{clock(elapsed)}</span>
-            <Bar data-bar="" role="progressbar" aria-label="Andamento da música" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
+            <Bar role="progressbar" aria-label="Andamento da música" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
               <i style={{ width: `${progress}%` }} />
             </Bar>
             <span>{clock(total)}</span>
@@ -166,7 +158,7 @@ export const SheetStrip = React.forwardRef<SheetStripHandle, SheetStripProps>(fu
             <line key={s} x1="0" x2="100%" y1={stepY(s)} y2={stepY(s)} />
           ))}
         </g>
-        <g ref={group} transform={`translate(${nowX} 0)`}>
+        <g ref={group} transform={`translate(${NOW_X} 0)`}>
           {layout.bars.slice(1).map((b) => (
             <line key={b} x1={b * PX_PER_BEAT - 14} x2={b * PX_PER_BEAT - 14} y1={stepY(38)} y2={stepY(30)} stroke={line} strokeWidth="1.3" />
           ))}
@@ -200,11 +192,11 @@ export const SheetStrip = React.forwardRef<SheetStripHandle, SheetStripProps>(fu
             );
           })}
         </g>
-        <line x1={nowX} x2={nowX} y1="6" y2="110" stroke={theme.colors.info.main} strokeWidth="3" />
-        <rect x="0" y="0" width={clefW} height={HEIGHT} fill={paused || compact ? theme.game.track : theme.colors.surface} />
+        <line x1={NOW_X} x2={NOW_X} y1="6" y2="110" stroke={theme.colors.info.main} strokeWidth="3" />
+        <rect x="0" y="0" width={CLEF_W} height={HEIGHT} fill={paused ? theme.game.track : theme.colors.surface} />
         <g stroke={line} strokeWidth="1.3" opacity="0.7">
           {STAFF_STEPS.map((s) => (
-            <line key={s} x1="0" x2={clefW} y1={stepY(s)} y2={stepY(s)} />
+            <line key={s} x1="0" x2={CLEF_W} y1={stepY(s)} y2={stepY(s)} />
           ))}
         </g>
         <text x="12" y="82" fontSize="60" fill={theme.colors.text} fontFamily={theme.fonts.music}>

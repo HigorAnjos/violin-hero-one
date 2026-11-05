@@ -26,6 +26,7 @@ import {
   STRING_HEIGHTS,
   STRING_OVERHANG,
   strings3dLayout,
+  type Framing,
   type ScreenPoint,
   type Strings3DLayout,
 } from './strings3dLayout';
@@ -263,8 +264,8 @@ export class Strings3DScene extends Container {
     this.addChild(this.bg, ...this.highlights, this.gridLayer, this.tailLayer, this.shadowLayer, ...this.strings, this.stemLayer, this.labelLayer, this.boxLayer, this.frameLayer);
   }
 
-  layout(width: number, height: number): void {
-    const l = (this.l = strings3dLayout(width, height, this.columns, this.lead));
+  layout(width: number, height: number, framing?: Framing): void {
+    const l = (this.l = strings3dLayout(width, height, this.columns, this.lead, framing));
     const p = this.palette;
     const a = this.pa;
     const b = this.pb;

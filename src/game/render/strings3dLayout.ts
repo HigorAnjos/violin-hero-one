@@ -18,9 +18,6 @@ export const MIN_COLUMNS = 10;
 export const STRING_HEIGHTS: readonly [number, number, number, number] = [2.6, 1.9, 1.2, 0.45];
 /** Comprimento do chão: do fundo até a linha das cordas. */
 export const FLOOR_LENGTH = 48;
-/** Câmera do design: altura e distância até a linha das cordas, inclinada para baixo. */
-const CAMERA_HEIGHT = 4.25;
-const CAMERA_DISTANCE = 6.74;
 /**
  * Chão além das casas da ponta, de cada lado: a moldura do acerto (1,24 × a caixa) e a caixa vista de cima da corda
  * ficam inteiras dentro do chão na casa 0 e na última, como no design.
@@ -39,9 +36,28 @@ export const BOX = { width: 0.95, height: 0.6, farGrowth: 0.7 } as const;
 export const LETTER_HEIGHT = 0.5;
 export const NUMBER_HEIGHT = 0.36;
 
-/** Onde o conteúdo fica na altura da caixa (0 = topo): o alto é dos cartões de placar e afinação, como no design. */
-const TOP_FRACTION = 0.24;
-const BOTTOM_FRACTION = 0.965;
+/**
+ * Câmera (altura e distância até a linha das cordas, inclinada para baixo) e onde o conteúdo fica na altura da caixa
+ * (0 = topo): o fundo do chão em `top` e os números das casas em `bottom`.
+ */
+export interface Framing {
+  cameraHeight: number;
+  cameraDistance: number;
+  top: number;
+  bottom: number;
+}
+
+/** O do design (1280×550): o alto da caixa é dos cartões de placar e afinação. */
+export const DESIGN_FRAMING: Framing = { cameraHeight: 4.25, cameraDistance: 6.74, top: 0.24, bottom: 0.965 };
+
+/**
+ * Celular deitado: a caixa vai do topo ao pé da tela e o placar fica no canto de cima, longe do fundo do chão (que é
+ * estreito, no meio). O fundo sobe para perto do topo e a câmera recua e sobe (o dobro da distância do design): o chão
+ * encurta menos em perspectiva e a nota nasce maior, com as cordas da frente ainda separadas e dentro da largura, de
+ * 10 a 13 casas.
+ */
+export const COMPACT_FRAMING: Framing = { cameraHeight: 9, cameraDistance: 18, top: 0.06, bottom: 0.965 };
+
 /** Folga lateral: o conteúdo ocupa no máximo isto da largura. */
 const SIDE_FILL = 0.96;
 
@@ -122,17 +138,24 @@ const maxBy = (points: Point[], pose: CameraPose, f: (p: { tx: number; ty: numbe
   points.reduce((best, [x, y, z]) => Math.max(best, f(toCamera(pose, x, y, z))), -Infinity);
 
 /**
- * Enquadramento por proporção: a inclinação e o campo de visão que põem o fundo em TOP_FRACTION e os números das casas
- * em BOTTOM_FRACTION da altura; se a caixa for estreita demais para as letras e o "CASA", abre o campo até caberem.
+ * Enquadramento por proporção: a inclinação e o campo de visão que põem o fundo em `framing.top` e os números das casas
+ * em `framing.bottom` da altura; se a caixa for estreita demais para as letras e o "CASA", abre o campo até caberem.
  */
-export function strings3dLayout(width: number, height: number, columns: number = MIN_COLUMNS, lead: number = LEAD_SECONDS_3D): Strings3DLayout {
+export function strings3dLayout(
+  width: number,
+  height: number,
+  columns: number = MIN_COLUMNS,
+  lead: number = LEAD_SECONDS_3D,
+  framing: Framing = DESIGN_FRAMING
+): Strings3DLayout {
+  const { top: TOP_FRACTION, bottom: BOTTOM_FRACTION } = framing;
   const aspect = width > 0 && height > 0 ? width / height : 1;
   const left = -columns / 2 - FLOOR_MARGIN;
   const right = columns / 2 + FLOOR_MARGIN;
   const points = framePoints(left, right);
   // As letras ficam à esquerda: a câmera vai para o meio do conteúdo, não do chão
   const x = (left - LETTER_OFFSET - LETTER_HEIGHT / 2 + right + CASA_OFFSET + 0.6) / 2;
-  const pose: CameraPose = { x, y: CAMERA_HEIGHT, z: CAMERA_DISTANCE, pitch: 0 };
+  const pose: CameraPose = { x, y: framing.cameraHeight, z: framing.cameraDistance, pitch: 0 };
 
   // top / bottom em tangentes: com o quadro simétrico, a fração na tela é 0.5 − ty / (2T)
   const want = (0.5 - TOP_FRACTION) / (0.5 - BOTTOM_FRACTION);

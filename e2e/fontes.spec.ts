@@ -130,6 +130,8 @@ for (const tema of ['caderno', '8-bits'] as const) for (const fonte of ['real', 
 }
 
 test('a partitura da Gameplay desenha a clave e os acidentes com a Noto Music servida pelo app', async ({ page }) => {
+  // No celular deitado a Gameplay não tem pauta (só o fio do andamento): a clave é do desktop
+  await page.setViewportSize({ width: 1280, height: 720 });
   const font = page.waitForResponse((r) => /noto-music-music-400-normal-.*\.woff2$/.test(r.url()));
   await page.goto('/jogo?ouvido=simulado&musica=escala-re-maior');
   await expect(page.getByTestId('pista')).toBeAttached();

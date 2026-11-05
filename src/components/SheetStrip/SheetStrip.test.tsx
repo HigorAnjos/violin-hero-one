@@ -22,6 +22,16 @@ describe('SheetStrip', () => {
     expect(container.querySelectorAll('g[opacity="0.35"]')).toHaveLength(3);
   });
 
+  it('celular deitado: só o fio do andamento, sem a pauta', () => {
+    const ref = React.createRef<SheetStripHandle>();
+    renderScreen(<SheetStrip ref={ref} song={ODE} measure={1} elapsed={102} total={192} past={0} next={{ midi: 74, string: 2, finger: 3 }} compact />);
+    expect(screen.getByRole('progressbar', { name: 'Andamento da música' })).toHaveAttribute('aria-valuenow', '53');
+    expect(screen.queryByRole('region', { name: 'Partitura' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    // A tela de jogo segue chamando a cada quadro
+    expect(() => ref.current?.setBeat(2)).not.toThrow();
+  });
+
   it('parada (pausa): rótulo próprio, sem relógio', () => {
     renderScreen(<SheetStrip song={ODE} measure={17} elapsed={0} total={10} past={0} next={null} paused />);
     expect(screen.getByRole('region', { name: 'Partitura parada' })).toHaveTextContent('Partitura · parada no compasso 18');

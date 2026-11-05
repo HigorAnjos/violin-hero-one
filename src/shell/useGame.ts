@@ -6,6 +6,7 @@ import type { EngineNote, GameResult, Judgment, LapSummary, LevelSettings, Perfo
 import { secondsPerBeat, type Song } from '../game/notation/song';
 import type { Sheet, SheetOptions, Track, TrackOptions } from '../game/render';
 import type { Strings3D, Strings3DOptions } from '../game/render/strings3d';
+import type { Framing } from '../game/render/strings3dLayout';
 import { levelFor, loadOrchestraSettings, saveOrchestraSettings, type LoopRange, type OrchestraLevel } from '../game/synth';
 import { explainJudgment, type Explanation } from '../components/JudgmentHint/explain';
 import type { TracePoint } from '../components/TuningCard/TuningCard';
@@ -121,7 +122,8 @@ export interface GameOptions {
   /** Padrão: a pista. Lido na montagem. */
   view?: GameView;
   trackOptions: Omit<TrackOptions, 'notes' | 'width' | 'height'>;
-  box: () => { x: number; y: number; width: number; height: number };
+  /** `framing`: o enquadramento das Cordas 3D nesta caixa (strings3dBox); os outros modos ignoram. */
+  box: () => { x: number; y: number; width: number; height: number; framing?: Framing };
   onBeat?: (beat: number) => void;
   /** `recording`: só com `record`; a gravação da partida ou por que ela não saiu. */
   onFinish: (result: GameResult, recording?: Recording | RecordingError) => void;
@@ -390,6 +392,7 @@ export function useGame(options: GameOptions) {
                 leadSeconds: player?.trackLeadSeconds,
                 width: box.width,
                 height: box.height,
+                framing: box.framing,
                 patterns,
               })
             : deps.loadTrack(host, {
@@ -429,7 +432,7 @@ export function useGame(options: GameOptions) {
 
     const onResize = () => {
       const box = opts.current.box();
-      track?.resize(box.width, box.height);
+      track?.resize(box.width, box.height, box.framing);
     };
     addEventListener('resize', onResize);
 
