@@ -13,12 +13,12 @@ import { BADGES, type Badge as BadgeInfo, type BadgeId } from '../game/engine';
 import { GOLD_TUNING_CENTS } from '../game/engine/badges';
 import { shiftDay } from '../services/history';
 import { todayInBrazil } from '../services/progress';
-import { useShelf } from '../services/shelf';
 import { modesUrl } from '../shell/choice';
 import { useProgress } from '../shell/progress';
 import { formatDuration, lastDays, LEARNED_ACCURACY, learnedSongs, markedDays, stringTrend, tuningAverage } from '../shell/progressStats';
 import { ROUTES } from '../shell/routes';
 import { useIsStudent } from '../shell/studentSession';
+import { musicsOf, useLibrarySongs } from './librarySongs';
 import { LEVEL_INFO } from './OnboardLevel';
 import { settingsUrl } from './Settings';
 
@@ -518,7 +518,7 @@ export function minuteBars(seconds: number[]): { minutes: number[]; tallest: num
 /** 11 · Perfil e progresso: quem joga, sequência, minutos, afinação por corda e conquistas. */
 export const Profile: React.FC = () => {
   const progress = useProgress();
-  const shelf = useShelf();
+  const { shelf, songs } = useLibrarySongs();
   const student = useIsStudent();
   const owned = new Set(progress.badges);
   const nextBadge = BADGES.find((b) => !owned.has(b.id));
@@ -537,8 +537,10 @@ export const Profile: React.FC = () => {
   const trendMax = trend ? Math.max(5, ...trend.flat().filter((v): v is number => v !== null)) : 5;
   const latest = trend?.map((weeks) => [...weeks].reverse().find((v) => v !== null) ?? null);
   const worst = latest && latest.some((v) => v !== null) ? latest.indexOf(Math.max(...latest.filter((v): v is number => v !== null))) : -1;
-  const learned = learnedSongs(progress.records);
-  const shelfSize = shelf.status === 'ready' ? shelf.songs.length : null;
+  // "Músicas" como na Biblioteca: as da estante e as do jogador, sem os exercícios técnicos (nem no total, nem nas aprendidas)
+  const musics = shelf.status === 'ready' ? new Set(musicsOf(songs).map((s) => s.id)) : null;
+  const learned = learnedSongs(musics ? progress.records.filter((r) => musics.has(r.songId)) : progress.records);
+  const shelfSize = musics?.size ?? null;
 
   return (
     <Page>
