@@ -280,16 +280,22 @@ export const GuestPrompt: React.FC = () => {
           </Notice>
         ) : (
           <>
-            <Actions>
-              {providers.google && (
-                <Button type="button" onClick={google}>
-                  Continuar com Google
-                </Button>
-              )}
-              <Button type="button" $variant={providers.google ? 'ghost' : 'primary'} aria-expanded={emailOpen} onClick={() => setEmailOpen((open) => !open)}>
-                Usar e-mail
-              </Button>
-            </Actions>
+            {(providers.google || !emailOpen) && (
+              <Actions>
+                {providers.google && (
+                  <Button type="button" onClick={google}>
+                    Continuar com Google
+                  </Button>
+                )}
+                {/* Aberto o formulário, o botão sai: o campo (com o foco) já está logo abaixo, com o título no lugar */}
+                {!emailOpen && (
+                  <Button type="button" $variant={providers.google ? 'ghost' : 'primary'} onClick={() => setEmailOpen(true)}>
+                    Usar e-mail
+                  </Button>
+                )}
+              </Actions>
+            )}
+            {emailOpen && <Kicker as="h2">Com e-mail</Kicker>}
             {emailOpen && (
               <EmailLinkForm
                 autoFocus
