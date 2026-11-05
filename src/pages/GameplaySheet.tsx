@@ -10,12 +10,14 @@ import { formatPercent, formatPoints } from '../components/ScoreCard/ScoreCard';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import { sheetCaption } from '../components/SheetPanel/sheetCaption';
 import { SheetPanel } from '../components/SheetPanel/SheetPanel';
+import { StaffToggle } from '../components/StaffToggle/StaffToggle';
 import type { EngineNote } from '../game/engine';
 import { songDurationSeconds, type Song } from '../game/notation/song';
 import { prefersReducedMotion } from '../game/render/present';
 import { useEar } from '../shell/Ear';
 import { gameRoute } from '../shell/play';
 import { ROUTES } from '../shell/routes';
+import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { useGame, type GameDeps } from '../shell/useGame';
 import { pauseSettings, useEscapePause, usePlayScreen } from '../shell/usePlayScreen';
 
@@ -77,6 +79,13 @@ const Header = styled.header`
   }
 `;
 
+/** O Pausar no meio do cabeçalho; no celular deitado, com o botão Pauta ao lado, como no Arcade. */
+const Controls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
 const PauseButton = styled.button`
   width: 2.75rem;
   height: 2.75rem;
@@ -87,6 +96,11 @@ const PauseButton = styled.button`
   background-color: ${({ theme }) => theme.colors.surface};
   border: 2px solid ${({ theme }) => theme.colors.surfaceBorder};
   color: ${({ theme }) => theme.colors.text};
+`;
+
+/** No fluxo do cabeçalho, mas por cima do véu da Pausa (z-index do StaffToggle precisa de posição). */
+const Staff = styled(StaffToggle)`
+  position: relative;
 `;
 
 const Score = styled.div`
@@ -154,7 +168,7 @@ const Callout = styled(JudgmentCallout)`
   }
 `;
 
-const Bottom = styled.div`
+const Bottom = styled.div<{ $hidden: boolean }>`
   flex: 0 0 16.875rem;
   min-height: 0;
   display: grid;
@@ -172,6 +186,8 @@ const Bottom = styled.div`
   @media (max-height: 500px) {
     flex-basis: 6.5rem;
     gap: 0.5rem;
+    /* Botão Painel desligado: a pauta fica com a altura */
+    ${({ $hidden }) => $hidden && 'display: none;'}
   }
 `;
 
@@ -213,6 +229,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
   const ear = useEar();
   const theme = useTheme();
   const { play, a4, performance, level, bands, finish, micError, navigate } = usePlayScreen('Partitura');
+  const compact = useMediaQuery(COMPACT_QUERY);
   const host = React.useRef<HTMLDivElement>(null);
   const total = React.useMemo(() => songDurationSeconds(play.song), [play.song]);
   const [trackOptions] = React.useState(() => ({ theme, reducedMotion: prefersReducedMotion() }));
@@ -248,12 +265,15 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
           <Kicker>Modo Partitura</Kicker>
           <span>{subtitle}</span>
         </div>
-        <PauseButton type="button" aria-label="Pausar" onClick={pause} disabled={phase !== 'playing'}>
-          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-            <rect x="3" y="2" width="3.5" height="12" fill="currentColor" />
-            <rect x="9.5" y="2" width="3.5" height="12" fill="currentColor" />
-          </svg>
-        </PauseButton>
+        <Controls>
+          <PauseButton type="button" aria-label="Pausar" onClick={pause} disabled={phase !== 'playing'}>
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <rect x="3" y="2" width="3.5" height="12" fill="currentColor" />
+              <rect x="9.5" y="2" width="3.5" height="12" fill="currentColor" />
+            </svg>
+          </PauseButton>
+          {compact && <Staff kind="panel" pressed={game.prefs.landscapePanel} onToggle={(on) => game.changePrefs({ landscapePanel: on })} />}
+        </Controls>
         <Score role="status" aria-label="Placar" aria-live="off">
           <b>{formatPoints(hud.score)}</b>
           <span>×{hud.multiplier}</span>
@@ -267,7 +287,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
         </Strip>
       </SheetArea>
 
-      <Bottom>
+      <Bottom $hidden={!game.prefs.landscapePanel} data-testid="painel">
         <NowPlaying now={playingNote(hud.target, play.song, speed)} next={playingNote(hud.next, play.song, speed)} />
         <Middle>
           <Kicker>Orquestra tocando com você</Kicker>
