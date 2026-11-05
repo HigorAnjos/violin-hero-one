@@ -669,7 +669,8 @@ export const Profile: React.FC = () => {
               </Sub>
             </>
           ) : (
-            <Empty>Toque com internet e a afinação de cada corda aparece aqui, semana a semana.</Empty>
+            // Sem o histórico do servidor, falta a internet; com ele, falta só uma partida com a afinação medida
+            <Empty>{history ? 'Toque uma música e a afinação de cada corda aparece aqui, semana a semana.' : 'Toque com internet e a afinação de cada corda aparece aqui, semana a semana.'}</Empty>
           )}
         </Card>
 

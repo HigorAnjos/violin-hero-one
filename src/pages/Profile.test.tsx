@@ -67,9 +67,17 @@ describe('Profile', () => {
     expect(screen.getByRole('progressbar', { name: 'Selos conquistados' })).toHaveAttribute('aria-valuenow', '0');
     expect(within(screen.getByRole('region', { name: 'Sequência' })).getByText('—')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Minutos por dia' })).getByText(/quando você toca com internet/)).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'Afinação por corda' })).getByText(/semana a semana/)).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Afinação por corda' })).getByText(/^Toque com internet .* semana a semana/)).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Conquistas' })).getAllByRole('img', { name: /bloqueado/ })).toHaveLength(BADGES.length);
     expect(screen.getByText('Toque uma música até o fim')).toBeInTheDocument();
+  });
+
+  it('com o histórico do servidor e nenhuma afinação medida: falta tocar, não falta internet', () => {
+    fake = { ...withHistory(), history: { days: [], plays: [] } };
+    renderScreen(<Profile />);
+    const strings = within(screen.getByRole('region', { name: 'Afinação por corda' }));
+    expect(strings.getByText('Toque uma música e a afinação de cada corda aparece aqui, semana a semana.')).toBeInTheDocument();
+    expect(strings.queryByText(/internet/)).not.toBeInTheDocument();
   });
 
   it('músicas aprendidas contam como a Biblioteca: as músicas e as importadas, sem os exercícios', async () => {
