@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { portrait } from '../assets/styles/media';
+import { portrait, PORTRAIT_QUERY } from '../assets/styles/media';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
@@ -20,6 +20,7 @@ import type {
 } from '../services/classroom';
 import { copyText, shareLink, type ShareOutcome } from '../services/share';
 import { newAssignmentUrl, reviewUrl, ROUTES, teacherClassUrl } from '../shell/routes';
+import { useMediaQuery } from '../shell/useMediaQuery';
 import {
   classroomErrorOf,
   errorText,
@@ -788,6 +789,10 @@ function ClassView({ ready, classId }: { ready: Ready; classId: string }) {
   const loaded = details.map((d) => d.data);
   const openDetails = loaded.filter((d): d is AssignmentDetail => !!d && !d.closed);
   const klass = detail.data;
+  const portraitView = useMediaQuery(PORTRAIT_QUERY);
+  // A turma abriu sem aluno ativo? Vale até sair dela: o cadastro não pula de lugar entre um aluno e outro
+  const [startedEmpty, setStartedEmpty] = React.useState<boolean | null>(null);
+  if (klass && startedEmpty === null) setStartedEmpty(!klass.students.some((s) => s.active));
 
   if (detail.error)
     return (
@@ -810,6 +815,16 @@ function ClassView({ ready, classId }: { ready: Ready; classId: string }) {
       </Column>
     );
   const activeCount = klass.students.filter((s) => s.active).length;
+  // Em pé, turma sem aluno: o primeiro passo (cadastrar) logo depois do código e do nome, não no fim da página.
+  // Quem troca de lugar são os painéis: o cadastro fica montado e não perde o PIN que acabou de mostrar
+  const studentsFirst = portraitView && !!startedEmpty && !klass.closedAt;
+  const panels = (
+    <Grid>
+      <ReviewInbox details={loaded} />
+      <TaskList tasks={tasks} />
+      <PlanPanel ready={ready} className={klass.name} />
+    </Grid>
+  );
   return (
     <ClassColumn>
       <Header>
@@ -826,12 +841,9 @@ function ClassView({ ready, classId }: { ready: Ready; classId: string }) {
           )}
         </Actions>
       </Header>
-      <Grid>
-        <ReviewInbox details={loaded} />
-        <TaskList tasks={tasks} />
-        <PlanPanel ready={ready} className={klass.name} />
-      </Grid>
+      {!studentsFirst && panels}
       <StudentRows ready={ready} klass={klass} tasks={openDetails} />
+      {studentsFirst && panels}
       <CloseClass ready={ready} klass={klass} />
     </ClassColumn>
   );
