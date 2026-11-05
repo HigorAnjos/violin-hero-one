@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { BackLink, NavigationScreen as Screen } from '../components/BackLink/BackLink';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { OfflineBanner } from '../components/OfflineBanner/OfflineBanner';
@@ -47,6 +48,13 @@ const Header = styled.header`
     align-items: center;
     gap: ${({ theme }) => theme.spacing.sm};
   }
+
+  /* Em pé: os botões numa linha no alto e o título embaixo, com a largura toda */
+  ${portrait} {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: ${({ theme }) => theme.spacing.sm};
+  }
 `;
 
 const Intro = styled.div`
@@ -76,11 +84,23 @@ const HeaderActions = styled.div`
     flex: none;
     gap: ${({ theme }) => theme.spacing.xs};
   }
+
+  ${portrait} {
+    justify-content: flex-end;
+    gap: ${({ theme }) => theme.spacing.xs};
+  }
 `;
 
-/** Só no desktop: no celular deitado (MobileLibrary) o editor fica dentro do "Importar" ("Escrever ou ditar"). */
+/**
+ * Só no desktop: no celular (deitado, MobileLibrary, ou em pé) o editor fica dentro do "Importar" ("Escrever ou
+ * ditar").
+ */
 const WideOnly = styled(Button)`
   @media (max-height: 500px) {
+    display: none;
+  }
+
+  ${portrait} {
     display: none;
   }
 `;
@@ -90,6 +110,10 @@ const CompactOnly = styled(Button)`
   padding: 0 1rem;
 
   @media (max-height: 500px) {
+    display: inline-flex;
+  }
+
+  ${portrait} {
     display: inline-flex;
   }
 `;
@@ -121,6 +145,26 @@ const Toolbar = styled.div`
   @media (max-height: 500px) {
     &:not([data-open]) > :not([role='group']) {
       display: none;
+    }
+  }
+
+  /* Em pé: os filtros quebram linha (nenhum cortado) e a busca e a ordem dividem a linha de baixo */
+  ${portrait} {
+    flex-wrap: wrap;
+
+    > span {
+      display: none;
+    }
+
+    > [role='group'] {
+      flex: 1 1 100%;
+      flex-wrap: wrap;
+      overflow-x: visible;
+    }
+
+    > label:first-of-type {
+      flex: 1 1 0;
+      width: auto;
     }
   }
 `;
@@ -184,6 +228,12 @@ const Sort = styled.label`
       display: none;
     }
   }
+
+  ${portrait} {
+    span {
+      display: none;
+    }
+  }
 `;
 
 const Grid = styled.ul`
@@ -212,6 +262,14 @@ const Grid = styled.ul`
       flex: none;
       width: 11.5rem;
     }
+  }
+
+  /* Em pé: duas colunas e a página rola, em vez de rolar por dentro */
+  ${portrait} {
+    flex: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: ${({ theme }) => theme.spacing.sm};
+    overflow: visible;
   }
 `;
 
