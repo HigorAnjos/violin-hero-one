@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait, portraitScroll } from '../assets/styles/media';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { PinPad } from '../components/PinPad/PinPad';
@@ -24,6 +25,8 @@ const Page = styled.main`
   @media (max-height: 500px) {
     padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
   }
+
+  ${portraitScroll}
 `;
 
 const Form = styled.form`
@@ -34,6 +37,10 @@ const Form = styled.form`
 
   @media (max-height: 500px) {
     gap: 0.375rem;
+  }
+
+  ${portrait} {
+    height: auto;
   }
 `;
 
@@ -54,14 +61,34 @@ const Header = styled.header`
   @media (max-height: 500px) {
     margin: 0;
   }
+
+  /* Em pé: o retorno no alto à direita e a pílula da turma na linha de baixo, se não couber */
+  ${portrait} {
+    flex-wrap: wrap-reverse;
+    gap: 0.5rem;
+    margin: 0;
+
+    > div:first-child {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    > div:last-child {
+      margin-left: auto;
+    }
+  }
 `;
 
-/** "Sem e-mail e sem senha de letras", ao lado do retorno; no celular deitado não cabe. */
+/** "Sem e-mail e sem senha de letras", ao lado do retorno; no celular (deitado ou em pé) não cabe. */
 const HeaderNote = styled.span`
   font-size: 0.8125rem;
   color: ${({ theme }) => theme.colors.textMuted};
 
   @media (max-height: 500px) {
+    display: none;
+  }
+
+  ${portrait} {
     display: none;
   }
 `;
@@ -94,6 +121,12 @@ const Body = styled.div`
   @media (max-height: 500px) {
     gap: 1rem;
   }
+
+  ${portrait} {
+    flex: none;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
 `;
 
 const Section = styled.section<{ $width?: string }>`
@@ -125,6 +158,17 @@ const Section = styled.section<{ $width?: string }>`
     h1,
     h2 {
       font-size: 1.25rem;
+    }
+  }
+
+  ${portrait} {
+    width: auto;
+    flex: none;
+    gap: 0.625rem;
+
+    h1,
+    h2 {
+      font-size: 1.75rem;
     }
   }
 `;
@@ -166,6 +210,11 @@ const NameInput = styled.input`
     font-size: 1.125rem;
     box-shadow: none;
   }
+
+  ${portrait} {
+    min-height: 3.5rem;
+    font-size: 1.375rem;
+  }
 `;
 
 const Footer = styled.div`
@@ -182,6 +231,16 @@ const Footer = styled.div`
   @media (max-height: 500px) {
     > span {
       font-size: 0.75rem;
+    }
+  }
+
+  ${portrait} {
+    flex-wrap: wrap;
+
+    > span,
+    > p {
+      flex: 1 1 100%;
+      margin-right: 0;
     }
   }
 `;
