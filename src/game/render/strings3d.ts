@@ -7,6 +7,7 @@ import { FpsMeter, type FpsReport } from './fps';
 import { prefersReducedMotion } from './present';
 import type { JudgmentEvent } from './scene';
 import type { SheetClock } from './sheetLayout';
+import type { Framing } from './strings3dLayout';
 import { Strings3DScene } from './strings3dScene';
 
 export interface Strings3DOptions {
@@ -17,6 +18,8 @@ export interface Strings3DOptions {
   notes: readonly EngineNote[];
   width: number;
   height: number;
+  /** Câmera e enquadramento (strings3dBox); padrão: o do design. */
+  framing?: Framing;
   /** O tempo da música (o mesmo da partitura): as linhas dos tempos seguem o laço e o andamento da prática. */
   clock?: SheetClock;
   /** Tempo, desde o começo da música, em que cada compasso começa (barras e números). */
@@ -39,7 +42,8 @@ export interface Strings3D {
   setNotes(notes: readonly EngineNote[]): void;
   /** Modo daltônico, mudado na Pausa (o nome das notas é só da pista). */
   setLook(options: { patterns?: boolean }): void;
-  resize(width: number, height: number): void;
+  /** Sem `framing`, fica o enquadramento de antes. */
+  resize(width: number, height: number, framing?: Framing): void;
   destroy(): void;
 }
 
@@ -92,7 +96,8 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
     patterns: options.patterns,
   });
   app.stage.addChild(scene);
-  scene.layout(options.width, options.height);
+  let framing = options.framing;
+  scene.layout(options.width, options.height, framing);
 
   const meter = new FpsMeter(1000);
   let lastFrame = -1;
@@ -122,10 +127,11 @@ export async function createStrings3D(host: HTMLCanvasElement | HTMLElement, opt
       scene.setPatterns(patterns ?? false);
       app.render();
     },
-    resize(width, height) {
+    resize(width, height, next = framing) {
       if (destroyed) return;
+      framing = next;
       app.renderer.resize(width, height);
-      scene.layout(width, height);
+      scene.layout(width, height, framing);
       app.render();
     },
     destroy() {
