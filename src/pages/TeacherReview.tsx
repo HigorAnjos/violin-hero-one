@@ -10,6 +10,7 @@ import { clampLines, Kicker } from '../components/Screen/Screen';
 import { StudentAvatar } from '../components/StudentAvatar/StudentAvatar';
 import { SubmissionPlayer } from '../components/SubmissionPlayer/SubmissionPlayer';
 import {
+  classroomKeys,
   REVIEW_COMMENT_MAX,
   REVIEW_CONCEPTS,
   type AssignmentDetail,
@@ -291,10 +292,17 @@ function Recording({ ready, row }: { ready: Ready; row: Row }) {
   );
 }
 
-function ReviewForm({ ready, row, next }: { ready: Ready; row: Row; next: Row | null }) {
+function ReviewForm({ ready, task, row, next }: { ready: Ready; task: Pick<AssignmentDetail, 'id' | 'classId'>; row: Row; next: Row | null }) {
   const [concept, setConcept] = React.useState<ReviewConcept | null>(null);
   const [comment, setComment] = React.useState('');
-  const review = useTeacherMutation((input: ReviewInput) => ready.api.reviewSubmission(input));
+  // A revisão entra na linha do aluno na hora; a lista da turma (quantas revisadas) relê por fora
+  const review = useTeacherMutation(ready, (input: ReviewInput) => ready.api.reviewSubmission(input), (cache, { submissionId, ...done }) => {
+    cache.update<AssignmentDetail>(classroomKeys.assignment(task.id), (t) => ({
+      ...t,
+      students: t.students.map((s) => (s.submission?.id === submissionId ? { ...s, review: done } : s)),
+    }));
+    cache.stale(classroomKeys.assignment(task.id), classroomKeys.assignments(task.classId));
+  });
   const id = React.useId();
 
   if (!row.submission)
@@ -459,7 +467,7 @@ function ReviewArea({ ready, taskId }: { ready: Ready; taskId: string }) {
                   <Measures row={chosen} />
                 </MeasuresArea>
               </Column>
-              <ReviewForm key={chosen.studentId} ready={ready} row={chosen} next={next} />
+              <ReviewForm key={chosen.studentId} ready={ready} task={task.data} row={chosen} next={next} />
             </>
           ) : (
             <Column>

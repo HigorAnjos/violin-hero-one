@@ -9,14 +9,15 @@ import { PinNotice } from '../components/PinNotice/PinNotice';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import { StudentAvatar } from '../components/StudentAvatar/StudentAvatar';
 import { TaskProgress, taskSummary } from '../components/TaskProgress/TaskProgress';
-import type {
-  AssignmentDetail,
-  AssignmentSummary,
-  ClassDetail,
-  ClassroomApi,
-  ClassStudent,
-  ClassSummary,
-  GuardianInvite,
+import {
+  classroomKeys,
+  type AssignmentDetail,
+  type AssignmentSummary,
+  type ClassDetail,
+  type ClassroomApi,
+  type ClassStudent,
+  type ClassSummary,
+  type GuardianInvite,
 } from '../services/classroom';
 import { copyText, shareLink, type ShareOutcome } from '../services/share';
 import { newAssignmentUrl, reviewUrl, ROUTES, teacherClassUrl } from '../shell/routes';
@@ -31,6 +32,7 @@ import {
   useOpenAssignmentDetails,
   useTeacherMutation,
   type TeacherAccess,
+  type TeacherCache,
 } from '../shell/useTeacher';
 import {
   Actions,
@@ -172,7 +174,12 @@ function NewClassForm({ ready, autoFocus = false }: { ready: Ready; autoFocus?: 
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(autoFocus);
   const [name, setName] = React.useState('');
-  const create = useTeacherMutation((n: string) => ready.api.createClass(n));
+  // A turma nova abre com o que a criação devolveu: ainda sem tarefa
+  const create = useTeacherMutation(ready, (n: string) => ready.api.createClass(n), (cache, created) => {
+    cache.set(classroomKeys.class(created.id), created);
+    cache.set(classroomKeys.assignments(created.id), []);
+    cache.stale(classroomKeys.classes, classroomKeys.plan);
+  });
   const id = React.useId();
 
   if (!open)
@@ -560,11 +567,24 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
   const [shown, setShown] = React.useState<Shown | null>(null);
   const [problem, setProblem] = React.useState<unknown>(null);
   const plan = useMyPlan(ready);
-  const add = useTeacherMutation((n: string) => api.addStudent(klass.id, n));
-  const reset = useTeacherMutation((s: ClassStudent) => api.resetStudentPin(s.id));
-  const active = useTeacherMutation(({ s, on }: { s: ClassStudent; on: boolean }) => api.setStudentActive(s.id, on));
-  const invite = useTeacherMutation((s: ClassStudent) => api.createGuardianInvite(s.id));
-  const remove = useTeacherMutation((s: ClassStudent) => api.removeStudent(s.id));
+  // Quem está na turma conta na lista de turmas, nas tarefas e na situação de cada tarefa aberta
+  const rosterChanged = (cache: TeacherCache) =>
+    cache.stale(classroomKeys.class(klass.id), classroomKeys.classes, ...tasks.map((t) => classroomKeys.assignment(t.id)));
+  const add = useTeacherMutation(ready, (n: string) => api.addStudent(klass.id, n), (cache, { student }) => {
+    cache.update<ClassDetail>(classroomKeys.class(klass.id), (k) => ({ ...k, students: [...k.students, student] }));
+    rosterChanged(cache);
+  });
+  // PIN e convite não mudam nada que a tela mostre
+  const reset = useTeacherMutation(ready, (s: ClassStudent) => api.resetStudentPin(s.id));
+  const active = useTeacherMutation(ready, ({ s, on }: { s: ClassStudent; on: boolean }) => api.setStudentActive(s.id, on), (cache, detail) => {
+    cache.set(classroomKeys.class(klass.id), detail);
+    rosterChanged(cache);
+  });
+  const invite = useTeacherMutation(ready, (s: ClassStudent) => api.createGuardianInvite(s.id));
+  const remove = useTeacherMutation(ready, (s: ClassStudent) => api.removeStudent(s.id), (cache, _, gone) => {
+    cache.update<ClassDetail>(classroomKeys.class(klass.id), (k) => ({ ...k, students: k.students.filter((s) => s.id !== gone.id) }));
+    rosterChanged(cache);
+  });
   // Apagar o aluno (o caminho de exclusão da conta dele): só fora da turma ou com a turma encerrada, e confirmado antes
   const [erasing, setErasing] = React.useState<ClassStudent | null>(null);
   const keep = React.useRef<HTMLButtonElement>(null);
@@ -754,7 +774,10 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
 
 function CloseClass({ ready, klass }: { ready: Ready; klass: ClassDetail }) {
   const [asking, setAsking] = React.useState(false);
-  const close = useTeacherMutation(() => ready.api.closeClass(klass.id));
+  const close = useTeacherMutation(ready, () => ready.api.closeClass(klass.id), (cache, closed) => {
+    cache.set(classroomKeys.class(klass.id), closed);
+    cache.stale(classroomKeys.classes, classroomKeys.plan, classroomKeys.assignments(klass.id));
+  });
   const keep = React.useRef<HTMLButtonElement>(null);
   React.useEffect(() => {
     if (asking) keep.current?.focus();

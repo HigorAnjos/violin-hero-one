@@ -12,7 +12,9 @@ import {
   ASSIGNMENT_INSTRUCTIONS,
   ASSIGNMENT_MAX_DAYS,
   INSTRUCTION_TEXT_MAX,
+  classroomKeys,
   type AssignmentMode,
+  type AssignmentSummary,
   type ClassroomApi,
   type InstructionKey,
   type NewAssignment,
@@ -142,7 +144,19 @@ function AssignForm({ ready, classId }: { ready: Ready; classId: string }) {
   const [due, setDue] = React.useState(defaultDueDate);
   const [instruction, setInstruction] = React.useState<Instruction>('tocar-inteira');
   const [ownText, setOwnText] = React.useState('');
-  const create = useTeacherMutation((input: NewAssignment) => ready.api.createAssignment(input));
+  // A turma abre já com a tarefa nova no topo (a lista do servidor é da mais nova para a mais antiga)
+  const create = useTeacherMutation(ready, (input: NewAssignment) => ready.api.createAssignment(input), (cache, task) => {
+    const { students, ...rest } = task;
+    const summary: AssignmentSummary = {
+      ...rest,
+      studentCount: students.length,
+      submittedCount: students.filter((s) => s.submission).length,
+      reviewedCount: students.filter((s) => s.review).length,
+    };
+    cache.set(classroomKeys.assignment(task.id), task);
+    cache.update<AssignmentSummary[]>(classroomKeys.assignments(classId), (list) => [summary, ...list.filter((t) => t.id !== task.id)]);
+    cache.stale(classroomKeys.assignments(classId));
+  });
 
   const song = songs.find((s) => s.id === songId) ?? songs[0];
   const levels = song ? LEVELS.filter((l) => song.levels.includes(l)) : [];
