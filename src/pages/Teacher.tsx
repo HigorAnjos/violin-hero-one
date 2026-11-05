@@ -356,6 +356,16 @@ const Table = styled.table`
     padding: 0.375rem 0.5rem;
     border-bottom: 1px solid ${({ theme }) => theme.colors.surfaceBorder};
     white-space: nowrap;
+    vertical-align: bottom;
+  }
+
+  /* Duas tarefas da mesma música: nível e modo numa segunda linha, sem caixa alta, para a coluna não alargar */
+  th > small {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
   }
 
   td {
@@ -698,8 +708,10 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
               <th scope="col">Aluno</th>
               <th scope="col">Entrada</th>
               {columns.map((t) => (
-                <th key={t.id} scope="col" data-task="">
+                // O nome inteiro no aria-label: o leitor de tela lê "Escala de Ré maior · Fácil · Arcade" com o selo da célula
+                <th key={t.id} scope="col" data-task="" aria-label={taskLabel(t)} title={taskLabel(t)}>
                   {t.songTitle}
+                  <small>{taskVariant(t)}</small>
                 </th>
               ))}
               <th scope="col">

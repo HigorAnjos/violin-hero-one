@@ -269,6 +269,26 @@ describe('P1 · painel do professor', () => {
     expect(within(panel).getByRole('link', { name: 'Entregas de Brilha, brilha estrelinha · Fácil · Cordas 3D' })).toBeInTheDocument();
   });
 
+  it('tarefas da mesma música: cada coluna da tabela diz nível e modo, e o selo fica na coluna dela', async () => {
+    const { api, klass } = await withClass();
+    await api.addStudent(klass.id, 'Ana');
+    const dueAt = new Date(Date.now() + 86400e3).toISOString();
+    await api.createAssignment({ classId: klass.id, songId: 'brilha-brilha', level: 'easy', mode: 'arcade', dueAt });
+    await api.createAssignment({ classId: klass.id, songId: 'brilha-brilha', level: 'medium', mode: 'sheet', dueAt });
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    const table = await screen.findByRole('table');
+    const headers = await within(table).findAllByRole('columnheader');
+    const names = headers.map((h) => h.getAttribute('aria-label') ?? h.textContent);
+    const arcade = names.indexOf('Brilha, brilha estrelinha · Fácil · Arcade');
+    const sheet = names.indexOf('Brilha, brilha estrelinha · Médio · Partitura');
+    expect(arcade).toBeGreaterThan(-1);
+    expect(sheet).toBeGreaterThan(-1);
+    expect(headers[sheet]).toHaveTextContent('Médio · Partitura');
+    const cells = within(within(table).getByRole('row', { name: /Ana/ })).getAllByRole('cell');
+    expect(cells[arcade]).toHaveTextContent('Sem entrega');
+    expect(cells[sheet]).toHaveTextContent('Sem entrega');
+  });
+
   it('encerrar turma pede confirmação, com "Manter aberta" como padrão', async () => {
     const { api, klass } = await withClass();
     const user = userEvent.setup();
