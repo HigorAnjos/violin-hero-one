@@ -471,6 +471,49 @@ const Danger = styled(Button)`
   color: ${({ theme }) => theme.colors.danger.text};
 `;
 
+/** O convite do responsável é informação, não alerta: o tom ciano do tema, como o código da turma. */
+const InviteBox = styled(Confirm)`
+  border-color: ${({ theme }) => theme.colors.info.border};
+  background-color: ${({ theme }) => theme.colors.info.surface};
+
+  > strong {
+    font-family: ${({ theme }) => theme.fonts.display};
+    font-weight: 800;
+    font-size: 1.125rem;
+    letter-spacing: 0.08em;
+    color: ${({ theme }) => theme.colors.info.text};
+  }
+`;
+
+function GuardianInviteNotice({ name, invite, onClose }: { name: string; invite: GuardianInvite; onClose: () => void }) {
+  const [status, setStatus] = React.useState('');
+  const until = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(Date.parse(invite.expiresAt));
+  const text = `Convite para acompanhar ${name} no Violin Hero: ${invite.code}. Abra o app, toque em “Sou responsável” e digite o código. Vale até ${until}, uma vez só.`;
+  return (
+    // status: quem usa leitor de tela ouve o convite ao aparecer e o "Copiado." depois
+    <InviteBox role="status" aria-label={`Convite do responsável de ${name}`}>
+      <span>
+        Convite para o responsável de <b>{name}</b>, vale até {until}. Passe só para o responsável; ele entra em “Sou responsável”.
+      </span>
+      <strong>{invite.code}</strong>
+      <Button type="button" $variant="link" onClick={async () => setStatus(SHARE_TEXT[await copyText(invite.code)])}>
+        Copiar código
+      </Button>
+      <Button
+        type="button"
+        $variant="link"
+        onClick={async () => setStatus(SHARE_TEXT[await shareLink(`${window.location.origin}${ROUTES.parent}`, { title: 'Convite do responsável no Violin Hero', text })])}
+      >
+        Compartilhar
+      </Button>
+      <Button type="button" $variant="link" onClick={onClose}>
+        Fechar
+      </Button>
+      <Muted>{status}</Muted>
+    </InviteBox>
+  );
+}
+
 const STUDENT_NAME_MAX = 40;
 
 interface InboxRow {
@@ -756,18 +799,7 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
           </Danger>
         </Confirm>
       )}
-      {shown?.kind === 'invite' && (
-        <Confirm role="status">
-          <span>
-            Convite para o responsável de <b>{shown.name}</b>: <b>{shown.invite.code}</b>, vale até{' '}
-            {new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(Date.parse(shown.invite.expiresAt))}. Passe só para o responsável;
-            ele entra em “Sou responsável”.
-          </span>
-          <Button type="button" $variant="link" onClick={() => setShown(null)}>
-            Fechar
-          </Button>
-        </Confirm>
-      )}
+      {shown?.kind === 'invite' && <GuardianInviteNotice name={shown.name} invite={shown.invite} onClose={() => setShown(null)} />}
     </Students>
   );
 }

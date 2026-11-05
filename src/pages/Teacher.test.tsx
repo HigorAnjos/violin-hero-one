@@ -28,6 +28,16 @@ function mount(api?: FakeClassroom, { path = '/professor', session = TEACHER as 
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** A cor do tema como o navegador a devolve no getComputedStyle (rgb(…)). */
+function colorOf(value: string): string {
+  const probe = document.createElement('i');
+  probe.style.color = value;
+  document.body.append(probe);
+  const color = getComputedStyle(probe).color;
+  probe.remove();
+  return color;
+}
+
 const SIZES = [
   [1280, 720],
   [844, 390],
@@ -135,6 +145,26 @@ describe('P1 · painel do professor', () => {
     // O user-event põe um clipboard de mentira no navigator
     expect(await navigator.clipboard.readText()).toBe(code);
     expect(screen.getByText('Copiado.')).toBeInTheDocument();
+  });
+
+  it('convite do responsável: no tom de informação, com Copiar código e Compartilhar', async () => {
+    const { api, klass } = await withClass();
+    await api.addStudent(klass.id, 'Ana');
+    const user = userEvent.setup();
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    await user.click(await screen.findByRole('button', { name: 'Convite do responsável de Ana' }));
+    const notice = await screen.findByRole('status', { name: 'Convite do responsável de Ana' });
+    const { code } = await api.createGuardianInvite((await api.getClass(klass.id)).students[0].id);
+    expect(within(notice).getByText(code)).toBeInTheDocument();
+    // Borda e fundo do tom info do tema, nada do vermelho de erro
+    const style = getComputedStyle(notice);
+    expect(style.borderTopColor).toBe(colorOf(cadernoTheme.colors.info.border));
+    expect(style.backgroundColor).toBe(colorOf(cadernoTheme.colors.info.surface));
+    expect(style.borderTopColor).not.toBe(colorOf(cadernoTheme.colors.danger.main));
+    expect(within(notice).getByRole('button', { name: 'Compartilhar' })).toBeInTheDocument();
+    await user.click(within(notice).getByRole('button', { name: 'Copiar código' }));
+    expect(await navigator.clipboard.readText()).toBe(code);
+    expect(notice).toHaveTextContent('Copiado.');
   });
 
   it('limite do plano: a mensagem e o link para os planos', async () => {
