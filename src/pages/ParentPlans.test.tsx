@@ -9,6 +9,7 @@ import { renderScreen } from '../shell/testing';
 import { parentDemo } from '../shell/parentDemo';
 import { fakeClassroom } from '../services/classroomFake';
 import { Parent } from './Parent';
+import { plansState } from '../shell/plansBack';
 import { Plans } from './Plans';
 import { GuestPrompt } from './GuestPrompt';
 
@@ -50,6 +51,16 @@ describe.each([cadernoTheme, palcoTheme, pixelTheme])('responsável e planos: $i
     expect(await screen.findByText('Seu plano atual')).toBeInTheDocument();
     expect(screen.getByText(/de 2 turmas abertas/)).toBeInTheDocument();
   });
+});
+
+it('planos abertos da turma voltam para a turma; de outro lugar, para o Menu', async () => {
+  const api = fakeClassroom(); api.actAs('professor');
+  const from = renderScreen(<Plans api={api} />, { path: '/planos', queryClient: client(), state: plansState({ to: '/professor/turma/turma-1', label: 'Iniciantes' }) });
+  expect(screen.getByRole('link', { name: /Iniciantes/ })).toHaveAttribute('href', '/professor/turma/turma-1');
+  expect(screen.queryByRole('link', { name: /Menu/ })).not.toBeInTheDocument();
+  from.unmount();
+  renderScreen(<Plans api={api} />, { path: '/planos', queryClient: client(), state: { plansBack: { to: 'https://fora.exemplo', label: 'Fora' } } });
+  expect(screen.getByRole('link', { name: /Menu/ })).toHaveAttribute('href', '/');
 });
 
 it.each([

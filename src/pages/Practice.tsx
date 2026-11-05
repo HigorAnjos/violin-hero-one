@@ -347,7 +347,7 @@ export const Practice: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
           onContinue={() => void resume()}
           onRestart={() => navigate(ROUTES.countdown, { replace: true, state: { ...play, practice: start, next: gameRoute('Prática') } })}
           onRetune={() => navigate(ROUTES.calibration, { state: { ...play, practice: start } })}
-          onExit={() => navigate(ROUTES.home)}
+          onExit={() => navigate(play.exitTo)}
           counting={game.counting}
           micClosed={game.micClosed}
           {...pauseSettings(game)}

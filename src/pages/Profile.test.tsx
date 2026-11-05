@@ -2,11 +2,21 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BADGES } from '../game/engine';
+import { CATALOG_ORDER } from '../game/notation/catalog';
 import { shiftDay } from '../services/history';
 import { todayInBrazil } from '../services/progress';
+import { fakeCatalogClient } from '../services/testing';
 import { loadLocalProgress, type Progress } from '../shell/progress';
 import { renderScreen } from '../shell/testing';
 import { goalFor, minuteBars, Profile } from './Profile';
+
+// A estante: sem banco, as embutidas; com o catálogo falso, as músicas, os exercícios e as do jogador
+const db = vi.hoisted(() => ({ client: null as unknown }));
+vi.mock('../services/supabase', () => ({
+  get supabase() {
+    return db.client;
+  },
+}));
 
 // Sem Supabase no teste o hook só tem o aparelho; aqui ele pode devolver um progresso pronto
 let fake: Progress | null = null;
@@ -17,6 +27,7 @@ vi.mock('../shell/progress', async (original) => {
 
 afterEach(() => {
   fake = null;
+  db.client = null;
   localStorage.clear();
 });
 
@@ -56,9 +67,35 @@ describe('Profile', () => {
     expect(screen.getByRole('progressbar', { name: 'Selos conquistados' })).toHaveAttribute('aria-valuenow', '0');
     expect(within(screen.getByRole('region', { name: 'Sequência' })).getByText('—')).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Minutos por dia' })).getByText(/quando você toca com internet/)).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'Afinação por corda' })).getByText(/semana a semana/)).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Afinação por corda' })).getByText(/^Toque com internet .* semana a semana/)).toBeInTheDocument();
     expect(within(screen.getByRole('region', { name: 'Conquistas' })).getAllByRole('img', { name: /bloqueado/ })).toHaveLength(BADGES.length);
     expect(screen.getByText('Toque uma música até o fim')).toBeInTheDocument();
+  });
+
+  it('com o histórico do servidor e nenhuma afinação medida: falta tocar, não falta internet', () => {
+    fake = { ...withHistory(), history: { days: [], plays: [] } };
+    renderScreen(<Profile />);
+    const strings = within(screen.getByRole('region', { name: 'Afinação por corda' }));
+    expect(strings.getByText('Toque uma música e a afinação de cada corda aparece aqui, semana a semana.')).toBeInTheDocument();
+    expect(strings.queryByText(/internet/)).not.toBeInTheDocument();
+  });
+
+  it('músicas aprendidas contam como a Biblioteca: as músicas e as importadas, sem os exercícios', async () => {
+    db.client = fakeCatalogClient({ own: [{ id: 'importada-1', title: 'Minha importada', origin: 'imported' }] }).client;
+    fake = {
+      ...withHistory(),
+      records: [
+        { songId: 'ode-a-alegria', level: 'medium', score: 9000, accuracy: 95 },
+        { songId: 'importada-1', level: 'hard', score: 9000, accuracy: 90 },
+        { songId: 'staccato-la-maior', level: 'medium', score: 9000, accuracy: 99 },
+      ],
+    };
+    renderScreen(<Profile />);
+    // As 10 músicas do catálogo (antes dos exercícios) e a importada
+    const musics = CATALOG_ORDER.indexOf('staccato-la-maior') + 1;
+    const learned = within(screen.getByRole('region', { name: 'Músicas aprendidas' }));
+    expect(await learned.findByText(`de ${musics}`)).toBeInTheDocument();
+    expect(learned.getByText(/^2/)).toBeInTheDocument();
   });
 
   it('com histórico: sequência com os 7 dias, semana, músicas aprendidas, afinação e as 4 cordas', () => {

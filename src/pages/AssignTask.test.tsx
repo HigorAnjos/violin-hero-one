@@ -73,6 +73,18 @@ describe('P2 · nova tarefa', () => {
     await waitFor(async () => expect((await api.listClassAssignments(klass.id))[0].instructionText).toBe('Duas vezes seguidas'));
   });
 
+  it('turma sem aluno: "Enviar à turma" e o aviso de que vale para quem entrar depois', async () => {
+    const api = fakeClassroom({ songs: SONGS });
+    const klass = await api.createClass('Vazia');
+    const user = userEvent.setup();
+    mount(api, klass.id);
+    expect(await screen.findByText('A turma ainda não tem aluno: a tarefa vale para quem entrar depois.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Enviar para/ })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('combobox')).not.toBeDisabled());
+    await user.click(screen.getByRole('button', { name: /^Enviar à turma/ }));
+    await waitFor(async () => expect(await api.listClassAssignments(klass.id)).toHaveLength(1));
+  });
+
   it('o prazo vai até 59 dias e o erro do servidor aparece', async () => {
     const { api, klass } = await scene();
     const user = userEvent.setup();

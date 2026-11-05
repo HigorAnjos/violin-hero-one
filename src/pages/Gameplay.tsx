@@ -164,7 +164,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
           onContinue={() => void resume()}
           onRestart={() => navigate(ROUTES.countdown, { replace: true, state: { ...play, next: gameRoute(play.mode) } })}
           onRetune={() => navigate(ROUTES.calibration, { state: play })}
-          onExit={() => navigate(ROUTES.home)}
+          onExit={() => navigate(play.exitTo)}
           counting={game.counting}
           micClosed={game.micClosed}
           layoutToggle={staffToggle}

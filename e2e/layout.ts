@@ -159,8 +159,10 @@ export async function overlappingTargets(page: Page) {
       }
       return { left, top, right, bottom };
     };
+    // Com um diálogo modal aberto (o PIN do aluno), o resto fica atrás do véu e não recebe toque: contam só os dele
+    const modal = document.querySelector('main [aria-modal="true"]');
     const controls = [...document.querySelectorAll<HTMLElement>('main button, main a[href], main input, main select, main [role="radio"]')].filter(
-      (el) => el.offsetParent !== null && getComputedStyle(el).visibility !== 'hidden'
+      (el) => el.offsetParent !== null && getComputedStyle(el).visibility !== 'hidden' && (!modal || modal.contains(el))
     );
     const name = (el: HTMLElement) => el.getAttribute('aria-label') || el.textContent?.trim().slice(0, 24) || el.tagName.toLowerCase();
     const out: string[] = [];

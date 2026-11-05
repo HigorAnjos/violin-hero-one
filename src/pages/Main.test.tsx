@@ -6,6 +6,7 @@ import { levelSettings } from '../game/engine/levels';
 import { findFixedSong, FIXED_SONGS } from '../game/notation/songs';
 import { A4_STORAGE_KEY } from '../services/playerAudio';
 import { PROFILE_STORAGE_KEY } from '../services/profile';
+import { songKeys } from '../services/songs';
 import { QueryClient } from '@tanstack/react-query';
 import { fakeClassroom } from '../services/classroomFake';
 import { setClassroomShell } from '../shell/classroom';
@@ -57,6 +58,14 @@ describe('Main', () => {
     renderScreen(<Main />);
     expect(menu().queryByRole('link', { name: /^Tarefas/ })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ranking' })).toBeInTheDocument();
+  });
+
+  it('a Biblioteca conta como a própria Biblioteca: com a música importada', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const own = { id: 'importada-1', title: 'Minha importada', composer: 'Eu', bpm: 90, timeSignature: { beats: 4, unit: 4 }, key: 'D major', durationSeconds: 60, origin: 'imported', levels: ['easy'] };
+    queryClient.setQueryData(songKeys.mine, [own]);
+    renderScreen(<Main />, { queryClient });
+    expect(await menu().findByRole('link', { name: `Biblioteca ${FIXED_SONGS.length + 1}` }, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it('a sugestão segue o nível guardado e o Lá segue a afinação salva', () => {

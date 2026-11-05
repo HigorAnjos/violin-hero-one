@@ -162,6 +162,15 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
         await page.getByLabel('Nome da turma').fill('Iniciantes · sábado');
         await page.getByRole('button', { name: 'Criar turma' }).click();
         await expect(page.getByRole('heading', { name: 'Iniciantes · sábado' })).toBeVisible();
+        // Turma sem aluno: o cadastro logo depois do código e do nome, antes de Para revisar, Tarefas e Seu plano
+        const code = (await page.getByText('Código para alunos entrarem').boundingBox())!;
+        const add = (await page.getByRole('form', { name: 'Cadastrar aluno' }).boundingBox())!;
+        expect(add.y, 'cadastro depois do código').toBeGreaterThan(code.y);
+        for (const panel of ['Para revisar', 'Tarefas', 'Seu plano']) {
+          const top = (await page.getByRole('region', { name: panel, exact: true }).boundingBox())!.y;
+          expect(add.y + add.height, `cadastro antes de ${panel}`).toBeLessThanOrEqual(top);
+        }
+        await checkScreen(page, 'turma sem aluno');
         for (const name of ['Ana Clara Albuquerque', 'Bruno']) {
           await page.getByRole('textbox', { name: 'Nome do aluno' }).fill(name);
           await page.getByRole('button', { name: 'Cadastrar' }).click();

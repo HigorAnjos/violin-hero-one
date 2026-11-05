@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { portrait } from '../assets/styles/media';
+import { portrait, PORTRAIT_QUERY } from '../assets/styles/media';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
@@ -20,6 +20,7 @@ import type {
 } from '../services/classroom';
 import { copyText, shareLink, type ShareOutcome } from '../services/share';
 import { newAssignmentUrl, reviewUrl, ROUTES, teacherClassUrl } from '../shell/routes';
+import { useMediaQuery } from '../shell/useMediaQuery';
 import {
   classroomErrorOf,
   errorText,
@@ -41,6 +42,7 @@ import {
   Muted,
   Panel,
   PanelHead,
+  PlansLink,
   TeacherGate,
   TeacherPage,
   Text,
@@ -200,7 +202,7 @@ function NewClassForm({ ready, autoFocus = false }: { ready: Ready; autoFocus?: 
       <Button type="submit" disabled={create.isPending || !name.trim()}>
         Criar turma
       </Button>
-      {kind === 'limit' ? <LimitNotice>Seu plano já tem todas as turmas abertas que cabem.</LimitNotice> : kind && <Alert role="alert">{errorText(create.error)}</Alert>}
+      {kind === 'limit' ? <LimitNotice back="Turmas">Seu plano já tem todas as turmas abertas que cabem.</LimitNotice> : kind && <Alert role="alert">{errorText(create.error)}</Alert>}
     </NewClass>
   );
 }
@@ -527,7 +529,7 @@ function TaskList({ tasks }: { tasks: AssignmentSummary[] }) {
   );
 }
 
-function PlanPanel({ ready }: { ready: Ready }) {
+function PlanPanel({ ready, className }: { ready: Ready; className: string }) {
   const plan = useMyPlan(ready);
   return (
     <Panel $tone="warning" aria-label="Seu plano">
@@ -541,9 +543,7 @@ function PlanPanel({ ready }: { ready: Ready }) {
             {plan.data.openClasses} de {plan.data.plan.maxOpenClasses} turmas abertas
           </Text>
           <Text>Até {plan.data.plan.maxStudentsPerClass} alunos ativos por turma</Text>
-          <Button as={Link} to={ROUTES.plans} $variant="link">
-            Ver planos <span aria-hidden="true">▸</span>
-          </Button>
+          <PlansLink back={className} />
         </>
       ) : (
         <Muted role="status">{plan.error ? errorText(plan.error) : 'Carregando…'}</Muted>
@@ -613,7 +613,7 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
           </Button>
         </AddStudent>
       )}
-      {kind === 'limit' ? <LimitNotice>A turma já tem todos os alunos que o seu plano permite.</LimitNotice> : kind && <Alert role="alert">{errorText(problem)}</Alert>}
+      {kind === 'limit' ? <LimitNotice back={klass.name}>A turma já tem todos os alunos que o seu plano permite.</LimitNotice> : kind && <Alert role="alert">{errorText(problem)}</Alert>}
       {klass.students.length ? (
         <Table>
           <thead>
@@ -789,6 +789,10 @@ function ClassView({ ready, classId }: { ready: Ready; classId: string }) {
   const loaded = details.map((d) => d.data);
   const openDetails = loaded.filter((d): d is AssignmentDetail => !!d && !d.closed);
   const klass = detail.data;
+  const portraitView = useMediaQuery(PORTRAIT_QUERY);
+  // A turma abriu sem aluno ativo? Vale até sair dela: o cadastro não pula de lugar entre um aluno e outro
+  const [startedEmpty, setStartedEmpty] = React.useState<boolean | null>(null);
+  if (klass && startedEmpty === null) setStartedEmpty(!klass.students.some((s) => s.active));
 
   if (detail.error)
     return (
@@ -811,6 +815,16 @@ function ClassView({ ready, classId }: { ready: Ready; classId: string }) {
       </Column>
     );
   const activeCount = klass.students.filter((s) => s.active).length;
+  // Em pé, turma sem aluno: o primeiro passo (cadastrar) logo depois do código e do nome, não no fim da página.
+  // Quem troca de lugar são os painéis: o cadastro fica montado e não perde o PIN que acabou de mostrar
+  const studentsFirst = portraitView && !!startedEmpty && !klass.closedAt;
+  const panels = (
+    <Grid>
+      <ReviewInbox details={loaded} />
+      <TaskList tasks={tasks} />
+      <PlanPanel ready={ready} className={klass.name} />
+    </Grid>
+  );
   return (
     <ClassColumn>
       <Header>
@@ -827,12 +841,9 @@ function ClassView({ ready, classId }: { ready: Ready; classId: string }) {
           )}
         </Actions>
       </Header>
-      <Grid>
-        <ReviewInbox details={loaded} />
-        <TaskList tasks={tasks} />
-        <PlanPanel ready={ready} />
-      </Grid>
+      {!studentsFirst && panels}
       <StudentRows ready={ready} klass={klass} tasks={openDetails} />
+      {studentsFirst && panels}
       <CloseClass ready={ready} klass={klass} />
     </ClassColumn>
   );
@@ -877,7 +888,8 @@ function TeacherArea({ ready }: { ready: Ready }) {
         <Column>
           <Header>
             <div>
-              <Kicker>Modo professor</Kicker>
+              {/* "Modo professor" já está logo acima, na marca da barra das turmas */}
+              <Kicker>Primeiro passo</Kicker>
               <h1>Crie sua primeira turma</h1>
             </div>
             <Actions>

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PORTRAIT_QUERY } from '../assets/styles/media';
 import { cadernoTheme } from '../assets/styles/themes';
 import { palcoTheme } from '../assets/styles/themes/palco';
 import { pixelTheme } from '../assets/styles/themes/specials';
@@ -56,6 +57,13 @@ describe.each([cadernoTheme, palcoTheme, pixelTheme])('P1 · painel do professor
 });
 
 describe('P1 · painel do professor', () => {
+  it('sem turma: "Modo professor" uma vez só, na marca; o título tem o próprio kicker', async () => {
+    mount(fakeClassroom());
+    await screen.findByRole('heading', { name: 'Crie sua primeira turma' });
+    expect(screen.getAllByText('Modo professor')).toHaveLength(1);
+    expect(screen.getByText('Primeiro passo')).toBeInTheDocument();
+  });
+
   async function withClass() {
     const api = fakeClassroom();
     const klass = await api.createClass('Iniciantes · sábado');
@@ -142,6 +150,45 @@ describe('P1 · painel do professor', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('todas as turmas abertas');
     expect(within(alert).getByRole('link', { name: /Ver planos/ })).toHaveAttribute('href', '/planos');
+  });
+
+  it('em pé, turma sem aluno: o cadastro antes de Para revisar e fica lá ao cadastrar; com alunos, no fim', async () => {
+    const portrait = (query: string) => query === PORTRAIT_QUERY;
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: portrait(query), addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    const { api, klass } = await withClass();
+    const user = userEvent.setup();
+    const before = (a: HTMLElement, b: HTMLElement) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const first = mount(api, { path: `/professor/turma/${klass.id}` });
+    const add = await screen.findByRole('form', { name: 'Cadastrar aluno' });
+    expect(before(add, screen.getByRole('region', { name: 'Para revisar' }))).toBe(true);
+    await user.type(screen.getByRole('textbox', { name: 'Nome do aluno' }), 'Ana');
+    await user.click(screen.getByRole('button', { name: 'Cadastrar' }));
+    // O PIN aparece onde se digitou, e o cadastro segue em cima para o próximo aluno
+    await user.click(await screen.findByRole('button', { name: 'Anotei o PIN' }));
+    expect(before(screen.getByRole('form', { name: 'Cadastrar aluno' }), screen.getByRole('region', { name: 'Para revisar' }))).toBe(true);
+    first.unmount();
+
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    const again = await screen.findByRole('form', { name: 'Cadastrar aluno' });
+    expect(before(screen.getByRole('region', { name: 'Para revisar' }), again)).toBe(true);
+  });
+
+  it('desktop e deitado, turma sem aluno: a ordem de sempre, cadastro depois dos painéis', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    const { api, klass } = await withClass();
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    const add = await screen.findByRole('form', { name: 'Cadastrar aluno' });
+    expect(screen.getByRole('region', { name: 'Para revisar' }).compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('"Ver planos" da turma leva aos Planos lembrando a turma, para o voltar', async () => {
+    const { api, klass } = await withClass();
+    const user = userEvent.setup();
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    const plan = await screen.findByRole('region', { name: 'Seu plano' });
+    await user.click(await within(plan).findByRole('link', { name: /Ver planos/ }));
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/planos$/);
+    expect(JSON.parse(screen.getByTestId('location').getAttribute('data-state')!)).toEqual({ plansBack: { to: `/professor/turma/${klass.id}`, label: 'Iniciantes · sábado' } });
   });
 
   it('para revisar: a entrega chega na caixa e leva para a revisão', async () => {

@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { classroomKeys, ClassroomError, type ClassroomApi } from '../services/classroom';
 import type { SessionState } from '../services/session';
 import { parentClassroom } from '../shell/parentClassroom';
+import { readPlansBack } from '../shell/plansBack';
 import { isStudentSession } from '../shell/studentSession';
 import { useSession } from '../shell/useAccount';
 import { ClassroomCard, ClassroomContent, ClassroomGrid, ClassroomPage } from './classroomLayout';
@@ -33,5 +35,6 @@ function PlanList({ api }: { api: ClassroomApi }) {
 }
 export function Plans({ api: provided }: { api?: ClassroomApi }) {
   const api = useQuery({ queryKey: ['plans-api'], queryFn: parentClassroom, enabled: !provided, staleTime: Infinity });
-  return <ClassroomPage><header><div><small>PLANOS</small><h1>Mais espaço para sua turma</h1></div><BackLink /></header>{provided ? <PlanList api={provided} /> : api.data ? <PlanList api={api.data} /> : <p role="status">Conectando…</p>}</ClassroomPage>;
+  const back = readPlansBack(useLocation().state);
+  return <ClassroomPage><header><div><small>PLANOS</small><h1>Mais espaço para sua turma</h1></div>{back ? <BackLink to={back.to} label={back.label} /> : <BackLink />}</header>{provided ? <PlanList api={provided} /> : api.data ? <PlanList api={api.data} /> : <p role="status">Conectando…</p>}</ClassroomPage>;
 }

@@ -11,11 +11,12 @@ import { clampLines, Kicker, ScreenTitle } from '../components/Screen/Screen';
 import { matchesSearch, SearchField } from '../components/SearchField/SearchField';
 import { SongCover } from '../components/SongCover/SongCover';
 import { offlineTag, songMeta } from '../components/SongCover/songFacts';
-import { savedCount, useShelf, type ShelfSong } from '../services/shelf';
+import { savedCount, type ShelfSong } from '../services/shelf';
 import { modesUrl } from '../shell/choice';
 import { ROUTES } from '../shell/routes';
 import { LibraryEmpty } from './LibraryEmpty';
-import { categoryOfSheet, deleteOwnSong, songKeys, useOwnSongs, useSavedSongs } from '../services/songs';
+import { musicsOf, useLibrarySongs } from './librarySongs';
+import { deleteOwnSong, songKeys } from '../services/songs';
 import { songCache } from '../services/songCache';
 import { DEV_TOOLS } from '../shell/devTools';
 import { rgba } from '../assets/styles/themes/color';
@@ -381,9 +382,7 @@ const SongCard: React.FC<{ song: ShelfSong & { origin?: string }; offline: boole
 
 /** 8 · Biblioteca: todas as músicas da estante em cartões; tocar abre a seleção de música com ela escolhida. */
 export const Library: React.FC = () => {
-  const shelf = useShelf();
-  const own = useOwnSongs();
-  const kept = useSavedSongs();
+  const { shelf, songs } = useLibrarySongs();
   const queries = useQueryClient();
   const [deleting, setDeleting] = React.useState<ShelfSong | null>(null);
   const [busy, setBusy] = React.useState(false);
@@ -420,19 +419,14 @@ export const Library: React.FC = () => {
     if (searching) toolbar.current?.querySelector('input')?.focus();
   }, [searching]);
 
-  const mine = own.data ?? (kept.data ?? []).filter((s) => s.sheet.origin !== 'catalog').map((s) => ({ ...s.sheet, levels: s.levels }));
-  const byId = new Map<string, ShelfSong & { origin?: string }>((shelf.status === 'ready' ? shelf.songs : []).map((s) => [s.id, s]));
-  for (const song of mine) {
-    byId.set(song.id, { ...song, category: categoryOfSheet(song), embedded: false, saved: !!kept.data?.some((s) => s.sheet.id === song.id) });
-  }
-  const songs = [...byId.values()];
   const empty = shelf.status === 'ready' && !shelf.fallback && songs.length === 0;
   const visible = songs.filter((s) => FILTERS[filter].keep(s) && matchesSearch(query, s.title, s.composer)).sort(SORTS[sort].compare);
-  const exercises = songs.filter((s) => s.category === 'exercicio').length;
+  const musics = musicsOf(songs).length;
+  const exercises = songs.length - musics;
   const embedded = songs.filter((s) => s.embedded).length;
   const saved = savedCount(songs);
   const kicker = [
-    `${songs.length - exercises} músicas`,
+    `${musics} músicas`,
     exercises ? `${exercises} ${exercises === 1 ? 'exercício' : 'exercícios'}` : '',
     `${embedded} no app`,
     saved ? `${saved} ${saved === 1 ? 'baixada' : 'baixadas'}` : '',

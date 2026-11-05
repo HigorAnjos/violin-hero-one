@@ -1,5 +1,5 @@
 import { LEVELS, type Level } from '../game/notation/song';
-import { DEFAULT_MODE, GAME_MODES, type GameMode } from './play';
+import { DEFAULT_MODE, GAME_MODES, type GameMode, type PlayState } from './play';
 import { ROUTES } from './routes';
 
 /** Modo, música e nível ficam na URL: recarregar ou voltar não perde a escolha. */
@@ -79,6 +79,16 @@ export function songsUrl(mode: GameMode, songId?: string): string {
   const params = new URLSearchParams({ modo: MODE_SLUG[mode] });
   if (songId) params.set('musica', songId);
   return `${ROUTES.songs}?${params}`;
+}
+
+/**
+ * "Sair para músicas" da pausa: a lista do mesmo modo, com a música da partida marcada (a Prática, que não é cartão,
+ * volta à lista do modo padrão, como o "Modos" da seleção). Partida de tarefa volta para a tarefa aberta: lá estão a
+ * música, o modo e o nível que ela pede, e a lista solta tocaria fora da tarefa.
+ */
+export function pauseExitUrl({ mode, song, task }: Pick<PlayState, 'mode' | 'song' | 'task'>): string {
+  if (task) return `${ROUTES.tasks}?${new URLSearchParams({ tarefa: task.assignmentId })}`;
+  return songsUrl(menuMode(mode ?? null), song?.id);
 }
 
 export interface SongChoice {
