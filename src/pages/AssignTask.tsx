@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
@@ -33,6 +34,13 @@ const Body = styled.form`
   @media (max-height: 500px) {
     gap: 0.625rem;
   }
+
+  /* Em pé: o formulário e, embaixo, como o aluno vai ver */
+  ${portrait} {
+    flex: none;
+    flex-direction: column;
+    gap: 1rem;
+  }
 `;
 
 const Form = styled(Panel)`
@@ -44,12 +52,20 @@ const Form = styled(Panel)`
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
   }
+
+  ${portrait} {
+    padding: 1rem;
+  }
 `;
 
 const Pair = styled.div`
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
   gap: 0.875rem 1.25rem;
+
+  ${portrait} {
+    grid-template-columns: minmax(0, 1fr);
+  }
 `;
 
 const Aside = styled.aside`
@@ -63,6 +79,10 @@ const Aside = styled.aside`
   @media (max-height: 500px) {
     width: 15rem;
     gap: 0.5rem;
+  }
+
+  ${portrait} {
+    width: auto;
   }
 `;
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait, portraitScroll } from '../assets/styles/media';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { clampLines, Kicker } from '../components/Screen/Screen';
@@ -24,6 +25,13 @@ export const TeacherPage = styled.main`
     gap: 0.75rem;
     padding: 0.625rem max(1rem, env(safe-area-inset-right)) 0.625rem max(1rem, env(safe-area-inset-left));
   }
+
+  /* Em pé: as colunas viram uma pilha e a página rola inteira, não os painéis */
+  ${portraitScroll}
+  ${portrait} {
+    flex-direction: column;
+    gap: 1rem;
+  }
 `;
 
 export const Column = styled.div`
@@ -36,6 +44,10 @@ export const Column = styled.div`
 
   @media (max-height: 500px) {
     gap: 0.5rem;
+  }
+
+  ${portrait} {
+    flex: none;
   }
 `;
 
@@ -68,6 +80,18 @@ export const Header = styled.header`
       line-height: 1.625rem;
     }
   }
+
+  /* Em pé: os botões descem para baixo do título, que pode quebrar em duas linhas */
+  ${portrait} {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.625rem;
+
+    h1 {
+      ${clampLines(2)}
+      font-size: 1.5rem;
+    }
+  }
 `;
 
 export const Actions = styled.div`
@@ -79,6 +103,10 @@ export const Actions = styled.div`
 
   @media (max-height: 500px) {
     gap: 0.375rem;
+  }
+
+  ${portrait} {
+    justify-content: flex-start;
   }
 `;
 
@@ -100,6 +128,11 @@ export const Panel = styled.section<{ $tone?: 'strong' | 'warning' }>`
   @media (max-height: 500px) {
     gap: 0.375rem;
     padding: 0.5rem 0.75rem;
+  }
+
+  ${portrait} {
+    flex: none;
+    overflow: visible;
   }
 `;
 
