@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait } from '../assets/styles/media';
 import { Button } from '../components/Button/Button';
 import { ModeCard } from '../components/ModeCard/ModeCard';
 import { useRadioGroup } from '../components/RadioGroup/useRadioGroup';
@@ -17,6 +18,17 @@ const Header = styled.header`
   align-items: flex-start;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.lg};
+
+  /* Em pé: o retorno no alto à direita e o texto com a largura toda */
+  ${portrait} {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: ${({ theme }) => theme.spacing.sm};
+
+    > [data-back] {
+      align-self: flex-end;
+    }
+  }
 `;
 
 const Intro = styled.div`
@@ -38,6 +50,12 @@ const Cards = styled.div`
   @media (max-height: 500px) {
     gap: ${({ theme }) => theme.spacing.sm};
   }
+
+  ${portrait} {
+    flex-grow: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ${({ theme }) => theme.spacing.md};
+  }
 `;
 
 const Footer = styled.footer`
@@ -45,6 +63,10 @@ const Footer = styled.footer`
   align-items: center;
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.md};
+
+  ${portrait} {
+    justify-content: flex-end;
+  }
 `;
 
 const Keys = styled.p`
@@ -71,6 +93,10 @@ const Keys = styled.p`
 
   @media (pointer: coarse), (max-height: 500px) {
     visibility: hidden;
+  }
+
+  ${portrait} {
+    display: none;
   }
 `;
 
