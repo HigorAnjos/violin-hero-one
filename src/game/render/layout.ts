@@ -48,6 +48,7 @@ export interface Strings3DBox extends Box {
 /**
  * Coluna do cartão de afinação no celular deitado (TuningCard: 10,625rem de largura a 0,875rem da borda, ou a área
  * segura), mais a folga até as cordas. O cartão cresce para baixo com o motivo do erro: na coluna, não cobre nada.
+ * Mudou o CSS do cartão, muda aqui (o pista-deitada.spec.ts pega a sobreposição).
  */
 const TUNING_CARD = 170;
 const TUNING_EDGE = 14;

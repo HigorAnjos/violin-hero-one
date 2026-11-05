@@ -70,6 +70,7 @@ const Card = styled.section`
     width: 15rem;
   }
 
+  /* Largura e borda repetidas em TUNING_CARD e TUNING_EDGE (render/layout.ts): a coluna do cartão nas Cordas 3D */
   @media (max-height: 500px) {
     right: max(0.875rem, env(safe-area-inset-right));
     top: 4.125rem;
