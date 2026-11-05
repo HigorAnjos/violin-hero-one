@@ -1,4 +1,5 @@
 import styled, { css } from 'styled-components';
+import { portrait } from '../../assets/styles/media';
 
 /**
  * Corta texto longo (título de música, pontuação) em `lines` linhas com reticências, com qualquer fonte; o texto
@@ -44,6 +45,12 @@ export const Screen = styled.main<{ $gap?: string }>`
     padding-left: max(${({ theme }) => theme.spacing.lg}, env(safe-area-inset-left));
     padding-right: max(${({ theme }) => theme.spacing.lg}, env(safe-area-inset-right));
   }
+
+  /* Celular em pé: uma coluna que rola, longe do entalhe e da barra de gestos */
+  ${portrait} {
+    padding: max(1.25rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom))
+      max(1rem, env(safe-area-inset-left));
+  }
 `;
 
 /** Marca do jogo no topo das telas da primeira vez. */
@@ -67,6 +74,11 @@ export const ScreenHeader = styled.header`
   justify-content: space-between;
   gap: ${({ theme }) => theme.spacing.md};
   margin: -0.625rem 0;
+
+  ${portrait} {
+    flex-wrap: wrap;
+    gap: 0 ${({ theme }) => theme.spacing.sm};
+  }
 `;
 
 export const ScreenTitle = styled.h1<{ $size?: 'lg' | 'md' }>`
