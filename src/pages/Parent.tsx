@@ -3,14 +3,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Navigate } from 'react-router-dom';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { StudentGuardianNotice } from '../components/StudentGuardianNotice';
 import { ClassroomError, classroomKeys, REVIEW_CONCEPTS, type Child, type ClassroomApi, type StudentAssignment } from '../services/classroom';
 import { accountUrl, ROUTES } from '../shell/routes';
 import { useSession } from '../shell/useAccount';
 import { isParentDemo, parentClassroom } from '../shell/parentClassroom';
 import { ClassroomCard, ClassroomContent, ClassroomGrid, ClassroomPage } from './classroomLayout';
-import { instructionOf, MODE_NAMES } from './teacherText';
+import { instructionOf, taskLabel } from './teacherText';
 
 const message = (error: unknown) => error instanceof ClassroomError ? error.message : 'Não foi possível carregar agora. Tente de novo.';
 
@@ -27,7 +26,7 @@ function Delivery({ task, api }: { task: StudentAssignment; api: ClassroomApi })
     finally { setBusy(false); }
   };
   // Nível e modo no título, como o professor vê: duas tarefas da mesma música não saem iguais
-  const title = `${task.songTitle} · ${LEVEL_NAMES[task.level]} · ${MODE_NAMES[task.mode]}`;
+  const title = taskLabel(task);
   const instruction = instructionOf(task);
   return <ClassroomCard aria-label={title}>
     <h2>{title}</h2>
@@ -39,7 +38,7 @@ function Delivery({ task, api }: { task: StudentAssignment; api: ClassroomApi })
     {audio?.audioDeleted ? <p>O áudio foi removido após o prazo de retenção.</p> : audio?.audioPath ? <>
       {audio.audioDurationMs != null && <small>Duração: {Math.ceil(audio.audioDurationMs / 1000)} s</small>}
       <Button type="button" $variant="ghost" disabled={busy} onClick={listen}>{busy ? 'Preparando áudio…' : url ? 'Renovar áudio' : 'Ouvir entrega'}</Button>
-      {url && <audio key={url} controls src={url} aria-label={`Entrega de ${task.songTitle}`} style={{ width: '100%', minHeight: 44 }} onError={() => setError('Não foi possível tocar o áudio. Tente renovar o endereço.')} />}
+      {url && <audio key={url} controls src={url} aria-label={`Entrega de ${title}`} style={{ width: '100%', minHeight: 44 }} onError={() => setError('Não foi possível tocar o áudio. Tente renovar o endereço.')} />}
     </> : audio && <p>Entrega sem áudio.</p>}
     {error && <p role="alert">{error}</p>}
   </ClassroomCard>;

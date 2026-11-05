@@ -37,7 +37,7 @@ describe.each([cadernoTheme, palcoTheme, pixelTheme])('responsável e planos: $i
     expect(screen.getByText(/92% de precisão/)).toBeInTheDocument();
     expect(screen.queryByText(/adulto@/)).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Ouvir entrega' }));
-    await waitFor(() => expect(screen.getByLabelText('Entrega de Brilha Brilha Estrelinha')).toHaveAttribute('src', 'https://audio.test/assinada'));
+    await waitFor(() => expect(screen.getByLabelText('Entrega de Brilha Brilha Estrelinha · Fácil · Arcade')).toHaveAttribute('src', 'https://audio.test/assinada'));
     expect(signed).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
   });
@@ -126,7 +126,7 @@ it('trocar de responsável não mostra o filho em cache da conta anterior', asyn
   await screen.findByText('Carregando filhos…');
   expect(screen.queryByText(/Ana/)).not.toBeInTheDocument();
   expect(screen.queryByText('Continue praticando com calma!')).not.toBeInTheDocument();
-  expect(screen.queryByLabelText('Entrega de Brilha Brilha Estrelinha')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/^Entrega de Brilha Brilha Estrelinha/)).not.toBeInTheDocument();
 });
 
 it('convite recusado preserva formulário e permite tentar de novo', async () => {

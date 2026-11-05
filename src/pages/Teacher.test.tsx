@@ -251,9 +251,42 @@ describe('P1 · painel do professor', () => {
     mount(api, { path: `/professor/turma/${klass.id}` });
     const inbox = await screen.findByRole('region', { name: 'Para revisar' });
     const item = await within(inbox).findByRole('link', { name: /Ana · Brilha, brilha estrelinha/ });
-    expect(item).toHaveTextContent('94,1% · ±11 ¢');
+    expect(item).toHaveTextContent('Fácil · Arcade · 94,1% · ±11 ¢');
     expect(item).toHaveAttribute('href', `/professor/tarefa/${task.id}?aluno=${student.id}`);
     expect(screen.getAllByText('Revisar').length).toBeGreaterThan(0);
+  });
+
+  it('tarefas da mesma música: o painel mostra a música e, embaixo, nível, modo e prazo', async () => {
+    const { api, klass } = await withClass();
+    const dueAt = new Date(Date.now() + 86400e3).toISOString();
+    await api.createAssignment({ classId: klass.id, songId: 'brilha-brilha', level: 'easy', mode: 'arcade', dueAt });
+    await api.createAssignment({ classId: klass.id, songId: 'brilha-brilha', level: 'easy', mode: 'strings3d', dueAt });
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    const panel = await screen.findByRole('region', { name: 'Tarefas' });
+    expect(await within(panel).findAllByText('Brilha, brilha estrelinha')).toHaveLength(2);
+    expect(within(panel).getByText(/^Fácil · Arcade · até /)).toBeInTheDocument();
+    expect(within(panel).getByText(/^Fácil · Cordas 3D · até /)).toBeInTheDocument();
+    expect(within(panel).getByRole('link', { name: 'Entregas de Brilha, brilha estrelinha · Fácil · Cordas 3D' })).toBeInTheDocument();
+  });
+
+  it('tarefas da mesma música: cada coluna da tabela diz nível e modo, e o selo fica na coluna dela', async () => {
+    const { api, klass } = await withClass();
+    await api.addStudent(klass.id, 'Ana');
+    const dueAt = new Date(Date.now() + 86400e3).toISOString();
+    await api.createAssignment({ classId: klass.id, songId: 'brilha-brilha', level: 'easy', mode: 'arcade', dueAt });
+    await api.createAssignment({ classId: klass.id, songId: 'brilha-brilha', level: 'medium', mode: 'sheet', dueAt });
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    const table = await screen.findByRole('table');
+    const headers = await within(table).findAllByRole('columnheader');
+    const names = headers.map((h) => h.getAttribute('aria-label') ?? h.textContent);
+    const arcade = names.indexOf('Brilha, brilha estrelinha · Fácil · Arcade');
+    const sheet = names.indexOf('Brilha, brilha estrelinha · Médio · Partitura');
+    expect(arcade).toBeGreaterThan(-1);
+    expect(sheet).toBeGreaterThan(-1);
+    expect(headers[sheet]).toHaveTextContent('Médio · Partitura');
+    const cells = within(within(table).getByRole('row', { name: /Ana/ })).getAllByRole('cell');
+    expect(cells[arcade]).toHaveTextContent('Sem entrega');
+    expect(cells[sheet]).toHaveTextContent('Sem entrega');
   });
 
   it('encerrar turma pede confirmação, com "Manter aberta" como padrão', async () => {

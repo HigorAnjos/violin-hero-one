@@ -5,7 +5,6 @@ import { portrait } from '../assets/styles/media';
 import type { StringName } from '../assets/styles/themes/types';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import { StudentAvatar } from '../components/StudentAvatar/StudentAvatar';
 import { SubmissionPlayer } from '../components/SubmissionPlayer/SubmissionPlayer';
@@ -26,7 +25,6 @@ import {
   centsText,
   hardestString,
   instructionOf,
-  MODE_NAMES,
   percent,
   reviewText,
   sentText,
@@ -34,6 +32,7 @@ import {
   STRING_NAMES,
   STRINGS,
   TASK_STATE_NAMES,
+  taskLabel,
   taskState,
 } from './teacherText';
 
@@ -421,7 +420,7 @@ function ReviewArea({ ready, taskId }: { ready: Ready; taskId: string }) {
         <Header>
           <div>
             <Kicker>
-              {data.songTitle} · {LEVEL_NAMES[data.level]} · Modo {MODE_NAMES[data.mode]}
+              {taskLabel(data)}
             </Kicker>
             <h1>{chosen ? `${chosen.name} · ${data.songTitle}` : data.songTitle}</h1>
             <Muted>{sub ? `Enviada ${sentText(sub.submittedAt)}${instruction ? ` · ${instruction}` : ''}` : (instruction ?? '')}</Muted>

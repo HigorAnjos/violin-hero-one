@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { playedResult } from '../components/ResultSummary/testing';
 import { ODE } from '../game/engine/testing';
 import { RecordingError } from '../game/audio';
@@ -59,7 +60,8 @@ describe('TaskResult (A3)', () => {
   it('mostra como foi a partida e a gravação para ouvir; enviar sobe o áudio e entrega a tarefa', async () => {
     setUploadTarget(submissionUploadTarget(fake, async () => {}));
     open(take());
-    expect(screen.getByText(`Tarefa · ${ODE.title}`)).toBeInTheDocument();
+    // Nível e modo da partida no rótulo: duas tarefas da mesma música não saem iguais
+    expect(screen.getByText(`Tarefa · ${ODE.title} · ${LEVEL_NAMES[ODE.level]} · Arcade`)).toBeInTheDocument();
     const summary = screen.getByRole('list', { name: 'Como foi a partida' });
     expect(summary).toHaveTextContent('Precisão94,1%');
     // Sem meta na tarefa, só a música inteira ganha ✓; precisão e afinação são medidas, não "passou"

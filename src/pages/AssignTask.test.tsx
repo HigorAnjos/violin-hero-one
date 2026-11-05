@@ -88,6 +88,18 @@ describe('P2 · nova tarefa', () => {
     await waitFor(async () => expect((await api.listClassAssignments(klass.id))[0].instructionText).toBe('Duas vezes seguidas'));
   });
 
+  it('tarefas da mesma música na lista da turma: cada uma com nível e modo', async () => {
+    const { api, klass } = await scene();
+    const dueAt = new Date(Date.now() + 86400e3).toISOString();
+    const song = FIXED_SONGS[0];
+    await api.createAssignment({ classId: klass.id, songId: song.id, level: 'easy', mode: 'arcade', dueAt });
+    await api.createAssignment({ classId: klass.id, songId: song.id, level: 'easy', mode: 'strings3d', dueAt });
+    mount(api, klass.id);
+    const list = await screen.findByRole('region', { name: 'Tarefas da turma' });
+    expect(await within(list).findByRole('listitem', { name: `${song.title} · Fácil · Arcade` })).toHaveTextContent('Fácil · Arcade');
+    expect(within(list).getByRole('listitem', { name: `${song.title} · Fácil · Cordas 3D` })).toHaveTextContent('Fácil · Cordas 3D');
+  });
+
   it('turma sem aluno: "Enviar à turma" e o aviso de que vale para quem entrar depois', async () => {
     const api = fakeClassroom({ songs: SONGS });
     const klass = await api.createClass('Vazia');

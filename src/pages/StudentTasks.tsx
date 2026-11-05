@@ -14,6 +14,7 @@ import { loadingUrl } from '../shell/choice';
 import { taskGameMode, useMyAssignments, useStudent } from '../shell/classroom';
 import type { PlayState, TaskPlay } from '../shell/play';
 import { ROUTES } from '../shell/routes';
+import { MODE_NAMES } from '../shell/taskLabel';
 
 const Page = styled.main`
   height: 100vh;
@@ -341,8 +342,6 @@ const Empty = styled.div`
   }
 `;
 
-const MODE_NAMES: Record<string, string> = { arcade: 'Arcade', sheet: 'Partitura', strings3d: 'Cordas 3D' };
-
 /** O que a partida de tarefa leva até a entrega. */
 function taskPlay(task: StudentAssignment, studentId: string): TaskPlay {
   return { assignmentId: task.id, classId: task.classId, studentId, dueAt: task.dueAt, songTitle: task.songTitle };
@@ -363,7 +362,7 @@ const Detail: React.FC<{ task: StudentAssignment; studentId: string; className: 
       <TitleRow>
         <h2 id="tarefa-aberta">{task.songTitle}</h2>
         <span>
-          Modo {MODE_NAMES[task.mode] ?? 'Arcade'} · {LEVEL_NAMES[task.level]}
+          Modo {MODE_NAMES[task.mode]} · {LEVEL_NAMES[task.level]}
         </span>
       </TitleRow>
       <Goals>

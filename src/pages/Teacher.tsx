@@ -4,7 +4,6 @@ import styled from 'styled-components';
 import { portrait, PORTRAIT_QUERY } from '../assets/styles/media';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
-import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
 import { PinNotice } from '../components/PinNotice/PinNotice';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import { StudentAvatar } from '../components/StudentAvatar/StudentAvatar';
@@ -49,7 +48,7 @@ import {
   TeacherPage,
   Text,
 } from './teacherLayout';
-import { centsText, dueText, formatClassCode, MODE_NAMES, percent, sentText, TASK_STATE_NAMES, taskState, type StudentTaskState } from './teacherText';
+import { centsText, dueText, formatClassCode, percent, sentText, TASK_STATE_NAMES, taskLabel, taskState, taskVariant, type StudentTaskState } from './teacherText';
 
 type Ready = Extract<TeacherAccess, { status: 'ready' }>;
 
@@ -329,8 +328,14 @@ const TaskItem = styled.div`
     gap: 0.5rem;
   }
 
+  /* A música numa linha (até duas, se for longa) e nível, modo e prazo na de baixo: nada se corta */
+  > span {
+    display: flex;
+    flex-direction: column;
+  }
+
   b {
-    ${clampLines(1)}
+    ${clampLines(2)}
     font-size: 0.875rem;
     font-weight: 800;
   }
@@ -351,6 +356,16 @@ const Table = styled.table`
     padding: 0.375rem 0.5rem;
     border-bottom: 1px solid ${({ theme }) => theme.colors.surfaceBorder};
     white-space: nowrap;
+    vertical-align: bottom;
+  }
+
+  /* Duas tarefas da mesma música: nível e modo numa segunda linha, sem caixa alta, para a coluna não alargar */
+  th > small {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
   }
 
   td {
@@ -543,7 +558,7 @@ function ReviewInbox({ details }: { details: (AssignmentDetail | undefined)[] })
                 {row.name} · {task.songTitle}
               </b>
               <Muted>
-                {sub.accuracy == null ? 'sem partida' : percent(sub.accuracy)} · {centsText(sub.meanAbsCents)}
+                {taskVariant(task)} · {sub.accuracy == null ? 'sem partida' : percent(sub.accuracy)} · {centsText(sub.meanAbsCents)}
               </Muted>
             </span>
             <Muted>{sentText(sub.submittedAt)}</Muted>
@@ -554,8 +569,6 @@ function ReviewInbox({ details }: { details: (AssignmentDetail | undefined)[] })
   );
 }
 
-const taskTitle = (t: Pick<AssignmentSummary, 'songTitle' | 'level' | 'mode'>) => `${t.songTitle} · ${LEVEL_NAMES[t.level]} · ${MODE_NAMES[t.mode]}`;
-
 function TaskList({ tasks }: { tasks: AssignmentSummary[] }) {
   return (
     <Panel aria-label="Tarefas">
@@ -563,14 +576,16 @@ function TaskList({ tasks }: { tasks: AssignmentSummary[] }) {
       {!tasks.length && <Muted>Nenhuma tarefa ainda. Crie a primeira em “Nova tarefa”.</Muted>}
       {tasks.map((t) => (
         <TaskItem key={t.id}>
-          <div>
-            <b>{taskTitle(t)}</b>
-            <Muted>{dueText(t)}</Muted>
-          </div>
+          <span>
+            <b>{t.songTitle}</b>
+            <Muted>
+              {taskVariant(t)} · {dueText(t)}
+            </Muted>
+          </span>
           <TaskProgress studentCount={t.studentCount} submittedCount={t.submittedCount} reviewedCount={t.reviewedCount} />
           <div>
             <Muted>{taskSummary(t)}</Muted>
-            <Button as={Link} to={reviewUrl(t.id)} $variant="link" aria-label={`Entregas de ${taskTitle(t)}`}>
+            <Button as={Link} to={reviewUrl(t.id)} $variant="link" aria-label={`Entregas de ${taskLabel(t)}`}>
               Entregas <span aria-hidden="true">▸</span>
             </Button>
           </div>
@@ -693,8 +708,10 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
               <th scope="col">Aluno</th>
               <th scope="col">Entrada</th>
               {columns.map((t) => (
-                <th key={t.id} scope="col" data-task="">
+                // O nome inteiro no aria-label: o leitor de tela lê "Escala de Ré maior · Fácil · Arcade" com o selo da célula
+                <th key={t.id} scope="col" data-task="" aria-label={taskLabel(t)} title={taskLabel(t)}>
                   {t.songTitle}
+                  <small>{taskVariant(t)}</small>
                 </th>
               ))}
               <th scope="col">
