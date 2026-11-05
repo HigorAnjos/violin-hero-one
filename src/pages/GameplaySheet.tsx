@@ -86,6 +86,12 @@ const Controls = styled.div`
   gap: 0.5rem;
 `;
 
+/** Na Pausa o botão Painel vai para os Ajustes rápidos: o do cabeçalho some, sem mexer no lugar do Pausar. */
+const ToggleSlot = styled.span<{ $hidden: boolean }>`
+  display: flex;
+  visibility: ${({ $hidden }) => ($hidden ? 'hidden' : 'visible')};
+`;
+
 const PauseButton = styled.button`
   width: 2.75rem;
   height: 2.75rem;
@@ -96,11 +102,6 @@ const PauseButton = styled.button`
   background-color: ${({ theme }) => theme.colors.surface};
   border: 2px solid ${({ theme }) => theme.colors.surfaceBorder};
   color: ${({ theme }) => theme.colors.text};
-`;
-
-/** No fluxo do cabeçalho, mas por cima do véu da Pausa (z-index do StaffToggle precisa de posição). */
-const Staff = styled(StaffToggle)`
-  position: relative;
 `;
 
 const Score = styled.div`
@@ -253,6 +254,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
   });
   const { phase, hud, pause, resume } = game;
   const paused = phase === 'paused' || phase === 'counting';
+  const panelToggle = compact && <StaffToggle kind="panel" pressed={game.prefs.landscapePanel} onToggle={(on) => game.changePrefs({ landscapePanel: on })} />;
   useEscapePause(phase, pause, resume);
 
   const subtitle = `${play.song.title} · ${LEVEL_NAMES[play.song.level]}`;
@@ -272,7 +274,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
               <rect x="9.5" y="2" width="3.5" height="12" fill="currentColor" />
             </svg>
           </PauseButton>
-          {compact && <Staff kind="panel" pressed={game.prefs.landscapePanel} onToggle={(on) => game.changePrefs({ landscapePanel: on })} />}
+          {panelToggle && <ToggleSlot $hidden={paused}>{panelToggle}</ToggleSlot>}
         </Controls>
         <Score role="status" aria-label="Placar" aria-live="off">
           <b>{formatPoints(hud.score)}</b>
@@ -311,6 +313,7 @@ export const GameplaySheet: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) 
           onExit={() => navigate(ROUTES.home)}
           counting={game.counting}
           micClosed={game.micClosed}
+          layoutToggle={panelToggle}
           {...pauseSettings(game)}
         />
       )}

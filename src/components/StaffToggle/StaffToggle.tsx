@@ -2,8 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 
 const Root = styled.button`
-  /* Por cima do véu da Pausa: o botão segue valendo com o jogo parado */
-  z-index: 1;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -65,8 +64,8 @@ const TEXT = {
 } as const;
 
 /**
- * Botão Pauta do celular deitado: mostra ou esconde o que fica no pé da tela, perto do Pausar. O nome diz o que o toque
- * faz e o aria-pressed, o estado; não mexe no relógio da partida.
+ * Botão Pauta do celular deitado: mostra ou esconde o que fica no pé da tela, perto do Pausar (na Pausa, nos Ajustes
+ * rápidos). O nome diz o que o toque faz e o aria-pressed, o estado; não mexe no relógio da partida.
  */
 export const StaffToggle: React.FC<StaffToggleProps> = ({ pressed, onToggle, kind = 'staff', className }) => {
   const text = TEXT[kind];

@@ -73,7 +73,7 @@ const PauseButton = styled.button`
 `;
 
 /** Celular deitado: o botão Pauta à esquerda do Pausar, na mesma linha. */
-const Staff = styled(StaffToggle)`
+const Staff = styled.div`
   position: absolute;
   right: calc(max(0.875rem, env(safe-area-inset-right)) + 3.25rem);
   top: 0.75rem;
@@ -119,6 +119,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
   const { phase, hud, pause, resume } = game;
   const paused = phase === 'paused' || phase === 'counting';
   const stage = box(game.prefs);
+  const staffToggle = compact && <StaffToggle pressed={game.prefs.landscapeStaff} onToggle={(on) => game.changePrefs({ landscapeStaff: on })} />;
 
   useEscapePause(phase, pause, resume);
 
@@ -140,7 +141,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
           </svg>
         </PauseButton>
       )}
-      {compact && <Staff pressed={game.prefs.landscapeStaff} onToggle={(on) => game.changePrefs({ landscapeStaff: on })} />}
+      {!paused && staffToggle && <Staff>{staffToggle}</Staff>}
       <SheetStrip
         ref={sheet}
         song={play.song}
@@ -166,6 +167,7 @@ export const Gameplay: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {
           onExit={() => navigate(ROUTES.home)}
           counting={game.counting}
           micClosed={game.micClosed}
+          layoutToggle={staffToggle}
           {...pauseSettings(game)}
         />
       )}
