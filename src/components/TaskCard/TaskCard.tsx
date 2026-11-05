@@ -1,6 +1,7 @@
 import React from 'react';
 import styled, { css } from 'styled-components';
 import type { StudentAssignment } from '../../services/classroom';
+import { taskVariant } from '../../shell/taskLabel';
 import { clampLines } from '../Screen/Screen';
 import { dueLabel, percent, reviewMark, shortDate, STATUS_LABELS, taskStatus, type TaskStatus } from './taskStatus';
 
@@ -103,6 +104,8 @@ export const TaskCard: React.FC<{ task: StudentAssignment; current: boolean; now
     <Card type="button" aria-current={current} onClick={onSelect} $muted={status === 'reviewed' || status === 'missed'}>
       <StatusTag $status={status}>{STATUS_LABELS[status]}</StatusTag>
       <b>{task.songTitle}</b>
+      {/* Nível e modo numa linha própria: duas tarefas da mesma música não saem iguais na lista */}
+      <small>{taskVariant(task)}</small>
       <small>{taskSummary(task, now)}</small>
     </Card>
   );

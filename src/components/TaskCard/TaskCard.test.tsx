@@ -39,10 +39,10 @@ describe('situação da tarefa', () => {
     expect(percent(94.06)).toBe('94,1%');
   });
 
-  it('o cartão mostra a etiqueta, a música e o melhor até agora com o prazo, e abre ao tocar', async () => {
+  it('o cartão mostra a etiqueta, a música com nível e modo e o melhor até agora com o prazo, e abre ao tocar', async () => {
     const select = vi.fn();
     renderScreen(<TaskCard task={task({ best: { playId: 'p', score: 1, accuracy: 86, playedAt: at(0) } })} current now={NOW} onSelect={select} />);
-    const card = screen.getByRole('button', { name: /Para fazer Escala de Ré maior Melhor até agora 86% · até sexta/ });
+    const card = screen.getByRole('button', { name: /Para fazer Escala de Ré maior Fácil · Arcade Melhor até agora 86% · até sexta/ });
     expect(card).toHaveAttribute('aria-current', 'true');
     await userEvent.click(card);
     expect(select).toHaveBeenCalled();

@@ -38,7 +38,7 @@ function Delivery({ task, api }: { task: StudentAssignment; api: ClassroomApi })
     {audio?.audioDeleted ? <p>O áudio foi removido após o prazo de retenção.</p> : audio?.audioPath ? <>
       {audio.audioDurationMs != null && <small>Duração: {Math.ceil(audio.audioDurationMs / 1000)} s</small>}
       <Button type="button" $variant="ghost" disabled={busy} onClick={listen}>{busy ? 'Preparando áudio…' : url ? 'Renovar áudio' : 'Ouvir entrega'}</Button>
-      {url && <audio key={url} controls src={url} aria-label={`Entrega de ${task.songTitle}`} style={{ width: '100%', minHeight: 44 }} onError={() => setError('Não foi possível tocar o áudio. Tente renovar o endereço.')} />}
+      {url && <audio key={url} controls src={url} aria-label={`Entrega de ${title}`} style={{ width: '100%', minHeight: 44 }} onError={() => setError('Não foi possível tocar o áudio. Tente renovar o endereço.')} />}
     </> : audio && <p>Entrega sem áudio.</p>}
     {error && <p role="alert">{error}</p>}
   </ClassroomCard>;

@@ -21,7 +21,7 @@ for (const theme of ['caderno', 'palco', '8-bits']) {
       // Nível e modo no cartão, como o professor vê
       await expect(page.getByRole('heading', { name: 'Brilha Brilha Estrelinha · Fácil · Arcade' })).toBeAttached();
       await page.getByRole('button', { name: 'Ouvir entrega' }).click();
-      const audio = page.getByLabel('Entrega de Brilha Brilha Estrelinha');
+      const audio = page.getByLabel('Entrega de Brilha Brilha Estrelinha · Fácil · Arcade');
       await expect(audio).toHaveAttribute('src', /^blob:/);
       await audio.evaluate(async (el: HTMLAudioElement) => { await el.play(); });
       await expect.poll(() => audio.evaluate((el: HTMLAudioElement) => el.currentTime)).toBeGreaterThan(0);

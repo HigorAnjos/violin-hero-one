@@ -7,12 +7,14 @@ import { Kicker, SongKicker } from '../components/Screen/Screen';
 import { percent } from '../components/TaskCard/taskStatus';
 import { RecordingError, type Recording } from '../game/audio';
 import { ClassroomError } from '../services/classroom';
+import { PLAY_MODE_OF } from '../services/progress';
 import { recordingUploads, usePlayOutcome } from '../services/sync';
 import type { UploadStatus } from '../services/recordingUpload';
 import { classroomShell, submitPlayOnly } from '../shell/classroom';
 import { gameRoute, readResultState, taskCarry, type PlayState } from '../shell/play';
 import { ROUTES } from '../shell/routes';
 import type { SubmissionMeta } from '../shell/submissionTarget';
+import { taskLabel } from '../shell/taskLabel';
 import { releaseTaskRecording, taskRecording } from '../shell/taskRecording';
 import { useSession } from '../shell/useAccount';
 
@@ -321,6 +323,8 @@ export const TaskResult: React.FC = () => {
 
   if (!state || !task) return <Navigate to={ROUTES.tasks} replace />;
   const { song, result } = state;
+  // A partida da tarefa é no nível e no modo dela: o rótulo sai do que foi tocado
+  const playMode = PLAY_MODE_OF[state.mode];
   const userId = session?.status === 'signed-in' ? session.userId : null;
   const good = recording && !(recording instanceof RecordingError) ? recording : null;
   const failure = recording instanceof RecordingError ? recording.kind : recording ? null : 'missing';
@@ -360,7 +364,7 @@ export const TaskResult: React.FC = () => {
   return (
     <Page>
       <Summary>
-        <SongKicker>Tarefa · {task.songTitle}</SongKicker>
+        <SongKicker>Tarefa · {playMode === 'practice' ? task.songTitle : taskLabel({ songTitle: task.songTitle, level: song.level, mode: playMode })}</SongKicker>
         <h1>
           Tarefa tocada! <span>{good ? 'Bora mostrar?' : 'Bora entregar?'}</span>
         </h1>

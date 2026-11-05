@@ -251,7 +251,7 @@ describe('P1 · painel do professor', () => {
     mount(api, { path: `/professor/turma/${klass.id}` });
     const inbox = await screen.findByRole('region', { name: 'Para revisar' });
     const item = await within(inbox).findByRole('link', { name: /Ana · Brilha, brilha estrelinha/ });
-    expect(item).toHaveTextContent('94,1% · ±11 ¢');
+    expect(item).toHaveTextContent('Fácil · Arcade · 94,1% · ±11 ¢');
     expect(item).toHaveAttribute('href', `/professor/tarefa/${task.id}?aluno=${student.id}`);
     expect(screen.getAllByText('Revisar').length).toBeGreaterThan(0);
   });

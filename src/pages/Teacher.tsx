@@ -558,7 +558,7 @@ function ReviewInbox({ details }: { details: (AssignmentDetail | undefined)[] })
                 {row.name} · {task.songTitle}
               </b>
               <Muted>
-                {sub.accuracy == null ? 'sem partida' : percent(sub.accuracy)} · {centsText(sub.meanAbsCents)}
+                {taskVariant(task)} · {sub.accuracy == null ? 'sem partida' : percent(sub.accuracy)} · {centsText(sub.meanAbsCents)}
               </Muted>
             </span>
             <Muted>{sentText(sub.submittedAt)}</Muted>
