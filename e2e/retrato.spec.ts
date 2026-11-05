@@ -321,6 +321,16 @@ test('resultado: deitado o microfone segue aberto; em pé o resultado fica e o m
   await expect.poll(() => liveTracks(page), { message: 'em pé, o microfone fecha' }).toBe(0);
 });
 
+test('problema no microfone (sem som) em pé: o microfone abre para o medidor, mesmo com o MicGuard em pé', async ({ page }) => {
+  await page.goto('/microfone/problema?motivo=sem-som');
+  await expect(page.getByRole('heading', { level: 1, name: 'Não estou te ouvindo' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Gire o celular/ })).toHaveCount(0);
+  await expect.poll(() => liveTracks(page), { message: 'em pé, o medidor abre o microfone' }).toBeGreaterThan(0);
+  // E fica aberto: nada fecha o medidor depois
+  await page.waitForTimeout(1000);
+  expect(await liveTracks(page)).toBeGreaterThan(0);
+});
+
 test('editor em pé pede para girar; a contagem também', async ({ page }) => {
   await page.goto('/editor');
   await expect(page.getByRole('heading', { name: 'Gire o celular para escrever' })).toBeVisible();
