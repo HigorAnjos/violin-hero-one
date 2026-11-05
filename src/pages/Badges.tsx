@@ -2,6 +2,7 @@ import React from 'react';
 import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink';
 import { Link } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
+import { portrait, portraitScroll } from '../assets/styles/media';
 import { Badge, badgeColor } from '../components/Badge/Badge';
 import { Button } from '../components/Button/Button';
 import { LEVEL_NAMES } from '../components/CountIn/countInTiming';
@@ -25,6 +26,7 @@ const Page = styled.main`
     gap: 0.5rem;
   }
   ${navigationPageInsets}
+  ${portraitScroll}
 `;
 
 const Header = styled.header`
@@ -71,6 +73,23 @@ const Header = styled.header`
 
     > nav > * {
       padding: 0 0.75rem;
+    }
+  }
+
+  /* Em pé: atalhos no alto, título e progresso com a largura toda */
+  ${portrait} {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.75rem;
+
+    > div {
+      width: auto;
+    }
+
+    > nav {
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 0.5rem;
     }
   }
 `;
@@ -123,6 +142,13 @@ const Grid = styled.ul`
 
   @media (max-height: 500px) {
     gap: 0.5rem;
+  }
+
+  ${portrait} {
+    flex: none;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
+    gap: 0.625rem;
   }
 `;
 
@@ -184,6 +210,14 @@ const Cell = styled.li`
     b {
       font-size: 0.9375rem;
       line-height: 1.25rem;
+    }
+  }
+
+  ${portrait} {
+    padding: 0.75rem 1rem;
+
+    > svg {
+      width: 3rem;
     }
   }
 `;
