@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { accountUrl, micTroubleUrl, needsMicrophone, parseAccountUrl, parseMicTrouble, ROUTES, safeInternalPath } from './routes';
+import { accountUrl, micTroubleUrl, needsLandscape, needsMicrophone, parseAccountUrl, parseMicTrouble, ROUTES, safeInternalPath } from './routes';
 
 describe('rotas', () => {
   it('ida e volta do pedido de conta; destino de fora vira a raiz e motivo desconhecido vira outro aparelho', () => {
@@ -24,6 +24,15 @@ describe('rotas', () => {
     expect(needsMicrophone(ROUTES.dictation)).toBe(true);
     expect(needsMicrophone(`${ROUTES.dictation}/`)).toBe(true);
     expect(needsMicrophone(ROUTES.editor)).toBe(false);
+  });
+
+  it('só deitado: as telas que ouvem e o editor; menus e contas não', () => {
+    for (const path of [ROUTES.calibration, ROUTES.game, ROUTES.countdown, ROUTES.dictation, ROUTES.editor, `${ROUTES.editor}/`]) {
+      expect(needsLandscape(path)).toBe(true);
+    }
+    for (const path of [ROUTES.home, ROUTES.login, ROUTES.library, ROUTES.import, ROUTES.settings, ROUTES.teacher, ROUTES.privacy]) {
+      expect(needsLandscape(path)).toBe(false);
+    }
   });
 
   it('ida e volta da tela de problema no microfone, com a causa', () => {

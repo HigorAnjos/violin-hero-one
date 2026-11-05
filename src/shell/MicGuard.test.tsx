@@ -1,8 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { PORTRAIT_QUERY } from '../assets/styles/media';
 import { createFakeEar } from './fakeEar';
 import { MicGuard } from './MicGuard';
 import { ROUTES } from './routes';
 import { renderScreen } from './testing';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('MicGuard', () => {
   it.each([ROUTES.home, ROUTES.modes, ROUTES.library, ROUTES.level])('fecha o microfone em %s', (path) => {
@@ -15,5 +20,15 @@ describe('MicGuard', () => {
     const ear = createFakeEar();
     renderScreen(<MicGuard />, { ear, path });
     expect(ear.stopped).toBe(0);
+  });
+
+  it.each([ROUTES.calibration, ROUTES.game])('fecha o microfone em %s com o celular em pé (aviso de girar)', (path) => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({ matches: query === PORTRAIT_QUERY, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    );
+    const ear = createFakeEar();
+    renderScreen(<MicGuard />, { ear, path });
+    expect(ear.stopped).toBe(1);
   });
 });

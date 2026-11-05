@@ -115,9 +115,19 @@ export const MIC_ROUTES: ReadonlySet<string> = new Set([
   ROUTES.diagnostics,
 ]);
 
+const normalized = (pathname: string) => (pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname);
+
 export function needsMicrophone(pathname: string): boolean {
-  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
-  return MIC_ROUTES.has(path);
+  return MIC_ROUTES.has(normalized(pathname));
+}
+
+/**
+ * Telas que só funcionam deitado: as que ouvem o violino e o editor (a prévia na pista). Com o celular em pé elas dão
+ * lugar ao aviso de girar, sem abrir o microfone.
+ */
+export function needsLandscape(pathname: string): boolean {
+  const path = normalized(pathname);
+  return MIC_ROUTES.has(path) || path === ROUTES.editor;
 }
 
 const PROBLEM_SLUG: Record<MicProblem, string> = { 'no-sound': 'sem-som', noisy: 'barulho', blocked: 'sem-permissao' };
