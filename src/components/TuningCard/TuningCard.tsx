@@ -85,7 +85,11 @@ const Card = styled.section<{ $docked: boolean }>`
       display: none;
     }
 
-    /* Botão Pauta ligado: o cartão para acima da pauta de 7,25rem; o motivo do erro rola dentro dele */
+    /*
+     * Botão Pauta ligado: o cartão para acima da pauta e o motivo do erro rola dentro dele. 4,125rem é o top acima;
+     * 7,25rem, a altura da pauta compacta, repetida em COMPACT_STAFF_HEIGHT (render/layout.ts) e no SheetStrip.
+     * Mudou uma, muda as três (o pista-deitada.spec.ts pega a sobreposição).
+     */
     ${({ $docked }) =>
       $docked &&
       `

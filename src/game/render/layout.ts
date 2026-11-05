@@ -42,7 +42,10 @@ export function stageBox(viewportWidth: number, viewportHeight: number, staff = 
 
 const sheetHeight = (viewportHeight: number) => Math.max(118, Math.round(viewportHeight * 0.236));
 
-/** Altura da pauta no pé da tela do celular deitado (SheetStrip compacta: 7,25rem, a do MobileGameplay.dc). */
+/**
+ * Altura da pauta no pé da tela do celular deitado (SheetStrip compacta: 7,25rem, a do MobileGameplay.dc). Repetida no
+ * teto do cartão de afinação com a pauta ligada (TuningCard, docked).
+ */
 export const COMPACT_STAFF_HEIGHT = 116;
 
 const compactHeight = (viewportHeight: number, staff: boolean) => Math.max(0, viewportHeight - (staff ? COMPACT_STAFF_HEIGHT : 0));
