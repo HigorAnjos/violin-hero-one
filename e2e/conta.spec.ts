@@ -10,6 +10,16 @@ const SCREENS = [
     path: '/conta?motivo=ranking&depois=%2F&voltar=%2Fperfil',
     ready: (p: Page) => expect(p.getByRole('dialog', { name: 'Quer aparecer no ranking, Maria Eduarda Pizzicato?' })).toBeVisible(),
   },
+  {
+    name: 'conta para o responsável',
+    path: '/conta?motivo=responsavel&depois=%2Fresponsavel&voltar=%2F',
+    // Quem pede é o próprio responsável: nada de "Menor de 13? Peça para um responsável criar."
+    ready: async (p: Page) => {
+      await expect(p.getByRole('dialog')).toBeVisible();
+      await expect(p.getByRole('link', { name: 'Agora não' })).toBeVisible();
+      await expect(p.getByText(/Menor de 13/)).toHaveCount(0);
+    },
+  },
   { name: 'configurações · conta', path: '/configuracoes?secao=conta', ready: (p: Page) => expect(p.getByRole('region', { name: 'Conta' })).toBeVisible() },
 ];
 

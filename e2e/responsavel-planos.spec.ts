@@ -18,6 +18,8 @@ for (const theme of ['caderno', 'palco', '8-bits']) {
       await page.getByLabel('Código do convite').fill('RESP222222');
       await page.getByRole('button', { name: 'Aceitar convite' }).click();
       await expect(page.getByRole('heading', { name: 'A semana de Ana' })).toBeAttached();
+      // Nível e modo no cartão, como o professor vê
+      await expect(page.getByRole('heading', { name: 'Brilha Brilha Estrelinha · Fácil · Arcade' })).toBeAttached();
       await page.getByRole('button', { name: 'Ouvir entrega' }).click();
       const audio = page.getByLabel('Entrega de Brilha Brilha Estrelinha');
       await expect(audio).toHaveAttribute('src', /^blob:/);
