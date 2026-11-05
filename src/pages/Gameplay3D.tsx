@@ -15,6 +15,7 @@ import { strings3dBox } from '../game/render/layout';
 import { prefersReducedMotion } from '../game/render/present';
 import { useEar } from '../shell/Ear';
 import { gameRoute } from '../shell/play';
+import { safeAreaInsets } from '../shell/safeArea';
 import { ROUTES } from '../shell/routes';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import { useGame, type GameDeps } from '../shell/useGame';
@@ -87,10 +88,11 @@ const Callout = styled(JudgmentCallout)`
     right: 1rem;
   }
 
+  /* Celular deitado: embaixo do placar, à esquerda do chão e acima das cordas (a direita é do cartão de afinação) */
   @media (max-height: 500px) {
-    right: max(0.875rem, env(safe-area-inset-right));
-    top: auto;
-    bottom: 8.25rem;
+    left: max(0.875rem, env(safe-area-inset-left));
+    right: auto;
+    top: 8.5rem;
   }
 `;
 
@@ -120,8 +122,8 @@ const Fps = styled.output`
   color: ${({ theme }) => theme.colors.textMuted};
 `;
 
-/** Quadros de tela das cordas: a conta do design (strings3dBox). */
-const box = () => strings3dBox(window.innerWidth, window.innerHeight);
+/** Quadros de tela das cordas: a conta do design (strings3dBox), fora do entalhe no celular deitado. */
+const box = () => strings3dBox(window.innerWidth, window.innerHeight, safeAreaInsets());
 
 /** 5c · Gameplay Cordas 3D: as quatro cordas na frente e as notas vindo do fundo pela coluna da casa. */
 export const Gameplay3D: React.FC<{ deps?: Partial<GameDeps> }> = ({ deps }) => {

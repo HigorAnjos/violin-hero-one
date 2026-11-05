@@ -18,8 +18,13 @@ describe('stageBox', () => {
     expect(stageBox(1280, 720)).toEqual({ x: 320, y: 0, width: 640, height: 550 });
   });
 
-  it('844×390: 440×272 centralizada, como o design do celular', () => {
-    expect(stageBox(844, 390)).toEqual({ x: 202, y: 0, width: 440, height: 272 });
+  it('celular deitado (844×390, 932×430): a tela toda, sem a pauta embaixo', () => {
+    expect(stageBox(844, 390)).toEqual({ x: 0, y: 0, width: 844, height: 390 });
+    expect(stageBox(932, 430)).toEqual({ x: 0, y: 0, width: 932, height: 430 });
+  });
+
+  it('a partir de 501 px de altura, a caixa do design de novo', () => {
+    expect(stageBox(1000, 501)).toEqual({ x: 250, y: 0, width: 500, height: 383 });
   });
 
   it('celular em pé: cabe com a margem lateral', () => {
@@ -34,6 +39,8 @@ const boxes = [
   [440, 272],
   [328, 565],
   [800, 600],
+  [844, 390],
+  [932, 430],
 ] as const;
 
 describe('trackLayout com a descida do nível', () => {
@@ -99,6 +106,41 @@ describe('lugar do feedback', () => {
     while (projectY(l, d) > bottom) d += 1;
     const planeEdge = projectX(l, l.planeWidth / 2, d);
     expect(l.feedback.x - l.feedback.size * 4.2).toBeGreaterThanOrEqual(planeEdge - 1);
+  });
+
+  it.each([
+    [844, 390],
+    [932, 430],
+  ])('celular deitado %i×%i (a tela toda): à esquerda do plano, embaixo do placar, longe do cartão de afinação', (w, h) => {
+    const l = trackLayout(w, h);
+    expect(l.feedback.align).toBe('right');
+    // "Perfeito!" inteiro dentro da tela, à esquerda da borda do plano na altura dele
+    const bottom = l.feedback.y + l.feedback.size * 1.6;
+    let d = 0;
+    while (projectY(l, d) > bottom) d += 1;
+    expect(l.feedback.x).toBeLessThanOrEqual(projectX(l, -l.planeWidth / 2, d));
+    expect(l.feedback.x - l.feedback.size * 4.2).toBeGreaterThanOrEqual(8);
+    // O placar compacto (ScoreCard) termina por volta de 7,75rem; o feedback começa abaixo dele
+    expect(l.feedback.y).toBeGreaterThan(124);
+  });
+});
+
+describe('a pista no celular deitado', () => {
+  const noteHeight = (l: ReturnType<typeof trackLayout>, depth: number) => projectY(l, depth) - projectY(l, depth + l.note.height);
+
+  it.each([
+    [844, 390],
+    [932, 430],
+  ])('%i×%i: o plano passa entre o placar e o cartão de afinação, e a nota nasce maior que na caixa de antes', (w, h) => {
+    const l = trackLayout(w, h);
+    const box = stageBox(w, h);
+    // Cartões de 10,625rem a 0,875rem das bordas
+    const half = (l.planeWidth / 2) * depthScale(l, 0);
+    expect(l.originX - half).toBeGreaterThan(14 + 170);
+    expect(l.originX + half).toBeLessThan(w - 14 - 170);
+    const before = trackLayout(Math.round(Math.min(w - 32, Math.max(440, Math.min(640, w * 0.5)))), Math.max(0, h - Math.max(118, Math.round(h * 0.236))));
+    expect(box.width * box.height).toBe(w * h);
+    expect(noteHeight(l, l.enterDepth)).toBeGreaterThan(noteHeight(before, before.enterDepth) * 1.3);
   });
 });
 

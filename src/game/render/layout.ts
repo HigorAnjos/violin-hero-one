@@ -3,6 +3,7 @@
  * com rotateX e perspectiva CSS. A projeção aqui é a mesma do navegador, então as proporções do
  * design valem para qualquer tamanho; tudo é fração da caixa da pista.
  */
+import { COMPACT_FRAMING, DESIGN_FRAMING, type Framing } from './strings3dLayout';
 
 /** Segundos que uma nota leva do topo da pista até a linha de acerto, sem nível (LevelSettings.trackLeadSeconds). */
 export const LEAD_SECONDS = 2;
@@ -23,28 +24,48 @@ export interface Box {
   height: number;
 }
 
+/** Altura de tela até a qual a partida usa os cartões compactos (celular deitado), como o COMPACT_QUERY. */
+export const COMPACT_VIEWPORT_HEIGHT = 500;
+
 /**
  * Onde a caixa da pista fica na tela de jogo: centralizada no alto, entre os cartões laterais e
- * acima da partitura. 1280×720 dá 640×550 e 844×390 dá 440×272, como no design.
+ * acima da partitura. 1280×720 dá 640×550, como no design. No celular deitado a pauta sai (a pista já mostra a corda
+ * e o dedo de cada nota) e a caixa é a tela toda: o plano, mais estreito que ela (trackLayout), passa entre os cartões
+ * dos cantos, e o feedback vai para a esquerda dele, embaixo do placar.
  */
 export function stageBox(viewportWidth: number, viewportHeight: number): Box {
+  if (viewportHeight <= COMPACT_VIEWPORT_HEIGHT) return { x: 0, y: 0, width: viewportWidth, height: viewportHeight };
   const width = Math.round(Math.min(viewportWidth - SIDE_GUTTER * 2, Math.max(440, Math.min(640, viewportWidth * 0.5))));
   return { x: Math.round((viewportWidth - width) / 2), y: 0, width, height: Math.max(0, viewportHeight - sheetHeight(viewportHeight)) };
 }
 
 const sheetHeight = (viewportHeight: number) => Math.max(118, Math.round(viewportHeight * 0.236));
 
-/** Altura de tela até a qual a partida usa os cartões compactos (celular deitado), como o COMPACT_QUERY. */
-const COMPACT_VIEWPORT_HEIGHT = 500;
+export interface Strings3DBox extends Box {
+  framing: Framing;
+}
+
+/**
+ * Coluna do cartão de afinação no celular deitado (TuningCard: 10,625rem de largura a 0,875rem da borda, ou a área
+ * segura), mais a folga até as cordas. O cartão cresce para baixo com o motivo do erro: na coluna, não cobre nada.
+ */
+const TUNING_CARD = 170;
+const TUNING_EDGE = 14;
+const TUNING_GAP = 8;
 
 /**
  * Caixa das Cordas 3D (Gameplay3D.dc): a largura toda acima da partitura, com os cartões por cima dos cantos de cima,
- * onde o chão em perspectiva deixa espaço (1280×720 dá 1280×550). No celular deitado os cartões descem sobre as cordas:
- * a caixa fica entre eles, como a da pista (844×390 dá 440×272).
+ * onde o chão em perspectiva deixa espaço (1280×720 dá 1280×550). No celular deitado vai do topo ao pé da tela, sem a
+ * pauta, da área segura da esquerda até a coluna do cartão de afinação, com o enquadramento do celular
+ * (COMPACT_FRAMING): o placar fica por cima do canto de cima à esquerda, onde o chão não chega (844×390 dá 652×390).
  */
-export function strings3dBox(viewportWidth: number, viewportHeight: number): Box {
-  if (viewportHeight <= COMPACT_VIEWPORT_HEIGHT) return stageBox(viewportWidth, viewportHeight);
-  return { x: 0, y: 0, width: viewportWidth, height: Math.max(0, viewportHeight - sheetHeight(viewportHeight)) };
+export function strings3dBox(viewportWidth: number, viewportHeight: number, insets: { left: number; right: number } = { left: 0, right: 0 }): Strings3DBox {
+  if (viewportHeight <= COMPACT_VIEWPORT_HEIGHT) {
+    const column = Math.max(TUNING_EDGE, insets.right) + TUNING_CARD + TUNING_GAP;
+    const x = Math.round(insets.left);
+    return { x, y: 0, width: Math.max(0, Math.round(viewportWidth - column) - x), height: viewportHeight, framing: COMPACT_FRAMING };
+  }
+  return { x: 0, y: 0, width: viewportWidth, height: Math.max(0, viewportHeight - sheetHeight(viewportHeight)), framing: DESIGN_FRAMING };
 }
 
 export interface TrackLayout {
@@ -82,8 +103,13 @@ export interface TrackLayout {
   feedback: { x: number; y: number; size: number; detailSize: number; align: 'center' | 'right' };
 }
 
-/** Caixa larga e baixa (celular deitado): o feedback vai para o canto direito, fora das notas. */
+/**
+ * Caixa larga e baixa (celular deitado): o feedback sai de cima das notas. Se cabe à esquerda do plano, vai para lá
+ * (a tela toda do celular: a direita é do cartão de afinação); senão, para o canto direito da caixa.
+ */
 const WIDE_BOX = 1.4;
+/** Largura de "Perfeito!", o rótulo mais largo, em alturas da letra. */
+const LABEL_WIDTH_EM = 4.2;
 
 export function trackLayout(width: number, height: number, lead: number = LEAD_SECONDS): TrackLayout {
   const perspective = height * 1.6;
@@ -100,6 +126,8 @@ export function trackLayout(width: number, height: number, lead: number = LEAD_S
   const enterDepth = farDepth - noteHeight;
   const feedbackSize = Math.max(20, Math.round(height * 0.085));
   const wide = width / height >= WIDE_BOX;
+  const leftOfPlane = width / 2 - planeWidth / 2 - SIDE_GUTTER / 2;
+  const left = wide && leftOfPlane - feedbackSize * LABEL_WIDTH_EM >= SIDE_GUTTER / 2;
   return {
     width,
     height,
@@ -124,7 +152,7 @@ export function trackLayout(width: number, height: number, lead: number = LEAD_S
     lead,
     speed: (enterDepth - hitDepth) / lead,
     feedback: {
-      x: wide ? width - SIDE_GUTTER / 2 : width / 2,
+      x: left ? leftOfPlane : wide ? width - SIDE_GUTTER / 2 : width / 2,
       y: Math.round(height * (wide ? 0.47 : 0.36)),
       size: feedbackSize,
       detailSize: Math.max(12, Math.round(feedbackSize * 0.35)),

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { stageBox, strings3dBox } from './layout';
 import {
   BOX,
+  COMPACT_FRAMING,
+  DESIGN_FRAMING,
   boxScale,
   CASA_OFFSET,
   casaNumberInto,
@@ -25,16 +27,60 @@ import {
 const VIEWPORTS = [
   [1280, 720],
   [844, 390],
+  [932, 430],
 ] as const;
 
 describe('caixa das Cordas 3D na tela', () => {
-  it('1280×720: a largura toda acima da partitura, como no design', () => {
-    expect(strings3dBox(1280, 720)).toEqual({ x: 0, y: 0, width: 1280, height: 550 });
+  it('1280×720: a largura toda acima da partitura, com a câmera do design', () => {
+    expect(strings3dBox(1280, 720)).toEqual({ x: 0, y: 0, width: 1280, height: 550, framing: DESIGN_FRAMING });
   });
 
-  it('844×390 (celular deitado): entre os cartões compactos, como a pista', () => {
-    expect(strings3dBox(844, 390)).toEqual(stageBox(844, 390));
-    expect(strings3dBox(844, 390)).toEqual({ x: 202, y: 0, width: 440, height: 272 });
+  it('celular deitado: do topo ao pé, até a coluna do cartão de afinação, com a câmera do celular', () => {
+    expect(strings3dBox(844, 390)).toEqual({ x: 0, y: 0, width: 652, height: 390, framing: COMPACT_FRAMING });
+    expect(strings3dBox(932, 430)).toEqual({ x: 0, y: 0, width: 740, height: 430, framing: COMPACT_FRAMING });
+  });
+
+  it('com entalhe: começa depois da área segura da esquerda e a coluna da direita afasta junto com o cartão', () => {
+    // 844 − 47 (entalhe) − 170 (cartão) − 8 (folga), a partir de x 47
+    expect(strings3dBox(844, 390, { left: 47, right: 47 })).toEqual({ x: 47, y: 0, width: 572, height: 390, framing: COMPACT_FRAMING });
+  });
+
+  it('a partir de 501 px de altura, a do design', () => {
+    expect(strings3dBox(1000, 501).framing).toBe(DESIGN_FRAMING);
+  });
+});
+
+describe('câmera do celular deitado', () => {
+  const noteHeight = (l: ReturnType<typeof strings3dLayout>, z: number) => BOX.height * boxScale(z) * project(l, 0, STRING_HEIGHTS[0], z).scale;
+
+  it.each([
+    [844, 390],
+    [932, 430],
+  ])('%i×%i: a nota nasce com mais de 3× a altura de antes (440×272 do lado da pista, câmera do design)', (w, h) => {
+    const { width, height, framing } = strings3dBox(w, h);
+    const now = strings3dLayout(width, height, MIN_COLUMNS, 2, framing);
+    const before = strings3dLayout(stageBox(w, 1000).width, h - 118, MIN_COLUMNS, 2);
+    expect(noteHeight(now, -FLOOR_LENGTH)).toBeGreaterThan(3 * noteHeight(before, -FLOOR_LENGTH));
+    expect(noteHeight(now, -FLOOR_LENGTH)).toBeGreaterThanOrEqual(12);
+  });
+
+  it('o fundo sobe para perto do topo (o placar fica no canto, fora do chão)', () => {
+    const { width, height, framing } = strings3dBox(844, 390);
+    const l = strings3dLayout(width, height, MIN_COLUMNS, 2, framing);
+    const farTop = project(l, 0, STRING_HEIGHTS[0] + BOX.height * (1 + BOX.farGrowth), -FLOOR_LENGTH).y;
+    expect(farTop / height).toBeLessThan(0.1);
+    // O chão na altura do pé do placar (~7,75rem) começa à direita dele (10,625rem a 0,875rem da borda)
+    let z = -FLOOR_LENGTH;
+    while (project(l, l.left, 0, z).y < 124) z += 0.1;
+    expect(project(l, l.left, 0, z).x).toBeGreaterThan(14 + 170);
+  });
+
+  it('com 13 casas ainda cabe e o fundo fica na metade de cima', () => {
+    const { width, height, framing } = strings3dBox(844, 390);
+    const l = strings3dLayout(width, height, 13, 2, framing);
+    expect(project(l, l.left - LETTER_OFFSET - LETTER_HEIGHT / 2, STRING_HEIGHTS[0], 0).x).toBeGreaterThanOrEqual(0);
+    expect(project(l, l.right + CASA_OFFSET + 0.6, 0, NUMBER_Z).x).toBeLessThanOrEqual(width);
+    expect(project(l, 0, 0, -FLOOR_LENGTH).y / height).toBeLessThan(0.5);
   });
 });
 
@@ -110,8 +156,8 @@ describe('posição da nota no tempo', () => {
 });
 
 describe.each(VIEWPORTS)('layout por proporção em %i×%i', (viewportWidth, viewportHeight) => {
-  const { width, height } = strings3dBox(viewportWidth, viewportHeight);
-  const l = strings3dLayout(width, height);
+  const { width, height, framing } = strings3dBox(viewportWidth, viewportHeight);
+  const l = strings3dLayout(width, height, MIN_COLUMNS, 2, framing);
   const p = (x: number, y: number, z: number) => project(l, x, y, z);
 
   it('projectInto escreve o mesmo ponto que project, sem alocar', () => {
@@ -126,12 +172,11 @@ describe.each(VIEWPORTS)('layout por proporção em %i×%i', (viewportWidth, vie
     }
   });
 
-  it('o fundo fica no alto (sob os cartões) e os números das casas no pé da caixa', () => {
+  it('o fundo fica no alto (sob os cartões no desktop, perto do topo no celular) e os números das casas no pé da caixa', () => {
     const farTop = p(0, STRING_HEIGHTS[0] + BOX.height * (1 + BOX.farGrowth), -FLOOR_LENGTH).y;
     const numbers = p(0, -NUMBER_HEIGHT / 2, NUMBER_Z).y;
-    expect(farTop / height).toBeGreaterThanOrEqual(0.2);
-    // Na caixa estreita do celular quem manda é a largura: o conteúdo encolhe preso ao pé, e o fundo desce
-    expect(farTop / height).toBeLessThanOrEqual(width / height > 2 ? 0.3 : 0.5);
+    expect(farTop / height).toBeGreaterThanOrEqual(framing.top - 0.01);
+    expect(farTop / height).toBeLessThanOrEqual(framing.top + 0.06);
     expect(numbers / height).toBeGreaterThan(0.93);
     expect(numbers).toBeLessThanOrEqual(height);
   });
