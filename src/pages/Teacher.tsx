@@ -488,7 +488,8 @@ const InviteBox = styled(Confirm)`
 function GuardianInviteNotice({ name, invite, onClose }: { name: string; invite: GuardianInvite; onClose: () => void }) {
   const [status, setStatus] = React.useState('');
   const until = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(Date.parse(invite.expiresAt));
-  const text = `Convite para acompanhar ${name} no Violin Hero: ${invite.code}. Abra o app, toque em “Sou responsável” e digite o código. Vale até ${until}, uma vez só.`;
+  // Sem o nome do aluno: o texto sai do app (WhatsApp, e-mail) e o nome fica só na turma; depois do aceite o app mostra
+  const text = `Convite do responsável no Violin Hero: ${invite.code}. Abra o app, toque em “Sou responsável” e digite o código. Vale até ${until}, uma vez só.`;
   return (
     // status: quem usa leitor de tela ouve o convite ao aparecer e o "Copiado." depois
     <InviteBox role="status" aria-label={`Convite do responsável de ${name}`}>

@@ -176,6 +176,14 @@ describe('P1 · painel do professor', () => {
     await user.click(within(notice).getByRole('button', { name: 'Copiar código' }));
     expect(await navigator.clipboard.readText()).toBe(code);
     expect(notice).toHaveTextContent('Copiado.');
+    // O que sai pela folha de compartilhar leva o código, nunca o nome do aluno (o nome fica só na turma)
+    const share = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', Object.assign(Object.create(navigator), { share }));
+    await user.click(within(notice).getByRole('button', { name: 'Compartilhar' }));
+    expect(share).toHaveBeenCalledTimes(1);
+    const shared = share.mock.calls[0][0] as { title: string; text: string; url: string };
+    expect(shared.text).toContain(code);
+    expect(JSON.stringify(shared)).not.toMatch(/Ana/);
   });
 
   it('limite do plano: a mensagem e o link para os planos', async () => {
