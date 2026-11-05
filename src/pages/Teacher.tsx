@@ -630,10 +630,12 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
   });
   // Apagar o aluno (o caminho de exclusão da conta dele): só fora da turma ou com a turma encerrada, e confirmado antes
   const [erasing, setErasing] = React.useState<ClassStudent | null>(null);
+  // Redefinir o PIN também pede confirmação: o PIN que o aluno usa para de valer na hora
+  const [resetting, setResetting] = React.useState<ClassStudent | null>(null);
   const keep = React.useRef<HTMLButtonElement>(null);
   React.useEffect(() => {
-    if (erasing) keep.current?.focus();
-  }, [erasing]);
+    if (erasing || resetting) keep.current?.focus();
+  }, [erasing, resetting]);
   const nameField = React.useRef<HTMLInputElement>(null);
   const closed = !!klass.closedAt;
   const activeCount = klass.students.filter((s) => s.active).length;
@@ -721,7 +723,11 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
                         type="button"
                         $variant="link"
                         aria-label={`Redefinir PIN de ${s.name}`}
-                        onClick={() => reset.mutate(s, { onSuccess: ({ pin }) => setShown({ kind: 'pin', name: s.name, pin, reset: true }), onError: fail })}
+                        onClick={() => {
+                          setProblem(null);
+                          setErasing(null);
+                          setResetting(s);
+                        }}
                       >
                         Redefinir PIN
                       </Button>
@@ -755,6 +761,7 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
                       aria-label={`Apagar ${s.name}`}
                       onClick={() => {
                         setProblem(null);
+                        setResetting(null);
                         setErasing(s);
                       }}
                     >
@@ -796,6 +803,29 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
             onClick={() => remove.mutate(erasing, { onSuccess: () => setErasing(null), onError: (cause) => (setErasing(null), fail(cause)) })}
           >
             Apagar para sempre
+          </Danger>
+        </Confirm>
+      )}
+      {resetting && (
+        <Confirm role="alertdialog" aria-label={`Redefinir PIN de ${resetting.name}`}>
+          <span>
+            Redefinir o PIN de <b>{resetting.name}</b>? O PIN de agora para de funcionar na hora: {resetting.name} só entra com o novo, que aparece uma vez.
+          </span>
+          <Button ref={keep} type="button" $variant="ghost" onClick={() => setResetting(null)}>
+            Manter o PIN
+          </Button>
+          <Danger
+            type="button"
+            $variant="link"
+            disabled={reset.isPending}
+            onClick={() =>
+              reset.mutate(resetting, {
+                onSuccess: ({ pin }) => (setResetting(null), setShown({ kind: 'pin', name: resetting.name, pin, reset: true })),
+                onError: (cause) => (setResetting(null), fail(cause)),
+              })
+            }
+          >
+            Redefinir PIN
           </Danger>
         </Confirm>
       )}

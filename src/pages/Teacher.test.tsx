@@ -95,8 +95,19 @@ describe('P1 · painel do professor', () => {
     const table = screen.getByRole('table');
     expect(within(table).getAllByRole('row')).toHaveLength(4);
     expect(screen.queryByText('1000')).not.toBeInTheDocument();
+    // Redefinir pede confirmação, com o nome e o efeito; "Manter o PIN" é o padrão e não troca nada
+    const reset = vi.spyOn(api, 'resetStudentPin');
     await user.click(screen.getByRole('button', { name: 'Redefinir PIN de Bruno' }));
+    const confirm = await screen.findByRole('alertdialog', { name: 'Redefinir PIN de Bruno' });
+    expect(confirm).toHaveTextContent('O PIN de agora para de funcionar na hora');
+    expect(within(confirm).getByRole('button', { name: 'Manter o PIN' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(reset).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Redefinir PIN de Bruno' }));
+    await user.click(within(await screen.findByRole('alertdialog', { name: 'Redefinir PIN de Bruno' })).getByRole('button', { name: 'Redefinir PIN' }));
     expect(await screen.findByRole('alertdialog', { name: 'PIN de Bruno' })).toHaveTextContent('1003');
+    expect(reset).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole('button', { name: 'Anotei o PIN' }));
     await user.click(screen.getByRole('button', { name: 'Desativar Carla' }));
     expect(await screen.findByRole('button', { name: 'Reativar Carla' })).toBeInTheDocument();
