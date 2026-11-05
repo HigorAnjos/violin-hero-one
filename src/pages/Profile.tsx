@@ -2,6 +2,7 @@ import React from 'react';
 import { BackLink, navigationPageInsets } from '../components/BackLink/BackLink';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
+import { portrait, portraitScroll } from '../assets/styles/media';
 import { ANIMAL_LOOK } from '../components/AvatarPicker/AvatarPicker';
 import { Badge } from '../components/Badge/Badge';
 import { Button } from '../components/Button/Button';
@@ -33,6 +34,7 @@ const Page = styled.main`
     gap: 0.5rem;
   }
   ${navigationPageInsets}
+  ${portraitScroll}
 `;
 
 const Header = styled.header`
@@ -55,6 +57,17 @@ const Header = styled.header`
 
     > nav > * {
       padding: 0 0.75rem;
+    }
+  }
+
+  /* Em pé: os atalhos descem para a linha de baixo quando não cabem ao lado do nome */
+  ${portrait} {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+
+    > nav {
+      flex-wrap: wrap;
+      gap: 0.5rem;
     }
   }
 `;
@@ -184,6 +197,11 @@ const Stats = styled.div`
   @media (max-height: 500px) {
     gap: 0.5rem;
   }
+
+  ${portrait} {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+  }
 `;
 
 const Big = styled.span<{ $tone?: 'warning' }>`
@@ -243,6 +261,16 @@ const Panels = styled.div`
 
   @media (max-height: 500px) {
     gap: 0.5rem;
+  }
+
+  /* Em pé: um painel embaixo do outro, com a altura do conteúdo */
+  ${portrait} {
+    flex: none;
+    grid-template-columns: minmax(0, 1fr);
+
+    > section {
+      overflow: visible;
+    }
   }
 `;
 
