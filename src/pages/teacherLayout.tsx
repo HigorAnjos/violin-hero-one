@@ -8,6 +8,7 @@ import { clampLines, Kicker } from '../components/Screen/Screen';
 import { ClassroomError, type ClassroomApi } from '../services/classroom';
 import { accountUrl, ROUTES } from '../shell/routes';
 import { useTeacherAccess, type TeacherAccess } from '../shell/useTeacher';
+import { plansState } from './Plans';
 
 /** A moldura das telas do professor (P1–P3): a janela inteira, sem rolar a página; quem rola é o painel. */
 export const TeacherPage = styled.main`
@@ -244,13 +245,20 @@ const Center = styled.div`
   margin: 0 auto;
 `;
 
-/** O limite do plano: a mensagem e o caminho para os planos. */
-export const LimitNotice: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
-  <Alert role="alert">
-    {children ?? new ClassroomError('limit').message}{' '}
-    <Button as={Link} to={ROUTES.plans} $variant="link">
+/** "Ver planos" que lembra de onde saiu: o voltar dos Planos volta para esta tela, com o nome `back`. */
+export const PlansLink: React.FC<{ back: string }> = ({ back }) => {
+  const { pathname, search } = useLocation();
+  return (
+    <Button as={Link} to={ROUTES.plans} state={plansState({ to: pathname + search, label: back })} $variant="link">
       Ver planos <span aria-hidden="true">▸</span>
     </Button>
+  );
+};
+
+/** O limite do plano: a mensagem e o caminho para os planos. */
+export const LimitNotice: React.FC<{ back: string; children?: React.ReactNode }> = ({ back, children }) => (
+  <Alert role="alert">
+    {children ?? new ClassroomError('limit').message} <PlansLink back={back} />
   </Alert>
 );
 

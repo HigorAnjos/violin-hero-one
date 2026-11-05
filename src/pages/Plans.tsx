@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { BackLink } from '../components/BackLink/BackLink';
 import { Button } from '../components/Button/Button';
 import { classroomKeys, ClassroomError, type ClassroomApi } from '../services/classroom';
@@ -31,7 +32,22 @@ function PlanList({ api }: { api: ClassroomApi }) {
     <small>Sem cobrança neste momento. A assinatura será disponibilizada depois.</small>
   </ClassroomContent>;
 }
+/** De onde os Planos foram abertos (a turma, a nova tarefa): o voltar leva para lá, com o nome da tela. */
+export interface PlansBack {
+  to: string;
+  label: string;
+}
+
+export const plansState = (back: PlansBack) => ({ plansBack: back });
+
+/** Só caminho do próprio app; sem estado (link direto, outro lugar), o voltar é o Menu. */
+export function readPlansBack(state: unknown): PlansBack | null {
+  const back = (state as { plansBack?: Partial<PlansBack> } | null)?.plansBack;
+  return typeof back?.to === 'string' && back.to.startsWith('/') && !back.to.startsWith('//') && typeof back.label === 'string' && back.label ? { to: back.to, label: back.label } : null;
+}
+
 export function Plans({ api: provided }: { api?: ClassroomApi }) {
   const api = useQuery({ queryKey: ['plans-api'], queryFn: parentClassroom, enabled: !provided, staleTime: Infinity });
-  return <ClassroomPage><header><div><small>PLANOS</small><h1>Mais espaço para sua turma</h1></div><BackLink /></header>{provided ? <PlanList api={provided} /> : api.data ? <PlanList api={api.data} /> : <p role="status">Conectando…</p>}</ClassroomPage>;
+  const back = readPlansBack(useLocation().state);
+  return <ClassroomPage><header><div><small>PLANOS</small><h1>Mais espaço para sua turma</h1></div>{back ? <BackLink to={back.to} label={back.label} /> : <BackLink />}</header>{provided ? <PlanList api={provided} /> : api.data ? <PlanList api={api.data} /> : <p role="status">Conectando…</p>}</ClassroomPage>;
 }

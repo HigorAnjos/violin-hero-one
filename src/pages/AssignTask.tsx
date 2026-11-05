@@ -262,7 +262,7 @@ function AssignForm({ ready, classId }: { ready: Ready; classId: string }) {
             <Muted>Vale a melhor partida terminada nesta música, nível e modo, feita até o prazo. O aluno escolhe enviar com a gravação para você revisar.</Muted>
             {/* A tarefa é da turma: quem for cadastrado depois também a recebe */}
             {klass.data && !activeCount && <Muted>A turma ainda não tem aluno: a tarefa vale para quem entrar depois.</Muted>}
-            {kind === 'limit' ? <LimitNotice /> : kind && <Alert role="alert">{errorText(create.error)}</Alert>}
+            {kind === 'limit' ? <LimitNotice back="Nova tarefa" /> : kind && <Alert role="alert">{errorText(create.error)}</Alert>}
           </Form>
 
           <Aside>

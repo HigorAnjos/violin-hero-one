@@ -151,6 +151,16 @@ describe('P1 · painel do professor', () => {
     expect(within(alert).getByRole('link', { name: /Ver planos/ })).toHaveAttribute('href', '/planos');
   });
 
+  it('"Ver planos" da turma leva aos Planos lembrando a turma, para o voltar', async () => {
+    const { api, klass } = await withClass();
+    const user = userEvent.setup();
+    mount(api, { path: `/professor/turma/${klass.id}` });
+    const plan = await screen.findByRole('region', { name: 'Seu plano' });
+    await user.click(await within(plan).findByRole('link', { name: /Ver planos/ }));
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/planos$/);
+    expect(JSON.parse(screen.getByTestId('location').getAttribute('data-state')!)).toEqual({ plansBack: { to: `/professor/turma/${klass.id}`, label: 'Iniciantes · sábado' } });
+  });
+
   it('para revisar: a entrega chega na caixa e leva para a revisão', async () => {
     const { api, klass } = await withClass();
     const { pin, student } = await api.addStudent(klass.id, 'Ana');
