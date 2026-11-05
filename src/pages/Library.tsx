@@ -360,7 +360,8 @@ const SongCard: React.FC<{ song: ShelfSong & { origin?: string }; offline: boole
   const tag = offlineTag(song, offline);
   return (
     <li>
-      <Card to={modesUrl(undefined, song.id)}>
+      {/* O foco por teclado num cartão meio à vista não rola a lista: rola até ele aparecer inteiro */}
+      <Card to={modesUrl(undefined, song.id)} onFocus={(e) => e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' })}>
         <Cover id={song.id}>{tag && <Badge>{tag}</Badge>}</Cover>
         <CardBody>
           <b>{song.title}</b>

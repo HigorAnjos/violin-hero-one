@@ -168,6 +168,22 @@ describe('Library', () => {
     expect(within(screen.getByRole('list', { name: 'Grátis para começar' })).getAllByRole('link')).toHaveLength(FIXED_SONGS.length);
   });
 
+  it('o cartão que recebe o foco rola até aparecer inteiro na lista', async () => {
+    // O jsdom não tem scrollIntoView
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      renderLibrary();
+      await waitFor(() => expect(cards()).toHaveLength(FIXED_SONGS.length), { timeout: 5000 });
+      const last = cards().at(-1)!;
+      last.focus();
+      expect(scroll).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+      expect(scroll.mock.contexts.at(-1)).toBe(last);
+    } finally {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    }
+  });
+
   it('Menu volta para a tela inicial', async () => {
     renderLibrary();
     await userEvent.click(screen.getByRole('link', { name: /Menu/ }));
