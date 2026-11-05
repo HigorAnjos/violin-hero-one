@@ -9,14 +9,15 @@ import { PinNotice } from '../components/PinNotice/PinNotice';
 import { clampLines, Kicker } from '../components/Screen/Screen';
 import { StudentAvatar } from '../components/StudentAvatar/StudentAvatar';
 import { TaskProgress, taskSummary } from '../components/TaskProgress/TaskProgress';
-import type {
-  AssignmentDetail,
-  AssignmentSummary,
-  ClassDetail,
-  ClassroomApi,
-  ClassStudent,
-  ClassSummary,
-  GuardianInvite,
+import {
+  classroomKeys,
+  type AssignmentDetail,
+  type AssignmentSummary,
+  type ClassDetail,
+  type ClassroomApi,
+  type ClassStudent,
+  type ClassSummary,
+  type GuardianInvite,
 } from '../services/classroom';
 import { copyText, shareLink, type ShareOutcome } from '../services/share';
 import { newAssignmentUrl, reviewUrl, ROUTES, teacherClassUrl } from '../shell/routes';
@@ -31,6 +32,7 @@ import {
   useOpenAssignmentDetails,
   useTeacherMutation,
   type TeacherAccess,
+  type TeacherCache,
 } from '../shell/useTeacher';
 import {
   Actions,
@@ -172,7 +174,12 @@ function NewClassForm({ ready, autoFocus = false }: { ready: Ready; autoFocus?: 
   const navigate = useNavigate();
   const [open, setOpen] = React.useState(autoFocus);
   const [name, setName] = React.useState('');
-  const create = useTeacherMutation((n: string) => ready.api.createClass(n));
+  // A turma nova abre com o que a criação devolveu: ainda sem tarefa
+  const create = useTeacherMutation(ready, (n: string) => ready.api.createClass(n), (cache, created) => {
+    cache.set(classroomKeys.class(created.id), created);
+    cache.set(classroomKeys.assignments(created.id), []);
+    cache.stale(classroomKeys.classes, classroomKeys.plan);
+  });
   const id = React.useId();
 
   if (!open)
@@ -464,6 +471,50 @@ const Danger = styled(Button)`
   color: ${({ theme }) => theme.colors.danger.text};
 `;
 
+/** O convite do responsável é informação, não alerta: o tom ciano do tema, como o código da turma. */
+const InviteBox = styled(Confirm)`
+  border-color: ${({ theme }) => theme.colors.info.border};
+  background-color: ${({ theme }) => theme.colors.info.surface};
+
+  > strong {
+    font-family: ${({ theme }) => theme.fonts.display};
+    font-weight: 800;
+    font-size: 1.125rem;
+    letter-spacing: 0.08em;
+    color: ${({ theme }) => theme.colors.info.text};
+  }
+`;
+
+function GuardianInviteNotice({ name, invite, onClose }: { name: string; invite: GuardianInvite; onClose: () => void }) {
+  const [status, setStatus] = React.useState('');
+  const until = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(Date.parse(invite.expiresAt));
+  // Sem o nome do aluno: o texto sai do app (WhatsApp, e-mail) e o nome fica só na turma; depois do aceite o app mostra
+  const text = `Convite do responsável no Violin Hero: ${invite.code}. Abra o app, toque em “Sou responsável” e digite o código. Vale até ${until}, uma vez só.`;
+  return (
+    // status: quem usa leitor de tela ouve o convite ao aparecer e o "Copiado." depois
+    <InviteBox role="status" aria-label={`Convite do responsável de ${name}`}>
+      <span>
+        Convite para o responsável de <b>{name}</b>, vale até {until}. Passe só para o responsável; ele entra em “Sou responsável”.
+      </span>
+      <strong>{invite.code}</strong>
+      <Button type="button" $variant="link" onClick={async () => setStatus(SHARE_TEXT[await copyText(invite.code)])}>
+        Copiar código
+      </Button>
+      <Button
+        type="button"
+        $variant="link"
+        onClick={async () => setStatus(SHARE_TEXT[await shareLink(`${window.location.origin}${ROUTES.parent}`, { title: 'Convite do responsável no Violin Hero', text })])}
+      >
+        Compartilhar
+      </Button>
+      <Button type="button" $variant="link" onClick={onClose}>
+        Fechar
+      </Button>
+      <Muted>{status}</Muted>
+    </InviteBox>
+  );
+}
+
 const STUDENT_NAME_MAX = 40;
 
 interface InboxRow {
@@ -560,17 +611,38 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
   const [shown, setShown] = React.useState<Shown | null>(null);
   const [problem, setProblem] = React.useState<unknown>(null);
   const plan = useMyPlan(ready);
-  const add = useTeacherMutation((n: string) => api.addStudent(klass.id, n));
-  const reset = useTeacherMutation((s: ClassStudent) => api.resetStudentPin(s.id));
-  const active = useTeacherMutation(({ s, on }: { s: ClassStudent; on: boolean }) => api.setStudentActive(s.id, on));
-  const invite = useTeacherMutation((s: ClassStudent) => api.createGuardianInvite(s.id));
-  const remove = useTeacherMutation((s: ClassStudent) => api.removeStudent(s.id));
+  // Quem está na turma conta na lista de turmas, nas tarefas e na situação de cada tarefa aberta
+  const rosterChanged = (cache: TeacherCache) =>
+    // assignments(klass.id) já cai no prefixo de class(klass.id); fica explícito porque o studentCount da lista depende dele
+    cache.stale(
+      classroomKeys.class(klass.id),
+      classroomKeys.assignments(klass.id),
+      classroomKeys.classes,
+      ...tasks.map((t) => classroomKeys.assignment(t.id))
+    );
+  const add = useTeacherMutation(ready, (n: string) => api.addStudent(klass.id, n), (cache, { student }) => {
+    cache.update<ClassDetail>(classroomKeys.class(klass.id), (k) => ({ ...k, students: [...k.students, student] }));
+    rosterChanged(cache);
+  });
+  // PIN e convite não mudam nada que a tela mostre
+  const reset = useTeacherMutation(ready, (s: ClassStudent) => api.resetStudentPin(s.id));
+  const active = useTeacherMutation(ready, ({ s, on }: { s: ClassStudent; on: boolean }) => api.setStudentActive(s.id, on), (cache, detail) => {
+    cache.set(classroomKeys.class(klass.id), detail);
+    rosterChanged(cache);
+  });
+  const invite = useTeacherMutation(ready, (s: ClassStudent) => api.createGuardianInvite(s.id));
+  const remove = useTeacherMutation(ready, (s: ClassStudent) => api.removeStudent(s.id), (cache, _, gone) => {
+    cache.update<ClassDetail>(classroomKeys.class(klass.id), (k) => ({ ...k, students: k.students.filter((s) => s.id !== gone.id) }));
+    rosterChanged(cache);
+  });
   // Apagar o aluno (o caminho de exclusão da conta dele): só fora da turma ou com a turma encerrada, e confirmado antes
   const [erasing, setErasing] = React.useState<ClassStudent | null>(null);
+  // Redefinir o PIN também pede confirmação: o PIN que o aluno usa para de valer na hora
+  const [resetting, setResetting] = React.useState<ClassStudent | null>(null);
   const keep = React.useRef<HTMLButtonElement>(null);
   React.useEffect(() => {
-    if (erasing) keep.current?.focus();
-  }, [erasing]);
+    if (erasing || resetting) keep.current?.focus();
+  }, [erasing, resetting]);
   const nameField = React.useRef<HTMLInputElement>(null);
   const closed = !!klass.closedAt;
   const activeCount = klass.students.filter((s) => s.active).length;
@@ -658,7 +730,11 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
                         type="button"
                         $variant="link"
                         aria-label={`Redefinir PIN de ${s.name}`}
-                        onClick={() => reset.mutate(s, { onSuccess: ({ pin }) => setShown({ kind: 'pin', name: s.name, pin, reset: true }), onError: fail })}
+                        onClick={() => {
+                          setProblem(null);
+                          setErasing(null);
+                          setResetting(s);
+                        }}
                       >
                         Redefinir PIN
                       </Button>
@@ -692,6 +768,7 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
                       aria-label={`Apagar ${s.name}`}
                       onClick={() => {
                         setProblem(null);
+                        setResetting(null);
                         setErasing(s);
                       }}
                     >
@@ -736,25 +813,40 @@ function StudentRows({ ready, klass, tasks }: { ready: Ready; klass: ClassDetail
           </Danger>
         </Confirm>
       )}
-      {shown?.kind === 'invite' && (
-        <Confirm role="status">
+      {resetting && (
+        <Confirm role="alertdialog" aria-label={`Redefinir PIN de ${resetting.name}`}>
           <span>
-            Convite para o responsável de <b>{shown.name}</b>: <b>{shown.invite.code}</b>, vale até{' '}
-            {new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' }).format(Date.parse(shown.invite.expiresAt))}. Passe só para o responsável;
-            ele entra em “Sou responsável”.
+            Redefinir o PIN de <b>{resetting.name}</b>? O PIN de agora para de funcionar na hora: {resetting.name} só entra com o novo, que aparece uma vez.
           </span>
-          <Button type="button" $variant="link" onClick={() => setShown(null)}>
-            Fechar
+          <Button ref={keep} type="button" $variant="ghost" onClick={() => setResetting(null)}>
+            Manter o PIN
           </Button>
+          <Danger
+            type="button"
+            $variant="link"
+            disabled={reset.isPending}
+            onClick={() =>
+              reset.mutate(resetting, {
+                onSuccess: ({ pin }) => (setResetting(null), setShown({ kind: 'pin', name: resetting.name, pin, reset: true })),
+                onError: (cause) => (setResetting(null), fail(cause)),
+              })
+            }
+          >
+            Redefinir PIN
+          </Danger>
         </Confirm>
       )}
+      {shown?.kind === 'invite' && <GuardianInviteNotice name={shown.name} invite={shown.invite} onClose={() => setShown(null)} />}
     </Students>
   );
 }
 
 function CloseClass({ ready, klass }: { ready: Ready; klass: ClassDetail }) {
   const [asking, setAsking] = React.useState(false);
-  const close = useTeacherMutation(() => ready.api.closeClass(klass.id));
+  const close = useTeacherMutation(ready, () => ready.api.closeClass(klass.id), (cache, closed) => {
+    cache.set(classroomKeys.class(klass.id), closed);
+    cache.stale(classroomKeys.classes, classroomKeys.plan, classroomKeys.assignments(klass.id));
+  });
   const keep = React.useRef<HTMLButtonElement>(null);
   React.useEffect(() => {
     if (asking) keep.current?.focus();

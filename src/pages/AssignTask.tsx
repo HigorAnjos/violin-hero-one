@@ -12,7 +12,9 @@ import {
   ASSIGNMENT_INSTRUCTIONS,
   ASSIGNMENT_MAX_DAYS,
   INSTRUCTION_TEXT_MAX,
+  classroomKeys,
   type AssignmentMode,
+  type AssignmentSummary,
   type ClassroomApi,
   type InstructionKey,
   type NewAssignment,
@@ -142,7 +144,19 @@ function AssignForm({ ready, classId }: { ready: Ready; classId: string }) {
   const [due, setDue] = React.useState(defaultDueDate);
   const [instruction, setInstruction] = React.useState<Instruction>('tocar-inteira');
   const [ownText, setOwnText] = React.useState('');
-  const create = useTeacherMutation((input: NewAssignment) => ready.api.createAssignment(input));
+  // A turma abre já com a tarefa nova no topo (a lista do servidor é da mais nova para a mais antiga)
+  const create = useTeacherMutation(ready, (input: NewAssignment) => ready.api.createAssignment(input), (cache, task) => {
+    const { students, ...rest } = task;
+    const summary: AssignmentSummary = {
+      ...rest,
+      studentCount: students.length,
+      submittedCount: students.filter((s) => s.submission).length,
+      reviewedCount: students.filter((s) => s.review).length,
+    };
+    cache.set(classroomKeys.assignment(task.id), task);
+    cache.update<AssignmentSummary[]>(classroomKeys.assignments(classId), (list) => [summary, ...list.filter((t) => t.id !== task.id)]);
+    cache.stale(classroomKeys.assignments(classId));
+  });
 
   const song = songs.find((s) => s.id === songId) ?? songs[0];
   const levels = song ? LEVELS.filter((l) => song.levels.includes(l)) : [];
@@ -150,6 +164,15 @@ function AssignForm({ ready, classId }: { ready: Ready; classId: string }) {
   const activeCount = klass.data?.students.filter((s) => s.active).length ?? 0;
   // O prazo vai de hoje a 59 dias (o fim do 60º passaria das 60 × 24 h que o banco aceita)
   const [[today, last]] = React.useState(() => [dateInputValue(Date.now()), dateInputValue(Date.now() + (ASSIGNMENT_MAX_DAYS - 1) * DAY)]);
+  // O app valida o prazo (o balão do navegador sai na língua dele): AAAA-MM-DD compara como texto
+  const dueId = React.useId();
+  const dueProblem = !due
+    ? 'Escolha o prazo.'
+    : due < today
+      ? 'O prazo não pode ser antes de hoje.'
+      : due > last
+        ? `O prazo vai até ${ASSIGNMENT_MAX_DAYS - 1} dias a partir de hoje.`
+        : null;
   const text = instruction === 'own' ? ownText.trim() : '';
   const preview = instruction === 'own' ? text || null : instruction ? ASSIGNMENT_INSTRUCTIONS[instruction] : null;
   const back = teacherClassUrl(classId);
@@ -157,7 +180,7 @@ function AssignForm({ ready, classId }: { ready: Ready; classId: string }) {
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!song || closed) return;
+    if (!song || closed || dueProblem) return;
     create.mutate(
       {
         classId,
@@ -183,14 +206,14 @@ function AssignForm({ ready, classId }: { ready: Ready; classId: string }) {
           </div>
           <Actions>
             <BackLink to={back} label={klass.data?.name ?? 'Turma'} />
-            <Button type="submit" form="nova-tarefa" disabled={!song || create.isPending || closed || (instruction === 'own' && !text)}>
+            <Button type="submit" form="nova-tarefa" disabled={!song || create.isPending || closed || !!dueProblem || (instruction === 'own' && !text)}>
               {activeCount ? `Enviar para ${activeCount} ${activeCount === 1 ? 'aluno' : 'alunos'}` : 'Enviar à turma'} <span aria-hidden="true">▸</span>
             </Button>
           </Actions>
         </Header>
         {klass.error && <Alert role="alert">{errorText(klass.error)}</Alert>}
         {closed && <Alert role="alert">Esta turma foi encerrada: não recebe tarefa nova.</Alert>}
-        <Body id="nova-tarefa" onSubmit={submit} aria-label="Nova tarefa">
+        <Body id="nova-tarefa" onSubmit={submit} aria-label="Nova tarefa" noValidate>
           <Form as="div">
             <Pair>
               <Field>
@@ -204,9 +227,24 @@ function AssignForm({ ready, classId }: { ready: Ready; classId: string }) {
                   ))}
                 </Select>
               </Field>
-              <Field>
-                <span>Prazo</span>
-                <Input type="date" value={due} min={today} max={last} required onChange={(e) => setDue(e.target.value)} />
+              {/* div, não label: o aviso do prazo fica fora do nome do campo, ligado pelo aria-describedby */}
+              <Field as="div">
+                <span id={`${dueId}-nome`}>Prazo</span>
+                <Input
+                  type="date"
+                  value={due}
+                  min={today}
+                  max={last}
+                  aria-labelledby={`${dueId}-nome`}
+                  aria-invalid={!!dueProblem}
+                  aria-describedby={dueProblem ? `${dueId}-aviso` : undefined}
+                  onChange={(e) => setDue(e.target.value)}
+                />
+                {dueProblem && (
+                  <Alert id={`${dueId}-aviso`} role="alert">
+                    {dueProblem}
+                  </Alert>
+                )}
               </Field>
             </Pair>
             <Pair>
@@ -271,7 +309,9 @@ function AssignForm({ ready, classId }: { ready: Ready; classId: string }) {
               <Preview>
                 <b>Tarefa nova{song ? `: ${song.title}` : ''}</b>
                 <Muted>
-                  {LEVEL_NAMES[chosenLevel]} · {MODE_NAMES[mode]} · {dueText({ dueAt: dueAtFromDate(due), closed: false })}
+                  {LEVEL_NAMES[chosenLevel]} · {MODE_NAMES[mode]}
+                  {/* Campo vazio não vira data: sem prazo válido, a prévia fica sem ele */}
+                  {!dueProblem && ` · ${dueText({ dueAt: dueAtFromDate(due), closed: false })}`}
                 </Muted>
                 {preview && <Text>{preview}</Text>}
               </Preview>

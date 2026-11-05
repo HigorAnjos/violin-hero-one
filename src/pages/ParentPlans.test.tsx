@@ -143,6 +143,34 @@ it('convite recusado preserva formulário e permite tentar de novo', async () =>
   await screen.findByRole('heading', { name: 'A semana de Ana' });
 });
 
+it('aceitar convite não espera a releitura dos filhos: o filho aparece com a resposta do aceite', async () => {
+  const { api, invite } = await parentDemo();
+  const user = userEvent.setup();
+  renderScreen(<Parent api={api} />, { queryClient: client() });
+  await screen.findByText(/Nenhum filho vinculado/);
+  // A lista do servidor fica presa (o Supabase local lento): o aceite responde, a releitura não
+  vi.spyOn(api, 'listMyChildren').mockReturnValue(new Promise(() => {}));
+  await user.type(screen.getByLabelText('Código do convite'), invite.code);
+  await user.click(screen.getByRole('button', { name: 'Aceitar convite' }));
+  expect(await screen.findByText('Convite aceito. Agora você pode acompanhar seu filho.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Aceitar convite' })).toBeEnabled();
+  expect(await screen.findByRole('heading', { name: 'A semana de Ana' })).toBeInTheDocument();
+});
+
+it('duas tarefas da mesma música se distinguem por nível e modo, com o recado do professor', async () => {
+  const { api, invite } = await parentDemo();
+  await api.acceptGuardianInvite(invite.code);
+  api.actAs('professor');
+  const [klass] = await api.listMyClasses();
+  await api.createAssignment({ classId: klass.id, songId: 'brilha-brilha-estrelinha', level: 'easy', mode: 'strings3d', dueAt: new Date(Date.now() + 86400000).toISOString(), instructionKey: 'capricha-afinacao' });
+  api.actAs('responsavel');
+  renderScreen(<Parent api={api} />, { queryClient: client() });
+  const arcade = await screen.findByRole('heading', { name: 'Brilha Brilha Estrelinha · Fácil · Arcade' });
+  const strings = screen.getByRole('heading', { name: 'Brilha Brilha Estrelinha · Fácil · Cordas 3D' });
+  expect(arcade.parentElement).not.toHaveTextContent('Recado do professor');
+  expect(strings.parentElement).toHaveTextContent('Recado do professor: Capriche na afinação.');
+});
+
 it('planos: falha de rede oferece nova tentativa', async () => {
   const api = fakeClassroom(); api.failNext('offline');
   renderScreen(<Plans api={api} />);

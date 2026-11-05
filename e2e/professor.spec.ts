@@ -44,6 +44,28 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
       await expect(page.getByRole('button', { name: 'Redefinir PIN de Ana' })).toBeInViewport({ ratio: 1 });
       await checkScreen(page, 'painel da turma');
 
+      // Redefinir PIN pede confirmação; "Manter o PIN" é o padrão
+      await page.getByRole('button', { name: 'Redefinir PIN de Ana' }).click();
+      const resetPin = page.getByRole('alertdialog', { name: 'Redefinir PIN de Ana' });
+      await expect(resetPin).toContainText('para de funcionar');
+      await expect(resetPin.getByRole('button', { name: 'Manter o PIN' })).toBeFocused();
+      await resetPin.scrollIntoViewIfNeeded();
+      await expect(resetPin).toBeInViewport({ ratio: 1 });
+      await checkScreen(page, 'confirmar novo PIN');
+      await page.keyboard.press('Enter');
+      await expect(resetPin).toHaveCount(0);
+
+      // Convite do responsável: informação, com copiar e compartilhar
+      await page.getByRole('button', { name: 'Convite do responsável de Ana' }).click();
+      const invite = page.getByRole('status', { name: 'Convite do responsável de Ana' });
+      await expect(invite.getByRole('button', { name: 'Copiar código' })).toBeVisible();
+      // O código em elemento próprio, como o catálogo (ciclo5 g1) o lê
+      await expect(invite.getByText(/^[A-Z0-9]{10}$/)).toHaveText('RESP222222');
+      await expect(invite.getByRole('button', { name: 'Compartilhar' })).toBeVisible();
+      await invite.scrollIntoViewIfNeeded();
+      await checkScreen(page, 'convite do responsável');
+      await invite.getByRole('button', { name: 'Fechar' }).click();
+
       await page.getByRole('link', { name: /Nova tarefa/ }).click();
       await expect(page.getByRole('heading', { name: 'Nova tarefa' })).toBeVisible();
       // A primeira turma já abre com o nome focado; aqui o foco começa do zero
@@ -51,6 +73,15 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
       await page.getByRole('group', { name: 'Modo de jogo' }).getByRole('button', { name: 'Partitura' }).click();
       await page.getByRole('button', { name: 'Capriche na afinação.' }).click();
       await checkScreen(page, 'nova tarefa');
+      // Prazo no passado: aviso do app em pt-BR (não o balão do navegador) e Enviar desligado
+      const due = page.getByLabel('Prazo');
+      const valid = await due.inputValue();
+      await due.fill('2020-01-01');
+      await expect(page.getByRole('alert')).toHaveText('O prazo não pode ser antes de hoje.');
+      await expect(page.getByRole('button', { name: /Enviar para 3 alunos/ })).toBeDisabled();
+      await checkScreen(page, 'prazo inválido');
+      await due.fill(valid);
+      await expect(page.getByRole('alert')).toHaveCount(0);
       await page.getByRole('button', { name: /Enviar para 3 alunos/ }).click();
 
       const inbox = page.getByRole('region', { name: 'Para revisar' });

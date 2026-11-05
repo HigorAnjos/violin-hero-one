@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -6,7 +6,7 @@ import { cadernoTheme } from '../assets/styles/themes';
 import { palcoTheme } from '../assets/styles/themes/palco';
 import { pixelTheme } from '../assets/styles/themes/specials';
 import { FIXED_SONGS } from '../game/notation/songs';
-import { INSTRUCTION_TEXT_MAX } from '../services/classroom';
+import { INSTRUCTION_TEXT_MAX, type AssignmentSummary } from '../services/classroom';
 import { fakeClassroom } from '../services/classroomFake';
 import { renderScreen } from '../shell/testing';
 import { AssignTask } from './AssignTask';
@@ -27,7 +27,22 @@ async function scene() {
 function mount(api: ReturnType<typeof fakeClassroom>, classId: string, theme = cadernoTheme) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   queryClient.setQueryData(['session'], { status: 'signed-in', userId: 'professor-1', anonymous: false, email: 'p@exemplo.com' });
-  return renderScreen(<AssignTask api={api} />, { path: `/professor/turma/${classId}/nova-tarefa`, route: '/professor/turma/:turma/nova-tarefa', queryClient, theme });
+  renderScreen(<AssignTask api={api} />, { path: `/professor/turma/${classId}/nova-tarefa`, route: '/professor/turma/:turma/nova-tarefa', queryClient, theme });
+  return queryClient;
+}
+
+/** Daqui em diante toda leitura de turma fica presa até `release` (o servidor lento: a mutação responde, a releitura não). */
+function holdReads(api: ReturnType<typeof fakeClassroom>) {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  for (const read of ['getClass', 'listClassAssignments', 'getAssignment', 'listMyClasses', 'getMyPlan'] as const) {
+    const real = api[read].bind(api) as (...args: unknown[]) => Promise<unknown>;
+    vi.spyOn(api, read).mockImplementation((async (...args: unknown[]) => {
+      await held;
+      return real(...args);
+    }) as never);
+  }
+  return release;
 }
 
 describe.each([cadernoTheme, palcoTheme, pixelTheme])('P2 · nova tarefa: $name', (theme) => {
@@ -82,6 +97,42 @@ describe('P2 · nova tarefa', () => {
     expect(screen.queryByRole('button', { name: /Enviar para/ })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('combobox')).not.toBeDisabled());
     await user.click(screen.getByRole('button', { name: /^Enviar à turma/ }));
+    await waitFor(async () => expect(await api.listClassAssignments(klass.id)).toHaveLength(1));
+  });
+
+  it('volta para a turma assim que o servidor confirma, sem esperar a releitura', async () => {
+    const { api, klass } = await scene();
+    const user = userEvent.setup();
+    const queryClient = mount(api, klass.id);
+    await waitFor(() => expect(screen.getByRole('combobox')).not.toBeDisabled());
+    await screen.findByRole('button', { name: /Enviar para 3 alunos/ });
+    const release = holdReads(api);
+    await user.click(screen.getByRole('button', { name: /Enviar para 3 alunos/ }));
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe(`/professor/turma/${klass.id}`));
+    // A turma abre com a tarefa nova, tirada da resposta da criação
+    const list = queryClient.getQueryData<AssignmentSummary[]>(['classroom', 'class', klass.id, 'assignments', 'professor-1']);
+    expect(list?.map((t) => [t.mode, t.studentCount, t.submittedCount])).toEqual([['arcade', 3, 0]]);
+    release();
+  });
+
+  it('prazo no passado: aviso do app em pt-BR ao lado do campo e Enviar desligado, sem o balão do navegador', async () => {
+    const { api, klass } = await scene();
+    const user = userEvent.setup();
+    mount(api, klass.id);
+    const due = (await screen.findByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)) as HTMLInputElement;
+    await waitFor(() => expect(screen.getByRole('combobox')).not.toBeDisabled());
+    expect(due.closest('form')).toHaveAttribute('novalidate');
+    fireEvent.change(due, { target: { value: '2020-01-01' } });
+    expect(due).toHaveAccessibleName('Prazo');
+    expect(due).toHaveAttribute('aria-invalid', 'true');
+    expect(due).toHaveAccessibleDescription('O prazo não pode ser antes de hoje.');
+    expect(screen.getByRole('button', { name: /Enviar para 3 alunos/ })).toBeDisabled();
+    fireEvent.change(due, { target: { value: '' } });
+    expect(due).toHaveAccessibleDescription('Escolha o prazo.');
+    fireEvent.change(due, { target: { value: due.max } });
+    expect(due).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Enviar para 3 alunos/ }));
     await waitFor(async () => expect(await api.listClassAssignments(klass.id)).toHaveLength(1));
   });
 

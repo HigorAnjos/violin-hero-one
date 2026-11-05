@@ -401,9 +401,10 @@ test.describe('ciclo 5: professora, 3 alunos, entrega com áudio, revisão e res
       await test.step('g1. o responsável da Ana cria conta e aceita o convite que a professora gerou', async () => {
         await teacher.goto(`/professor/turma/${classId}`);
         await teacher.getByRole('button', { name: 'Convite do responsável de Ana' }).click();
-        const invite = teacher.getByRole('status').filter({ hasText: 'Convite para o responsável de' });
+        // O código tem elemento próprio no aviso (10 símbolos): não depende da frase em volta
+        const invite = teacher.getByRole('status', { name: 'Convite do responsável de Ana' });
         await expect(invite).toBeVisible();
-        const inviteCode = (await invite.textContent())!.match(/Ana: ([A-Z0-9-]+), vale até/)![1];
+        const inviteCode = (await invite.getByText(/^[A-Z0-9]{10}$/).textContent())!;
 
         await guardian.goto('/responsavel');
         await expect(guardian).toHaveURL(/\/conta\?motivo=responsavel/);

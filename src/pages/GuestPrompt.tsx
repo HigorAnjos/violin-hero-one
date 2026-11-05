@@ -145,6 +145,8 @@ const Foot = styled.div`
   color: ${({ theme }) => theme.colors.textMuted};
 
   a {
+    /* Sozinho (sem a linha do menor de 13), continua à direita */
+    margin-left: auto;
     display: inline-flex;
     align-items: center;
     min-height: 2.75rem;
@@ -278,16 +280,22 @@ export const GuestPrompt: React.FC = () => {
           </Notice>
         ) : (
           <>
-            <Actions>
-              {providers.google && (
-                <Button type="button" onClick={google}>
-                  Continuar com Google
-                </Button>
-              )}
-              <Button type="button" $variant={providers.google ? 'ghost' : 'primary'} aria-expanded={emailOpen} onClick={() => setEmailOpen((open) => !open)}>
-                Usar e-mail
-              </Button>
-            </Actions>
+            {(providers.google || !emailOpen) && (
+              <Actions>
+                {providers.google && (
+                  <Button type="button" onClick={google}>
+                    Continuar com Google
+                  </Button>
+                )}
+                {/* Aberto o formulário, o botão sai: o campo (com o foco) já está logo abaixo, com o título no lugar */}
+                {!emailOpen && (
+                  <Button type="button" $variant={providers.google ? 'ghost' : 'primary'} onClick={() => setEmailOpen(true)}>
+                    Usar e-mail
+                  </Button>
+                )}
+              </Actions>
+            )}
+            {emailOpen && <Kicker as="h2">Com e-mail</Kicker>}
             {emailOpen && (
               <EmailLinkForm
                 autoFocus
@@ -315,7 +323,8 @@ export const GuestPrompt: React.FC = () => {
         )}
 
         <Foot>
-          <span>Menor de 13? Peça para um responsável criar.</span>
+          {/* Quem chega pela área do responsável já é o responsável */}
+          {reason !== 'responsavel' && <span>Menor de 13? Peça para um responsável criar.</span>}
           <Link to={back}>Agora não</Link>
         </Foot>
       </Dialog>

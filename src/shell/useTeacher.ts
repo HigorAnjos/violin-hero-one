@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   ClassroomError,
   classroomKeys,
@@ -91,11 +91,33 @@ export function useOpenAssignmentDetails({ api, viewer }: Ready, assignments: re
   });
 }
 
-/** Mutação da área do professor: no fim, tudo de turma é relido (lista, turma, tarefas, plano). */
-export function useTeacherMutation<I, O>(run: (input: I) => Promise<O>) {
+/** O cache de turma de quem está na área: grava a resposta na consulta da próxima tela e manda reler o resto. */
+export interface TeacherCache {
+  set<T>(key: readonly unknown[], data: T): void;
+  update<T>(key: readonly unknown[], change: (old: T) => T): void;
+  /** Releitura por fora: ninguém espera por ela. */
+  stale(...keys: (readonly unknown[])[]): void;
+}
+
+export function teacherCache(queryClient: QueryClient, viewer: string): TeacherCache {
+  return {
+    set: (key, data) => void queryClient.setQueryData(keyOf(key, viewer), data),
+    update: <T,>(key: readonly unknown[], change: (old: T) => T) =>
+      void queryClient.setQueryData<T>(keyOf(key, viewer), (old) => (old === undefined ? old : change(old))),
+    stale: (...keys) => keys.forEach((queryKey) => void queryClient.invalidateQueries({ queryKey })),
+  };
+}
+
+/**
+ * Mutação da área do professor: a tela segue assim que o servidor confirma. `settle` põe a resposta no cache e marca
+ * só o que ela mudou; a releitura corre sem segurar o mutate (antes o onSettled devolvia a promessa de reler tudo de
+ * turma, e a navegação esperava). Se falhar, tudo de turma é relido por fora.
+ */
+export function useTeacherMutation<I, O>({ viewer }: Ready, run: (input: I) => Promise<O>, settle?: (cache: TeacherCache, data: O, input: I) => void) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: run,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: classroomKeys.all }),
+    onSuccess: (data, input) => settle?.(teacherCache(queryClient, viewer), data, input),
+    onError: () => void queryClient.invalidateQueries({ queryKey: classroomKeys.all }),
   });
 }
