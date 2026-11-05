@@ -59,6 +59,8 @@ for (const tema of ['caderno', 'palco', '8-bits'] as const) {
       await page.getByRole('button', { name: 'Convite do responsável de Ana' }).click();
       const invite = page.getByRole('status', { name: 'Convite do responsável de Ana' });
       await expect(invite.getByRole('button', { name: 'Copiar código' })).toBeVisible();
+      // O código em elemento próprio, como o catálogo (ciclo5 g1) o lê
+      await expect(invite.getByText(/^[A-Z0-9]{10}$/)).toHaveText('RESP222222');
       await expect(invite.getByRole('button', { name: 'Compartilhar' })).toBeVisible();
       await invite.scrollIntoViewIfNeeded();
       await checkScreen(page, 'convite do responsável');
