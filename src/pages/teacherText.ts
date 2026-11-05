@@ -4,7 +4,7 @@ import { ASSIGNMENT_INSTRUCTIONS, REVIEW_CONCEPTS, type Assignment, type Assignm
 /** Os modos que a tarefa pede, na ordem do design (prática não vale para tarefa). */
 export const ASSIGNMENT_MODES: readonly AssignmentMode[] = ['arcade', 'sheet', 'strings3d'];
 
-export const MODE_NAMES: Record<AssignmentMode, string> = { arcade: 'Arcade', sheet: 'Partitura', strings3d: 'Cordas 3D' };
+export { MODE_NAMES, taskLabel, taskVariant } from '../shell/taskLabel';
 
 /** O código da turma como o design mostra: ABCD-EFGH (o login aceita com ou sem hífen). */
 export function formatClassCode(code: string): string {
